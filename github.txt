@@ -1,0 +1,111 @@
+
+
+
+
+
+
+
+
+
+url
+http://www.runoob.com/git/git-basic-operations.html
+
+https://www.liaoxuefeng.com/wiki/0013739516305929606dd18361248578c67b8067c8c017b000/
+
+https://www.cnblogs.com/hexiaobao/p/8134829.html
+
+.gitconfig 文件中添加
+<pre>[credential]
+helper = store</pre>
+或者在git bash 中执行
+设置记住密码（默认15分钟）：
+git config –global credential.helper cache
+如果想自己设置时间，可以这样做：
+git config credential.helper ‘cache –timeout=3600’
+这样就设置一个小时之后失效
+长期存储密码：
+git config –global credential.helper store
+使用ssh方式
+1、在每次push 的时候，都要输入用户名和密码，是不是很麻烦？原因是使用了https方式 push，在git bash里边输入 git remote -v
+可以看到形如一下的返回结果：
+
+
+
+
+QQ截图20160919101029.png
+
+2、接下来，我们把它换成ssh方式的。
+<pre>$ git remote rm origin
+$ git remote add origin git@github.com:sosout/myblog.git
+$ git push origin</pre>
+3、问题是不是解决了呢？可能这样还不行，还应该添加SSH公匙。ssh-keygen -t rsa -C “email”,email是你注册在github上的邮箱。
+
+
+xiaoyuzhou@xiaoyuzhou-PC MINGW64 / (master)
+$ ssh-keygen -t rsa -C "410358630@qq.com"
+Generating public/private rsa key pair.
+Enter file in which to save the key (/c/Users/xiaoyuzhou/.ssh/id_rsa):
+/c/Users/xiaoyuzhou/.ssh/id_rsa already exists.
+Overwrite (y/n)? y
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again:
+Your identification has been saved in /c/Users/xiaoyuzhou/.ssh/id_rsa.
+Your public key has been saved in /c/Users/xiaoyuzhou/.ssh/id_rsa.pub.
+The key fingerprint is:
+SHA256:1uwFae/ulkLhyHdc4Ow/aqM5gIzECNYStP1mbzrU8cI 410358630@qq.com
+The key's randomart image is:
++---[RSA 2048]----+
+|.oo              |
+|.oo.       ..    |
+|.o.+      +o .   |
+|  . +  . +.oo .  |
+|   . *ooSoo+o.   |
+|    +.+E+o+o+    |
+|    .  o.+...o   |
+|     .o   oo= o  |
+|     ..   oB+o . |
++----[SHA256]-----+
+
+xiaoyuzhou@xiaoyuzhou-PC MINGW64 / (master)
+$ eval  "ssh-agent -s"
+SSH_AUTH_SOCK=/tmp/ssh-HJGLLzOeFvsN/agent.16432; export SSH_AUTH_SOCK;
+SSH_AGENT_PID=18000; export SSH_AGENT_PID;
+echo Agent pid 18000;
+
+xiaoyuzhou@xiaoyuzhou-PC MINGW64 / (master)
+$ ssh-add ~/.ssh/id_rsa
+Could not open a connection to your authentication agent.
+
+xiaoyuzhou@xiaoyuzhou-PC MINGW64 / (master)
+$ ssh-agent bash
+
+xiaoyuzhou@xiaoyuzhou-PC MINGW64 / (master)
+$ ssh-add ~/.ssh/id_rsa
+Enter passphrase for /c/Users/xiaoyuzhou/.ssh/id_rsa:
+Identity added: /c/Users/xiaoyuzhou/.ssh/id_rsa (/c/Users/xiaoyuzhou/.ssh/id_rsa                                                                                                                                                                                               )
+
+xiaoyuzhou@xiaoyuzhou-PC MINGW64 / (master)
+$ ssh -T 410358630@qq.com
+ssh: connect to host qq.com port 22: Connection timed out
+
+xiaoyuzhou@xiaoyuzhou-PC MINGW64 / (master)
+$ ssh -T git@gitub.com
+ssh: connect to host gitub.com port 22: Connection timed out
+
+xiaoyuzhou@xiaoyuzhou-PC MINGW64 / (master)
+$  git config --global user.name xingyuren
+
+xiaoyuzhou@xiaoyuzhou-PC MINGW64 / (master)
+$  git config --global user.name 410358630@qq.com
+
+xiaoyuzhou@xiaoyuzhou-PC MINGW64 / (master)
+$ ssh -T git@gitub.com
+ssh: connect to host gitub.com port 22: Connection timed out
+
+xiaoyuzhou@xiaoyuzhou-PC MINGW64 / (master)
+$ ssh -T git@github.com
+Hi xingyuren! You've successfully authenticated, but GitHub does not provide shell access.
+
+xiaoyuzhou@xiaoyuzhou-PC MINGW64 / (master)
+$
+

@@ -1,0 +1,940 @@
+Mybatis
+
+#{}是预编译处理，${}是字符串替换；
+
+Mybatis在处理#{}时，会将sql中的#{}替换为?号，调用PreparedStatement的set方法来赋值；
+
+Mybatis在处理${}时，就是把${}替换成变量的值；
+
+使用#{}可以有效的防止SQL注入，提高系统安全性。
+
+126. mybatis 有几种分页方式？
+数组分页
+sql分页
+拦截器分页
+RowBounds分页
+
+
+128. mybatis 逻辑分页和物理分页的区别是什么？
+
+物理分页速度上并不一定快于逻辑分页，逻辑分页速度上也并不一定快于物理分页。
+
+物理分页总是优于逻辑分页：
+
+没有必要将属于数据库端的压力加诸到应用端来，
+
+就算速度上存在优势,然而其它性能上的优点足以弥补这个缺点。
+
+
+129. mybatis 是否支持延迟加载？延迟加载的原理是什么？
+
+Mybatis仅支持association关联对象和collection关联集合对象的延迟加载，association指的就是一对一，collection指的就是一对多查询。在Mybatis配置文件中，可以配置是否启用延迟加载lazyLoadingEnabled=true|false。
+
+它的原理是，使用CGLIB创建目标对象的代理对象，当调用目标方法时，进入拦截器方法，比如调用a.getB().getName()，拦截器invoke()方法发现a.getB()是null值，那么就会单独发送事先保存好的查询关联B对象的sql，把B查询上来，然后调用a.setB(b)，于是a的对象b属性就有值了，接着完成a.getB().getName()方法的调用。这就是延迟加载的基本原理。
+
+当然了，不光是Mybatis，几乎所有的包括Hibernate，支持延迟加载的原理都是一样的。
+
+说一下 mybatis 的一级缓存和二级缓存？
+一级缓存: 基于 PerpetualCache 的 HashMap 本地缓存，其存储作用域为 Session，当 Session flush 或 close 之后，该 Session 中的所有 Cache 就将清空，默认打开一级缓存。
+
+二级缓存与一级缓存其机制相同，默认也是采用 PerpetualCache，HashMap 存储，不同在于其存储作用域为 Mapper(Namespace)，并且可自定义存储源，如 Ehcache。默认不打开二级缓存，要开启二级缓存，使用二级缓存属性类需要实现Serializable序列化接口(可用来保存对象的状态),可在它的映射文件中配置 ；
+
+对于缓存数据更新机制，当某一个作用域(一级缓存 Session/二级缓存Namespaces)的进行了C/U/D 操作后，默认该作用域下所有 select 中的缓存将被 clear。
+
+131. mybatis 和 hibernate 的区别有哪些？
+
+Mybatis有三种基本的执行器（Executor）：
+
+SimpleExecutor：每执行一次update或select，就开启一个Statement对象，
+用完立刻关闭Statement对象。
+
+ReuseExecutor：执行update或select，以sql作为key查找Statement对象，存在就使用，
+不存在就创建，用完后，不关闭Statement对象，而是放置于Map内，供下一次使用。
+简言之，就是重复使用Statement对象。
+
+BatchExecutor：执行update（没有select，JDBC批处理不支持select），将所有sql都添加
+到批处理中（addBatch()），等待统一执行（executeBatch()），它缓存了多个Statement
+对象，每个Statement对象都是addBatch()完毕后，等待逐一执行executeBatch()批处理。
+与JDBC批处理相同。
+133. mybatis 分页插件的实现原理是什么？
+
+分页插件的基本原理是使用Mybatis提供的插件接口，实现自定义插件，在插件的拦截方法内拦截待执行的sql，然后重写sql，根据dialect方言，添加对应的物理分页语句和物理分页参数。
+
+134. mybatis 如何编写一个自定义插件？
+
+Mybatis自定义插件针对Mybatis四大对象（Executor、StatementHandler 、ParameterHandler 、ResultSetHandler ）进行拦截，具体拦截方式为：
+
+1、Executor：拦截执行器的方法(log记录)
+2、StatementHandler ：拦截Sql语法构建的处理
+3、ParameterHandler ：拦截参数的处理
+4、ResultSetHandler ：拦截结果集的处理
+前两种应用较为广泛。
+
+Mybatis自定义插件必须实现Interceptor接口：
+
+public interface Interceptor {
+    Object intercept(Invocation invocation) throws Throwable;
+    Object plugin(Object target);
+    void setProperties(Properties properties);
+}
+intercept方法：拦截器具体处理逻辑方法
+plugin方法：根据签名signatureMap生成动态代理对象
+setProperties方法：设置Properties属性
+
+自定义插件demo:
+
+// ExamplePlugin.java
+@Intercepts({@Signature(
+  type= Executor.class,
+  method = "update",
+  args = {MappedStatement.class,Object.class})})
+public class ExamplePlugin implements Interceptor {
+  public Object intercept(Invocation invocation) throws Throwable {
+  Object target = invocation.getTarget(); //被代理对象
+  Method method = invocation.getMethod(); //代理方法
+  Object[] args = invocation.getArgs(); //方法参数
+  // do something ...... 方法拦截前执行代码块
+  Object result = invocation.proceed();
+  // do something .......方法拦截后执行代码块
+  return result;
+  }
+  public Object plugin(Object target) {
+    return Plugin.wrap(target, this);
+  }
+  public void setProperties(Properties properties) {
+  }
+}
+一个@Intercepts可以配置多个@Signature，@Signature中的参数定义如下：
+type：表示拦截的类，这里是Executor的实现类
+method：表示拦截的方法，这里是拦截Executor的update方法
+args：表示方法参数
+
+
+1.JDBC编程有哪些不足之处，MyBatis是如何解决这些问题的？
+① 数据库链接创建、释放频繁造成系统资源浪费从而影响系统性能，如果使用数据库链接池可解决此问题。
+解决：在SqlMapConfig.xml中配置数据链接池，使用连接池管理数据库链接。
+
+② Sql语句写在代码中造成代码不易维护，实际应用sql变化的可能较大，sql变动需要改变java代码。
+解决：将Sql语句配置在XXXXmapper.xml文件中与java代码分离。
+
+③ 向sql语句传参数麻烦，因为sql语句的where条件不一定，可能多也可能少，占位符需要和参数一一对应。
+解决： Mybatis自动将java对象映射至sql语句。
+
+④ 对结果集解析麻烦，sql变化导致解析代码变化，且解析前需要遍历，如果能将数据库记录封装成pojo对象解析比较方便。
+解决：Mybatis自动将sql执行结果映射至java对象。
+2.MyBatis编程步骤是什么样的？
+① 创建SqlSessionFactory
+② 通过SqlSessionFactory创建SqlSession
+③ 通过sqlsession执行数据库操作
+④ 调用session.commit()提交事务
+⑤ 调用session.close()关闭会话
+3.MyBatis与Hibernate有哪些不同？
+    Mybatis和hibernate不同，它不完全是一个ORM框架，因为MyBatis需要程序员自己编写Sql语句，不过mybatis可以通过XML或注解方式灵活配置要运行的sql语句，并将java对象和sql语句映射生成最终执行的sql，最后将sql执行的结果再映射生成java对象。
+
+    Mybatis学习门槛低，简单易学，程序员直接编写原生态sql，可严格控制sql执行性能，灵活度高，非常适合对关系数据模型要求不高的软件开发，例如互联网软件、企业运营类软件等，因为这类软件需求变化频繁，一但需求变化要求成果输出迅速。但是灵活的前提是mybatis无法做到数据库无关性，如果需要实现支持多种数据库的软件则需要自定义多套sql映射文件，工作量大。
+
+    Hibernate对象/关系映射能力强，数据库无关性好，对于关系模型要求高的软件（例如需求固定的定制化软件）如果用hibernate开发可以节省很多代码，提高效率。但是Hibernate的缺点是学习门槛高，要精通门槛更高，而且怎么设计O/R映射，在性能和对象模型之间如何权衡，以及怎样用好Hibernate需要具有很强的经验和能力才行。
+总之，按照用户的需求在有限的资源环境下只要能做出维护性、扩展性良好的软件架构都是好架构，所以框架只有适合才是最好。
+4.使用MyBatis的mapper接口调用时有哪些要求？
+①  Mapper接口方法名和mapper.xml中定义的每个sql的id相同
+②  Mapper接口方法的输入参数类型和mapper.xml中定义的每个sql 的parameterType的类型相同
+③  Mapper接口方法的输出参数类型和mapper.xml中定义的每个sql的resultType的类型相同
+④  Mapper.xml文件中的namespace即是mapper接口的类路径。
+5.SqlMapConfig.xml中配置有哪些内容？
+SqlMapConfig.xml中配置的内容和顺序如下：
+properties（属性）
+settings（配置）
+typeAliases（类型别名）
+typeHandlers（类型处理器）
+objectFactory（对象工厂）
+plugins（插件）
+environments（环境集合属性对象）
+environment（环境子属性对象）
+transactionManager（事务管理）
+dataSource（数据源）
+mappers（映射器）
+6.简单的说一下MyBatis的一级缓存和二级缓存？
+Mybatis首先去缓存中查询结果集，如果没有则查询数据库，如果有则从缓存取出返回结果集就不走数据库。Mybatis内部存储缓存使用一个HashMap，key为hashCode+sqlId+Sql语句。value为从查询出来映射生成的java对象
+
+Mybatis的二级缓存即查询缓存，它的作用域是一个mapper的namespace，即在同一个namespace中查询sql可以从缓存中获取数据。二级缓存是可以跨SqlSession的。
+7.Mapper编写有哪几种方式？
+①接口实现类继承SqlSessionDaoSupport
+使用此种方法需要编写mapper接口，mapper接口实现类、mapper.xml文件
+
+1、在sqlMapConfig.xml中配置mapper.xml的位置
+
+
+
+<mappers>
+    <mapper resource="mapper.xml文件的地址" />
+    <mapper resource="mapper.xml文件的地址" />
+</mappers>
+
+
+2、定义mapper接口
+
+3、实现类集成SqlSessionDaoSupport
+
+mapper方法中可以this.getSqlSession()进行数据增删改查。
+
+4、spring 配置
+
+
+
+<bean id=" " class="mapper接口的实现">
+    <property name="sqlSessionFactory" ref="sqlSessionFactory"></property>
+</bean>
+②使用org.mybatis.spring.mapper.MapperFactoryBean
+
+
+1、在sqlMapConfig.xml中配置mapper.xml的位置
+
+如果mapper.xml和mappre接口的名称相同且在同一个目录，这里可以不用配置
+
+
+
+<mappers>
+    <mapper resource="mapper.xml文件的地址" />
+    <mapper resource="mapper.xml文件的地址" />
+</mappers>
+
+
+2、定义mapper接口
+
+注意
+
+1、mapper.xml中的namespace为mapper接口的地址
+
+2、mapper接口中的方法名和mapper.xml中的定义的statement的id保持一致
+
+3、 Spring中定义
+
+
+
+<bean id="" class="org.mybatis.spring.mapper.MapperFactoryBean">
+    <property name="mapperInterface"   value="mapper接口地址" />
+    <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+</bean>
+③使用mapper扫描器
+
+
+1、mapper.xml文件编写，
+
+注意：
+
+mapper.xml中的namespace为mapper接口的地址
+
+mapper接口中的方法名和mapper.xml中的定义的statement的id保持一致
+
+如果将mapper.xml和mapper接口的名称保持一致则不用在sqlMapConfig.xml中进行配置
+
+2、定义mapper接口
+
+注意mapper.xml的文件名和mapper的接口名称保持一致，且放在同一个目录
+
+3、配置mapper扫描器
+
+<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+    <property name="basePackage" value="mapper接口包地址"></property>
+    <property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"/>
+</bean>
+4、使用扫描器后从spring容器中获取mapper的实现对象
+
+
+扫描器将接口通过代理方法生成实现对象，要spring容器中自动注册，名称为mapper 接口的名称。
+
+
+超全MyBatis动态SQL详解！( 看完SQL爽多了)
+阿进的写字台  java进阶架构师  前天
+
+
+阅读文本大概需要 18 分钟。
+
+温馨提示：文中代码看不全可左右滑动
+
+MyBatis 令人喜欢的一大特性就是动态 SQL。 在使用 JDBC 的过程中， 根据条件进行 SQL 的拼接是很麻烦且很容易出错的。 MyBatis 动态 SQL 的出现， 解决了这个麻烦。
+
+MyBatis通过 OGNL 来进行动态 SQL 的使用的。目前， 动态 SQL 支持以下几种标签：
+
+
+
+1 数据准备
+为了后面的演示， 创建了一个 Maven 项目 mybatis-dynamic, 创建了对应的数据库和表
+
+DROP TABLE IF EXISTS `student`;
+
+CREATE TABLE `student` (
+  `student_id` int(10) unsigned NOT NULL AUTO_INCREMENT COMMENT '编号',
+  `name` varchar(20) DEFAULT NULL COMMENT '姓名',
+  `phone` varchar(20) DEFAULT NULL COMMENT '电话',
+  `email` varchar(50) DEFAULT NULL COMMENT '邮箱',
+  `sex` tinyint(4) DEFAULT NULL COMMENT '性别',
+  `locked` tinyint(4) DEFAULT NULL COMMENT '状态(0:正常,1:锁定)',
+  `gmt_created` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '存入数据库的时间',
+  `gmt_modified` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改的时间',
+  `delete` int(11) DEFAULT NULL,
+  PRIMARY KEY (`student_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='学生表';
+
+对应的项目结构
+
+
+
+2 if 标签
+if 标签是我们最常使用的。 在查询、删除、更新的时候很可能会使用到。 必须结合 test 属性联合使用。
+
+2.1 在 WHERE 条件中使用 if 标签
+这是常见的一种现象， 我们在进行按条件查询的时候， 可能会有多种情况。
+
+2.1.1 查询条件
+根据输入的学生信息进行条件检索
+
+当只输入用户名时， 使用用户名进行模糊检索；
+
+当只输入性别时， 使用性别进行完全匹配
+
+当用户名和性别都存在时， 用这两个条件进行查询匹配查询
+
+2.1.2 动态 SQL
+接口函数
+
+    /**
+     * 根据输入的学生信息进行条件检索
+     * 1. 当只输入用户名时， 使用用户名进行模糊检索；
+     * 2. 当只输入邮箱时， 使用性别进行完全匹配
+     * 3. 当用户名和性别都存在时， 用这两个条件进行查询匹配的用
+     * @param student
+     * @return
+     */
+        List<Student> selectByStudentSelective(Student student);
+
+对应的动态 SQL
+
+  <select id="selectByStudentSelective" resultMap="BaseResultMap" parameterType="com.homejim.mybatis.entity.Student">
+    select
+    <include refid="Base_Column_List" />
+    from student
+    where 1=1
+    <if test="name != null and name !=''">
+      and name like concat('%', #{name}, '%')
+    </if>
+    <if test="sex != null">
+      and sex=#{sex}
+    </if>
+  </select>
+
+在此 SQL 语句中， where 1=1 是多条件拼接时的小技巧， 后面的条件查询就可以都用 and 了。
+
+同时， 我们添加了 if 标签来处理动态 SQL
+
+    <if test="name != null and name !=''">
+      and name like concat('%', #{name}, '%')
+    </if>
+    <if test="sex != null">
+      and sex=#{sex}
+    </if>
+
+此 if 标签的 test 属性值是一个符合 OGNL 的表达式， 表达式可以是 true 或 false。 如果表达式返回的是数值， 则0为 false, 非 0 为 true;
+
+2.1.3 测试
+     @Test
+    public void selectByStudent() {
+        SqlSession sqlSession = null;
+        sqlSession = sqlSessionFactory.openSession();
+        StudentMapper studentMapper = sqlSession.getMapper(StudentMapper.class);
+
+        Student search = new Student();
+        search.setName("明");
+
+        System.out.println("只有名字时的查询");
+        List<Student> studentsByName = studentMapper.selectByStudentSelective(search);
+        for (int i = 0; i < studentsByName.size(); i++) {
+            System.out.println(ToStringBuilder.reflectionToString(studentsByName.get(i), ToStringStyle.MULTI_LINE_STYLE));
+        }
+
+        search.setName(null);
+        search.setSex((byte) 1);
+        System.out.println("只有性别时的查询");
+        List<Student> studentsBySex = studentMapper.selectByStudentSelective(search);
+        for (int i = 0; i < studentsBySex.size(); i++) {
+            System.out.println(ToStringBuilder.reflectionToString(studentsBySex.get(i), ToStringStyle.MULTI_LINE_STYLE));
+        }
+
+        System.out.println("姓名和性别同时存在的查询");
+        search.setName("明");
+        List<Student> studentsByNameAndSex = studentMapper.selectByStudentSelective(search);
+        for (int i = 0; i < studentsByNameAndSex.size(); i++) {
+            System.out.println(ToStringBuilder.reflectionToString(studentsByNameAndSex.get(i), ToStringStyle.MULTI_LINE_STYLE));
+        }
+
+        sqlSession.commit();
+        sqlSession.close();
+    }
+
+只有名字时的查询， 发送的语句和结果
+
+
+
+查询的条件只发送了
+
+where 1=1 and name like concat('%', ?, '%')
+
+只有性别时的查询， 发送的语句和结果
+
+
+
+查询的条件只发送了
+
+where 1=1 and sex=?
+
+姓名和性别同时存在的查询， 发送的语句和结果
+
+
+
+查询条件
+
+where 1=1 and name like concat('%', ?, '%') and sex=?
+
+2.2 在 UPDATE 更新列中使用 if 标签
+有时候我们不希望更新所有的字段， 只更新有变化的字段。
+
+2.2.1 更新条件
+只更新有变化的字段， 空值不更新。
+
+2.2.1 动态 SQL
+接口方法
+
+    /**
+     * 更新非空属性
+     */
+    int updateByPrimaryKeySelective(Student record);
+
+对应的 SQL
+
+  <update id="updateByPrimaryKeySelective" parameterType="com.homejim.mybatis.entity.Student">
+    update student
+    <set>
+      <if test="name != null">
+        `name` = #{name,jdbcType=VARCHAR},
+      </if>
+      <if test="phone != null">
+        phone = #{phone,jdbcType=VARCHAR},
+      </if>
+      <if test="email != null">
+        email = #{email,jdbcType=VARCHAR},
+      </if>
+      <if test="sex != null">
+        sex = #{sex,jdbcType=TINYINT},
+      </if>
+      <if test="locked != null">
+        locked = #{locked,jdbcType=TINYINT},
+      </if>
+      <if test="gmtCreated != null">
+        gmt_created = #{gmtCreated,jdbcType=TIMESTAMP},
+      </if>
+      <if test="gmtModified != null">
+        gmt_modified = #{gmtModified,jdbcType=TIMESTAMP},
+      </if>
+    </set>
+    where student_id = #{studentId,jdbcType=INTEGER}
+
+2.2.3 测试
+    @Test
+    public void updateByStudentSelective() {
+        SqlSession sqlSession = null;
+        sqlSession = sqlSessionFactory.openSession();
+        StudentMapper studentMapper = sqlSession.getMapper(StudentMapper.class);
+
+        Student student = new Student();
+        student.setStudentId(1);
+        student.setName("明明");
+        student.setPhone("13838438888");
+        System.out.println(studentMapper.updateByPrimaryKeySelective(student));
+
+        sqlSession.commit();
+        sqlSession.close();
+    }
+
+结果如下
+
+
+
+2.3 在 INSERT 动态插入中使用 if 标签
+我们插入数据库中的一条记录， 不是每一个字段都有值的， 而是动态变化的。 在这时候使用 if 标签， 可帮我们解决这个问题。
+
+2.3.1 插入条件
+只有非空属性才插入。
+
+2.3.2 动态SQL
+接口方法
+
+    /**
+     * 非空字段才进行插入
+     */
+    int insertSelective(Student record);
+
+对应的SQL
+
+<insert id="insertSelective" parameterType="com.homejim.mybatis.entity.Student">
+    insert into student
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="studentId != null">
+        student_id,
+      </if>
+      <if test="name != null">
+        `name`,
+      </if>
+      <if test="phone != null">
+        phone,
+      </if>
+      <if test="email != null">
+        email,
+      </if>
+      <if test="sex != null">
+        sex,
+      </if>
+      <if test="locked != null">
+        locked,
+      </if>
+      <if test="gmtCreated != null">
+        gmt_created,
+      </if>
+      <if test="gmtModified != null">
+        gmt_modified,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="studentId != null">
+        #{studentId,jdbcType=INTEGER},
+      </if>
+      <if test="name != null">
+        #{name,jdbcType=VARCHAR},
+      </if>
+      <if test="phone != null">
+        #{phone,jdbcType=VARCHAR},
+      </if>
+      <if test="email != null">
+        #{email,jdbcType=VARCHAR},
+      </if>
+      <if test="sex != null">
+        #{sex,jdbcType=TINYINT},
+      </if>
+      <if test="locked != null">
+        #{locked,jdbcType=TINYINT},
+      </if>
+      <if test="gmtCreated != null">
+        #{gmtCreated,jdbcType=TIMESTAMP},
+      </if>
+      <if test="gmtModified != null">
+        #{gmtModified,jdbcType=TIMESTAMP},
+      </if>
+    </trim>
+  </insert>
+
+这个 SQL 大家应该很熟悉， 毕竟是自动生成的。
+
+2.3.3 测试
+    @Test
+    public void insertByStudentSelective() {
+        SqlSession sqlSession = null;
+        sqlSession = sqlSessionFactory.openSession();
+        StudentMapper studentMapper = sqlSession.getMapper(StudentMapper.class);
+
+        Student student = new Student();
+        student.setName("小飞机");
+        student.setPhone("13838438899");
+        student.setEmail("xiaofeiji@qq.com");
+        student.setLocked((byte) 0);
+
+        System.out.println(studentMapper.insertSelective(student));
+
+        sqlSession.commit();
+        sqlSession.close();
+    }
+
+对应的结果
+
+
+
+SQL 中， 只有非空的字段才进行了插入。
+
+3 choose 标签
+choose when otherwise 标签可以帮我们实现 if else 的逻辑。一个 choose 标签至少有一个 when, 最多一个otherwise。
+
+下面是一个查询的例子。
+
+3.1 查询条件
+假设 name 具有唯一性， 查询一个学生
+
+当 studen_id 有值时， 使用 studen_id 进行查询；
+
+当 studen_id 没有值时， 使用 name 进行查询；
+
+否则返回空
+
+3.2 动态SQL
+接口方法
+
+    /**
+     * - 当 studen_id 有值时， 使用 studen_id 进行查询；
+     * - 当 studen_id 没有值时， 使用 name 进行查询；
+     * - 否则返回空
+     */
+    Student selectByIdOrName(Student record);
+
+对应的SQL
+
+  <select id="selectByIdOrName" resultMap="BaseResultMap" parameterType="com.homejim.mybatis.entity.Student">
+    select
+    <include refid="Base_Column_List" />
+    from student
+    where 1=1
+    <choose>
+      <when test="studentId != null">
+        and student_id=#{studentId}
+      </when>
+      <when test="name != null and name != ''">
+        and name=#{name}
+      </when>
+      <otherwise>
+        and 1=2
+      </otherwise>
+    </choose>
+  </select>
+
+3.3 测试
+ @Test
+    public void selectByIdOrName() {
+        SqlSession sqlSession = null;
+        sqlSession = sqlSessionFactory.openSession();
+        StudentMapper studentMapper = sqlSession.getMapper(StudentMapper.class);
+
+        Student student = new Student();
+        student.setName("小飞机");
+        student.setStudentId(1);
+
+        Student studentById = studentMapper.selectByIdOrName(student);
+        System.out.println("有 ID 则根据 ID 获取");
+        System.out.println(ToStringBuilder.reflectionToString(studentById, ToStringStyle.MULTI_LINE_STYLE));
+
+        student.setStudentId(null);
+        Student studentByName = studentMapper.selectByIdOrName(student);
+        System.out.println("没有 ID 则根据 name 获取");
+        System.out.println(ToStringBuilder.reflectionToString(studentByName, ToStringStyle.MULTI_LINE_STYLE));
+
+        student.setName(null);
+        Student studentNull = studentMapper.selectByIdOrName(student);
+        System.out.println("没有 ID 和 name, 返回 null");
+        Assert.assertNull(studentNull);
+
+        sqlSession.commit();
+        sqlSession.close();
+    }
+
+有 ID 则根据 ID 获取， 结果
+
+
+
+没有 ID 则根据 name 获取
+
+
+
+没有 ID 和 name, 返回 null
+
+
+
+4 trim(set、where)
+这三个其实解决的是类似的问题。 如我们在写前面的[在 WHERE 条件中使用 if 标签] SQL 的时候， where 1=1 这个条件我们是不希望存在的。
+
+4.1 where
+4.1.1 查询条件
+根据输入的学生信息进行条件检索。
+
+当只输入用户名时， 使用用户名进行模糊检索；
+
+当只输入性别时， 使用性别进行完全匹配
+
+当用户名和性别都存在时， 用这两个条件进行查询匹配查询
+
+不使用 where 1=1。
+
+4.1.2 动态 SQL
+很显然， 我们要解决这几个问题
+
+当条件都不满足时： 此时 SQL 中应该要不能有 where ， 否则导致出错
+当 if 有条件满足时： SQL 中需要有 where， 且第一个成立的 if 标签下的 and | or 等要去掉
+这时候， 我们可以使用 where 标签。
+
+接口方法
+
+    /**
+     * 根据输入的学生信息进行条件检索
+     * 1. 当只输入用户名时， 使用用户名进行模糊检索；
+     * 2. 当只输入邮箱时， 使用性别进行完全匹配
+     * 3. 当用户名和性别都存在时， 用这两个条件进行查询匹配的用
+     */
+    List<Student> selectByStudentSelectiveWhereTag(Student student);
+
+对应的 SQL
+
+  <select id="selectByStudentSelectiveWhereTag" resultMap="BaseResultMap" parameterType="com.homejim.mybatis.entity.Student">
+    select
+    <include refid="Base_Column_List" />
+    from student
+   <where>
+    <if test="name != null and name !=''">
+      and name like concat('%', #{name}, '%')
+    </if>
+    <if test="sex != null">
+      and sex=#{sex}
+    </if>
+   </where>
+  </select>
+
+4.1.3 测试
+    @Test
+    public void selectByStudentWhereTag() {
+        SqlSession sqlSession = null;
+        sqlSession = sqlSessionFactory.openSession();
+        StudentMapper studentMapper = sqlSession.getMapper(StudentMapper.class);
+
+        Student search = new Student();
+        search.setName("明");
+
+        System.out.println("只有名字时的查询");
+        List<Student> studentsByName = studentMapper.selectByStudentSelectiveWhereTag(search);
+        for (int i = 0; i < studentsByName.size(); i++) {
+            System.out.println(ToStringBuilder.reflectionToString(studentsByName.get(i), ToStringStyle.MULTI_LINE_STYLE));
+        }
+
+        search.setSex((byte) 1);
+        System.out.println("姓名和性别同时存在的查询");
+        List<Student> studentsBySex = studentMapper.selectByStudentSelectiveWhereTag(search);
+        for (int i = 0; i < studentsBySex.size(); i++) {
+            System.out.println(ToStringBuilder.reflectionToString(studentsBySex.get(i), ToStringStyle.MULTI_LINE_STYLE));
+        }
+
+        System.out.println("姓名和性别都不存在时查询");
+        search.setName(null);
+        search.setSex(null);
+        List<Student> studentsByNameAndSex = studentMapper.selectByStudentSelectiveWhereTag(search);
+        for (int i = 0; i < studentsByNameAndSex.size(); i++) {
+            System.out.println(ToStringBuilder.reflectionToString(studentsByNameAndSex.get(i), ToStringStyle.MULTI_LINE_STYLE));
+        }
+
+        sqlSession.commit();
+        sqlSession.close();
+    }
+
+只有名字时的查询, 有 where
+
+
+
+姓名和性别同时存在的查询， 有 where
+
+
+
+姓名和性别都不存在时查询, 此时， where 不会再出现了。
+
+
+
+4.2 set
+set 标签也类似， 在 [2.2 在 UPDATE 更新列中使用 if 标签] 中， 如果我们的方法 updateByPrimaryKeySelective 没有使用
+
+4.3 trim
+set 和 where 其实都是 trim 标签的一种类型， 该两种功能都可以使用 trim 标签进行实现。
+
+4.3.1 trim 来表示 where
+如以上的 where 标签， 我们也可以写成
+
+<trim prefix="where" prefixOverrides="AND |OR">
+</trim>
+
+表示当 trim 中含有内容时， 添加 where， 且第一个为 and 或 or 时， 会将其去掉。 而如果没有内容， 则不添加 where。
+
+4.3.2 trim 来表示 set
+相应的， set 标签可以如下表示
+
+<trim prefix="SET" suffixOverrides=",">
+</trim>
+
+表示当 trim 中含有内容时， 添加 set， 且最后的内容为 , 时， 会将其去掉。 而没有内容， 不添加 set
+
+4.3.3 trim 的几个属性
+prefix: 当 trim 元素包含有内容时， 增加 prefix 所指定的前缀
+
+prefixOverrides: 当 trim 元素包含有内容时， 去除 prefixOverrides 指定的 前缀
+
+suffix: 当 trim 元素包含有内容时， 增加 suffix 所指定的后缀
+
+suffixOverrides： 当 trim 元素包含有内容时， 去除 suffixOverrides 指定的后缀
+
+5 foreach 标签
+foreach 标签可以对数组， Map 或实现 Iterable 接口。
+
+foreach 中有以下几个属性：
+
+collection: 必填， 集合/数组/Map的名称.
+
+item: 变量名。 即从迭代的对象中取出的每一个值
+
+index: 索引的属性名。 当迭代的对象为 Map 时， 该值为 Map 中的 Key.
+
+open: 循环开头的字符串
+
+close: 循环结束的字符串
+
+separator: 每次循环的分隔符
+
+其他的比较好理解， collection 中的值应该怎么设定呢？
+
+跟接口方法中的参数相关。
+
+1. 只有一个数组参数或集合参数
+默认情况： 集合collection=list， 数组是collection=array
+
+推荐： 使用 @Param 来指定参数的名称， 如我们在参数前@Param("ids")， 则就填写 collection=ids
+
+2. 多参数
+多参数请使用 @Param 来指定， 否则SQL中会很不方便
+
+3. 参数是Map
+指定为 Map 中的对应的 Key 即可。 其实上面的 @Param 最后也是转化为 Map 的。
+
+4. 参数是对象
+使用属性.属性即可。
+
+5.1 在 where 中使用 foreach
+在 where条件中使用， 如按id集合查询， 按id集合删除等。
+
+5.1.1 查询条件
+我们希望查询用户 id 集合中的所有用户信息。
+
+5.1.2 动态 SQL
+函数接口
+
+    /**
+     * 获取 id 集合中的用户信息
+     * @param ids
+     * @return
+     */
+    List<Student> selectByStudentIdList(List<Integer> ids);
+
+对应 SQL
+
+  <select id="selectByStudentIdList" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from student
+    where student_id in
+    <foreach collection="list" item="id" open="(" close=")" separator="," index="i">
+      #{id}
+    </foreach>
+  </select>
+
+5.1.3 测试
+    @Test
+    public void selectByStudentIdList() {
+        SqlSession sqlSession = null;
+        sqlSession = sqlSessionFactory.openSession();
+        StudentMapper studentMapper = sqlSession.getMapper(StudentMapper.class);
+
+        List<Integer> ids = new LinkedList<>();
+        ids.add(1);
+        ids.add(3);
+
+        List<Student> students = studentMapper.selectByStudentIdList(ids);
+        for (int i = 0; i < students.size(); i++) {
+            System.out.println(ToStringBuilder.reflectionToString(students.get(i), ToStringStyle.MULTI_LINE_STYLE));
+        }
+
+        sqlSession.commit();
+        sqlSession.close();
+    }
+
+结果
+
+
+
+5.2 foreach 实现批量插入
+可以通过foreach来实现批量插入。
+
+5.2.1 动态SQL
+接口方法
+
+    /**
+     * 批量插入学生
+     */
+    int insertList(List<Student> students);
+
+对应的SQL
+
+  <insert id="insertList">
+    insert into student(name, phone, email, sex, locked)
+    values
+    <foreach collection="list" item="student" separator=",">
+      (
+      #{student.name}, #{student.phone},#{student.email},
+      #{student.sex},#{student.locked}
+      )
+    </foreach>
+  </insert>
+
+5.2.2 测试
+    @Test
+    public void insertList() {
+        SqlSession sqlSession = null;
+        sqlSession = sqlSessionFactory.openSession();
+        StudentMapper studentMapper = sqlSession.getMapper(StudentMapper.class);
+
+        List<Student> students = new LinkedList<>();
+        Student stu1 = new Student();
+        stu1.setName("批量01");
+        stu1.setPhone("13888888881");
+        stu1.setLocked((byte) 0);
+        stu1.setEmail("13888888881@138.com");
+        stu1.setSex((byte) 1);
+        students.add(stu1);
+
+        Student stu2 = new Student();
+        stu2.setName("批量02");
+        stu2.setPhone("13888888882");
+        stu2.setLocked((byte) 0);
+        stu2.setEmail("13888888882@138.com");
+        stu2.setSex((byte) 0);
+        students.add(stu2);
+
+        System.out.println(studentMapper.insertList(students));
+        sqlSession.commit();
+        sqlSession.close();
+    }
+
+结果
+
+
+
+6 bind 标签
+bind 标签是通过 OGNL 表达式去定义一个上下文的变量， 这样方便我们使用。
+
+如在 selectByStudentSelective 方法中， 有如下
+
+<if test="name != null and name !=''">
+      and name like concat('%', #{name}, '%')
+    </if>
+
+在 MySQL 中， 该函数支持多参数， 但在 Oracle 中只支持两个参数。 那么我们可以使用 bind 来让该 SQL 达到支持两个数据库的作用
+
+<if test="name != null and name !=''">
+     <bind name="nameLike" value="'%'+name+'%'"/>
+     and name like #{nameLike}
+</if>
+
+更改后的查询结果如下
+
+
+https://github.com/homejim/mybatis-examples
+
+
+cnblogs.com/homejim/p/9909657.html
+
+

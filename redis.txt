@@ -1,0 +1,703 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+179. redis 是什么？都有哪些使用场景？
+
+Redis是一个开源的使用ANSI C语言编写、支持网络、可基于内存亦可持久化的日志型、Key-Value数据库，并提供多种语言的API。
+
+
+
+Redis 使用场景：
+
+数据高并发的读写
+
+海量数据的读写
+
+对扩展性要求高的数据
+
+180. redis 有哪些功能？
+
+数据缓存功能
+
+分布式锁的功能
+
+支持数据持久化
+
+支持事务
+
+支持消息队列
+
+181. redis 和 memecache 有什么区别？
+
+memcached所有的值均是简单的字符串，redis作为其替代者，支持更为丰富的数据类型
+
+redis的速度比memcached快很多
+
+redis可以持久化其数据
+
+182. redis 为什么是单线程的？
+
+因为 cpu 不是 Redis 的瓶颈，Redis 的瓶颈最有可能是机器内存或者网络带宽。既然单线程容易实现，而且 cpu 又不会成为瓶颈，那就顺理成章地采用单线程的方案了。
+
+
+
+关于 Redis 的性能，官方网站也有，普通笔记本轻松处理每秒几十万的请求。
+
+
+
+而且单线程并不代表就慢 nginx 和 nodejs 也都是高性能单线程的代表。
+
+183. 什么是缓存穿透？怎么解决？
+
+缓存穿透：指查询一个一定不存在的数据，由于缓存是不命中时需要从数据库查询，查不到数据则不写入缓存，这将导致这个不存在的数据每次请求都要到数据库去查询，造成缓存穿透。
+
+
+
+解决方案：最简单粗暴的方法如果一个查询返回的数据为空（不管是数据不存在，还是系统故障），我们就把这个空结果进行缓存，但它的过期时间会很短，最长不超过五分钟。
+
+184. redis 支持的数据类型有哪些？
+
+string、list、hash、set、zset。
+
+185. redis 支持的 java 客户端都有哪些？
+
+Redisson、Jedis、lettuce等等，官方推荐使用Redisson。
+
+186. jedis 和 redisson 有哪些区别？
+
+
+
+Jedis是Redis的Java实现的客户端，其API提供了比较全面的Redis命令的支持。
+
+
+
+Redisson实现了分布式和可扩展的Java数据结构，和Jedis相比，功能较为简单，不支持字符串操作，不支持排序、事务、管道、分区等Redis特性。Redisson的宗旨是促进使用者对Redis的关注分离，从而让使用者能够将精力更集中地放在处理业务逻辑上。
+
+187. 怎么保证缓存和数据库数据的一致性？
+
+合理设置缓存的过期时间。
+
+新增、更改、删除数据库操作时同步更新 Redis，可以使用事物机制来保证数据的一致性。
+
+188. redis 持久化有几种方式？
+
+Redis 的持久化有两种方式，或者说有两种策略：
+
+
+
+RDB（Redis Database）：指定的时间间隔能对你的数据进行快照存储。
+
+AOF（Append Only File）：每一个收到的写命令都通过write函数追加到文件中。
+
+189. redis 怎么实现分布式锁？
+
+Redis 分布式锁其实就是在系统里面占一个“坑”，其他程序也要占“坑”的时候，占用成功了就可以继续执行，失败了就只能放弃或稍后重试。
+
+
+
+占坑一般使用 setnx(set if not exists)指令，只允许被一个程序占有，使用完调用 del 释放锁。
+
+190. redis 分布式锁有什么缺陷？
+
+Redis 分布式锁不能解决超时的问题，分布式锁有一个超时时间，程序的执行如果超出了锁的超时时间就会出现问题。
+
+191. redis 如何做内存优化？
+
+尽可能使用散列表（hashes），散列表（是说散列表里面存储的数少）使用的内存非常小，所以你应该尽可能的将你的数据模型抽象到一个散列表里面。
+
+
+
+比如你的web系统中有一个用户对象，不要为这个用户的名称，姓氏，邮箱，密码设置单独的key,而是应该把这个用户的所有信息存储到一张散列表里面。
+
+192. redis 淘汰策略有哪些？
+
+volatile-lru：从已设置过期时间的数据集（server. db[i]. expires）中挑选最近最少使用的数据淘汰。
+
+volatile-ttl：从已设置过期时间的数据集（server. db[i]. expires）中挑选将要过期的数据淘汰。
+
+volatile-random：从已设置过期时间的数据集（server. db[i]. expires）中任意选择数据淘汰。
+
+allkeys-lru：从数据集（server. db[i]. dict）中挑选最近最少使用的数据淘汰。
+
+allkeys-random：从数据集（server. db[i]. dict）中任意选择数据淘汰。
+
+no-enviction（驱逐）：禁止驱逐数据。
+
+193. redis 常见的性能问题有哪些？该如何解决？
+
+主服务器写内存快照，会阻塞主线程的工作，当快照比较大时对性能影响是非常大的，会间断性暂停服务，所以主服务器最好不要写内存快照。
+
+Redis 主从复制的性能问题，为了主从复制的速度和连接的稳定性，主从库最好在同一个局域网内。
+
+
+本文主要讲了 Redis 的持久化相关功能，持久化一直是影响 Redis 性能的高发地，也是面试中经常被问到的。
+
+包括 RDB 相关的特定和优缺点，AOF 的优缺点，事实上，由于 RDB 的数据实时性问题，目前用 AOF 比较多了，而持久化恢复也是优先 AOF。
+
+RDB 是旧的模式，现在基本上都使用 AOF，当然，今天两个都会一起聊聊。
+
+二、RDB
+RDB 流程图：
+
+
+
+RDB 特点：
+
+1、RDB 是一种快照模式，即——保存的是 key value 数据内容。
+
+2、RDB 有 2 种持久方式，同步 save 模式和异步 bgsave 模式。由于 save 是同步的，所以可以保证数据一致性，而 bgsave 则不能。
+
+3、save 可以在客户端显式触发，也可以在 shutdown 时自动触发；bgsave 可以在客户端显式触发，也可以通过配置由定时任务触发，也可以在 slave 节点触发。
+
+4、save 导致 redis 同步阻塞，基本已经废弃。bgsave 则不会导致阻塞，但也有缺点：在 fork 时，需要增加内存服务器开销，因为当内存不够时，将使用虚拟内存，导致阻塞 Redis 运行。所以，需要保证空闲内存足够。
+
+5、默认执行 shutdown 时，如果没有开启 AOF，则自动执行 bgsave。
+
+6、每次的 RDB 文件都是替换的。
+
+关于优化：
+
+Redis 会压缩 RDB 文件，使用 LZF 算法，让最终的 RDB 文件远小于内存大小，默认开启。但会消耗 CPU。
+
+RDB 缺点：
+
+1、无法秒级持久化。
+
+2、老版本 Redis 无法兼容新版本 RDB。
+
+RDB 优点：
+
+1、文件紧凑，适合备份，全量复制场景。例如每 6 小时执行 bgsave，保存到文件系统之类的。
+
+2、Redis 加载 RDB 恢复数据远远快于 AOF。
+
+三、AOF
+由于 RDB 的数据实时性问题，AOF（append only file） 是目前 Redis 持久化的主流方式。
+
+AOF 特点：
+
+1、默认文件名是 appendonly.aof。和 RDB 一样，保存在配置中 dir 目录下。
+
+2、AOF 相比较于 RDB，每次都会保存写命令，数据实时性更高。
+
+3、AOF 由于每次都会记录写命令，文件会很大，因此需要进行优化，称之为“重写机制”（下面详细说）。
+
+4、AOF 每次保存的写命令都放在一个缓冲区，根据不同的策略（下面详细说）同步到磁盘。
+
+“重写机制” 细节：
+
+1、fork 子进程（类似 bgsave）
+
+2、主进程会写到2个缓冲区，一个是原有的 “AOF 缓存区”，一个是专门为子进程准备的 “AOF 重写缓冲区”；
+
+3、子进程写到到新的 AOF 文件中，批量的，默认 32m；写完后通知主进程。
+
+4、主进程把“AOF 重写缓冲区”的数据写到新 AOF 文件中。
+
+5、将新的 AOF 文件替换老文件。
+
+重写流程图：
+
+
+
+缓冲区同步策略，由参数 appendfsync 控制，一共3种：
+
+1、always：调用系统 fsync 函数，直到同步到硬盘返回；严重影响redis性能。
+
+2、everysec：先调用 OS write 函数， 写到缓冲区，然后 redis 每秒执行一次 OS fsync 函数。推荐使用这种方式。
+
+3、no: 只执行 write OS 函数，具体同步硬盘策略由 OS 决定；不推荐，数据不安全，容易丢失数据。
+
+四、持久化恢复
+AOF 和 RDB 文件都可以用于服务器重启时的数据恢复，具体流程如下图：
+
+
+
+从图中可以看出优先加载 AOF，当没有 AOF 时才加载 RDB。当 AOF 或者 RDB 存在错误，则加载失败。
+
+五、问题排查和性能优化
+Redis 持久化是影响 Redis 性能的高发地，也是面试中常问的问题。
+
+1、fork 操作
+
+当 Redis 做 RDB 或者 AOF 重写时，必然要进行 fork 操作，对于 OS 来说，fork 都是一个重量级操作。而且，fork 还会拷贝一些数据，虽然不会拷贝主进程所有的物理空间，但会复制主进程的空间内存页表。对于 10GB 的 Redis 进程，需要复制大约 20MB 的内存页表，因此 fork 操作耗时跟进程总内存量息息相关，再加上，如果使用虚拟化技术，例如 Xen 虚拟机，fork 会更加耗时。
+
+一个正常的 fork 耗时大概在 20毫秒左右。为什么呢，假设一个 Redis 实例的 OPS 在 5 万以上，如果 fork 操作耗时在秒级，那么僵拖慢几万条命令的执行，对生产环境影响明显。
+
+我们可以在 Info stats 统计中查询 latestforkusec 指标获取最近一次 fork 操作耗时，单位微秒。
+
+如何优化：
+
+1) 优先使用物理机或者高效支持 fork 的虚拟化技术，避免使用 Xen。
+
+2) 控制 redis 实例最大内存，尽量控制在 10GB 以内。
+
+3) 合理配置 Linux 内存分配策略，避免内存不足导致 fork 失败。
+
+4) 降低 fork 的频率，如适度放宽 AOF 自动触发时机，避免不必要的全量复制。
+
+2、子进程开销
+
+fork 完毕之后，会创建子进程，子进程负责 RDB 或者 AOF 重写，这部分过程主要涉及到 CPU，内存，硬盘三个地方的优化。
+
+1) CPU 写入文件的过程是 CPU 密集的过程，通常子进程对单核 CPU 利用率接近 90%。如何优化呢？既然是 CPU 密集型操作，就不要绑定单核 CPU，因为这样会和父 CPU 进行竞争。同时，不要和其他 CPU 密集型服务不是在一个机器上。如果部署了多个 Redis 实例，尽力保证统一时刻只有一个子进程执行重写工作。
+
+2) 内存子进程通过 fork 操作产生，占用内存大小等同于父进程，理论上需要两倍的内存完成持久化操作，但 Linux 有 copy on write 机制，父子进程会共享相同的物理内存页，当父进程处理写操作时，会把要修改的页创建对应的副本，而子进程在 fork 操作过程中，共享整个父进程内存快照。即——如果重写过程中存在内存修改操作，父进程负责创建所修改内存页的副本。这里就是内存消耗的地方。如何优化呢？尽量保证同一时刻只有一个子进程在工作；避免大量写入时做重写操作。
+
+3) 硬盘 硬盘开销分析：子进程主要职责是将 RDB 或者 AOF 文件写入硬盘进行持久化，势必对硬盘造成压力，可通过工具例如 iostat，iotop 等，分析硬盘负载情况。
+
+如何优化：
+
+1) 不要和其他高硬盘负载的服务放在一台机器上，例如 MQ，存储。
+
+2) AOF 重写时会消耗大量硬盘 IO，可以开启配置 no-appendfsync-on-rewrite，默认关闭。表示在 AOF 重写期间不做 fsync 操作。
+
+3) 当开启 AOF 的 Redis 在高并发场景下，如果使用普通机械硬盘，每秒的写速率是 100MB左右，这时，Redis 的性能瓶颈在硬盘上，建议使用 SSD。
+
+4) 对于单机配置多个 Redis 实例的情况，可以配置不同实例分盘存储 AOF 文件，分摊硬盘压力。
+
+3、AOF 追加阻塞
+
+当开启 AOF 持久化时，常用的同步硬盘的策略是“每秒同步” everysec，用于平衡性能和数据安全性，对于这种方式，redis 使用另一条线程每秒执行 fsync 同步硬盘，当系统资源繁忙时，将造成 Redis 主线程阻塞。
+
+流程图如下：
+
+
+
+通过上图可以发现：everysec 配置最多可能丢失 2 秒数据，不是 1 秒；如果系统 fsync 缓慢，将会导致 Redis 主线程阻塞影响效率。
+
+问题定位：
+
+1) 发生 AOF 阻塞时，会输入日志。用于记录 AOF fsync 阻塞导致拖慢 Redis 服务的行为。
+
+2) 每当 AOF 追加阻塞事件发生时，在 info Persistence 统计中，aofdelayedfsync 指标会累加，查看这个指标方便定位 AOF 阻塞问题。
+
+3) AOF 同步最多运行 2 秒的延迟，当延迟发生时说明硬盘存在性能问题，可通过监控工具 iotop 查看，定位消耗 IO 的进程。
+
+4、单机多实例部署
+
+Redis 单线程架构无法充分利用多核CPU，通常的做法是一台机器上部署多个实例，当多个实例开启 AOF 后，彼此之间就会产生CPU 和 IO 的竞争。
+
+如何解决这个问题呢？
+
+让所有实例的 AOF 串行执行。
+
+我们通过 info Persistence 中关于 AOF 的信息写出 Shell 脚本，然后串行执行实例的 AOF 持久化。
+
+整个过程如图：
+
+
+
+通过不断判断 AOF 的状态，手动执行 AOF 重写，保证 AOF 不会存在竞争。具体的 Shell 编写以及 info 信息判断，可以查看下图：
+
+六、总结
+本文主要讲了 Redis 的持久化相关功能，持久化一直是影响 Redis 性能的高发地，也是面试中经常被问到的。包括 RDB 相关的特定和优缺点，AOF 的优缺点，事实上，由于 RDB 的数据实时性问题，目前用 AOF 比较多了。而持久化恢复也是优先 AOF。
+
+关于持久化的问题排查，就很麻烦了，但无非几个方面，fork 耗时，子进程的 CPU，内存，硬盘开销，AOF 的同步阻塞，单机多实例部署。
+
+这些优化，可以通过前面写的分析进行排查。
+
+==================
+
+2018年4月高等教育自学考试全国统一命题考试
+C++程序设计试卷
+一、单项选择题
+1.下列关于C++标识符的命名不合法的是（   ）
+A.Pad	B.name_1
+C.A#bc	D._a12
+2.若有以下类型标识符定义:int x=2;char w=’a’;float y=23.45f;double z=45.6789;则表达式w*x+y-z的结果类型是（   ）
+A.float	B.char
+C.int	D.double
+3.局部变量可以隐藏全局变量,那么在有同名全局变量和局部变量的情形时,可以用下列哪一项提供对全局变量的访问（   ）
+A.作用域运算符	B.指针运算符
+C.提取运算符	D.插入运算符
+4.下列关于delete运算符的描述中,错误的是（   ）
+A.它必须用于new返回的指针
+B.对一个指针可以使用多次该运算符
+C.它也适用于空指针
+D.指针名前只用一对方括号,不管所删除数组的维数
+5.在C+中,类与类之间的继承关系具有（   ）
+A.自反性
+B.对称性
+C.传递性
+D.反对称性
+6.对类中声明的变量,下列描述中正确的是（   ）
+A.属于全局变量
+B.属于该类,某些情况下也可被该类不同实例所共享
+C.只属于该类
+D.任何情况下都可被该类所有实例共享
+7.在类定义的外部,可以被访问的成员有（   ）
+A.所有类成员	B.private或protected的类成员
+C.public的类成员	D.public或private的类成员
+8.已知:int m=10;下列表示引用的方法中,正确的是（   ）
+A.int&z
+B.int&t=I
+C.int&x=m
+D.float&f=&m
+9.对于int*pa[5];的描述中,正确的是（   ）
+A.pa是一个指向数组的指针
+B.pa是一个指向某数组中第5个元素的指针
+C.pa[5]表示数组的第5个元素的值
+D.pa是一个具有5个元素的指针数组
+10.下列关于构造函数的描述中,错误的是（   ）
+A.构造函数可以设置默认参数	B.构造函数在定义类对象时自动执行
+C.构造函数可以是内联函数	D.构造函数不可以重载
+11.关于成员函数特征的描述中,错误的是（   ）
+A.成员函数一定是内联函数	B.成员函数可以重载
+C.成员函数可以设置参数的默认值	D.成员函数可以是静态的
+12.下列不是函数重载所要求的条件是（   ）
+A.函数名相同	B.参数个数不同
+C.参数类型不同	D.函数返回值类型不同
+13.下列有关模板的描述中,错误的是（   ）
+A.模板把数据类型作为一个设计参数称为参数化程序设计
+B.使用时,模板参数与函数参数相同,是按位置而不是名称对应的
+C.模板实例化参数类型包括数据类型和值
+D.类模板与模板类是同一个概念
+14.用new运算符创建一维数组的正确形式是（   ）
+A.int*p=new a[10];	B.float*p=new float [10];
+C.int*p=new float[10];	D.int*p=new int[5]={1,2,3,4,5,6};
+15.以下关于this指针的叙述中,正确的是（   ）
+A.任何与类相关的函数都有this指针	B.类的成员函数都有this指针
+C.类的友元函数都有this指针	D.类的非静态成员函数才有this指针
+16.如果有int x,*P;float y,*q;则下面操作中,正确的是（   ）
+A.p=x	B.p=q	C.p=&x	D.p=&y
+17.下列关于运算符重载的表述中,正确的是（   ）
+A.C+已有的任何运算符都可以重载
+B.运算符函数的返回类型不能声明为基本数据类型
+C在类型转换符函数的定义中不需要声明返回类型
+D.可以通过运算符重载来创建C++中原来没有的运算符
+18.友元运算符@obj被C++编译器解释为（   ）
+A.operator(obj)	B.operator@(obj,0)
+C.obj.operator@()	D.obj.operator@(0)
+19.考虑函数原型void test(int a,int b=7,char ch=’*’),下面的函数调用中,属于不合法调用的是（   ）
+A.test(5)	B.test(5,8)	C.test(6,‘#’)	D.test(0,0,’*’)
+20.使用setw()时需要包含头文件（   ）
+A.iostream.h	B.fstream.h	C.iomanip.h	D.stdlib.h
+
+二、填空题
+21.面向对象程序设计不仅能进行功能抽象,而且能进行         抽象。
+22.C++提供的预处理语句有3种,文件包含、条件编译和         。
+23.在类体外面定义成员函数时,必须用关键字         重写类模板声明。
+24.输入流istream用来处理标准输入的一个对象的是         。
+25.编译时的多态性通过         函数实现。
+26.假定x=5,y=6,则表达式x++*++y的值为         。
+27.在C++程序中,对刚创建的对象进行初始化的工作由构造函数来完成;而对象被删除前的一些清理工作则是由         函数来完成的。
+28.在用class定义一个类时,数据成员和成员函数的默认访问权限是         。
+29.不同对象可以调用相同名称的函数,但执行完全不同行为的现象称为         。
+30.用new申请某一个类的动态对象数组时,在该类中必须能够匹配到没有形参或         的构造函数,否则应用程序会产生一个编译错误。
+31.在C++中,变量的三个基本要素是指:变量名、变量类型和         。
+32.若有定义int a=3;则执行完语句a+=a-=a*a;之后,a的值为         。
+33.如果要把Student类的返回值为void的成员函数score(),声明为类Teacher的友元函数,则应在类Teacher的定义中加入语句         。
+34.假定x是一个逻辑量,则x&&0的值为         。
+35.构造函数、析构函数和友元函数中,不是该类成员的是         。
+36.使用对象的引用来初始化创建中的对象的函数是         。
+37.定义类的动态对象数组时,系统只能够自动调用该类的         构造函数对其进行初始化。
+38.复制构造函数使用         作为形式参数。
+39.当编译系统编译含有虚函数的类时,将为它建立一个虚函数表,表中的每一个元素都指向一个         。
+40.在函数体之前加         关键字可以防止覆盖函数改变数据成员的值。
+
+三、改错题
+41.
+#include,iostream.
+using namespace std;
+void setzero(int &a){
+   a=0;
+   }
+void main(){
+  int x=7;y=9;
+  setzero(x);
+  setzero(y);
+  cout<<x<<y<<endl;
+}
+42.
+#include<iostream>
+using namespace std;
+class f{
+  int a,b;
+public:
+  void set(int aa,int bb){
+a=aa;b=bb;
+}
+void show(){
+  cout<<a<<””<<b<<endl;
+}
+};
+void main(){
+f.set(1,2);f.show();
+}
+43.
+#include<iostream>
+using namespace std;
+void main(){
+  int a=11,b=12;
+  const int*p=a;
+  cout<<a<<b<<*p<<endl;
+}
+44.
+#include<iostream>
+using namespace std;
+void main(){
+  int a[6]={1,2,3,4,5,6,7};
+int I;
+  for(i=0;i<7;i++)
+cout<<a[i]<<endl;
+}
+45.
+#include<iostream>
+using namespace std;
+class person{
+  int x;
+public:
+  void person(){x=1;}
+  void set(int a){
+x=a;
+}
+  void get(){
+cout<<x<<endl;
+}
+};
+void main(){
+  person p;
+  p.set(6);
+  p.get();
+}
+
+四、完成程序题
+46.
+完成程序，使其输出结果为28
+
+using namespace std;
+int a[8]={1,2,3,4,5,6,7};
+void fun(int b[],int n);
+void main(){
+  int m,=8;
+  fun(a,m);
+  cout<<a[7]<<endl;
+}
+void fun(int b[],int n){
+  int i;
+  for(                  )
+      b[7]+=b[i];
+}
+47.
+完成程序，使其输出结果为x=30
+#include”stdafx.h”
+#include<iostream>
+using namespace std;
+class Sample{
+private:
+  int x;
+public:
+  Sample(){}
+  Sample(int a){x=a;}
+  void disp(){
+cout<<”x=”<<x<<endl;}
+friend Sample operator+(Sample&s1,Sample&s2);
+};
+             (Samole&s1,Sample&s2){
+   return Sample(s1.x+s2.x);
+}
+void main(){
+  Sample obj1(10);
+  Sample obj2(20);
+  Sample obj3;
+            ;
+  obj3.disp();
+}
+48.
+#include<iostream>
+using namespace std;
+class base{
+              ;
+public:
+  base(int x,int y){a=x’b=y;}
+             (base&p){
+   cout<<p.a<<”,”<<p.b<<endl;}
+};
+void main(){
+  base b(78,87);
+  b.show(b);
+}
+49.
+#include<iostream>
+#include<fstream>
+using namespace std;
+void main(){
+  char*p=”abcde”
+        myf(“ab.txt”);
+myf<<p;
+  cout<<”this is a txt file”;
+           ;//关闭文件ab,txt
+}
+50.
+完成程序，使其输出结果为
+n=2,sum=2
+n=3,sum=5
+n=5,sum=10
+#include<iostream>
+using namespace std;
+class Sample{
+  int n;
+  static int sum;
+public:
+  Sample(int x){
+N=x;
+}
+void add(){
+                ;
+  }
+  void disp(){
+cout<<”n=”<<n<<”,sum=”<<sum<<endl;
+}
+};
+          ;
+void main(){
+  Sample a(2),b(3),c(5);
+  a.add();
+  a.disp();
+  b.add();
+  b.disp();
+  c.add();
+  c.disp();
+}
+
+五、程序分析题
+51.
+#include<iostream>
+using namespace std;
+void main(){
+  int a[3][4]={{1,2,7,8},{5,,6,11,15},{9,20,3,7}};
+  int m=a[0][0];
+  int I,j;
+  for(i=0;i<3;i++)
+for(j=0;j<4;j++)
+  if(a[i][j]>m)m=a[i][j];
+cout<<”m is:”<<endl;
+cout<<m<<endl;
+}
+52.
+#include<iostream.h>
+using namespace std;
+class example
+{
+public:
+  example(int n){
+i=n;
+cout<<”Constructing”;
+}
+~example(){
+  cout<<”Destructing”;
+}
+int get_i(){
+  return I;
+}
+private:
+  int i:
+};
+int sqr_it(example o){
+  return o.get_i()*o.get_i();
+}
+void main(){
+  example x(10);
+  cout<<x.get_i()<<endl;
+  cout<<sqr_it(x)<<endl;}
+
+五、程序分析题
+53.声明一个circle类，有数据成员Radius（半径，float型），成员函数GetArea（）计算圆的面积。在main函数中声明一个circle类的对象c1，其半径为5.6。调用GetArea（）函数计算c1的面积，并显示该计算结果（cout<<”圆的面积：”<<c1.GetArea<<endl;）。
+
+
+
+C++程序设计答案
+一、单项选择题
+1.C	2.D	3.A	4.C	5.C
+6.B	7.C	8.C	9.D	10.D
+11.A	12.D	13.D	14.B	15.D
+16.C	17.A	18.A	19.C	20.C
+二、填空题
+21.数据	22.宏定义	23.template
+24.cin	25.重载	26.35
+27.析构	28.private或私有的	29.多态性
+30.缺省参数	31.变量值	32.-12
+33.friend void Student::score()	34.0	35.友元函数
+36.拷贝构造函数	37.无参	38.对象的引用
+39.虚函数的地址	40.const
+三、改错题
+41.int x=7;y=9;错,y没有指定类型
+42,f.set(1,2);f.show();错,f是个类不能直接被调用
+43.const int.p=a;错,给指针变量赋值时需要加上&
+44.int a[6]={1,2,3,4,5,6,7};错,初始化数组元素的个数超出数组长度
+45.void person(){x=1;}错,构造函数不应有void返回类型
+四、完成程序题
+46.
+#include<iostream>
+I=0;i<n-1;i++
+47.
+Sample operator +
+obj3=obj1+obj2
+48.
+Int a,int b
+void show
+49.
+ofstream
+myf.close()
+50.
+sum+=n
+int Sample::sum=0
+
+五、程序分析题
+51.
+m is://
+20//
+52.
+Constructing 10//
+Destructing 100//
+Destructing//
+六、程序设计题
+53.
+#include<iostream.h>
+class circle{
+public:
+  float GetArea();
+  circle(float r);
+protected:
+  float Radius;
+};
+circle::circle(float r){
+  Radius=r;
+}
+float circle::GetArea(){
+  return Radius*Radius*3.14;
+}
+void main(){
+  circle c1(5.6);
+  cout<<”圆的面积：”<<c1.GetArea()<<endl;
+}
+
