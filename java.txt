@@ -21,7 +21,7 @@
 
 
 
-
+=======================================================================================
 Java 基础
 1. JDK 和 JRE 有什么区别？
 
@@ -80,10 +80,7 @@ System.out.println(c1.equals(c2)); // false
 public boolean equals(Object obj) {
     return (this == obj);
 }
-1
-2
-3
-4
+
 原来 equals 本质上就是 ==。
 
 那问题来了，两个相同值的 String 对象，为什么返回的是 true？代码如下：
@@ -91,9 +88,6 @@ public boolean equals(Object obj) {
 String s1 = new String("老王");
 String s2 = new String("老王");
 System.out.println(s1.equals(s2)); // true
-1
-2
-3
 同样的，当我们进入 String 的 equals 方法，找到了答案，代码如下：
 
 
