@@ -1,0 +1,1250 @@
+第1章 了解Kotlin 1
+1．1 Kotlin是什么 1
+1．2 Kotlin的特点 2
+1．2．1 简洁 2
+1．2．2 安全 2
+1．2．3 与Java互操作 3
+1．2．4 自带IDE支持 3
+1．3 用Kotlin能开发什么 3
+1．3．1 服务器端程序 4
+1．3．2 网页应用 4
+1．3．3 本地执行程序 5
+1．3．4 Android应用 5
+1．4 为什么选择Kotlin 5
+1．4．1 Java程序员的选择 5
+1．4．2 新手的选择 6
+1．5 发展趋势展望 7
+第2章 准备工作 8
+2．1 开发工具介绍 8
+2．1．1 IntelliJ IDEA 8
+2．1．2 Android Studio 21
+2．1．3 Eclipse 28
+2．2 构建工具 30
+2．2．1 Gradle 30
+2．2．2 Maven 34
+2．3 编程规范 39
+2．3．1 软件UI规范和人机交互规范 39
+2．3．2 编码风格 44
+2．4 本书阅读指导 53
+第3章 基本语法 55
+3．1 基本类型 55
+3．1．1 数值 55
+3．1．2 字符 58
+3．1．3 布尔 58
+3．1．4 数组 58
+3．1．5 字符串 62
+3．2 集合 65
+3．2．1 Set 65
+3．2．2 List 66
+3．2．3 Map 67
+3．2．4 集合常用函数 68
+3．2．5 扩展阅读 75
+3．3 变量 75
+3．3．1 变量声明 75
+3．3．2 Any类型和null 76
+3．3．3 智能转换和is运算符 77
+3．3．4 可空变量和不可空变量 77
+3．4 运算符 78
+3．4．1 赋值运算符 78
+3．4．2 算术运算符 79
+3．4．3 关系运算符 79
+3．4．4 区间运算符 80
+3．4．5 逻辑运算符 81
+3．4．6 位运算符 81
+3．4．7 其他运算符 81
+3．4．8 优先级 84
+3．4．9 运算符重载 84
+3．5 表达式 84
+3．5．1 if表达式 84
+3．5．2 when表达式 86
+3．5．3 throw、try…catch表达式 87
+3．5．4 正则表达式 88
+3．5．5 return表达式 91
+3．6 语句 91
+3．6．1 异常处理 91
+3．6．2 判断语句 93
+3．6．3 循环语句 95
+3．7 自定义函数 98
+3．7．1 函数声明 98
+3．7．2 函数调用 101
+3．7．3 函数的范围 102
+3．7．4 函数分类 105
+3．8 程序组织及可见性修饰符 112
+3．8．1 包 112
+3．8．2 可见性修饰符 114
+第4章 接口、类和对象 116
+4．1 综述 116
+4．1．1 定义接口 117
+4．1．2 定义类 117
+4．1．3 关于对象 118
+4．1．4 编程示例 119
+4．2 类 119
+4．2．1 类的声明 119
+4．2．2 构造函数 120
+4．2．3 类的继承 123
+4．2．4 类的实例化 126
+4．3 类的成员 126
+4．3．1 属性 126
+4．3．2 函数 131
+4．3．3 嵌套类 132
+4．3．4 内部类 132
+4．3．5 匿名内部类 133
+4．3．6 初始化模块 133
+4．3．7 对象声明 134
+4．4 特殊的类 137
+4．4．1 抽象类 137
+4．4．2 枚举类 138
+4．4．3 密封类 140
+4．4．4 数据类 142
+4．5 类的扩展 145
+4．5．1 扩展函数 145
+4．5．2 扩展属性 148
+4．5．3 扩展伴生对象 148
+4．6 类委托 148
+4．7 对象 149
+4．7．1 对象声明 150
+4．7．2 匿名对象 151
+4．8 类的设计 153
+4．8．1 设计原则 153
+4．8．2 常用图标 158
+4．8．3 PowerDesigner设计类图 160
+4．9 标准类库 162
+第5章 Kotlin开发Android应用 164
+5．1 再次开发HelloWorld程序 164
+5．1．1 配置Android开发环境 164
+5．1．2 开发HelloWorld 165
+5．1．3 Android开发步骤 169
+5．2 了解Android开发 172
+5．2．1 Android系统的技术架构 172
+5．2．2 Android应用程序的构成 174
+5．3 Activity和Intent 177
+5．3．1 Toast提示 177
+5．3．2 打开多个Activity 179
+5．3．3 关闭Activity 186
+5．3．4 Activity生命周期 189
+5．4 关于控件 191
+5．4．1 概述 191
+5．4．2 关于布局 194
+5．4．3 控件大全 194
+5．5 布局 198
+5．5．1 线性布局 198
+5．5．2 相对布局 206
+5．5．3 帧布局 208
+5．5．4 表格布局 208
+5．5．5 网格布局 210
+5．6 常用控件 212
+5．6．1 TextView 212
+5．6．2 EditText 220
+5．6．3 Button 229
+5．6．4 ImageView 230
+5．6．5 选择用途的控件 235
+5．7 关于事件 243
+5．7．1 事件机制 243
+5．7．2 监听事件机制 243
+5．7．3 回调事件机制 247
+5．8 对话框 252
+5．8．1 简单对话框 252
+5．8．2 单选对话框 253
+5．8．3 多选对话框 254
+5．8．4 进度对话框 254
+5．8．5 自定义对话框 257
+5．9 菜单 259
+5．9．1 选项菜单 260
+5．9．2 上下文菜单 262
+5．9．3 弹出菜单 265
+第6章 数据操作 267
+6．1 综述 267
+6．1．1 SharedPreferences 267
+6．1．2 文件 268
+6．1．3 数据库和数据库框架（SQLite数据库） 268
+6．1．4 ContentProvider 269
+6．1．5 网络 269
+6．2 SharedPreferences 269
+6．2．1 获取SharedPreferences对象 270
+6．2．2 读取信息 271
+6．2．3 写入信息 271
+6．2．4 其他知识点 273
+6．3 文件 274
+6．3．1 资源文件读取 274
+6．3．2 内部数据文件的读写 277
+6．3．3 外部数据文件的读写 281
+6．4 SQLite数据库 284
+6．4．1 概述 284
+6．4．2 使用SQLiteOpenHelper类 286
+6．4．3 使用SQLiteDatabase类 291
+6．5 ContentProvider 298
+6．5．1 综述 299
+6．5．2 开发ContentProvider 303
+6．5．3 开发ConvertResolver 308
+6．5．4 监听ContentProvider数据改变 310
+6．6 网络 311
+6．6．1 开发步骤 312
+6．6．2 代码示例 314
+
+
+1.1　概述1
+
+1.2　准备环境和工具2
+
+1.2.1　准备源代码2
+
+1.2.2　准备Source Insight2
+
+1.2.3　准备模拟器和自制系统镜像5
+
+1.2.4　小结8
+
+1.3　本书的内容9
+
+1.4　本书资源下载说明12
+
+第2章　深入理解Class文件格式13
+
+2.1　Class文件格式总览13
+
+2.2　常量池及相关内容14
+
+2.2.1　常量项的类型和关系14
+
+2.2.2　信息描述规则18
+
+2.2.3　常量池实例剖析19
+
+2.3　field_info和method_info19
+
+2.4　access_flags介绍21
+
+2.5　属性介绍22
+
+2.5.1　属性概貌22
+
+2.5.2　Code属性23
+
+2.5.3　LineNumberTable属性25
+
+2.5.4　LocalVariableTable属性26
+
+2.6　Java指令码介绍27
+
+2.6.1　指令码和助记符27
+
+2.6.2　如何阅读规范28
+
+2.7　学习路线推荐30
+
+2.8　参考资料30
+
+第3章　深入理解Dex文件格式31
+
+3.1　Dex文件格式总览31
+
+3.1.1　Dex和Class文件格式的区别31
+
+3.1.2　Dex文件格式的概貌35
+
+3.2　认识Dex文件36
+
+3.2.1　header_item36
+
+3.2.2　string_id_item等37
+
+3.2.3　class_def38
+
+3.2.4　code_item40
+
+3.3　Dex指令码介绍41
+
+3.3.1　insns的组织形式41
+
+3.3.2　指令码描述规则42
+
+3.4　学习路线推荐44
+
+3.5　参考资料45
+
+第4章　深入理解ELF文件格式46
+
+4.1　概述46
+
+4.2　ELF文件格式介绍46
+
+4.2.1　ELF文件头结构介绍47
+
+4.2.2　Linking View下的ELF52
+
+4.2.3　Execution View下的ELF61
+
+4.2.4　实例分析：调用动态库中的函数65
+
+4.2.5　ELF总结72
+
+4.3　学习路线推荐73
+
+4.4　参考资料73
+
+第5章　认识C++1174
+
+5.1　数据类型76
+
+5.1.1　基本内置数据类型介绍76
+
+5.1.2　指针、引用和void类型77
+
+5.1.3　字符和字符串81
+
+5.1.4　数组82
+
+5.2　C++源码构成及编译83
+
+5.2.1　头文件示例83
+
+5.2.2　源文件示例85
+
+5.2.3　编译86
+
+5.3　Class介绍88
+
+5.3.1　构造、赋值和析构函数89
+
+5.3.2　类的派生和继承97
+
+5.3.3　友元和类的前向声明103
+
+5.3.4　explicit构造函数105
+
+5.3.5　C++中的struct106
+
+5.4　操作符重载106
+
+5.4.1　操作符重载的实现方式107
+
+5.4.2　输出和输入操作符重载108
+
+5.4.3　->和*操作符重载110
+
+5.4.4　new和delete操作符重载111
+
+5.4.5　函数调用运算符重载117
+
+5.5　函数模板与类模板118
+
+5.5.1　函数模板119
+
+5.5.2　类模板122
+
+5.6　lambda表达式125
+
+5.7　STL介绍127
+
+5.7.1　string类128
+
+5.7.2　容器类129
+
+5.7.3　算法和函数对象介绍134
+
+5.7.4　智能指针类138
+
+5.7.5　探讨STL的学习140
+
+5.8　其他常用知识141
+
+5.8.1　initializer_list141
+
+5.8.2　带作用域的enum141
+
+5.8.3　constexpr142
+
+5.8.4　static_assert143
+
+5.9　参考资料143
+
+第6章　编译dex字节码为机器码145
+
+6.1　编译器全貌介绍147
+
+6.2　编译器前端介绍150
+
+6.2.1　词法分析和lex151
+
+6.2.2　语法分析和yacc160
+
+6.2.3　语义分析和IR生成介绍171
+
+6.3　优化器介绍175
+
+6.3.1　构造CFG176
+
+6.3.2　分析和处理CFG181
+
+6.3.3　数据流分析与SSA191
+
+6.3.4　IR优化204
+
+6.4　ART中的IR—HInstruction222
+
+6.4.1　ART中的IR222
+
+6.4.2　IR之间的关系225
+
+6.4.3　ART IR对象的初始化231
+
+6.5　寄存器分配233
+
+6.5.1　LSRA介绍235
+
+6.5.2　LSRA相关代码介绍247
+
+6.6　机器码生成相关代码介绍271
+
+6.6.1　GenerateFrameEntry272
+
+6.6.2　VisitAdd和VisitInstance-FieldGet273
+
+6.6.3　GenerateSlowPaths275
+
+6.7　总结277
+
+6.8　参考资料280
+
+第7章　虚拟机的创建283
+
+7.1　概述284
+
+7.1.1　JniInvocation Init函数介绍286
+
+7.1.2　AndroidRuntime startVm函数介绍287
+
+7.2　Runtime Create介绍288
+
+7.2.1　Create函数介绍288
+
+7.2.2　Init函数介绍290
+
+7.3　MemMap与OatFileManager293
+
+7.3.1　MemMap介绍293
+
+7.3.2　OatFileManager介绍298
+
+7.4　FaultManager介绍302
+
+7.4.1　信号处理和SignalAction介绍302
+
+7.4.2　FaultManager介绍307
+
+7.5　Thread介绍311
+
+7.5.1　Startup函数介绍311
+
+7.5.2　Attach函数介绍312
+
+7.6　Heap学习之一325
+
+7.6.1　初识Heap中的关键类326
+
+7.6.2　Heap构造函数第一部分337
+
+7.7　JavaVMExt和JNIEnvExt340
+
+7.7.1　JavaVMExt341
+
+7.7.2　JNIEnvExt343
+
+7.7.3　总结344
+
+7.8　ClassLinker345
+
+7.8.1　关键类介绍345
+
+7.8.2　ClassLinker构造函数352
+
+7.8.3　InitFromBootImage353
+
+7.8.4　ClassLinker总结360
+
+7.9　总结和阅读指导362
+
+第8章　虚拟机的启动363
+
+8.1　Runtime Start364
+
+8.2　初识JNI365
+
+8.2.1　JNI中的数据类型365
+
+8.2.2　ScopedObjectAccess等辅助类367
+
+8.2.3　常用JNI函数介绍369
+
+8.3　Jit LoadCompilerLibrary373
+
+8.4　Runtime InitNativeMethods374
+
+8.4.1　JniConstants Init374
+
+8.4.2　RegisterRuntimeNative Methods375
+
+8.4.3　WellKnownClasses Init和LastInit376
+
+8.5　Thread相关376
+
+8.5.1　Runtime InitThreadGroups377
+
+8.5.2　Thread FinishSetup377
+
+8.5.3　Runtime StartDaemonThreads380
+
+8.6　Runtime CreateSystemClassLoader381
+
+8.7　类的加载、链接和初始化383
+
+8.7.1　关键类介绍383
+
+8.7.2　SetupClass392
+
+8.7.3　LoadClass相关函数393
+
+8.7.4　LinkClass相关函数398
+
+8.7.5　DefineClass414
+
+8.7.6　Verify相关函数416
+
+8.7.7　Initialize相关函数424
+
+8.7.8　ClassLinker中其他常用函数426
+
+8.7.9　ClassLoader介绍437
+
+8.8　虚拟机创建和启动关键内容梳理445
+
+第9章　深入理解dex2oat447
+
+9.1　概述448
+
+9.2　ParseArgs介绍452
+
+9.2.1　CompilerOptions类介绍453
+
+9.2.2　ProcessOptions函数介绍454
+
+9.2.3　InsertCompileOptions函数介绍455
+
+9.3　OpenFile介绍456
+
+9.4　Setup介绍458
+
+9.4.1　Setup代码分析之一458
+
+9.4.2　Setup代码分析之二464
+
+9.4.3　Setup代码分析之三474
+
+9.4.4　Setup代码分析之四484
+
+9.5　CompileImage484
+
+9.5.1　Compile485
+
+9.5.2　ArtCompileDEX496
+
+9.5.3　OptimizingCompiler JniCompile499
+
+9.5.4　OptimizingCompiler Compile527
+
+9.6　OAT和ART文件格式介绍544
+
+9.6.1　OAT文件格式544
+
+9.6.2　ART文件格式550
+
+9.6.3　oatdump介绍554
+
+9.7　总结561
+
+第10章　解释执行和JIT562
+
+10.1　基础知识564
+
+10.1.1　LinkCode564
+
+10.1.2　Runtime ArtMethod566
+
+10.1.3　栈和参数传递572
+
+10.2　解释执行580
+
+10.2.1　art_quick_to_interpreter_bridge580
+
+10.2.2　artQuickToInterpreter-Bridge582
+
+10.2.3　EnterInterpreterFromEntry-Point584
+
+10.2.4　调用栈的管理和遍历593
+
+10.3　ART中的JIT599
+
+10.3.1　Jit、JitCodeCache等600
+
+10.3.2　JIT阈值控制与处理609
+
+10.3.3　OSR的处理612
+
+10.4　HDeoptimize的处理615
+
+10.4.1　VisitDeoptimize相关616
+
+10.4.2　QuickExceptionHandler相关618
+
+10.4.3　解释执行中关于Deoptimize的处理621
+
+10.5　Instrumentation介绍623
+
+10.5.1　MethodEnterEvent和MethodExitEvent624
+
+10.5.2　DexPcMovedEvent625
+
+10.6　异常投递和处理625
+
+10.6.1　抛异常626
+
+10.6.2　异常处理629
+
+10.7　总结635
+
+第11章　ART中的JNI636
+
+11.1　JavaVM和JNIEnv637
+
+11.1.1　JavaVMExt相关介绍638
+
+11.1.2　JNIEnvExt介绍642
+
+11.2　Java native方法的调用644
+
+11.2.1　art_jni_dlsym_lookup_stub644
+
+11.2.2　art_quick_generic_jni_trampoline646
+
+11.3　CallStaticVoidMethod651
+
+11.4　JNI中引用型对象的管理653
+
+11.4.1　关键类介绍653
+
+11.4.2　JniMethodStart和JniMethod-End657
+
+11.4.3　IndirectReferenceTable相关函数658
+
+11.4.4　NewObject和jobject的含义660
+
+11.4.5　JNI中引用对象相关662
+
+11.4.6　PushLocalFrame和PopLocalFrame663
+
+11.4.7　回收引用对象664
+
+11.5　总结666
+
+第12章　CheckPoints、线程同步及信号处理668
+
+12.1　CheckPoints介绍669
+
+12.1.1　设置Check Point标志位670
+
+12.1.2　Check Points的设置672
+
+12.1.3　执行检查点处的任务676
+
+12.2　ThreadList和ThreadState681
+
+12.2.1　线程ID683
+
+12.2.2　RunCheckpoint和Dump684
+
+12.2.3　SuspendAll和ResumeAll687
+
+12.2.4　Thread状态切换690
+
+12.3　线程同步相关知识691
+
+12.3.1　关键类介绍692
+
+12.3.2　synchronized的处理697
+
+12.3.3　Object wait、notifyAll等705
+
+12.4　volatile成员的读写707
+
+12.4.1　基础知识707
+
+12.4.2　解释执行模式下的处理711
+
+12.4.3　机器码执行模式的处理712
+
+12.5　信号处理714
+
+12.5.1　zygote进程的处理714
+
+12.5.2　非zygote进程的处理716
+
+12.6　总结719
+
+第13章　内存分配与释放720
+
+13.1　Space等关键类介绍722
+
+13.2　ZygoteSpace723
+
+13.3　BumpPointerSpace和RegionSpace725
+
+13.3.1　BumpPointerSpace726
+
+13.3.2　RegionSpace733
+
+13.4　DlMallocSpace和RosAlloc-Space740
+
+13.4.1　DlMallocSpace741
+
+13.4.2　RosAllocSpace745
+
+13.4.3　rosalloc介绍748
+
+13.5　LargeObjectMapSpace760
+
+13.6　new-instance/array指令的处理762
+
+13.6.1　设置内存分配器762
+
+13.6.2　解释执行模式下的处理767
+
+13.6.3　机器码执行模式下的处理770
+
+13.6.4　Heap AllocObjectWith-Allocator773
+
+13.7　细观Space779
+
+13.7.1　Space类779
+
+13.7.2　ContinuousSpace和Discon-tinuousSpace类781
+
+13.7.3　MemMapSpace和Continuous MemMapAllocSpace类782
+
+13.7.4　MallocSpace类783
+
+13.8　Heap学习之二784
+
+13.8.1　Heap构造函数784
+
+13.8.2　关键类介绍792
+
+13.8.3　ObjectVisitReferences806
+
+13.9　总结812
+
+第14章　ART中的GC813
+
+14.1　GC基础知识814
+
+14.1.1　Mark-Sweep Collection原理介绍815
+
+14.1.2　Copying Collection原理介绍817
+
+14.1.3　Mark-Compact Collection原理介绍818
+
+14.1.4　其他概念819
+
+14.2　Runtime VisitRoots819
+
+14.2.1　关键数据结构821
+
+14.2.2　Thread VisitRoots824
+
+14.3　ART GC概览827
+
+14.3.1　关键数据结构827
+
+14.3.2　ART GC选项830
+
+14.3.3　创建回收器和设置回收策略832
+
+14.4　MarkSweep835
+
+14.4.1　Heap相关成员变量取值情况835
+
+14.4.2　MarkSweep概貌837
+
+14.4.3　MarkingPhase840
+
+14.4.4　PausePhase848
+
+14.4.5　ReclaimPhase851
+
+14.4.6　FinishPhase857
+
+14.4.7　PartialMarkSweep857
+
+14.4.8　StickyMarkSweep858
+
+14.4.9　Concurrent MarkSweep864
+
+14.4.10　Parallel GC868
+
+14.4.11　MarkSweep小结869
+
+14.5　ConcurrentCopying870
+
+14.5.1　InitalizePhase871
+
+14.5.2　FlipThreadRoots873
+
+14.5.3　MarkingPhase881
+
+14.5.4　ReclaimPhase883
+
+14.5.5ConcurrentCopying小结885
+
+14.6　MarkCompact885
+
+14.6.1　MarkingPhase886
+
+14.6.2　ReclaimPhase889
+
+14.6.3　MarkCompact小结891
+
+14.7　SemiSpace892
+
+14.7.1　InitializePhase893
+
+14.7.2　MarkingPhase894
+
+14.7.3　SemiSpace小结898
+
+14.8　Java Reference对象的处理899
+
+14.8.1　基础知识899
+
+14.8.2　MarkSweep中Reference对象的处理903
+
+14.8.3ReferenceProcessor904
+
+14.8.4　PhantomReference的处理912
+
+14.8.5　finalize函数的调用913
+
+14.8.6　Reference处理小结917
+
+14.9　Heap学习之三917
+
+14.9.1　Heap Trim917
+
+14.9.2　CollectGarbageInternal919
+
+14.9.3　PreZygoteFork924
+
+14.9.4　内存碎片的解决926
+
+14.10　总结927
+
+1．1 Android简介 2
+1．1．1 Android是什么 2
+1．1．2 Android的发展史 2
+1．2 Android平台特性 3
+1．3 Android系统框架 4
+1．3．1 Linux内核（Linux Kernel） 4
+1．3．2 程序库（Libraries） 4
+1．3．3 Android运行时（Android Runtime） 5
+1．3．4 应用程序框架（Application Framework） 5
+1．3．5 应用程序（Applications） 5
+1．4 Android开发框架 6
+1．4．1 应用方面 6
+1．4．2 数据存储 7
+1．4．3 网络访问 8
+1．5 Android开发环境搭建 9
+1．5．1 JDK的安装和Java环境变量设置 9
+1．5．2 Android Studio的安装 9
+1．5．3 SDK的安装和配置 11
+1．6 创建Android项目 12
+1．7 Android应用程序目录结构介绍 13
+1．8 本章小结 14
+关键知识点测评 15
+第 2章 Activity与Fragment详解 16
+2．1 Activity简介 17
+2．2 Activity简单使用 17
+2．2．1 创建Activity类 17
+2．2．2 创建、加载布局文件 19
+2．2．3 配置Activity 21
+2．2．4 关闭Activity 22
+2．3 Activity的生命周期 23
+2．3．1 返回栈管理Activity 23
+2．3．2 Activity的生命状态 25
+2．3．3 Activity的生命周期方法 26
+2．4 Activity的加载模式 28
+2．4．1 standard模式 28
+2．4．2 singleTop模式 28
+2．4．3 singleTask模式 29
+2．4．4 singleInstance模式 30
+2．5 Fragment详解 32
+2．5．1 Fragment概述 32
+2．5．2 Fragment使用 32
+2．5．3 Fragment与Activity通信 34
+2．5．4 Fragment管理与Fragment事务 35
+2．6 Fragment生命周期 35
+2．7 MVC设计模式 37
+2．8 本章小结 38
+关键知识点测评 38
+第3章 资源文件设计 39
+3．1 文字资源文件 41
+3．1．1 创建文字资源文件 41
+3．1．2 在xml文件中引用文字资源 41
+3．1．3 在Java代码中引用文字资源 42
+3．2 颜色资源文件 42
+3．2．1 创建颜色资源文件 42
+3．2．2 颜色的表现方式 42
+3．2．3 在xml文件中引用颜色资源 43
+3．2．4 在Java代码中引用颜色资源 43
+3．3 尺寸资源文件 44
+3．3．1 创建尺寸资源文件 44
+3．3．2 尺寸单位及对比 44
+3．3．3 在xml文件中引用尺寸资源 45
+3．3．4 在Java代码中引用尺寸资源 45
+3．4 样式资源文件 46
+3．4．1 创建样式资源文件 46
+3．4．2 在xml文件中引用样式资源 47
+3．4．3 在Java代码中引用样式资源 47
+3．5 主题资源文件 48
+3．5．1 创建主题资源文件 48
+3．5．2 调用系统默认主题文件 48
+3．5．3 在Java代码中调用自定义主题资源文件 49
+3．6 布局资源文件 49
+3．6．1 创建布局资源文件 49
+3．6．2 布局资源文件的调用 50
+3．7 图片资源文件 50
+3．7．1 创建图片资源文件 50
+3．7．2 在xml文件中引用图片资源 50
+3．7．3 在Java代码中引用图片 51
+3．8 菜单资源文件 51
+3．8．1 创建菜单资源文件 52
+3．8．2 菜单资源的调用 52
+3．9 本章小结 53
+关键知识点测评 53
+第4章 图形界面编程 54
+4．1 图形界面设计概述 55
+4．2 常见布局 56
+4．2．1 线性布局 58
+4．2．2 相对布局 61
+4．2．3 框架布局 63
+4．2．4 表格布局 64
+4．2．5 绝对布局 67
+4．2．6 网格布局 68
+4．3 常见控件 68
+4．3．1 TextView文本显示 69
+4．3．2 Button单击触发 70
+4．3．3 EditText文本框输入 70
+4．3．4 单选按钮RadioButton 72
+4．3．5 多选按钮CheckBox 73
+4．3．6 进度条ProgressBar 74
+4．3．7 Toast通知 75
+4．3．8 ImageView显示图片 76
+4．3．9 ListView显示列表 76
+4．3．10 AlertDialog对话框 78
+4．3．11 菜单组件 83
+4．3．12 Action Bar 88
+4．4 selector的使用 92
+4．5 9Patch图片 93
+4．6 本章小结 94
+关键知识点测评 94
+第5章 Intent与intent-filter详解 95
+5．1 Intent简介 96
+5．2 Intent属性与intent-filter配置 96
+5．2．1 Component属性 96
+5．2．2 Action、Category属性与intent-filter配置 97
+5．2．3 指定Action、Category调用系统Activity 100
+5．2．4 Data、Type属性与intent-filter配置 101
+5．2．5 Extra属性 103
+5．2．6 Flag属性 104
+5．3 本章小结 104
+关键知识点测评 104
+第6章 服务详解 105
+6．1 Service简介 106
+6．2 Service的使用 106
+6．2．1 创建Service 106
+6．2．2 配置Service 107
+6．2．3 Service的启动与关闭 107
+6．2．4 Service与进程的关系 108
+6．2．5 Service与Activity的绑定 108
+6．2．6 Service与Activity的通信 111
+6．3 Service的生命周期 111
+6．4 本章小结 112
+关键知识点测评 112
+第7章 广播机制详解 113
+7．1 Broadcast Receiver简介 114
+7．2 自定义广播 114
+7．2．1 静态注册 114
+7．2．2 动态注册 116
+7．3 接收系统广播 118
+7．3．1 监听网络变化 118
+7．3．2 监听系统开关机 120
+7．4 有序广播 121
+7．5 本章小结 122
+关键知识点测评 123
+第8章 Android多线程编程 124
+8．1 线程与进程的基本概念 125
+8．2 主线程 125
+8．3 线程的基本用法 126
+8．3．1 创建线程 126
+8．3．2 开启线程 126
+8．3．3 子线程中更新UI 126
+8．4 Handler消息传递机制 127
+8．4．1 消息队列机制原理详解 127
+8．4．2 Handler的使用 128
+8．5 AsyncTask异步任务 128
+8．5．1 异步任务简介 128
+8．5．2 异步任务的使用 129
+8．6 本章小结 131
+关键知识点测评 131
+第9章 Android数据存储 132
+9．1 数据存储简介 133
+9．2 File文件存储 133
+9．2．1 内部存储 133
+9．2．2 外部存储 135
+9．2．3 文件存储的特点 136
+9．3 SharedPreferences存储 137
+9．3．1 SharedPreferences与Editor 137
+9．3．2 将数据存储到SharedPreferences中 137
+9．3．3 从SharedPreferences中读取数据 140
+9．3．4 SharedPreferences的特点 140
+9．4 SQLite数据库存储 140
+9．4．1 SQLite数据库简介 140
+9．4．2 创建数据库 142
+9．4．3 升级数据库 145
+9．4．4 添加数据 145
+9．4．5 删除数据 146
+9．4．6 更新数据 147
+9．4．7 查询数据 147
+9．4．8 使用SQL语句操作数据库 149
+9．5 本章小结 149
+关键知识点测评 149
+第 10章 内容提供者详解 150
+10．1 ContentProvider简介 151
+10．2 URI简介 151
+10．3 自定义ContentProvider 151
+10．3．1 创建ContentProvider 151
+10．3．2 配置ContentProvider 153
+10．3．3 ContentProvider操作数据库 154
+10．3．4 使用ContentResolver访问ContentProvider 156
+10．3．5 数据共享 156
+10．4 使用系统ContentProvider 156
+10．4．1 读取系统短信 157
+10．4．2 读取系统联系人 157
+10．5 本章小结 157
+关键知识点测评 158
+第 11章 传感器编程 159
+11．1 传感器简介 160
+11．2 常用传感器 162
+11．2．1 方向传感器 162
+11．2．2 磁力传感器 163
+11．2．3 温度传感器 163
+11．2．4 加速度传感器 163
+11．2．5 光线传感器 163
+11．3 传感器开发步骤 164
+11．4 开发案例 164
+11．5 本章小结 167
+关键知识点测评 167
+第 12章 网络编程 168
+12．1 网络技术简介 169
+12．2 获取手机联网状态 169
+12．3 WebView的使用 170
+12．4 使用URL访问网络资源 172
+12．5 使用HTTP访问网络 173
+12．5．1 使用HttpURLConnection 173
+12．5．2 使用HttpClient 177
+12．6 本章小结 179
+关键知识点测评 179
+第 13章 多媒体开发 180
+13．1 多媒体开发简介 181
+13．2 音频播放 181
+13．3 视频播放 186
+13．4 调用摄像头 190
+13．5 本章小结 192
+关键知识点测评 192
+第 14章 图形图像处理 193
+14．1 图形图像技术简介 194
+14．2 Drawable 194
+14．2．1 Drawable简介 194
+14．2．2 Drawable分类 194
+14．2．3 Drawable使用 196
+14．3 位图（Bitmap） 201
+14．3．1 BitmapFactory 201
+14．3．2 Bitmap的使用 201
+14．4 绘图 201
+14．4．1 Canvas 201
+14．4．2 Rect和Path 203
+14．4．3 Paint 203
+14．4．4 Canvas和Paint的使用 204
+14．5 视图动画 205
+14．5．1 TranslateAnimation 206
+14．5．2 ScaleAnimation 207
+14．5．3 RotateAnimation 208
+14．5．4 AlphaAnimation 208
+14．5．5 帧动画 209
+14．6 属性动画 209
+14．6．1 ValueAnimator 210
+14．6．2 ObjectAnimator 210
+14．6．3 AnimatorSet 211
+14．6．4 属性动画的监听器 211
+14．7 SurfaceView绘图 212
+14．8 本章小结 215
+关键知识点测评 215
+第 15章 项目综合开发 216
+15．1 项目简介 217
+15．2 项目实战准备 217
+15．2．1 搭建服务器 217
+15．2．2 项目相关类库 218
+15．3 侧拉菜单及ActionBar的实现 218
+15．3．1 侧拉菜单的实现 218
+15．3．2 填充侧拉菜单 219
+15．3．3 设置ActionBar 223
+15．4 主界面框架的搭建 225
+15．4．1 导入主页需要的类库 225
+15．4．2 完成主界面的xml布局 226
+15．4．3 填充ViewPager并绑定Indicator 227
+15．5 填充HomeFragment界面 229
+15．5．1 工具类CommonUtil的创建 229
+15．5．2 LoadingPager类的创建 229
+15．5．3 BaseFragment类的创建 232
+15．5．4 封装网络请求框架 233
+15．5．5 请求路径封装和json数据解析 235
+15．5．6 封装Gson工具类 238
+15．5．7 抽取BaseHolder和BasicAdapter 238
+15．5．8 BaseListFragment基类的抽取 240
+15．5．9 HomeFragment的实现 241
+15．5．10 给HomeFragment添加轮播图 244
+15．6 填充SubjectFragment界面 246
+15．6．1 SubjectFragment界面条目的创建 246
+15．6．2 SubjectFragment界面解析数据 248
+15．6．3 SubjectFragment请求数据给界面填充数据 249
+15．7 填充HotFragment界面 249
+15．7．1 自定义流式布局FlowLayout 249
+15．7．2 使用FlowLayout完成HotFragment界面 253
+15．8 完成应用详情页AppDetailActivity 254
+15．8．1 AppDetailActivity整体框架 254
+15．8．2 完成AppDownload模块 257
+15．9 本章小结 268
+关键知识点测评 268
+
+第1章 本书必读
+1.1 概述
+1.2 准备环境和工具
+1.3 本书的内容
+1.4 本书资源下载说明
+第2章 深入理解Class文件格式
+2.1 Class文件格式总览
+2.2 常量池及相关内容
+2.3 field_info和method_info
+2.4 access_flags介绍
+2.5 属性介绍
+2.6 Java指令码介绍
+2.7 学习路线推荐
+2.8 参考资料
+第3章 深入理解Dex文件格式
+3.1 Dex文件格式总览
+3.2 认识Dex文件
+3.3 Dex指令码介绍
+3.4 学习路线推荐
+3.5 参考资料
+第4章 深入理解ELF文件格式
+4.1 概述
+4.2 ELF文件格式介绍
+4.3 学习路线推荐
+4.4 参考资料
+第5章 认识C++11
+5.1 数据类型
+5.2 C++源码构成及编译
+5.3 Class介绍
+5.4 操作符重载
+5.5 函数模板与类模板
+5.6 lambda表达式
+5.7 STL介绍
+5.8 其他常用知识
+5.9 参考资料
+第6章 编译dex字节码为机器码
+6.1 编译器全貌介绍
+6.2 编译器前端介绍
+6.3 优化器介绍
+6.4 ART中的IR—HInstruction
+6.5 寄存器分配
+6.6 机器码生成相关代码介绍
+6.7 总结
+6.8 参考资料
+第7章 虚拟机的创建
+7.1 概述
+7.2 Runtime Create介绍
+7.3 MemMap与OatFileManager
+7.4 FaultManager介绍
+7.5 Thread介绍
+7.6 Heap学习之一
+7.7 JavaVMExt和JNIEnvExt
+7.8 ClassLinker
+7.9 总结和阅读指导
+第8章 虚拟机的启动
+8.1 Runtime Start
+8.2 初识JNI
+8.3 Jit LoadCompilerLibrary
+8.4 Runtime InitNativeMethods
+8.5 Thread相关
+8.6 Runtime CreateSystemClassLoader
+8.7 类的加载、链接和初始化
+8.8 虚拟机创建和启动关键内容梳理
+第9章 深入理解dex2oat
+9.1 概述
+9.2 ParseArgs介绍
+9.3 OpenFile介绍
+9.4 Setup介绍
+9.5 CompileImage
+9.6 OAT和ART文件格式介绍
+9.7 总结
+第10章 解释执行和JIT
+10.1 基础知识
+10.2 解释执行
+10.3 ART中的JIT
+10.4 HDeoptimize的处理
+10.5 Instrumentation介绍
+10.6 异常投递和处理
+10.7 总结
+第11章 ART中的JNI
+11.1 JavaVM和JNIEnv
+11.2 Java native方法的调用
+11.3 CallStaticVoidMethod
+11.4 JNI中引用型对象的管理
+11.5 总结
+第12章 CheckPoints、线程同步及信号处理
+12.1 CheckPoints介绍
+12.2 ThreadList和ThreadState
+12.3 线程同步相关知识
+12.4 volatile成员的读写
+12.5 信号处理
+12.6 总结
+第13章 内存分配与释放
+13.1 Space等关键类介绍
+13.2 ZygoteSpace
+13.3 BumpPointerSpace和RegionSpace
+13.4 DlMallocSpace和RosAllocSpace
+13.5 LargeObjectMapSpace
+13.6 new-instance/array指令的处理
+13.7 细观Space
+13.8 Heap学习之二
+13.9 总结
+第14章 ART中的GC
+14.1 GC基础知识
+14.2 Runtime VisitRoots
+14.3 ART GC概览
+14.4 MarkSweep
+14.5 ConcurrentCopying
+14.6 MarkCompact
+14.7 SemiSpace
+14.8 Java Reference对象的处理
+14.9 Heap学习之三
+14.10 总结
+14.11 参考资料
+
