@@ -49,3 +49,1960 @@
 12.3分布式Akka环境搭建
 12.4使用Akka微内核部署应用
 12.5Akka框架在Spark中的运用
+
+Learning Akka
+Credits
+About the Author
+Acknowledgments
+About the Reviewer
+www.PacktPub.com
+Support files, eBooks, discount offers, and more
+Why subscribe?
+Free access for Packt account holders
+Preface
+What this book covers
+What you need for this book
+Who this book is for
+Conventions
+Reader feedback
+Customer support
+Downloading the example code
+Downloading the color images of this book
+Errata
+Piracy
+eBooks, discount offers, and more
+Questions
+1. Starting Life as an Actor
+What's in this book?
+Chapter overview
+What is Akka
+Actor Model origins
+What's an Actor anyway?
+Actors and Message passing
+The Evolution of supervision and fault tolerance in Erlang
+The Evolution of distribution and location transparency
+What we will build
+Example 1 – handling distributed state
+Example 2 – getting lots of work done
+Setting up your environment
+Choosing a language
+Installing Java – Oracle JDK8
+Installing on Windows
+Installing on OS X
+Installing on Linux or Unix (Universal instructions)
+Ensuring Java is configured in your environment
+Installing Scala
+Installing Typesafe Activator
+Windows
+Linux/Unix/OS X
+OS X
+Creating a new project
+Installing an IDE
+Install IntelliJ CE
+Eclipse
+Installing Eclipse (Scala-Ide)
+Preparing the project for Eclipse
+Importing the project into Eclipse
+Creating your first Akka application – setting up the SBT project
+Adding Akka to build.sbt
+A note on getting the right Scala version with %%
+Adding other Dependencies from Maven Central
+Creating your first Actor
+Making the Message first
+Java
+Scala
+Defining Actor response to the Message
+Java – AkkademyDb.java
+Scala – AkkademyDb.scala
+Validating the code with unit tests
+Akka Testkit
+Java
+Scala
+Running the test
+Homework
+Summary
+2. Actors and Concurrency
+Reactive system design
+The 4 reactive tenets
+Responsive
+Elastic
+Resilient
+Event-driven/message-driven
+Reactive Tenet Correlation
+Anatomy of an Actor
+Java Actor API
+Scala Actor API
+Creating an actor
+Props
+Promises, futures, and event-driven programming models
+Blocking versus event-driven APIs
+Skills check-point
+Having an Actor respond via a future
+Java example
+Working with Scala futures
+Test case
+Actor creation
+Scala example
+Test case
+Actor creation
+Blocking threads in tests
+Understanding futures and promises
+Future – expressing failure and latency in types
+Preparing for the Java example
+Preparing for Scala examples
+Note on sleeping
+Anatomy of a future
+Handling success cases
+Executing code with the result
+Transforming the result
+Transforming the result asynchronously
+Handling failure cases
+Executing code in the failure case
+Recovering from failure
+Recovering from failure asynchronously
+Composing futures
+Chaining operations together
+Combining futures
+Dealing with lists of futures
+Future cheat-sheet
+Composing a Distributed System – AkkademyDb and client
+Preparing the DB and messages
+The messages
+Implementing the DB functionality
+Enabling remoting
+Main
+Publishing the messages
+Starting the DB
+Producing the client
+Scaffolding the project
+Modifying build.sbt
+Building the client
+Testing
+Homework
+General learning
+Project homework
+Summary
+3. Getting the Message Across
+Setting the stage with an example problem
+Sketching the project
+Core functionality
+Messaging delivery
+Messages should be immutable
+Ask message pattern
+Designing with Ask
+Callbacks execute in another execution context
+Timeouts are required
+Timeout stacktraces aren't useful
+Ask has overhead
+Complexity of Actors and Ask
+Tell
+Designing with Tell
+Handling replies with Tell
+Scheduling a Tell Timeout
+Avoiding Ask with an Anonymous Actor
+Forward
+Pipe
+Homework
+General learning
+Project homework
+Summary
+4. Actor Lifecycle – Handling State and Failure
+The 8 Fallacies of Distributed Computing
+The network is reliable
+Latency is zero
+Bandwidth is infinite
+The network is secure
+Network topology doesn't change
+There is one administrator
+Transport cost is zero
+The network is homogeneous
+Failure
+Isolating failure
+Redundancy
+Supervision
+Supervision hierarchies
+Supervision strategies and the drunken sushi chef
+Defining supervisor strategies
+Actor lifecycle
+Messages in restart, stop
+Terminating or killing an Actor
+Lifecycle monitoring and DeathWatch
+Safely restarting
+State
+Online/Offline state
+Transitioning state
+Stashing messages between states
+Conditional statements
+Hotswap: Become/Unbecome
+Stash leaks
+Finite State Machines (FSM)
+Defining states
+Defining the state container
+Defining behavior in FSMs
+Using restarts to transition through states
+Homework
+Summary
+5. Scaling Up
+Moore's law
+Multicore architecture as a distribution problem
+Choosing Futures or Actors for concurrency
+Doing work in parallel
+Doing work In parallel with futures
+Doing work in parallel with Actors
+Introducing Routers
+Routing logic
+Sending Messages to All Actors in a Router Group/Pool
+Supervising the Routees in a Router Pool
+Working with Dispatchers
+Dispatchers explained
+Executors
+Creating Dispatchers
+Deciding Which Dispatcher to use where
+Default Dispatcher
+Blocking IO dispatcher use with futures
+Article parsing dispatcher
+Using a configured dispatcher with Actors
+Using BalancingPool/BalancingDispatcher
+Optimal parallelism
+Homework
+Summary
+6. Successfully Scaling Out – Clustering
+Introducing Akka Cluster
+One Giant Monolith or Many Micro Services?
+Definition of a Cluster
+Failure Detection
+Gossiping an Eventually Consistent View
+CAP Theorem
+C – Consistency
+A – Availability
+P – Partition Tolerance
+Compromises in CAP Theorem
+CP System – Preferring Consistency
+AP System – Preferring Availability
+Consistency as a Sliding Scale
+Building Systems with Akka Cluster
+Creating the Cluster
+Configuring the Project
+Seed Nodes
+Subscribing to Cluster Events
+Starting the Cluster
+Leaving the Cluster Gracefully
+Cluster Member States
+Failure Detection
+Routing Messages to the Cluster
+Producing a Distributed Article Parse Service
+Cluster Client for Clustered Services
+Setting up the Server Project
+Setting up the Client Project
+Sharing the Message Class between Client and Server
+Sending Messages to the Cluster
+Building a Distributed Key Value Store
+Disclaimer – Distributed Systems are Hard
+Designing the Cluster
+Basic Key-Value Store Design
+Coordinating Node
+Sharding for Linear Scalability
+Redundant Nodes
+Combining Sharding and Replication
+Pre-Sharding And Redistributing Keys to New Nodes
+Addressing Remote Actors
+Using akka.actor.Identify to Find a Remote Actor
+Homework
+Summary
+7. Handling Mailbox Problems
+Overwhelming your weakest link
+Ballooning response times
+Crashing
+Resiliency
+Mailboxes
+Configuring mailboxes
+Selecting a mailbox in deployment configuration
+Selecting a mailbox in code
+Deciding which mailbox to use
+Prioritizing messages in mailboxes
+Staying responsive under load
+Circuit breakers
+Circuit breaker listeners
+Circuit breaker examples
+Homework
+Summary
+8. Testing and Design
+Example problem
+Approaching application design
+High-Level design
+Designing, building, and testing the Domain model
+Specifications
+Designing the Domain model
+Testing and building the Domain model
+Building by specification
+Testing actors
+Testing Actor behavior and state
+Testing Message flow
+Using the test Itself as an Actor
+Using TestProbes as mock Actors
+Testing Advice
+Homework
+Summary
+9. A Journey's End
+Other Akka Features and Modules
+Logging in Akka
+Message Channels and EventBus
+Agents
+Akka Persistence
+Akka I/O
+Akka streams and HTTP
+Deployment Tools
+Monitoring Logs and Events
+Next Steps
+Writing some Actor Code
+Coursera Courses
+Summary
+Index
+
+第1章 认识Akka
+1.1 Akka简介
+1.1.1 技术背景
+1.1.2 Akka是什么
+1.2 Akka应用场景
+1.3 Akka架构体系
+1.3.1 Actor模型
+1.3.2 体系结构
+1.4 本章小结
+
+第2章 走进Actor
+2.1 Actor组件
+2.1.1 Akka中的Actor
+2.1.2 ActorSystem与监管
+2.1.3 生命周期监控
+2.1.4 引用与路径
+2.2 Akka环境搭建
+2.2.1 环境准备
+2.2.2 使用Lightbend Activator平台
+2.3 创建一个Actor
+2.3.1 定义Actor
+2.3.2 创建Actor实例
+2.3.3 工厂模式——-Props/Creator
+2.4 发送-接收消息
+2.4.1 tell方法
+2.4.2 ask方法
+2.4.3 消息转发
+2.5 查找一个Actor
+2.6 消息不可变
+2.7 Actor行为切换
+2.8 Actor生命周期
+2.9 停掉一个Actor
+2.10 监督与容错处理
+2.11 Circuit Breaker（熔断）
+2.12 配置相关
+2.13 本章小结
+
+第3章 线程调度
+3.1 什么是Dispatcher？
+3.2 Executor选择
+3.3 配置Dispatcher
+3.4 使用Dispatcher
+3.5 PinnedDispatcher
+3.6 本章小结
+
+第4章 邮箱
+4.1 消息处理顺序
+4.2 默认邮箱配置
+4.3 内置邮箱
+4.3.1 内置邮箱说明
+4.3.2 自定义优先级
+4.3.3 控制指令优先
+4.4 Actor使用邮箱的多种方式
+4.4.1 配置Actor邮箱
+4.4.2 配置dispatcher邮箱
+4.4.3 实现RequiresMessageQueue接口
+4.5 自定义邮箱类型
+4.6 本章小结
+
+第5章 消息路由
+5.1 Router和Routee
+5.2 路由器及路由逻辑
+5.3 路由Actor
+5.3.1 Pool方式
+5.3.2 Group方式
+5.4 常见路由类型
+5.4.1 广播-Broadcast
+5.4.2 最快响应-ScatterGatherFirstCompleted
+5.4.3 随机-最快响应-TailChopping
+5.4.4 创建可修改容量的池
+5.5 特殊消息处理
+5.5.1 Broadcast消息
+5.5.2 PoisonPill消息
+5.5.3 其他管理类消息
+5.6 本章小结
+
+第6章 实用工具
+6.1 定时调度-Scheduler
+6.2 处理并发结果-Future
+6.2.1 Future常规用法
+6.2.2 函数式Future
+6.3 事件总线
+6.3.1 实现事件总线
+6.3.2 事件流处理
+6.4 日志处理
+6.4.1 基础配置
+6.4.2 使用slf4j
+6.5 Akka扩展
+6.5.1 TypedActor初探
+6.5.2 自定义扩展
+6.5.3 集成Spring
+6.6 Akka I/O
+6.6.1 TCP服务
+6.6.2 UDP服务
+6.7 Akka Streams
+6.7.1 Streams组件
+6.7.2 组合Source、Sink
+6.7.3 案例：日志处理
+6.7.4 错误处理
+6.7.5 关联Actor
+6.8 本章小结
+
+第7章 远程
+7.1 远程介绍
+7.1.1 Java RPC
+7.1.2 Akka远程
+7.2 创建远程ActorSystem
+7.3 Actor远程访问
+7.4 创建远程Actor
+7.5 远程路由器
+7.6 远程事件
+7.7 序列化
+7.7.1 Protobuf框架
+7.7.2 序列化API
+7.8 本章小结
+
+第8章 集群
+8.1 Akka集群概述
+8.1.1 种子节点
+8.1.2 领导节点
+8.1.3 节点状态及生命周期
+8.1.4 故障检测
+8.2 创建Akka集群
+8.2.1 代码及集群配置
+8.2.2 启动集群
+8.2.3 加入集群
+8.2.4 akka-cluster集群工具
+8.3 集群示例-实现文章单词统计
+8.3.1 示例分析
+8.3.2 代码实现
+8.4 使用路由
+8.4.1 Group路由
+8.4.2 Pool路由
+8.5 集群指标
+8.5.1 指标收集
+8.5.2 基于指标的负载均衡
+8.6 集群单例
+8.7 集群客户端
+8.7.1 集群客户端概述
+8.7.2 使用 ClusterClient
+8.7.3 事件监听
+8.8 集群分片
+8.8.1 分片概念
+8.8.2 持久化Actor
+8.8.3 分片示例
+8.9 本章小结
+
+第9章 HTTP服务
+9.1 HTTP协议
+9.1.1 header信息
+9.1.2 状态码
+9.2 Akka HTTP
+9.2.1 配置依赖
+9.2.2 HTTP服务端
+9.2.3 请求和响应
+9.2.4 HTTP客户端
+9.2.5 使用Routing DSL
+9.2.6 常用Directive
+9.3 Akka WebSocket
+9.3.1 WebSocket协议
+9.3.2 Akka WebSocket
+9.3.3 WebSocket应用之聊天室
+9.4 本章小结
+
+第10章 微服务全家桶之Lagom
+10.1 Lagom简介
+10.2 Lagom初探
+10.3 搭建Lagom服务
+10.3.1 项目结构
+10.3.2 编写Lagom服务
+10.4 持久化实体
+10.4.1 持久化简介
+10.4.2 PersistentEntity API
+10.4.3 持久化示例
+10.4.4 MySQL支持
+10.5 Lagom部署（SandBox）
+10.5.1 安装ConductR SandBox
+10.5.2 部署Maven项目
+10.6 本章小结
+
+关于本书IV
+第1章 Akka简介1
+1.1 什么是Akka？3
+1.2 Actor简介4
+1.3 两种扩展方法：建立我们的实例4
+1.4 传统扩展5
+1.4.1 传统扩展和持久性：一切移入数据库6
+1.4.2 传统扩展和交互应用：轮询8
+1.4.3 传统扩展和交互应用：Web服务9
+1.5 用Akka进行扩展10
+1.5.1 用Akka扩展和持久化：发送和接收消息11
+1.5.2 用Akka扩展和交互应用：消息推送13
+1.5.3 用Akka扩展和容错：异步解耦14
+1.5.4 Akka方式：发送和接收消息15
+1.6 Actor：向上和向外扩展的编程模型16
+1.6.1 异步模型16
+1.6.2 Actor操作17
+1.7 Akka Actor20
+1.7.1 ActorSystem20
+1.7.2 ActorRef、邮箱和Actor21
+1.7.3 分发器21
+1.7.4 Actor和网络24
+1.8 总结24
+第2章 搭建和运行25
+2.1 克隆、构建和测试接口25
+2.1.1 用sbt进行构建26
+2.1.2快进到GoTicks.com REST服务器28
+2.2 探索应用中的app32
+2.2.1 app结构32
+2.2.2 处理销售的Actor：TicketSeller39
+2.2.3 BoxOffice Actor40
+2.2.4 RestApi43
+2.3 部署到云上46
+2.3.1 在Heroku上创建app46
+2.3.2 在Heroku上部署并运行48
+2.4 总结49
+第3章 Actor测试驱动开发50
+3.1 测试Actor50
+3.2 单向消息52
+3.2.1 SilentActor实例52
+3.2.2 SendingActor实例57
+3.2.3 SideEffectingActor实例63
+3.3 双向消息66
+3.4 总结68
+第4章 容错69
+4.1 容错是什么（不是什么）？69
+4.1.1 普通对象与异常70
+4.1.2 Let it crash73
+4.2 Actor生命周期76
+4.2.1 启动事件77
+4.2.2 停止事件78
+4.2.3 重启事件78
+4.2.4 生命周期综合80
+4.2.5 生命周期监控82
+4.3 监视83
+4.3.1 监视器层次结构83
+4.3.2 预定义策略85
+4.3.3 自定义策略87
+4.4 总结94
+第5章 Futures95
+5.1 Future的应用实例95
+5.2 Future无阻塞99
+5.3 Future错误处理106
+5.4 Future组合111
+5.5 Future组合Actor122
+5.6 总结123
+第6章 第一个分布式Akka app125
+6.1 向外扩展125
+6.1.1 通用网络术语125
+6.1.2 采用分布式编程模型的原因126
+6.2 远程扩展127
+6.2.1 把GoTicks.com app改造成分布式应用128
+6.2.2 远程REPL活动129
+6.2.3 远程查找135
+6.2.4 远程部署143
+6.2.5 多JVM测试149
+6.3 总结156
+第7 章 配置、日志和部署158
+7.1 配置158
+7.1.1 尝试Akka配置158
+7.1.2 使用默认值162
+7.1.3 Akka配置165
+7.1.4 多系统166
+7.2 日志168
+7.2.1 Akka中的日志记录168
+7.2.2 使用日志170
+7.2.3 Akka的日志控制171
+7.3 部署基于Actor的应用173
+7.4 总结178
+第8章 Actor的结构模式179
+8.1 管道和过滤器179
+8.1.1 企业集成模式：管道和过滤器179
+8.1.2 Akka中的管道和过滤器180
+8.2 企业集成模式：分发-收集模式185
+8.2.1 适用性185
+8.2.2 Akka处理并行任务187
+8.2.3 使用接收者列表实现分发组件188
+8.2.4使用聚合器模式实现收集组件189
+8.2.5 组合组件实现分发-收集模式198
+8.3 企业集成模式：路由表模式199
+8.4 总结205
+第9章 路由消息207
+9.1 企业集成路由模式207
+9.2 使用Akka Router实现负载平衡208
+9.2.1 Akka Router池211
+9.2.2 Akka Router群组217
+9.2.3 ConsistentHashing Router225
+9.3 用Actor实现路由模式229
+9.3.1 基于内容的路由229
+9.3.2 基于状态的路由230
+9.3.3 Router的实现233
+9.4 总结234
+第10章 消息通道235
+10.1 通道类型235
+10.1.1 点对点通道235
+10.1.2 发布-订阅通道236
+10.2 特殊通道245
+10.2.1 死信245
+10.2.2 保证投递248
+10.3 总结254
+第11章 有限状态机和代理256
+11.1 使用有限状态机256
+11.1.1 有限状态机简介256
+11.1.2 创建FSM模型257
+11.2 FSM模型的实现258
+11.2.1 实现转换259
+11.2.2 实现入口动作264
+11.2.3 FSM定时器270
+11.2.4 FSM的终止273
+11.3 使用代理实现共享状态274
+11.3.1 使用代理简单地共享状态274
+11.3.2 等待状态更新276
+11.4 总结277
+第12章 系统集成278
+12.1 消息终端278
+12.1.1 归一化279
+12.1.2 规范数据模型280
+12.2 使用Apache Camel实现终端282
+12.2.1 创建从外部系统接收消息的消费者终端283
+12.2.2 实现生产者向外部系统发送消息291
+12.3 实现HTTP接口297
+12.3.1 HTTP实例298
+12.3.2 用Akka-http实现REST终端300
+12.4 总结307
+第13章 流309
+13.1 基本流处理309
+13.1.1 使用源和接收器复制文件313
+13.1.2 实体化可运行图316
+13.1.3 用Flow处理事件321
+13.1.4 处理流中的错误324
+13.1.5 用BidiFlow创建协议326
+13.2 HTTP流330
+13.2.1接收HTTP流330
+13.2.2 HTTP响应流333
+13.2.3 内容类型和协调的自定义编组与解组334
+13.3 用Graph DSL进行扇入和扇出340
+13.3.1 广播流340
+13.3.2 合并流343
+13.4 协调生产者和消费者347
+13.4.1 使用缓冲区347
+13.5 图的速率隔离350
+13.5.1 对较慢的消费者，对事件进行汇总351
+13.5.2 快速消费者的扩展度量351
+13.6 总结352
+第14章 集群353
+14.1 为什么使用集群？353
+14.2 集群成员关系355
+14.2.1 加入集群356
+14.2.2 离开集群364
+14.3 集群作业处理369
+14.3.1 启动集群
+
+第1章　初识Actor　1
+1．1　本章概述　1
+1．2　什么是Akka　1
+1．2．1　Actor模型的起源　1
+1．2．2　什么是Actor　2
+1．2．3　Actor和消息传递　2
+1．3　本书示例系统　7
+1．3．1　示例1：处理分布式状态　7
+1．3．2　示例2：完成更多工作　8
+1．4　配置环境　8
+1．4．1　选择一门语言　9
+1．4．2　安装Java——Oracle JDK8　9
+1．4．3　确认Java环境配置　10
+1．4．4　安装Scala　10
+1．4．5　安装Typesafe Activator　10
+1．4．6　新建项目　11
+1．4．7　安装IDE　12
+1．5　创建第一个Akka应用程序——设置SBT项目　15
+1．5．1　将Akka添加至build．sbt　16
+1．5．2　创建第一个Actor　17
+1．5．3　使用单元测试验证代码　21
+1．5．4　运行测试用例　24
+1．6　课后作业　25
+1．7　小结　26
+
+第2章　Actor与并发　27
+2．1　响应式系统设计　27
+2．2　响应式四准则　28
+2．2．1　灵敏性　28
+2．2．2　伸缩性　28
+2．2．3　容错性　28
+2．2．4　事件驱动/消息驱动　28
+2．2．5　响应式准则的相关性　29
+2．3　剖析Actor　29
+2．3．1　Java Actor API　29
+2．3．2　Scala Actor API　32
+2．4　Actor的创建　33
+2．5　Promise、Future和事件驱动的编程模型　36
+2．5．1　阻塞与事件驱动API　36
+2．5．2　使用Future进行响应的Actor　40
+2．5．3　理解Future和Promise　45
+2．5．4　在失败情况下执行代码　49
+2．5．5　从失败中恢复　49
+2．5．6　异步地从失败中恢复　50
+2．5．7　链式操作　51
+2．5．8　组合Future　51
+2．5．9　处理Future列表　52
+2．5．10　Future速查表　53
+2．5．11　准备数据库与消息　54
+2．5．12　编写客户端　59
+2．6　课后作业　62
+2．6．1　基本知识　62
+2．6．2　项目作业　62
+2．7　小结　63
+
+第3章　传递消息　64
+3．1　示例问题　64
+3．2　消息传递　65
+3．2．1　消息是不可变的　66
+3．2．2　Ask消息模式　69
+3．2．3　Tell　78
+3．3　课后作业　88
+3．4　小结　88
+
+第4章　Actor的生命周期——处理状态与错误　90
+4．1　分布式计算的8个误区　90
+4．1．1　网络是可靠的　90
+4．1．2　没有延迟　91
+4．1．3　带宽是无限的　91
+4．1．4　网络是安全的　92
+4．1．5　网络拓扑不会改变　92
+4．1．6　只有一个管理员　92
+4．1．7　网络传输没有开销　93
+4．1．8　网络是同构的　93
+4．2　错误　93
+4．2．1　隔离错误　94
+4．2．2　监督　95
+4．3　状态　102
+4．3．1　在线/离线状态　103
+4．3．2　条件语句　104
+4．3．3　热交换（Hotswap）：Become/Unbecome　105
+4．3．4　通过重启转移状态　113
+4．4　课后作业　113
+4．5　小结　114
+
+第5章　纵向扩展　115
+5．1　摩尔定律　115
+5．2　多核架构的分布式问题　116
+5．3　选择Future或Actor进行并发编程　117
+5．4　并行编程　117
+5．4．1　使用Future进行并行编程　118
+5．4．2　使用Actor进行并行编程　119
+5．5　使用Dispatcher　123
+5．5．1　Dispatcher解析　123
+5．5．2　Executor　124
+5．5．3　创建Dispatcher　124
+5．5．4　决定何时使用哪种Dispatcher　126
+5．5．5　默认Dispatcher　128
+5．5．6　使用Future的阻塞IO Dispatcher　130
+5．5．7　用于解析文章的Dispatcher　132
+5．5．8　并行最优化　135
+5．6　课后作业　135
+5．7　小结　136
+
+第6章　横向扩展——集群化　137
+6．1　Akka Cluster介绍　137
+6．2　巨型单体应用vs微服务　137
+6．3　集群的定义　138
+6．3．1　失败检测　139
+6．3．2　通过gossip协议达到最终一致性　139
+6．4　CAP理论　140
+6．4．1　C –一致性（Consistency）　140
+6．4．2　A –可用性（Availability）　140
+6．4．3　P –分区容错性（Partition Tolerance）　140
+6．4．4　CAP理论中的妥协　141
+6．5　使用Akka Cluster构建系统　143
+6．5．1　创建集群　143
+6．5．2　集群成员的状态　150
+6．5．3　通过路由向集群发送消息　151
+6．5．4　编写分布式文章解析服务　151
+6．5．5　用于集群服务的集群客户端　153
+6．5．6　集群设计　159
+6．6　结合分区与冗余　164
+6．7　远程Actor寻址　166
+6．8　课后作业　167
+6．9　小结　167
+
+第7章　处理邮箱问题　169
+7．1　搞垮最可能出问题的服务　169
+7．1．1　响应时间变长　170
+7．1．2　崩溃　171
+7．2　恢复能力　171
+7．3　在高负载情况下保持响应速度　175
+7．4　课后作业　181
+7．5　小结　182
+
+第8章　测试与设计　183
+8．1　示例问题　183
+8．2　应用程序设计　184
+8．3　设计、构建并测试领域模型　186
+8．3．1　行为说明　186
+8．3．2　设计领域模型　187
+8．3．3　构建并测试领域模型　188
+8．3．4　基于行为说明编写代码　190
+8．4　测试Actor　192
+8．4．1　测试Actor行为及状态　192
+8．4．2　测试消息流　195
+8．5　测试建议　198
+8．6　课后作业　199
+8．7　小结　200
+
+第9章　尾声　201
+9．1　其他Akka功能及模块　201
+9．1．1　Akka中的日志　202
+9．1．2　消息信道与EventBus　204
+9．1．3　Agent　206
+9．1．4　Akka Persistence　209
+9．1．5　Akka I/O　210
+9．1．6　Akka Streams与HTTP　210
+9．2　部署工具　210
+9．3　监控日志与事件　212
+9．4　下一步　212
+9．4．1　编写一些Actor代码　213
+9．4．2　Coursera课程　213
+
+第1 章 Actor 模型 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．1
+现实是最终一致的 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．1
+解构Actor 模型 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．3
+所有的计算都在一个actor 中执行 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．4
+actor 之间只能通过消息进行通信 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．5
+actor 可以创建子actor ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．6
+actor 可以改变自己的状态或行为 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．8
+一切都是actor ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．9
+Actor 模型的使用 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．10
+定义清晰的边界 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 11
+何时适合使用Actor 模型 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．13
+结论 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．13
+第2 章 Akka 简介 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．15
+Akka 是什么．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 15
+Akka 是开源的 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 15
+Akka 正在蓬勃发展 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．16
+Akka 是为分布式设计的 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．16
+Akka 组件 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．17
+Akka actor ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．17
+子actor ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 18
+remoting ：不同JVM 上的actor ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．20
+clustering ：集群成员的自动化管理 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．20
+Akka HTTP ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．24
+TestKit ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 25
+contrib ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 25
+Akka OSGi ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 25
+Akka HTTP ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．26
+Akka Streams ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．26
+Akka 实现的Actor 模型 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．26
+Actor 模型中的Akka actor ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．26
+消息传递 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．27
+actor 系统 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 28
+Akka Typed 项目 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 28
+结论 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．29
+第3 章 分布式领域驱动设计 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．31
+DDD 概述 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．31
+DDD 的好处 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．32
+DDD 组件 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．33
+域实体 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．34
+域值对象 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．34
+聚合与聚合根 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 35
+仓储 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．37
+工厂和对象创建 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 38
+域服务 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 38
+有界上下文 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．39
+结论 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．41
+第4 章 优秀的Actor 设计 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．43
+大系统小做 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．43
+封装actor 中的状态 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．44
+使用字段封装状态 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．44
+使用“状态”容器封装状态 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．47
+使用become 封装状态 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 48
+将futures 与actors 混合 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 50
+Ask 模式和替代方案 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 54
+Ask 模式的问题 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 55
+附带的复杂性 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 57
+Ask 的替代方案 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 57
+命令与事件 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 59
+构造函数的依赖注入 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．61
+使用路径查找actor ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．61
+结论 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．62
+第5 章 数据流 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．63
+吞吐量与延迟 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．63
+流 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．64
+路由器 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．66
+邮箱 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 68
+无界邮箱 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 68
+有界邮箱 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．69
+拉取的工作模式 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．70
+背压 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．73
+ack ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．73
+高水位标记 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．73
+队列长度监控 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．74
+速率监控 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．74
+Akka 数据流．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．74
+源 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 75
+汇 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．77
+RunnableGraph ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 78
+流 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．79
+交叉点 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 80
+Akka 流中的背压 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 81
+Akka 流的使用 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 82
+结论 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 84
+第6 章 一致性和可扩展性 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．85
+事务和一致性 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 85
+强一致性与最终一致性 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 86
+并发性与并行性 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 86
+为什么全局一致的分布式状态影响可扩展性 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 86
+位置透明性 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 87
+交付保证 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 87
+最多投递一次 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 87
+最少投递一次 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 88
+恰好一次交付是不可能的（但可以近似做到） ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．91
+如何近似做到恰好一次交付 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．91
+集群单例 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．92
+可扩展性 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．94
+避免全局状态 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 98
+避免共享状态 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 98
+遵循Actor 模型 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．99
+避免顺序操作 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．99
+隔离阻塞型操作 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．99
+监控和调优 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．99
+集群分片和一致性 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．99
+分片 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 100
+Akka 中的分片 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 101
+分片键的生成 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 102
+分片的分布 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 103
+一致性边界 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 103
+可扩展性边界 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 104
+分片聚合根 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 105
+持久化 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 106
+钝化 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 106
+使用集群分片保证一致性 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 107
+结论 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 109
+第7 章 容错 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．111
+故障类型 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 112
+异常 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 112
+JVM 中的致命错误 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 113
+外部服务故障 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 113
+不符合服务等级协议 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 113
+操作系统和硬件级故障 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 114
+故障隔离 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 114
+舱壁模式 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 114
+优雅降级 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 117
+使用Akka 集群隔离故障 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 119
+使用熔断器控制故障 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 119
+故障处理 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 122
+异常处理 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 123
+外部服务的故障处理 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 128
+结论 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 131
+第8 章 可用性 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．133
+微服务和单体式应用 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 133
+用有界上下文划分微服务 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 134
+细粒度的微服务 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 135
+集群感知路由器 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 135
+分布式数据 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 137
+优雅降级 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 140
+部署 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 141
+分阶段部署/ 滚动重启 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 142
+蓝/ 绿部署 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 142
+崩溃恢复/ 运维监测 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 143
+健康检查和应用状态页面 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 143
+度量 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 145
+日志 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 146
+看门狗工具 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 146
+结论 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 147
+第9 章 性能 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．149
+隔离瓶颈 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 150
+优化Akka ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 150
+减少或隔离阻塞型操作 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 150
+缩短消息处理时间 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 151
+增加处理消息的actor ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 151
+派发器 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 151
+标准派发器 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 151
+固定派发器 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 153
+平衡派发器 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 154
+calling-thread 派发器 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 154
+何时使用单独的派发器 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 155
+提高并行性 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 157
+结论 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．． 158
+后记 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．159
+参考文献 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．161
+关于作者 ．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．．162
+封面介绍
+Akka Essentials
+Credits
+About the Author
+Acknowledgement
+About the Reviewers
+www.PacktPub.com
+Support files, eBooks, discount offers and more
+Why Subscribe?
+Free Access for Packt account holders
+Preface
+The driving force of Akka's Actor Model
+What this book covers
+What you need for this book
+Conventions
+Reader feedback
+Customer support
+Downloading the example code
+Errata
+Piracy
+Questions
+1. Introduction to Akka
+Background
+Microprocessor evolution
+Concurrent systems
+Container-based applications
+Actor Model
+Akka framework
+Actor systems
+What is an actor?
+State
+Behavior
+Mailbox
+Actor lifecycle
+Fault tolerance
+Location transparency
+Transactors
+Akka use cases
+Summary
+2. Starting with Akka
+Application requirements
+Application design
+Start development
+Prerequisites
+Java
+Eclipse
+Maven
+Scala
+Akka
+Java application
+Creating the Akka Maven project
+Defining message classes
+MapData.java
+WordCount.java
+ReduceData.java
+Result.java
+Defining actor classes
+MapActor.java
+ReduceActor.java
+AggregateActor.java
+MasterActor.java
+Defining the execution class
+MapReduceApplication.java
+Scala application
+Defining message classes
+Defining actor classes
+MapActor.scala
+ReduceActor.scala
+AggregateActor.scala
+MasterActor.scala
+Defining the execution class
+MapReduceApplication.scala
+Summary
+3. Actors
+Actors
+Defining an actor
+Creating actors
+Actor with default constructor
+Actor with non-default constructor
+Creating an actor within an actor hierarchy
+Messaging model
+Sending messages
+Fire and forget messages – tell()
+Send and receive messages – ask()
+Receiving messages
+Replying to messages
+Forwarding messages
+Stopping actors
+Killing actors
+Actor lifecycle monitoring
+HotSwap
+Summary
+4. Typed Actors
+What are typed actors?
+Defining an actor
+Creating actors
+An actor with a default constructor
+An actor with a non-default constructor
+Messaging model
+Sending messages
+Fire and forget messages
+Send and receive messages
+Stopping actors
+Actor lifecycle monitoring
+Lifecycle callbacks
+Receiving messages
+Supervisor strategy
+Creating an actor hierarchy
+Dispatchers and routers
+Using dispatchers
+application.conf
+Using routers
+Summary
+5. Dispatchers and Routers
+Dispatchers
+Dispatcher as a pattern
+Executor in Java
+Dispatchers in Akka
+Types of dispatcher
+Dispatcher
+Pinned dispatcher
+Balancing dispatcher
+Calling thread dispatcher
+Types of mailboxes
+Dispatcher usage
+Thread pool executor
+Fork join executor
+Routers
+Router usage
+Router usage via application.conf
+Router usage for distributed actors
+Dynamically resizing routers
+Custom router
+Summary
+6. Supervision and Monitoring
+Let It Crash
+Actor hierarchy
+Supervision
+Supervision strategies
+One-For-One strategy
+All-For-One strategy
+Lifecycle monitoring
+Fault tolerance
+Summary
+7. Software Transactional Memory
+Transaction management
+What is software transactional memory?
+Coordinated transactions
+Money transfer between two accounts
+Transactor
+Money transfer between two accounts – take two
+Agents
+Creating agents
+Updating agent values
+Reading agent values
+Stopping agents
+Summary
+8. Deployment Ready
+Testing your Akka application
+Writing the first unit test with TestActorRef
+Access to the underlying actor reference
+Testing actor behavior
+Testing exception scenarios
+Integration testing with TestKit
+EchoActor testing
+ForwardingActor testing
+SequencingActor testing
+SupervisorActor testing
+Remote actors testing
+Managing application configuration using Akka extensions
+Deployment mode
+Microkernel
+Summary
+9. Remote Actors
+Distributed computing
+Actor path
+Remote actors
+Creating the remote node application
+Creating the local node application
+Creating remote actors programmatically
+Message serialization
+Creating your own serialization technique
+Remote events
+Summary
+10. Management
+Application monitoring
+Typesafe console
+Typesafe console modules
+Trace
+Trace configuration
+Analyze
+Running analyze module
+Query
+Running query module
+Typesafe console
+Running Typesafe console
+Graphical dashboard
+System overview
+Node
+Dispatchers
+Actors
+Tags
+Errors
+Limitations
+JMX and REST interfaces
+RESTful API
+JMX
+Summary
+11. Advanced Topics
+Durable mailboxes
+Akka support
+Dispatcher usage
+FileDurableMailboxStorage
+Actors and web applications
+Installing play
+Creating the first HttpActors application
+Launching the console
+Integrating actors with ZeroMQ
+Publisher-subscriber connection
+Usage
+Request-reply connection
+Usage
+Router-dealer connection
+Usage
+Push-pull connection
+Usage
+Summary
+Index
+
+Title Page
+Copyright
+Akka Cookbook
+Credits
+About the Authors
+About the Reviewer
+www.PacktPub.com
+Customer Feedback
+Preface
+What this book covers
+What you need for this book
+Who this book is for
+Sections
+Getting ready
+How to do it
+How it works
+There's more
+See also
+Conventions
+Reader feedback
+Customer support
+Downloading the example code
+Errata
+Piracy
+Questions
+Diving into Akka
+Introduction
+Creating an Akka Scala SBT project from scratch
+Getting ready
+How to do it...
+Creating and understanding ActorSystem
+Getting ready
+How to do it...
+How it works...
+Why we need ActorSystem
+Defining the actor's behavior and state
+Getting ready
+How to do it...
+How it works...
+There's more...
+Sending messages to actors
+Getting ready
+How to do it...
+How it works...
+There's more...
+Asking for a result from an actor
+How to do it...
+How it works...
+There's more...
+Communication between actors
+Getting ready
+How to do it...
+How it works...
+There's more...
+Creating a custom mailbox for an actor
+Getting ready
+How to do it...
+How it works...
+Prioritizing messages that an actor receives
+Getting ready
+How to do it...
+How it works...
+Creating a control-aware mailbox for an actor
+Getting ready
+How to do it...
+How it works...
+Become/unbecome behavior of an actor
+Getting ready
+How to do it...
+How it works...
+Stopping an actor
+Getting ready
+How to do it...
+How it works...
+Supervision and Monitoring
+Introduction
+What is fault tolerance?
+What is a component?
+How Akka fits in between all of them?
+Creating child actors of a parent actor
+Getting ready
+How to do it...
+How it works...
+Overriding the life cycle hooks of an actor
+How to do it...
+How it works...
+Sending messages to actors and collecting responses
+How to do it...
+How it works...
+Understanding OneForOneStrategy for actors
+How to do it...
+How it works...
+Understanding AllForOneStrategy for actors
+How to do it...
+How it works...
+Monitoring an actor life cycle using DeathWatch
+How to do it...
+How it works...
+Routing Messages
+Introduction
+Where to use routers
+Creating a SmallestMailboxPool of actors
+Getting ready
+How to do it...
+How it works...
+Creating a BalancingPool of actors
+Getting ready
+How to do it...
+How it works...
+Creating a RoundRobinPool of actors
+Getting ready
+How to do it...
+How it works...
+Creating a BroadcastPool of actors
+Getting ready
+How to do it...
+How it works...
+Creating a ScatterGatherFirstCompletedPool of actors
+Getting ready
+How it works...
+Creating a TailChoppingPool of actors.
+Getting ready
+How it works...
+Creating a ConsistentHashingPool of actors
+Getting ready
+How to do it...
+How it works...
+Creating a RandomPool of actors
+Getting ready
+How to do it...
+How it works...
+Sending specially handled messages to routers
+Getting ready
+How to do it...
+How it works...
+Creating a dynamically resizable pool of actors
+Getting ready
+How to do it...
+Using Futures and Agents
+Introduction
+Using a future directly for a simple operation
+Getting ready
+How to do it...
+How it works...
+Using futures with actors
+Getting ready
+How to do it...
+How it works...
+Using futures inside actors
+Getting ready
+How to do it...
+How it works...
+Using for-comprehensions for futures
+Getting ready
+How to do it...
+How it works...
+Handling callback on futures
+Getting ready
+How to do it...
+How it works...
+Creating a simple parallel application using futures
+Getting ready
+How to do it...
+How it works...
+Reducing a sequence of futures
+Getting ready
+How to do it...
+How it works...
+Reading and updating agents
+Getting ready
+How to do it...
+How it works...
+Composing agents monadically
+Getting ready
+How to do it..
+How it works...
+Scheduling Actors and Other Utilities
+Introduction
+Scheduling an operation at a specified interval
+Getting ready
+How to do it...
+How it works...
+Scheduling an actor's operation at a specified interval
+Getting ready
+How to do it...
+How it works...
+Canceling a scheduled operation of the actor
+Getting ready
+How to do it...
+How it works...
+Creating a circuit breaker to avoid cascading failure
+Getting ready
+How to do it...
+How it works...
+How to introduce logging with actors
+Getting ready
+How to do it...
+How it works...
+Writing unit test for actors
+Getting ready
+How to do it...
+How it works...
+Packaging and deploying the Akka standalone application
+Getting ready
+How to do it...
+How it works...
+Packaging and deploying Akka application inside a Docker container
+Getting ready
+How to do it...
+How it works...
+Configurating Akka applications
+Getting ready
+How to do it...
+How it works...
+Akka Persistence
+Introduction
+Preparing an actor for persistence
+Getting ready
+How to do it...
+How it works...
+Recovering the state of an actor
+Getting ready
+How to do it...
+How it works...
+Safely shutting down a persistent actor
+Getting ready
+How to do it...
+How it works...
+Reducing recovery time using snapshots
+Getting ready
+How to do it...
+How it works...
+Creating a persistence FSM model
+Getting ready
+How to do it...
+How it works...
+Persisting the state to LevelDB
+Getting ready
+How to do it...
+How it works...
+Persisting the state to Cassandra
+Getting ready
+How to do it...
+How it works...
+Persisting the state to Redis
+Getting ready
+How to do it...
+How it works...
+Understanding event sourcing
+Getting ready
+How to do it...
+How it works...
+Handling failure in event sourcing
+Getting ready
+How to do it...
+How it works...
+Using persistence query
+Getting ready
+How to do it...
+How it works...
+Persistence query for LevelDB
+Getting ready
+How to do it...
+How it works...
+Remoting and Akka Clustering
+Introduction
+Enabling Akka applications for remoting
+Getting ready
+How to do it...
+How it works...
+Creating remote actors on different machines
+Getting ready
+How to do it...
+How it works...
+Looking up remote actors from different machines
+Getting ready
+How to do it...
+How it works...
+Deploying remote actors programmatically on different nodes
+Getting ready
+How to do it...
+How it works...
+Scaling out your application using remote actors
+Getting ready
+How to do it...
+How it works
+Creating a chat-based application using remote actors
+Getting ready
+How to do it...
+How it works...
+Enabling Akka clustering for your project
+Getting ready
+How to do it...
+How it works...
+Using Distributed Publish-Subscribe in the cluster
+Getting ready
+How to do it...
+How it works...
+Cluster Sharding
+Getting ready
+How to do it...
+How it works...
+Sharing data between nodes in an Akka cluster
+Getting ready
+How to do it...
+How it works...
+Creating a singleton actor across clusters
+Getting ready
+How to do it...
+How it works...
+See also
+Akka Streams
+Introduction
+Creating simple Akka Streams
+Getting ready
+How to do it...
+How it works...
+How to transform streams and consume them
+Getting ready
+How to do it...
+How it works...
+Creating stream sources, flows, and sinks
+Getting ready
+How to do it...
+How it works...
+Custom stream processing
+Getting ready
+How to do it...
+How it works...
+Error handling in Akka streams
+Getting ready
+How to do it...
+How it works...
+Pipelining and parallelizing streams
+Getting ready
+How to do it...
+How it works...
+Working with streaming I/O
+Getting ready
+How to do it...
+How it works...
+Integrating streams with Akka actors
+Getting ready
+How to do it...
+How it works...
+Working with graphs
+Getting ready
+How to do it...
+How it works...
+Processing RabbitMQ messages with Akka streams
+Getting ready
+How to do it...
+How it works...
+Integrating Akka Streams with Kafka using Reactive Kafka
+Getting ready
+How to do it...
+How it works...
+Akka HTTP
+Introduction
+Creating a minimal HTTP server using Akka HTTP
+Getting ready
+How to do it...
+How it works...
+Consuming Akka HTTP services using a client-side API
+Getting ready
+How to do it...
+How it works...
+Writing routing DSL for HTTP servers
+Getting ready
+How to do it...
+How it works...
+Understanding the configuration of Akka HTTP
+Getting ready
+How to do it...
+How it works...
+Marshaling and unmarshaling data
+Getting ready
+How to do it...
+How it works...
+Encoding and decoding data
+Getting ready
+How to do it...
+How it works...
+Understanding directives
+Getting ready
+How to do it...
+How it works...
+Exception handling
+Getting ready
+How to do it...
+How it works...
+Uploading a file using Akka HTTP
+Getting ready
+How to do it...
+How it works...
+Building JSON support with Akka HTTP
+Getting ready
+How to do it...
+How it works...
+XML support with Akka HTTP
+Getting ready
+How to do it...
+How it works...
+Understanding Various Akka patterns
+Introduction
+The Master Slave work pulling pattern
+Getting ready
+How to do it...
+How it works...
+Ordered termination of actors
+Getting ready
+How to do it...
+How it works...
+Shutdown patterns in Akka
+Getting ready
+How to do it...
+How it works...
+Scheduling periodic messages to an actor
+Getting ready
+How to do it...
+How it works...
+Throttling of messages while sending them to an actor
+Getting ready
+How to do it...
+How it works...
+Balancing workload across actors
+Getting ready
+How it works...
+How it works...
+The aggregator pattern
+Getting ready
+How to do it...
+How it works...
+The CountDownLatch pattern
+Getting ready
+How to do it...
+How it works...
+Finite-state machine
+Getting ready
+How to do it...
+How it works...
+The pausable actor pattern
+Getting ready
+How to do it...
+How it works...
+Enveloping actor
+Getting ready
+How to do it...
+How it works...
+Microservices with Lagom
+Introduction
+Installing Lagom and creating a Lagom project
+Getting ready
+How to do it...
+How it works...
+Understanding the service locator
+Getting ready
+How to do it...
+How it works...
+Understanding service descriptors
+Getting ready
+How to do it...
+How it works
+Implementing Lagom services
+Getting ready
+How to do it...
+How it works...
+Consuming services
+Getting ready
+How to do it...
+How it works...
+Testing services
+Getting ready
+How to do it...
+How it works...
+Writing persistent and clustered services
+Getting ready
+How to do it...
+How it works...
+Running Lagom in production
+Getting ready
+How to do it...
+How it works...
+Integrating with Akka
+Getting ready
+How to do it...
+How it works
+
+第1章 认识Akka
+1.1 Akka简介
+1.1.1 技术背景
+1.1.2 Akka是什么
+1.2 Akka应用场景
+1.3 Akka架构体系
+1.3.1 Actor模型
+1.3.2 体系结构
+1.4 本章小结
+第2章 走进Actor
+2.1 Actor组件
+2.1.1 Akka中的Actor
+2.1.2 ActorSystem与监管
+2.1.3 生命周期监控
+2.1.4 引用与路径
+2.2 Akka环境搭建
+2.2.1 环境准备
+2.2.2 使用Lightbend Activator平台
+2.3 创建一个Actor
+2.3.1 定义Actor
+2.3.2 创建Actor实例
+2.3.3 工厂模式---Props/Creator
+2.4 发送-接收消息
+2.4.1 tell方法
+2.4.2 ask方法
+2.4.3 消息转发
+2.5 查找一个Actor
+2.6 消息不可变
+2.7 Actor行为切换
+2.8 Actor生命周期
+2.9 停掉一个Actor
+2.10 监督与容错处理
+2.11 Circuit Breaker（熔断）
+2.12 配置相关
+2.13 本章小结
+第3章 线程调度
+3.1 什么是Dispatcher？
+3.2 Executor选择
+3.3 配置Dispatcher
+3.4 使用Dispatcher
+3.5 PinnedDispatcher
+3.6 本章小结
+第4章 邮箱
+4.1 消息处理顺序
+4.2 默认邮箱配置
+4.3 内置邮箱
+4.3.1 内置邮箱说明
+4.3.2 自定义优先级
+4.3.3 控制指令优先
+4.4 Actor使用邮箱的多种方式
+4.4.1 配置Actor邮箱
+4.4.2 配置dispatcher邮箱
+4.4.3 实现RequiresMessageQueue接口
+4.5 自定义邮箱类型
+4.6 本章小结
+第5章 消息路由
+5.1 Router和Routee
+5.2 路由器及路由逻辑
+5.3 路由Actor
+5.3.1 Pool方式
+5.3.2 Group方式
+5.4 常见路由类型
+5.4.1 广播-Broadcast
+5.4.2 最快响应-ScatterGatherFirstCompleted
+5.4.3 随机-最快响应-TailChopping
+5.4.4 创建可修改容量的池
+5.5 特殊消息处理
+5.5.1 Broadcast消息
+5.5.2 PoisonPill消息
+5.5.3 其他管理类消息
+5.6 本章小结
+第6章 实用工具
+6.1 定时调度——Scheduler
+6.2 处理并发结果——Future
+6.2.1 Future常规用法
+6.2.2 函数式Future
+6.3 事件总线
+6.3.1 实现事件总线
+6.3.2 事件流处理
+6.4 日志处理
+6.4.1 基础配置
+6.4.2 使用slf4j
+6.5 Akka扩展
+6.5.1 TypedActor初探
+6.5.2 自定义扩展
+6.5.3 集成Spring
+6.6 Akka I/O
+6.6.1 TCP服务
+6.6.2 UDP服务
+6.7 Akka Streams
+6.7.1 Streams组件
+6.7.2 组合Source、Sink
+6.7.3 案例：日志处理
+6.7.4 错误处理
+6.7.5 关联Actor
+6.8 本章小结
+第7章 远程
+7.1 远程介绍
+7.1.1 Java RPC
+7.1.2 Akka远程
+7.2 创建远程ActorSystem
+7.3 Actor远程访问
+7.4 创建远程Actor
+7.5 远程路由器
+7.6 远程事件
+7.7 序列化
+7.7.1 Protobuf框架
+7.7.2 序列化API
+7.8 本章小结
+第8章 集群
+8.1 Akka集群概述
+8.1.1 种子节点
+8.1.2 领导节点
+8.1.3 节点状态及生命周期
+8.1.4 故障检测
+8.2 创建Akka集群
+8.2.1 代码及集群配置
+8.2.2 启动集群
+8.2.3 加入集群
+8.2.4 akka-cluster集群工具
+8.3 集群示例——实现文章单词统计
+8.3.1 示例分析
+8.3.2 代码实现
+8.4 使用路由
+8.4.1 Group路由
+8.4.2 Pool路由
+8.5 集群指标
+8.5.1 指标收集
+8.5.2 基于指标的负载均衡
+8.6 集群单例
+8.7 集群客户端
+8.7.1 集群客户端概述
+8.7.2 使用ClusterClient
+8.7.3 事件监听
+8.8 集群分片
+8.8.1 分片概念
+8.8.2 持久化Actor
+8.8.3 分片示例
+8.9 本章小结
+第9章 HTTP服务
+9.1 HTTP协议
+9.1.1 header信息
+9.1.2 状态码
+9.2 Akka HTTP
+9.2.1 配置依赖
+9.2.2 HTTP服务端
+9.2.3 请求和响应
+9.2.4 HTTP客户端
+9.2.5 使用Routing DSL
+9.2.6 常用Directive
+9.3 Akka WebSocket
+9.3.1 WebSocket协议
+9.3.2 Akka WebSocket
+9.3.3 WebSocket应用之聊天室
+9.4 本章小结
+第10章 微服务全家桶之Lagom
+10.1 Lagom简介
+10.2 Lagom初探
+10.3 搭建Lagom服务
+10.3.1 项目结构
+10.3.2 编写Lagom服务
+10.4 持久化实体
+10.4.1 持久化简介
+10.4.2 PersistentEntity API
+10.4.3 持久化示例
+10.4.4 MySQL支持
+10.5 Lagom部署（SandBox）
+10.5.1 安装ConductR SandBox
+10.5.2 部署Maven项目
+
+第1章 Actor模型
+现实是最终一致的
+解构Actor模型
+所有的计算都在一个actor中执行
+actor之间只能通过消息进行通信
+actor可以创建子actor
+actor可以改变自己的状态或行为
+一切都是actor
+Actor模型的使用
+定义清晰的边界
+何时适合使用Actor模型
+结论
+第2章 Akka简介
+Akka是什么
+Akka组件
+Akka实现的Actor模型
+Actor模型中的Akka actor
+Akka Typed项目
+结论
+第3章 分布式领域驱动设计
+DDD概述
+DDD的好处
+DDD组件
+域实体
+域值对象
+聚合与聚合根
+仓储
+工厂和对象创建
+域服务
+有界上下文
+结论
+第4章 优秀的Actor设计
+大系统小做
+封装actor中的状态
+Ask模式和替代方案
+命令与事件
+结论
+第5章 数据流
+吞吐量与延迟
+流
+路由器
+邮箱
+拉取的工作模式
+背压
+Akka数据流
+结论
+第6章 一致性和可扩展性
+事务和一致性
+强一致性与最终一致性
+并发性与并行性
+为什么全局一致的分布式状态影响可扩展性
+位置透明性
+交付保证
+可扩展性
+集群分片和一致性
+结论
+第7章 容错
+故障类型
+故障隔离
+故障处理
+结论
+第8章 可用性
+微服务和单体式应用
+用有界上下文划分微服务
+细粒度的微服务
+集群感知路由器
+分布式数据
+优雅降级
+部署
+分阶段部署/滚动重启
+蓝/绿部署
+崩溃恢复/运维监测
+结论
+第9章 性能
+隔离瓶颈
+优化Akka
+派发器
+结论
+后记
+参考文献
