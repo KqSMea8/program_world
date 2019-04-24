@@ -1,0 +1,51 @@
+第10章Akka的设计理念
+10.1Akka框架模型
+10.2创建Actor
+10.2.1通过实现akka.actor.Actor来创建Actor类
+10.2.2使用非缺省构造方法创建 Actor
+10.2.3创建匿名Actor
+10.3Actor API
+10.3.1Actor trait基本接口
+10.3.2使用DeathWatch进行生命周期监控
+10.3.3Hook函数的调用
+10.3.4查找Actor
+10.3.5消息的不可变性
+10.3.6发送消息
+10.3.7转发消息
+10.3.8接收消息
+10.3.9回应消息
+10.3.10终止Actor
+10.3.11Become/Unbecome
+10.3.12杀死Actor
+10.4不同类型的Actor
+10.4.1方法派发语义
+10.4.2终止有类型Actor
+10.5小结
+第11章Akka核心组件及核心特性剖析
+11.1Dispatchers 和 Routers
+11.1.1为Actor指定派发器
+11.1.2派发器的类型
+11.1.3邮箱
+11.1.4Routers
+11.1.5路由的使用
+11.1.6远程部署router
+11.2Supervision和Monitoring
+11.2.1Supervision
+11.2.2Monitoring
+11.3Akka中的事务
+11.3.1STM
+11.3.2使用STM事务
+11.3.3读取Agent事务中的数据
+11.3.4更新Agent事务中的数据
+11.3.5Actor中的事务
+11.3.6创建Transactor
+11.4小结
+第12章Akka程序设计实践
+12.1Akka的配置、日志及部署
+12.1.1Akka中配置文件的读写
+12.1.2Akka中日志配置
+12.1.3Akka部署及应用场景
+12.2使用Akka框架实现单词统计
+12.3分布式Akka环境搭建
+12.4使用Akka微内核部署应用
+12.5Akka框架在Spark中的运用

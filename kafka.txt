@@ -1,3 +1,48 @@
+第13章Kafka设计理念与基本架构
+13.1Kafka产生的背景
+13.2消息队列系统
+13.2.1概述
+13.2.2常用的消息队列系统对比
+13.2.3Kafka特点及特性
+13.2.4Kafka系统应用场景
+13.3Kafka设计理念
+13.3.1专业术语解析
+13.3.2消息存储与缓存设计
+13.3.3消费者与生产者模型
+13.3.4Push与Pull机制
+13.3.5镜像机制
+13.4Kafka整体架构
+13.4.1Kafka基本组成结构
+13.4.2Kafka工作流程
+13.5Kafka性能分析及优化
+13.6Kafka未来研究方向
+13.7小结
+第14章Kafka核心组件及核心特性剖析
+14.1Kafka核心组件剖析
+14.1.1Producers
+14.1.2Consumers
+14.1.3Low Level Consumer
+14.1.4High Level Consumer
+14.2Kafka核心特性剖析
+14.2.1Topic、Partitions
+14.2.2Replication和Leader Election
+14.2.3Consumer Rebalance
+14.2.4消息传送机制
+14.2.5Kafka的可靠性
+14.2.6Kafka的高效性
+14.3Kafka即将发布版本核心组件及特性剖析
+14.3.1重新设计的Consumer
+14.3.2Coordinator Rebalance
+14.4小结
+第15章Kafka应用实践
+15.1Kafka开发环境搭建及运行环境部署
+15.1.1Kafka开发环境配置
+15.1.2Kafka运行环境安装与部署
+15.2基于Kafka客户端开发
+15.2.1消息生产者（Producer）设计
+15.2.2消息消费者（Consumer）设计
+15.2.3Kafka消费者与生产者配置
+
 1．1　基本概念
 1．2　安装与配置
 1．3　生产与消费
