@@ -1,0 +1,392 @@
+分布式文件系统HDFS 1
+HDFS 的数据格式 3
+处理HDFS 中的数据 4
+Apache HBase 4
+总结 5
+参考文献 6
+
+第2 章 用Apache Flume 处理流数据 7
+我们需要Flume 7
+Flume 是否适合呢？ 9
+Flume Agent 内部原理 10
+配置Flume Agent 13
+Flume Agent 之间的相互通信 17
+复杂的流 17
+复制数据到不同目的地 20
+动态路由 21
+Flume 的数据丢失保证，Channel 和事务 22
+Flume Channel 中的事务 23
+Agent 失败和数据丢失 25
+批量的重要性 26
+重复怎么样？ 27
+运行Flume Agent 27
+总结 29
+参考文献 30
+
+第3 章 源（Source） 31
+Source 的生命周期 31
+Sink-to-Source 通信 33
+Avro Source 34
+Thrift Source 37
+RPC Sources 的失败处理 39
+HTTP Source 40
+针对HTTP Source 写处理程序* 42
+Spooling Directory Source 47
+使用Deserializers 读取自定义格式* 50
+Spooling Directory Source 性能55
+Syslog Source 55
+Exec Source 59
+JMS Source 61
+转换JMS 消息为Flume 事件* 63
+编写自定义Source* 65
+Event-Driven Source 和Pollable Source 66
+总结 73
+参考文献 73
+
+第4 章 Channel 75
+事务工作流 76
+Flume 自带的Channel 78
+Memory Channel 78
+File Channel 80
+总结 86
+参考文献 86
+
+第5 章 Sink 87
+Sink 的生命周期 88
+优化Sink 的性能 89
+写入到HDFS ：HDFS Sink 89
+理解Bucket 90
+配置HDFS Sink 93
+使用序列化器控制数据格式* 100
+HBase Sink 106
+用序列化器将Flume 事件转换成HBase Put 和Increment* 108
+RPC Sink 113
+Avro Sink 113
+Thrift Sink 115
+Morphline Solr Sink 116
+Elastic Search Sink 119
+自定义数据格式* 121
+其他Sink ：Null Sink、Rolling File Sink 和Logger Sink 124
+编写自定义Sink* 125
+总结 129
+参考文献 129
+
+第6章 拦截器、Channel选择器、Sink组和Sink处理器 131
+拦截器 131
+时间戳拦截器 132
+主机拦截器 133
+静态拦截器 133
+正则过滤拦截器 134
+Morphline 拦截器 135
+UUID 拦截器 136
+编写拦截器* 137
+Channel 选择器 140
+复制Channel 选择器 140
+多路复用Channel 选择器 141
+自定义Channel 选择器* 144
+Sink 组和Sink 处理器 146
+Load-Balancing Sink 处理器 148
+Failover Sink 处理器 151
+总结 153
+参考文献 154
+
+第7 章 发送数据到Flume* 155
+构建Flume 事件 155
+Flume 客户端SDK 156
+创建Flume RPC 客户端 157
+RPC 客户端接口 157
+所有RPC 客户端的公共配置参数 158
+默认RPC 客户端 165
+Load-Balancing RPC 客户端 168
+Failover RPC 客户端 171
+Thrift RPC 客户端 172
+嵌入式Agent 173
+配置嵌入式Agent 175
+log4j Appender 180
+Load-Balancing log4j Appender 181
+总结 182
+参考文献 183
+
+第8 章 规划、部署和监控Flume 185
+规划一个Flume 部署 185
+修复时间 185
+我的Flume Channel 需要多少容量？ 186
+多少层？ 186
+通过跨数据中心链接发送数据 188
+层分片 190
+部署Flume 191
+部署自定义代码 191
+监控Flume 193
+从自定义组件报告度量 196
+
+Apache Flume: Distributed Log Collection for Hadoop Second Edition
+Credits
+About the Author
+About the Reviewers
+www.PacktPub.com
+Support files, eBooks, discount offers, and more
+Why subscribe?
+Free access for Packt account holders
+Preface
+What this book covers
+What you need for this book
+Who this book is for
+Conventions
+Reader feedback
+Customer support
+Downloading the example code
+Errata
+Piracy
+Questions
+1. Overview and Architecture
+Flume 0.9
+Flume 1.X (Flume-NG)
+The problem with HDFS and streaming data/logs
+Sources, channels, and sinks
+Flume events
+Interceptors, channel selectors, and sink processors
+Tiered data collection (multiple flows and/or agents)
+The Kite SDK
+Summary
+2. A Quick Start Guide to Flume
+Downloading Flume
+Flume in Hadoop distributions
+An overview of the Flume configuration file
+Starting up with "Hello, World!"
+Summary
+3. Channels
+The memory channel
+The file channel
+Spillable Memory Channel
+Summary
+4. Sinks and Sink Processors
+HDFS sink
+Path and filename
+File rotation
+Compression codecs
+Event Serializers
+Text output
+Text with headers
+Apache Avro
+User-provided Avro schema
+File type
+SequenceFile
+DataStream
+CompressedStream
+Timeouts and workers
+Sink groups
+Load balancing
+Failover
+MorphlineSolrSink
+Morphline configuration files
+Typical SolrSink configuration
+Sink configuration
+ElasticSearchSink
+LogStash Serializer
+Dynamic Serializer
+Summary
+5. Sources and Channel Selectors
+The problem with using tail
+The Exec source
+Spooling Directory Source
+Syslog sources
+The syslog UDP source
+The syslog TCP source
+The multiport syslog TCP source
+JMS source
+Channel selectors
+Replicating
+Multiplexing
+Summary
+6. Interceptors, ETL, and Routing
+Interceptors
+Timestamp
+Host
+Static
+Regular expression filtering
+Regular expression extractor
+Morphline interceptor
+Custom interceptors
+The plugins directory
+Tiering flows
+The Avro source/sink
+Compressing Avro
+SSL Avro flows
+The Thrift source/sink
+Using command-line Avro
+The Log4J appender
+The Log4J load-balancing appender
+The embedded agent
+Configuration and startup
+Sending data
+Shutdown
+Routing
+Summary
+7. Putting It All Together
+Web logs to searchable UI
+Setting up the web server
+Configuring log rotation to the spool directory
+Setting up the target – Elasticsearch
+Setting up Flume on collector/relay
+Setting up Flume on the client
+Creating more search fields with an interceptor
+Setting up a better user interface – Kibana
+Archiving to HDFS
+Summary
+8. Monitoring Flume
+Monitoring the agent process
+Monit
+Nagios
+Monitoring performance metrics
+Ganglia
+Internal HTTP server
+Custom monitoring hooks
+Summary
+9. There Is No Spoon – the Realities of Real-time Distributed Data Collection
+Transport time versus log time
+Time zones are evil
+Capacity planning
+Considerations for multiple data centers
+Compliance and data expiry
+Summary
+Index
+
+1.1 Flume 0.9
+1.2 Flume 1.X（Flume-NG）
+1.3 HDFS与流式数据/日志的问题
+1.4 源、通道与接收器
+1.5 Flume事件
+1.5.1 拦截器、通道选择器与选择处理器
+1.5.2 分层数据收集（多数据流与代理）
+
+第2章 Flume快速起步
+2.1 下载Flume
+2.2 Flume配置文件概览
+2.3 从“Hello World”开始
+
+第3章 通道
+3.1 内存通道
+3.2 文件通道
+
+第4章 接收器与接收处理器
+4.1 HDFS接收器
+4.1.1 路径与文件名
+4.1.2 文件转储
+4.2 压缩编解码器
+4.3 事件序列化器
+4.3.1 文本输出
+4.3.2 带有头信息的文本
+4.3.3 Apache Avro
+4.3.4 文件类型
+4.3.5 超时设置与线程池
+4.4 接收器组
+4.4.1 负载均衡
+4.4.2 故障恢复
+
+第5章 源与通道选择器
+5.1 使用tail的问题
+5.2 exec源
+5.3 假脱机源
+5.4 syslog源
+5.4.1 syslog UDP源
+5.4.2 syslog TCP源
+5.4.3 多端口syslog TCP源
+5.5 通道选择器
+5.5.1 复制
+5.5.2 多路复用
+
+第6章 拦截器、ETL与路由
+6.1 拦截器
+6.1.1 Timestamp
+6.1.2 Host
+6.1.3 Static
+6.1.4 正则表达式过滤
+6.1.5 正则表达式抽取
+6.1.6 自定义拦截器
+6.2 数据流分层
+6.2.1 Avro源/接收器
+6.2.2 命令行Avro
+6.2.3 Log4J追加器
+6.2.4 负载均衡Log4J追加器
+6.3 路由
+
+第7章 监控Flume
+7.1 监控代理进程
+7.1.1 Monit
+7.1.2 Nagios
+7.2 监控性能度量情况
+7.2.1 Ganglia
+7.2.2 内部HTTP服务器
+7.2.3 自定义监控钩子
+
+第8章 万法皆空——实时分布式数据收集的现状
+8.1 传输时间与日志事件
+8.2 万恶的时区
+8.3 容量规划
+8.4 多数据中心的注意事项
+8.5 合规性与数据失效
+
+下篇 MapReduce模式
+第9章 使用Java编写一个单词统计应用（初级）
+9.1 准备工作
+9.2 操作步骤
+9.3 示例说明
+
+第10章 使用MapReduce编写一个单词统计应用并运行（初级）
+10.1 准备工作
+10.2 操作步骤
+10.3 示例说明
+10.4 补充说明
+
+第11章 在分布式环境中安装Hadoop并运行单词统计应用（初级）
+11.1 准备工作
+11.2 操作步骤
+11.3 示例说明
+
+第12章 编写格式化器（中级）
+12.1 准备工作
+12.2 操作步骤
+12.3 示例说明
+12.4 补充说明
+
+第13章 分析——使用MapReduce绘制频度分布（中级）
+13.1 准备工作
+13.2 操作步骤
+13.3 示例说明
+13.4 补充说明
+
+第14章 关系操作——使用MapReduce连接两个数据集（高级）
+14.1 准备工作
+14.2 操作步骤
+14.3 示例说明
+14.4 补充说明
+
+第15章 使用MapReduce实现集合操作（中级）
+15.1 准备工作
+15.2 操作步骤
+15.3 示例说明
+15.4 补充说明
+
+第16章 使用MapReduce实现交叉相关（中级）
+16.1 准备工作
+16.2 操作步骤
+16.3 示例说明
+16.4 补充说明
+
+第17章 使用MapReduce实现简单搜索（中级）
+17.1 准备工作
+17.2 操作步骤
+17.3 示例说明
+17.4 补充说明
+
+第18章 使用MapReduce实现简单的图操作（高级）
+18.1 准备工作
+18.2 操作步骤
+18.3 示例说明
+18.4 补充说明
+
+第19章 使用MapReduce实现Kmeans（高级）
+19.1 准备工作
+19.2 操作步骤
+19.3 示例说明
+19.4 补充说明
