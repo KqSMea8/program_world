@@ -1,0 +1,222 @@
+
+
+
+
+
+
+
+
+========================
+流程控制说明文档
+1.1. 流程控制介绍
+在去Oracle的大背景下，复杂业务处理，涉及大量IO交互情况下可以使用Java调用sql块代替PL/SQL控制任务执行流程。在IFRS17数据平台，涉及到合同分组、准备金、投资收益分摊等，多个项目的流程节点数目繁多，并且相互间存在依赖关系。如果采用硬编码方式，会使其开发量和后期维护的工作量繁重，故而根据流程的共性，设计出一套通用的流程控制架构。
+
+1.1.1. 整体流程控制概述
+1）通过数据库配置流程节点的依赖关系：父节点、子节点、执行流程的充分条件等，通过Java API加载进redis缓存；（备注：任务父子节点，即 一个任务流程中，该任务的上一个任务和下一个任务）
+2）通过restful API，MQ（部门MQ），定时任务（集成ARK）等方式，通知流程控制发起指定任务调用（微服务之间通信必须使用Fegin）;
+3）流程控制会优先读取缓存中任务信息，判断当前任务是否满足执行条件。即： a.任务若有父节点任务，则需要判断父节点任务是否完成；
+b.任务若有前置条件依赖，则需要判断前置条件任务是否完成； 例如：准备金某一步骤任务，要依赖于合同分组结果表任务的数据（多用于不同业务模块之间依赖）；
+4）执行过程中，通过执行日志信息、分布式锁等方式来保证流程的健壮性。
+2. 开发流程
+2.1. 数据库端节点配置
+同一业务之间，支持并行和串行两种流程方式：
+a) 并行方式，
+多个父节点时，必须保证所有父节点任务都完成后，才可以执行子任务；使用分布式锁控制，避免重复多次执行子任务；
+
+
+
+b) 串行方式
+
+
+c) 并行&串行方式
+任务D完成后，使用MQ发起两个进程执行任务E和任务F
+
+
+
+
+2.1.1. 任务信息表增加配置
+文档库数据字典：http://itdocshare.pingan.com.cn/sites/perdoc/LARS-CORE/Shared%20Documents/Forms/AllItems.aspx?RootFolder=%2Fsites%2Fperdoc%2FLARS-CORE%2FShared%20Documents%2FIFRS17&FolderCTID=0x0120001337463DE6D9B84D9A76626CBBD0796D&View={D7E7B5DB-87C0-418B-922D-B1547D7C86E1}
+
+a) 任务表
+
+同业务下，通过处理流程可以对task进行task_group分类。例如，合同分组中，初始化模块包括：新单同步、新单类型判断等，可以归属于合同分组初始化组别；
+域名id 是act_domain_info 的主键，调用任务时通过 域名+target_url
+方式拼接调用；
+若配置MQ相关信息，则流程控制在任务完成时，可以发送MQ，完成相
+关模块的业务通知（即文档13页中，C调用流程）；
+SEND_MQ_GROUP ：MQ根据核心系统规范，topic命名为
+rmqt-act-process（rmqt-微服务名-业务）；
+SEND_MQ_PARAM = task_name，根据MQ的内容判断;
+
+
+2.1.2. 任务条件表增加执行任务条件
+b) 任务条件表 create table sql:
+
+任务和条件是一对多关系；
+只有当所有任务条件都执行完成时，才会执行当前任务。此处重试机制，查询条件是否完成，重试3次，每次间隔3min。
+
+
+2.1.3. 微服务授权配置
+  根据核心系统规范，微服务间调用必须通过Fegin，并且需要授权；所以配置完数据库和代码开发完成后，还需要在git上增加以下两方面配置：
+a) 流程控制授权
+根据核心系统规范，对第三方服务restful api 必须 加一个二级url ；
+例如：数据平台微服务：http://lcloud-ifp-fds-act/act/api
+配置格式如下：
+ark.interfaceAuth.authMap.{具体接口} = {"type":"m2m","serviceId":"微服务名，多个逗号隔开"}
+例如：
+#流程控制-准备金-合同分组 API的相关接口
+ark.interfaceAuth.authMap./api/process/completeTask={"type":"m2m","serviceId":"lcloud-ifp-fds-act,lcloud-iap-lars"}
+b) 业务微服务授权
+同上。
+例如：
+#合同分组API的相关的接口
+#盈亏测试API
+ark.interfaceAuth.authMap./api/contract/group/proftest/profLevelCollect={"type":"m2m","serviceId":"lcloud-ifp-fds-act"}
+
+2.2. Java端开发流程
+2.2.1. 流程控制提供API接口
+开发环境，可用swagger-ui: http://localhost:20001/swagger-ui.html#
+测试环境：http://lcloud-iap-ams-nginx-bx-stg1-web-padis.paic.com.cn/#/fds/process/process/control
+
+2.2.1.1. 刷新任务缓存接口
+执行任务时，由于优先读取缓存数据；如果缓存找不到数据，则去数据库中加载。
+注意：taskName 为空时，默认刷新business_id下所有的任务缓存；如果taskName、business_id都为空时，刷新所有任务缓存。
+
+2.2.1.2. 发起流程调用接口
+传入指定的taskName，即可执行该任务以及所属的后续任务流程。
+    如果当前任务正在执行，则无法在执行期间重复调用该任务；
+可用于：发起任务、断点调用、任务测试等。
+
+2.2.1.3. 完成任务回调接口
+业务方执行完任务，需要回调通知流程控制。完成任务后，若有配置MQ，则自动生产消息，广播出去。
+
+2.2.1.4. 查询任务状态接口
+传入指定的taskName，即可查询任务状态。
+     注意：任务版本日期procDate，不传默认为最新版本。
+2.2.2. 业务方编写API接口
+
+注意：API接口定义的URL需要和数据库act_task_info表配置的id_act_domain_info,target_url, request_url_method 保持一致。
+
+若业务处理涉及到sql块调用，Fegin本质是HTTP调用，不适合建立长连接，容易消耗性能。所以API接口建议，同步直接返回接口调用成功，任务正在执行；异步处理具体业务流程，完成任务时，在回调流程控制API，反馈任务完成。
+若业务处理能够快速完成，流程控制也支持同步返回任务完成。
+异步具体实现不限，可以参考如下：
+
+业务处理必须保证原子性，增加
+@Transactional(rollbackFor=Exception.class)
+
+
+2.2.3日志查询，问题定位
+执行任务日志表：
+    任务状态为”S”时，即使完成任务，也不会往下执行；（即终止执行流程） 该设计是为了防止一些异常情况的出现，能及时手动终止流程。
+
+
+     异常信息日志表：
+        对于业务处理中出现的问题，例如：数据异常等，则记录该表；
+
+
+如果是API接口回调失败，或者项目环境一些问题，可能就没办法在日志表中体现。需要登录padis查看，操作如下：
+a) 实时日志
+1. 登录终端
+
+
+2. 日志路径 及 文件
+cd  /wls/applogs
+tail -300f lcloud-ifp-fds-act-springboot-bx-stg1-web_10.30.206.215.out
+
+b) 备份日志
+
+
+
+    @Override
+    public RetJsonMsg executeTask(String taskName){
+        TaskInfoDTO taskInfoDTO ;
+        Boolean lock = Boolean.FALSE;
+        String lockKey = null;
+        RetJsonMsg retJson = RetJsonMsg.success();
+        //校验任务名
+        taskInfoDTO = checkTaskName(taskName, retJson);
+        if(StatusCodeEnum.SUCCESS.getCode() != retJson.getCode()){
+            return retJson;
+        }
+        //根据执行频率获取当前执行数据版本日期
+        String procDate = getProcDate(taskInfoDTO, retJson);
+        if(StatusCodeEnum.SUCCESS.getCode() != retJson.getCode()){
+            return retJson;
+        }
+        //判断任务是否正在执行
+        ActTaskTraceInfo actTaskTraceInfo = taskTraceDao.queryTaskTraceInfoByTaskName(taskName, procDate);
+        if(!Objects.isNull(actTaskTraceInfo) && (StringUtils.equals(TaskStatusCode.NULL.getStatus(), actTaskTraceInfo.getExecFlag())
+                || StringUtils.equals(TaskStatusCode.RUNING.getStatus(), actTaskTraceInfo.getExecFlag())
+                || StringUtils.equals(TaskStatusCode.WAITING.getStatus(), actTaskTraceInfo.getExecFlag()))){
+            retJson = RetJsonMsg.getRet(StatusCodeEnum.RUN_TASK_ERROR);
+            retJson.setData("Task is being executed, task name : " + taskInfoDTO.getTaskName());
+            return retJson;
+        }
+        //前置执行任务条件判断
+        checkCondition(taskInfoDTO, procDate, retJson);
+        if(StatusCodeEnum.SUCCESS.getCode() != retJson.getCode()){
+            return retJson;
+        }
+        try {
+            if(!StringUtils.isEmpty(taskInfoDTO.getPreTaskName())){
+                String[] preTaskNames = taskInfoDTO.getPreTaskName().split(",");
+                //判断所有父类都执行完
+                checkPreTask(preTaskNames, procDate, retJson);
+                if(StatusCodeEnum.SUCCESS.getCode() != retJson.getCode()){
+                    return retJson;
+                }
+                //如果有多个父类，则要用分布式锁控制
+                if(preTaskNames.length > 1){
+                    lockKey = PROCESS_REDIS_PREFIX + taskInfoDTO.getPreTaskName()+ "_" +taskInfoDTO.getTaskName();
+                    lock = redisTemplate.opsForValue().setIfAbsent(lockKey, "LOCK");
+                    if(!lock){
+                        retJson.setCode(StatusCodeEnum.FAIL.getCode());
+                        retJson.setMsg(StatusCodeEnum.FAIL.getMsg());
+                        retJson.setData("任务没获取到分布式锁, task info :" + gson.toJson(taskInfoDTO));
+                        return retJson;
+                    }
+                    //成功,设置过期时间
+                    redisTemplate.expire(lockKey,taskInfoDTO.getOverTime(), TimeUnit.MINUTES);
+                }
+            }
+            LoggerUtil.info("任务：{}, 开始执行", taskInfoDTO.getTaskName());
+            //插入日志
+            ActTaskTraceInfo actTaskTraceInfo1 =  ActTaskTraceInfo.builder()
+                    .taskInfoId(taskInfoDTO.getTaskInfoId())
+                    .procDate(procDate)
+                    .taskName(taskInfoDTO.getTaskName())
+                    .runType("自动")
+                    .isVer("N")
+                    .execFlag(TaskStatusCode.WAITING.getStatus())
+                    .startDate(new Date())
+                    .traceType(TraceTypeConstant.CONTROLLER)
+                    .build();
+            actTaskTraceInfo1.setId(UUIDUtils.getUUID());
+            actTaskTraceInfo1.setCreatedDate(new Date());
+            actTaskTraceInfo1.setUpdatedDate(new Date());
+            taskTraceDao.insert(actTaskTraceInfo1);
+            //执行任务
+            retJson = executeTask(taskInfoDTO);
+            if(StatusCodeEnum.SUCCESS.getCode() != retJson.getCode()){
+                actTaskTraceInfo1.setExecFlag(TaskStatusCode.EXCEPTION.getStatus());
+                taskTraceDao.updateTraceByTaskProcDate(taskName, procDate, TaskStatusCode.EXCEPTION.getStatus(), TraceTypeConstant.CONTROLLER, new Date());
+                return retJson;
+            }
+            taskTraceDao.updateTraceByTaskProcDate(taskName, procDate, TaskStatusCode.RUNING.getStatus(),  TraceTypeConstant.CONTROLLER, new Date());
+        } catch (Exception e) {
+            LoggerUtil.info("execute task failure : {}" ,e);
+            retJson.setCode(StatusCodeEnum.FAIL.getCode());
+            retJson.setMsg(StatusCodeEnum.FAIL.getMsg());
+            retJson.setData("execute task failure, task name : " + taskInfoDTO.getTaskName());
+            return retJson;
+        }finally {
+            if (lock) {
+                redisTemplate.delete(lockKey);
+                LoggerUtil.info( "{} 任务结束，释放锁!", taskInfoDTO.getTaskName());
+            }
+            LoggerUtil.info("任务：{}, 完成执行", taskInfoDTO.getTaskName());
+        }
+        return retJson;
+    }
+
+  ===============================
