@@ -1,4 +1,374 @@
-Mybatis
+第1 章 MyBatis 简介 1
+1.1 传统的JDBC 编程 1
+1.2 ORM 模型 4
+1.3 Hibernate 4
+1.4 MyBatis 9
+1.5 什么时候用MyBatis 12
+第2 章 MyBaits 入门 13
+2.1 开发环境准备.13
+2.1.1 下载MyBatis 13
+2.1.2 搭建开发环境 14
+2.2 MyBatis 的基本构成 15
+2.2.1 构建SqlSessionFactory 15
+2.2.2 创建SqlSession19
+2.2.3 映射器 21
+2.3 生命周期.26
+2.3.1 SqlSessionFactoryBuilder 27
+2.3.2 SqlSessionFactory 27
+2.3.3 SqlSession 27
+2.3.4 Mapper 28
+2.4 实例 28
+第3 章 配置 37
+3.1 properties 元素 38
+3.1.1 property 子元素.38
+3.1.2 properties 配置文件 39
+3.1.3 程序参数传递 39
+3.1.4 优先级 40
+3.2 设置 41
+3.3 别名 44
+3.3.1 系统定义别名 44
+3.3.2 自定义别名 47
+3.4 typeHandler 类型处理器.48
+3.4.1 系统定义的typeHandler 49
+3.4.2 自定义typeHandler 51
+3.4.3 枚举类型typeHandler55
+3.5 ObjectFactory 62
+3.6 插件 65
+3.7 environments 配置环境 65
+3.7.1 概述65
+3.7.2 数据库事务 66
+3.7.3 数据源 67
+3.8 databaseIdProvider 数据库厂商标识 68
+3.8.1 使用系统默认规则 68
+3.8.2 不使用系统默认规则69
+3.9 引入映射器的方法 71
+第4 章 映射器 73
+4.1 映射器的主要元素 73
+4.2 select 元素 74
+4.2.1 概述74
+4.2.2 简易数据类型的例子75
+4.2.3 自动映射.76
+4.2.4 传递多个参数 78
+4.2.5 使用resultMap 映射结果集 81
+4.3 insert 元素 82
+4.3.1 概述82
+4.3.2 主键回填和自定义 83
+4.4 update 元素和delete 元素 85
+4.5 参数 85
+4.5.1 参数配置.86
+4.5.2 存储过程支持 86
+4.5.3 特殊字符串替换和处理（#和$） 87
+4.6 sql 元素 88
+4.7 resultMap 结果映射集 89
+4.7.1 resultMap 元素的构成 89
+4.7.2 使用map 存储结果集91
+4.7.3 使用POJO 存储结果集 91
+4.7.4 级联92
+4.8 缓存cache 113
+4.8.1 系统缓存（一级缓存和二级缓存） 113
+4.8.2 自定义缓存 117
+第5 章 动态SQL 119
+5.1 概述119
+5.2 if 元素 120
+5.3 choose、when、otherwise 元素 120
+5.4 trim、where、set 元素 121
+5.5 foreach 元素 123
+5.6 test 的属性 124
+5.7 bind 元素125
+第6 章 MyBatis 的解析和运行原理 127
+6.1 涉及的技术难点简介 128
+6.1.1 反射技术129
+6.1.2 JDK 动态代理.130
+6.1.3 CGLIB 动态代理 133
+6.2 构建SqlSessionFactory 过程134
+6.2.1 构建Configuration 135
+6.2.2 映射器的内部组成 136
+6.2.3 构建SqlSessionFactory 138
+6.3 SqlSession 运行过程 138
+6.3.1 映射器的动态代理 138
+6.3.2 SqlSession 下的四大对象.142
+6.3.3 SqlSession 运行总结150
+第7 章 插件.152
+7.1 插件接口152
+7.2 插件的初始化153
+7.3 插件的代理和反射设计154
+7.4 常用的工具类——MetaObject 157
+7.5 插件开发过程和实例 159
+7.5.1 确定需要拦截的签名 159
+7.5.2 实现拦截方法.161
+7.5.3 配置和运行 162
+7.5.4 插件实例163
+7.6 总结166
+第8 章 MyBatis-Spring 168
+8.1 Spring 的基础知识.168
+8.1.1 Spring IOC 基础 169
+8.1.2 Spring AOP 基础 171
+8.1.3 Spring 事务管理 173
+8.1.4 Spring MVC 基础 179
+8.2 MyBatis-Spring 应用 181
+8.2.1 概述 181
+8.2.2 配置SqlSessionFactory 182
+8.2.3 配置SqlSessionTemplate 184
+8.2.4 配置Mapper 188
+8.2.5 配置事务190
+8.3 实例191
+8.3.1 环境准备191
+8.3.2 文件目录193
+8.3.3 Spring 配置文件 194
+8.3.4 MyBatis 框架相关配置 198
+8.3.5 配置服务层 205
+8.3.6 编写控制器 209
+8.3.7 测试 210
+8.4 总结210
+第9 章 实用的场景 212
+9.1 数据库BLOB 字段读写 212
+9.2 批量更新215
+9.3 调用存储过程217
+9.3.1 存储过程in 和out 参数的使用217
+9.3.2 存储过程游标.220
+9.4 分表225
+9.5 分页227
+9.5.1 RowBounds 分页 227
+9.5.2 插件分页229
+9.6 上传文件到服务器239
+9.7 在映射中使用枚举247
+9.8 多对多级联 249
+9.9 总结253
+附录A 数据库模型描述与级联学生关系建表语句.254
+
+
+
+第1章　MyBatis快速入门
+1．1　ORM简介
+1．2　常见持久化框架
+1．3　MyBatis示例
+1．4　MyBatis整体架构
+1．4．1　基础支持层
+1．4．2　核心处理层
+1．4．3　接口层
+1．5　本章小结
+第2章　基础支持层
+2．1　解析器模块
+2．1．1　XPath简介
+2．1．2　XPathParser
+2．2　反射工具箱
+2．2．1　Reflector＆ReflectorFactory
+2．2．2　TypeParameterResolver
+2．2．3　ObjectFactory
+2．2．4　Property工具集
+2．2．5　MetaClass
+2．2．6　ObjectWrapper
+2．2．7　MetaObject
+2．3　类型转换
+2．3．1　TypeHandler
+2．3．2　TypeHandlerRegistry
+2．3．3　TypeAliasRegistry
+2．4　日志模块
+2．4．1　适配器模式
+2．4．2　日志适配器
+2．4．3　代理模式与JDK动态代理
+2．4．4　JDBC调试
+2．5　资源加载
+2．5．1　类加载器简介
+2．5．2　ClassLoaderWrapper
+2．5．3　ResolverUtil
+2．5．4　单例模式
+2．5．5　VFS
+2．6　DataSource
+2．6．1　工厂方法模式
+2．6．2　DataSourceFactory
+2．6．3　UnpooledDataSource
+2．6．4　PooledDataSource
+2．7　Transaction
+2．8　binding模块
+2．8．1　MapperRegistry＆MapperProxyFactory
+2．8．2　MapperProxy
+2．8．3　MapperMethod
+2．9　缓存模块
+2．9．1　装饰器模式
+2．9．2　Cache接口及其实现
+2．9．3　CacheKey
+2．10　本章小结
+第3章　核心处理层
+3．1　MyBatis初始化
+3．1．1　建造者模式
+3．1．2　BaseBuilder
+3．1．3　XMLConfigBuilder
+3．1．4　XMLMapperBuilder
+3．1．5　XMLStatementBuilder
+3．1．6　绑定Mapper接口
+3．1．7　处理incomplete*集合
+3．2　SqlNode＆SqlSource
+3．2．1　组合模式
+3．2．2　OGNL表达式简介
+3．2．3　DynamicContext
+3．2．4　SqlNode
+3．2．5　SqlSourceBuilder
+3．2．6　DynamicSqlSource
+3．2．7　RawSqlSource
+3．3　ResultSetHandler
+3．3．1　handleResultSets()方法
+3．3．2　ResultSetWrapper
+3．3．3　简单映射
+3．3．4　嵌套映射
+3．3．5　嵌套查询＆延迟加载
+3．3．6　多结果集处理
+3．3．7　游标
+3．3．8　输出类型的参数
+3．4　KeyGenerator
+3．4．1　Jdbc3KeyGenerator
+3．4．2　SelectkeyGenerator
+3．5　StatementHandler
+3．5．1　RoutingStatementHandler
+3．5．2　BaseStatementHandler
+3．5．3　ParameterHandler
+3．5．4　SimpleStatementHandler
+3．5．5　PreparedStatementHandler
+3．6　Executor
+3．6．1　模板方法模式
+3．6．2　BaseExecutor
+3．6．3　SimpleExecutor
+3．6．4　ReuseExecutor
+3．6．5　BatchExecutor
+3．6．6　CachingExecutor
+3．7　接口层
+3．7．1　策略模式
+3．7．2　SqlSession
+3．7．3　DefaultSqlSessionFactory
+3．7．4　SqlSessionManager
+3．8　本章小结
+第4章　高级主题
+4．1　插件模块
+4．1．1　责任链模式
+4．1．2　Interceptor
+4．1．3　应用场景分析
+4．2　MyBatis与Spring集成
+4．2．1　Spring基本概念
+4．2．2　Spring MVC介绍
+4．2．3　集成环境搭建
+4．2．4 Mybatis-Spring剖析
+4．3　拾遗
+4．3．1　应用＜sql＞节点
+4．3．2　OgnlUtils工具类
+4．3．3　SQL语句生成器
+4．3．4　动态SQL脚本插件
+4．3．5　MyBatis-Generator逆向工程
+
+第1章　MyBatis快速入门
+1．1　ORM简介
+1．2　常见持久化框架
+1．3　MyBatis示例
+1．4　MyBatis整体架构
+1．4．1　基础支持层
+1．4．2　核心处理层
+1．4．3　接口层
+1．5　本章小结
+第2章　基础支持层
+2．1　解析器模块
+2．1．1　XPath简介
+2．1．2　XPathParser
+2．2　反射工具箱
+2．2．1　Reflector＆ReflectorFactory
+2．2．2　TypeParameterResolver
+2．2．3　ObjectFactory
+2．2．4　Property工具集
+2．2．5　MetaClass
+2．2．6　ObjectWrapper
+2．2．7　MetaObject
+2．3　类型转换
+2．3．1　TypeHandler
+2．3．2　TypeHandlerRegistry
+2．3．3　TypeAliasRegistry
+2．4　日志模块
+2．4．1　适配器模式
+2．4．2　日志适配器
+2．4．3　代理模式与JDK动态代理
+2．4．4　JDBC调试
+2．5　资源加载
+2．5．1　类加载器简介
+2．5．2　ClassLoaderWrapper
+2．5．3　ResolverUtil
+2．5．4　单例模式
+2．5．5　VFS
+2．6　DataSource
+2．6．1　工厂方法模式
+2．6．2　DataSourceFactory
+2．6．3　UnpooledDataSource
+2．6．4　PooledDataSource
+2．7　Transaction
+2．8　binding模块
+2．8．1　MapperRegistry＆MapperProxyFactory
+2．8．2　MapperProxy
+2．8．3　MapperMethod
+2．9　缓存模块
+2．9．1　装饰器模式
+2．9．2　Cache接口及其实现
+2．9．3　CacheKey
+2．10　本章小结
+第3章　核心处理层
+3．1　MyBatis初始化
+3．1．1　建造者模式
+3．1．2　BaseBuilder
+3．1．3　XMLConfigBuilder
+3．1．4　XMLMapperBuilder
+3．1．5　XMLStatementBuilder
+3．1．6　绑定Mapper接口
+3．1．7　处理incomplete*集合
+3．2　SqlNode＆SqlSource
+3．2．1　组合模式
+3．2．2　OGNL表达式简介
+3．2．3　DynamicContext
+3．2．4　SqlNode
+3．2．5　SqlSourceBuilder
+3．2．6　DynamicSqlSource
+3．2．7　RawSqlSource
+3．3　ResultSetHandler
+3．3．1　handleResultSets()方法
+3．3．2　ResultSetWrapper
+3．3．3　简单映射
+3．3．4　嵌套映射
+3．3．5　嵌套查询＆延迟加载
+3．3．6　多结果集处理
+3．3．7　游标
+3．3．8　输出类型的参数
+3．4　KeyGenerator
+3．4．1　Jdbc3KeyGenerator
+3．4．2　SelectkeyGenerator
+3．5　StatementHandler
+3．5．1　RoutingStatementHandler
+3．5．2　BaseStatementHandler
+3．5．3　ParameterHandler
+3．5．4　SimpleStatementHandler
+3．5．5　PreparedStatementHandler
+3．6　Executor
+3．6．1　模板方法模式
+3．6．2　BaseExecutor
+3．6．3　SimpleExecutor
+3．6．4　ReuseExecutor
+3．6．5　BatchExecutor
+3．6．6　CachingExecutor
+3．7　接口层
+3．7．1　策略模式
+3．7．2　SqlSession
+3．7．3　DefaultSqlSessionFactory
+3．7．4　SqlSessionManager
+3．8　本章小结
+第4章　高级主题
+4．1　插件模块
+4．1．1　责任链模式
+4．1．2　Interceptor
+4．1．3　应用场景分析
+4．2　MyBatis与Spring集成
+4．2．1　Spring基本概念
+4．2．2　Spring MVC介绍
+4．2．3　集成环境搭建
+4．2．4 Mybatis-Spring剖析
+4．3　拾遗
+4．3．1　应用＜sql＞节点
+4．3．2　OgnlUtils工具类
+4．3．3　SQL语句生成器
+4．3．4　动态SQL脚本插件
+4．3．5　MyBatis-Generator逆向工程
 
 #{}是预编译处理，${}是字符串替换；
 
