@@ -1,3 +1,25 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Spring Boot / Spring Cloud
 104. 什么是 spring boot？
 
@@ -15,13 +37,6 @@ Spring Boot使部署变简单
 Spring Boot使监控变简单
 
 Spring的不足
-1
-2
-3
-4
-5
-6
-7
 106. spring boot 核心配置文件是什么？
 
 Spring Boot提供了两种常用的配置文件：
