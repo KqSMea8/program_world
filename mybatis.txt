@@ -370,6 +370,813 @@
 4．3．4　动态SQL脚本插件
 4．3．5　MyBatis-Generator逆向工程
 
+
+第2章　了解MyBatis 14
+2．1 传统JDBC开发模式的缺陷 14
+2．1．1 JDBC连接数据库模式分析 14
+2．1．2 JDBC操作SQL语句模式分析 16
+2．1．3 待优化的问题 17
+2．2 初识MyBatis 18
+2．2．1 MyBatis介绍 18
+2．2．2 MyBatis整体架构 18
+2．2．3 MyBatis运行流程 21
+
+第3章 搭建MyBatis工作环境 23
+3．1 入门程序搭建与测试 23
+3．1．1 数据库准备 23
+3．1．2 搭建工程环境 24
+3．1．3 编写日志输出环境配置文件 26
+3．1．4 编写数据库连接池配置文件 27
+3．1．5 编写SQL映射配置文件 29
+3．1．6 编写数据交互类与测试用例 30
+3．2 入门程序数据操作 33
+3．2．1 模糊查询样例 33
+3．2．2 新增样例 34
+3．2．3 删除与修改样例 37
+
+第4章 MyBatis配置文件详解 40
+4．1 SqlMapConfig配置文件详解 40
+4．1．1 properties配置分析 43
+4．1．2 setting配置分析 44
+4．1．3 typeAliases配置分析 48
+4．1．4 typeHandlers配置分析 50
+4．1．5 objectFactory配置分析 53
+4．1．6 plugins配置分析 56
+4．1．7 environments配置分析 58
+4．1．8 mappers配置分析 60
+4．2 Mapper映射文件 61
+4．2．1 映射文件总体介绍 61
+4．2．2 Mapper配置输入映射 64
+4．2．3 Mapper输入映射样例 65
+4．2．4 Mapper配置输出映射 68
+4．2．5 Mapper自动映射 75
+4．2．6 Mapper配置动态SQL语句 76
+
+第5章 MyBatis高级映射 80
+5．1 建立测试数据模型 80
+5．1．1 业务模型分析 80
+5．1．2 根据业务创建测试表 81
+5．2 一对一查询 83
+5．2．1 使用resultType实现 83
+5．2．2 使用resultMap实现 85
+5．3 一对多查询 87
+5．3．1 实体类定义与Mapper编写 87
+5．3．2 测试查询结果 89
+5．4 多对多查询 90
+5．4．1 实体类定义与Mapper编写 91
+5．4．2 测试查询结果 94
+5．5 延迟加载 96
+5．5．1 Mapper映射配置编写 96
+5．5．2 测试延迟加载效果 97
+5．6 Mapper动态代理 99
+5．6．1 Mapper代理实例编写 99
+5．6．2 测试动态代理效果 100
+
+第6章 MyBatis缓存结构 102
+6．1 一级查询缓存 103
+6．1．1 一级缓存原理阐述 103
+6．1．2 一级缓存测试示例 103
+6．2 二级查询缓存 105
+6．2．1 二级缓存原理阐述 105
+6．2．2 二级缓存测试实例 106
+6．2．3 验证二级缓存清空 108
+
+第7章 MyBatis技术拓展 110
+7．1 MyBatis与Spring的整合 110
+7．1．1 创建测试工程 110
+7．1．2 引入依赖jar包 111
+7．1．3 编写Spring配置文件 112
+7．1．4 编写MyBatis配置文件 114
+7．1．5 编写Mapper及其他配置文件 115
+7．1．6 编写DAO层 116
+7．1．7 编写Service测试类 117
+7．1．8 使用Mapper代理 118
+7．2 MyBatis逆向工程 121
+7．2．1 逆向工程配置 121
+7．2．2 逆向数据文件生成类 123
+7．2．3 运行测试方法 124
+7．2．4 测试生成的数据文件 126
+
+第3篇 Spring MVC技术入门
+第8章　Spring MVC 132
+8．1 Spring MVC基础 133
+8．1．1 Spring体系结构 133
+8．1．2 Spring MVC请求流程 134
+8．2 Spring MVC与Struts的区别 135
+8．3 Spring MVC环境搭建 136
+8．3．1　依赖jar包的添加和前端控制器配置 137
+8．3．2　编写核心配置文件springmvc．xml 138
+8．3．3　编写Handler处理器与视图 140
+
+第9章 处理器映射器和适配器 144
+9．1 非注解的处理器映射器和适配器 144
+9．1．1　非注解的处理器映射器 144
+9．1．2　非注解的处理器适配器 146
+9．2 注解的处理器映射器和适配器 151
+
+第10章 前端控制器和视图解析器 154
+10．1 前端控制器源码分析 154
+10．2 视图解析器 162
+10．2．1　AbstractCachingViewResolver 162
+10．2．2　UrlBasedViewResolver 162
+10．2．3　InternalResourceViewResolver 163
+10．2．4　XmlViewResolver 163
+10．2．5　BeanNameViewResolver 164
+10．2．6　ResourceBundleViewResolver 165
+10．2．7　FreeMarkerViewResolver与VelocityViewResolver 167
+10．2．8　ViewResolver链 168
+
+第11章 请求映射与参数绑定 169
+11．1 Controller与RequestMapping 169
+11．2 参数绑定过程 173
+11．2．1　简单类型参数绑定 174
+11．2．2　包装类型参数绑定 176
+11．2．3　集合类型参数绑定 182
+
+第12章 Validation校验 187
+12．1 Bean Validation数据校验 188
+12．1．1 搭建validation校验框架 188
+12．1．2 添加校验注解信息 189
+12．1．3 测试validation校验效果 191
+12．1．4 validation注解全面介绍 192
+12．2 分组校验 193
+12．2．1 设置分组校验 193
+12．2．2 测试分组校验效果 195
+12．3 Spring Validator接口校验 195
+12．3．1 Validator接口的使用 195
+12．3．2 Validator接口验证测试 199
+
+第13章 异常处理和拦截器 201
+13．1 全局异常处理器 201
+13．2 拦截器定义与配置 207
+13．2．1　HandlerInterceptor接口 207
+13．2．2　WebRequestInterceptor接口 209
+13．2．3　拦截器链 210
+13．2．4　拦截器登录控制 213
+
+第14章　Spring MVC其他操作 217
+14．1　利用 Spring MVC上传文件 217
+14．2　利用Spring MVC实现JSON交互 223
+14．3　利用Spring MVC实现RESTful风格 231
+14．3．1　RESTful 231
+14．3．2　使用Spring MVC实现RESTful风格 232
+14．3．3　静态资源访问问题 235
+
+第4篇　Spring MVC与MyBatis项目实战
+第15章 项目分析与建模 238
+15．1 项目需求分析 238
+15．1．1 系统主要使用者业务关系分析 239
+15．1．2 系统主要使用者经济关系分析 239
+15．2 项目UML图例 240
+15．2．1 UML图的类型 240
+15．2．2 绘制系统用例图 241
+15．2．3 绘制系统模块图 241
+15．3 项目数据库建模 242
+15．3．1 系统数据关系分析 243
+15．3．2 系统主要表设计 243
+
+第16章 开发框架环境搭建 250
+16．1 搭建工程的Maven环境 250
+16．1．1 Maven下载配置 250
+16．1．2 创建Maven工程 252
+16．1．3 为工程添加依赖 254
+16．2 开发框架基础配置与测试 259
+16．2．1 开发框架环境配置 259
+16．2．2　测试环境配置结果 266
+
+第17章　核心代码以及登录模块编写 277
+17．1 各层核心基础代码 277
+17．1．1 编写DAO层核心代码 277
+17．1．2 编写Controller层核心代码 279
+17．2 登录注册管理模块 280
+17．2．1 编写登录模块 280
+17．2．2　编写登录验证服务 283
+17．2．3 编写注册模块 288
+17．2．4 编写注册服务 290
+
+第18章 零售商及货物管理模块 292
+18．1 零售商管理模块 292
+18．1．1 添加主导航栏 292
+18．1．2 编写基础Controller及实体类 294
+18．1．3 创建Mapper映射文件 295
+18．1．4 编写DAO层处理逻辑 297
+18．1．5 编写Service层处理逻辑 297
+18．1．6 完善Controller类 298
+18．1．7 编写相关视图页面 300
+18．1．8 分页操作逻辑编写 302
+18．1．9 测试分页效果 305
+18．1．10 编写编辑功能 307
+18．1．11 测试编辑功能 310
+18．1．12 编写删除功能 311
+18．1．13 测试删除功能 312
+18．1．14 编写添加功能 312
+18．1．15 测试添加功能 314
+18．2 货物信息管理模块 315
+18．2．1 导航栏与Controller基础准备 315
+18．2．2 创建Mapper映射文件 316
+18．2．3 编写DAO层处理逻辑 318
+18．2．4 编写Service层处理逻辑 319
+18．2．5 完善Controller类 320
+18．2．6 编写相关视图页面 322
+18．3 附属品管理模块 325
+18．3．1 导航栏与Controller基础准备 325
+18．3．2 创建Mapper映射文件 326
+18．3．3 完善Controller类 327
+18．3．4 编写相关视图页面 329
+18．3．5 验证页面效果 331
+18．3．6 批量删除实现 332
+
+第19章 购销合同管理模块 335
+19．1 购销合同管理模块 335
+19．1．1 购销合同Mapper实现 335
+19．1．2 编写DAO层处理逻辑 341
+19．1．3 编写Service层处理逻辑 342
+19．1．4 编写Controller基础类 344
+19．1．5 编写相关视图页面 345
+19．2 关联零售商 347
+19．2．1 编写添加逻辑 347
+19．2．2 实现零售商关联浮出框 349
+19．2．3 测试零售商关联 354
+19．3 关联水果货物 354
+19．3．1 货物关联展示与浮出框编写 354
+19．3．2 勾选货物功能编写 358
+19．3．3 测试货物关联 360
+19．4 完善购销合同 360
+19．4．1 合同关联信息合并提交 360
+19．4．2 测试合并提交 365
+19．4．3 合同打印以及删除实现 369
+19．5　总结 372
+
+1．1　Java EE应用概述 2
+1．1．1　Java EE应用的分层模型 2
+1．1．2　Java EE应用的组件 3
+1．1．3　Java EE应用的结构和优势 4
+1．2　轻量级Java EE应用相关技术 4
+1．2．1　JSP、Servlet和JavaBean及替代技术 4
+1．2．2　MyBatis 3及替代技术 5
+1．2．3　Spring 5及替代技术 6
+1．2．4　使用开源框架的好处 7
+1．3　本章小结 7
+
+第2章　Spring MVC简介 8
+2．1　MVC思想概述 9
+2．1．1　传统Model1和Model2 9
+2．1．2　MVC思想及其优势 10
+2．2　Struts 2和Spring MVC 11
+2．2．1　Spring MVC的优势 11
+2．2．2　Spring MVC和Struts 2的区别 11
+2．3　开发第一个Spring MVC应用 12
+2．3．1　Spring的下载和安装 12
+2．3．2　Spring MVC的DispatcherServlet 13
+2．3．3　基于Controller接口的控制器 14
+示例：第一个Spring MVC应用 14
+示例：基于注解的控制器 18
+2．4　详解DispatcherServlet 20
+2．5　Spring MVC执行的流程 22
+2．5．1　Spring MVC应用的开发步骤 22
+2．5．2　Spring MVC执行的流程 24
+2．6　本章小结 25
+
+第3章　Spring MVC的常用注解 26
+3．1　@Controller注解 27
+示例：@Controller注解的使用 27
+3．2　@RequestMapping注解 29
+3．2．1　@RequestMapping注解简介 29
+3．2．2　请求处理方法中可出现的参数类型 32
+3．2．3　请求处理方法可返回的类型 33
+3．2．4　Model和ModelMap 33
+示例：Model和ModelMap的使用 34
+3．2．5　ModelAndView 35
+示例：ModelAndView的使用 35
+3．2．6　页面转发 35
+3．3　@RequestParam注解 36
+示例：@RequestMapping和@RequestParam注解的使用 37
+3．4　@PathVariable注解 41
+3．5　@MatrixVariable注解 42
+3．6　@CrossOrigin注解 42
+示例：@PathVariable注解和@MatrixVariable注解的使用 43
+示例：@CrossOrigin注解的使用 45
+3．7　@RequestHeader注解 46
+示例：@RequestHeader注解的使用 47
+3．8　@CookieValue注解 48
+示例：@CookieValue注解的使用 49
+3．9　@RequestAttribute注解 50
+3．10　@SessionAttribute注解 50
+示例：@RequestAttribute注解和@SessionAttribute注解的使用 51
+3．11　@SessionAttributes注解 53
+示例：@SessionAttributes注解的使用 53
+3．12　@ModelAttribute注解 55
+示例：@ModelAttribute注解的使用 55
+3．13　@RequestBody注解 62
+3．13．1　HttpMessageConverter＜T＞接口 62
+3．13．2　转换JSON数据 64
+示例：@RequestBody接收JSON格式的数据 65
+示例：自定义HttpMessageConverter接收JSON格式的数据 68
+3．14　@ResponseBody注解 70
+示例：@ResponseBody返回JSON格式的数据 70
+示例：自定义HttpMessageConverter返回JSON格式的数据 72
+3．15　转换XML数据 72
+示例：接收XML格式的数据 72
+示例：返回XML格式的数据 75
+3．16　@RestController注解 76
+示例：@RestController注解的使用 76
+3．17　Spring MVC的异常处理 77
+3．17．1　Spring MVC异常处理接口以及实现类 77
+示例：SimpleMappingExceptionResolver处理异常 78
+3．17．2 @ResponseStatus注解 82
+示例：@ResponseStatus处理异常 82
+3．17．3　@ExceptionHandle注解 84
+示例：@ExceptionHandler处理异常 84
+3．17．4　@ControllerAdvice注解 87
+示例：@ControllerAdvice处理异常 87
+3．17．5　@RestControllerAdvice注解 91
+示例：@RestControllerAdvice注解的使用 91
+3．18　本章小结 92
+
+第4章　Spring MVC的标签库 93
+4．1　表单标签库 94
+4．1．1　form标签 94
+4．1．2　input标签 95
+示例：form和input标签的使用 95
+4．1．3　password标签 97
+4．1．4　hidden标签 98
+4．1．5　textarea标签 98
+4．1．6　checkbox标签 99
+示例：checkbox标签的使用 99
+4．1．7　checkboxes标签 101
+示例：checkboxes标签的使用 101
+4．1．8　radiobutton标签 105
+示例：radiobutton标签的使用 105
+4．1．9　radiobuttons标签 106
+示例：radiobuttons标签的使用 107
+4．1．10　select标签 108
+4．1．11　option标签 109
+4．1．12　options标签 109
+示例：select、option和options标签的使用 109
+4．1．13 errors标签 113
+示例：errors标签的使用 114
+4．2　本章小结 116
+
+第5章　Spring MVC的国际化 117
+5．1　Spring MVC国际化的相关知识 118
+5．1．1　messageSource接口 118
+5．1．2　localeResolver接口 118
+5．1．3　message标签 119
+5．2　Spring MVC的国际化处理 119
+5．2．1　AcceptHeaderLocaleResolver 119
+示例：基于浏览器请求的国际化实现 119
+5．2．2　SessionLocaleResolver 122
+示例：基于HttpSession的国际化实现 123
+5．2．3　CookieLocaleResolver 125
+示例：基于Cookie的国际化实现 125
+5．3　本章小结 127
+
+第6章　Spring MVC的数据转换、格式化和数据校验 128
+6．1　数据绑定流程 129
+6．2　数据转换 129
+6．2．1　ConversionService 129
+6．2．2　Spring支持的转换器 130
+示例：使用ConversionService转换数据 131
+示例：使用@InitBinder添加自定义编辑器转换数据 134
+示例：使用WebBindingInitializer注册全局自定义编辑器转换数据 135
+6．2．3 多种转换器的优先顺序 135
+6．3　数据格式化 136
+示例：使用Formatter格式化数据 137
+示例：使用FormatterRegistrar注册Formatter 138
+示例：使用AnnotationFormatterFactory ＜A extends Annotation＞格式化数据 139
+6．4　数据校验 142
+6．4．1　Spring的Validation校验框架 143
+示例：测试Spring的Validation校验 143
+6．4．2　JSR 303校验 146
+示例：测试JSR 303校验 147
+6．5　本章小结 152
+
+第7章　Spring MVC的文件上传下载和拦截器机制 153
+7．1　文件上传 154
+示例：Spring MVC的文件上传 154
+示例：使用对象接收上传文件 157
+7．2　文件下载 158
+示例：Spring MVC的文件下载 158
+7．3　拦截器 160
+7．3．1　HandlerInterceptor接口 160
+示例：拦截器实现用户权限验证 161
+7．4　本章小结 164
+
+第8章　MyBatis简介 165
+8．1　ORM和MyBatis 166
+8．1．1　对象/关系数据库映射（ORM） 166
+8．1．2　基本映射方式 167
+8．1．3　流行的ORM框架简介 168
+8．1．4　MyBatis概述 168
+8．2　MyBatis入门 169
+8．2．1　MyBatis下载和安装 169
+示例：MyBatis的数据库操作入门 170
+8．3　本章小结 175
+
+第9章　MyBatis的基本用法 176
+9．1　MyBatis体系结构 177
+9．1．1　SqlSessionFactory 177
+9．1．2　SqlSession 177
+9．2　深入MyBatis的配置文件 179
+9．2．1　MyBatis的配置文件结构 180
+9．2．2　properties属性 180
+9．2．3　settings设置 181
+9．2．4　typeAliases类型命名 183
+9．2．5　typeHandlers类型处理器 184
+9．2．6　objectFactory对象工厂 185
+9．2．7　environments配置环境 185
+9．2．8　mapper映射器 187
+9．3　MyBatis日志信息配置 188
+9．3．1　log4j．properties配置日志 188
+9．3．2　log4j．xml配置日志 189
+9．4　深入Mapper XML映射文件 190
+9．4．1　select 191
+9．4．2　insert、update和delete 192
+9．4．3　sql 194
+9．4．4　参数（Parameters） 195
+示例：测试select、insert、update和delete操作 195
+9．4．5　ResultMaps 200
+示例：测试ResultMaps 201
+9．5　本章小结 208
+
+第10章　深入使用MyBatis 209
+10．1　MyBatis关联映射 210
+10．1．1　一对一 210
+示例：OneToOneTest 210
+10．1．2　一对多 213
+示例：OneToManyTest 213
+10．1．3　多对多 218
+示例：ManyToManyTest 218
+10．2　MyBatis动态SQL 225
+示例：DynamicSQLTest 225
+10．2．1　if 226
+10．2．2　choose（when、otherwise） 229
+10．2．3　where 230
+10．2．4　set 232
+10．2．5　foreach 233
+10．2．6　bind 234
+10．3　MyBatis调用存储过程 234
+示例：MyBatis调用存储过程 235
+10．3．1　插入数据 235
+10．3．2　查询数据返回集合 237
+10．3．3　根据id查询数据返回对象 238
+10．3．4　修改数据 239
+10．3．5　删除数据 241
+10．4　MyBatis事务管理 242
+10．4．1　事务的概念 242
+10．4．2　Transaction接口 243
+10．4．3　事务的配置创建和使用 243
+10．5　MyBatis缓存机制 247
+10．5．1　一级缓存（SqlSession级别） 247
+示例：OneLevelCacheTest 247
+10．5．2　二级缓存（mapper级别） 251
+示例：TwoLevelCacheTest 251
+10．6　本章小结 254
+
+第11章　MyBatis的注解配置 255
+11．1　常用注解 256
+11．2　注解的使用 256
+示例：测试select、insert、update和delete操作 257
+示例：测试一对一关联 262
+示例：测试一对多关联 263
+示例：测试多对多关联 265
+示例：测试动态SQL 267
+示例：测试调用存储过程 274
+示例：测试二级缓存 276
+11．3　本章小结 278
+
+第12章　Spring 5整合MyBatis 3 279
+12．1　开发环境搭建 280
+12．2　准备所需的jar包 280
+12．3　准备数据库资源 280
+12．4　完成配置文件 281
+12．5　持久层功能实现 283
+12．6　服务层功能实现 284
+12．7　控制层功能实现 286
+12．8　JSP页面 288
+12．9　测试Spring 5整合MyBatis 3 289
+12．10　本章小结 290
+
+第13章　实战项目：人事管理系统 291
+13．1　项目简介及系统结构 292
+13．1．1　系统功能介绍 292
+13．1．2　相关技术介绍 293
+13．1．3　系统结构 293
+13．1．4　系统的功能模块 294
+13．2　数据表和持久化类 294
+13．2．1　设计数据库表 294
+13．2．2　设计持久化实体 296
+13．2．3　创建持久化实体类 297
+13．3　实现DAO持久层 303
+13．3．1　公共常量类 304
+13．3．2　定义DAO接口 304
+13．3．3　部署DAO层 318
+13．4　实现Service持久层 319
+13．4．1　业务逻辑组件的设计 319
+13．4．2　实现业务逻辑组件 320
+13．4．3　事务管理 335
+13．4．4　部署业务逻辑组件 335
+13．5　实现Web层 335
+13．5．1　控制器的处理顺序 335
+13．5．2　用户管理 339
+13．5．3　部门管理 342
+13．5．4　职位管理 345
+13．5．5　员工管理 348
+13．5．6　公告管理 351
+13．5．7　下载中心 355
+13．6　本章小结 359
+
+附录A　EL表达式和JSTL标签库 360
+
+第2章 快速搭建第一个SSM项目 10
+2.1 SSM简述 10
+2.1.1 Spring简述 10
+2.1.2 Spring MVC简述 12
+2.1.3 MyBatis简述 12
+2.2 快速搭建SSM项目 13
+2.2.1 快速搭建Web项目 13
+2.2.2 集成Spring 16
+2.2.3 集成Spring MVC框架 21
+2.2.4 集成MyBatis框架 27
+2.2.5 集成Log4j日志框架 34
+2.2.6 集成JUnit测试框架 38
+第3章 Spring快速上手 40
+3.1 Spring IOC和DI 40
+3.1.1 Spring IOC和DI概述 40
+3.1.2 单例模式 42
+3.1.3 Spring单例模式源码解析 48
+3.1.4 简单工厂模式详解 51
+3.1.5 工厂方法模式详解 55
+3.1.6 Spring Bean工厂类详解 59
+3.2 Spring AOP 61
+3.2.1 Spring AOP概述 61
+3.2.2 Spring AOP核心概念 61
+3.2.3 JDK动态代理实现日志框架 63
+3.2.4 Spring AOP实现日志框架 68
+3.2.5 静态代理与动态代理模式 70
+第4章 MyBatis映射器与动态SQL 74
+4.1 MyBatis映射器 74
+4.1.1 映射器的主要元素 74
+4.1.2 select元素 75
+4.1.3 insert元素 77
+4.1.4 selectKey元素 77
+4.1.5 update元素 78
+4.1.6 delete元素 79
+4.1.7 sql元素 80
+4.1.8 #与$区别 81
+4.1.9 resultMap结果映射集 81
+4.2 动态SQL 83
+4.2.1 动态SQL概述 83
+4.2.2 if元素 83
+4.2.3 choose、when、otherwise元素 84
+4.2.4 trim、where、set元素 86
+4.2.5 foreach元素 88
+4.2.6 bind元素 89
+4.3 MyBatis注解配置 90
+4.3.1 MyBatis常用注解 90
+4.3.2 @Select注解 91
+4.3.3 @Insert、@Update、@Delete注解 91
+4.3.4 @Param注解 92
+4.4 MyBatis关联映射 94
+4.4.1 关联映射概述 94
+4.4.2 一对一 94
+4.4.3 一对多 97
+4.4.4 多对多 101
+第5章 MyBatis分页开发 106
+5.1 RowBounds分页 106
+5.1.1 分页概述 106
+5.1.2 RowBounds分页 107
+5.1.3 RowBounds分页使用 108
+5.1.4 RowBounds分页原理 109
+5.2 分页插件PageHelper 111
+5.2.1 PageHelper概述 111
+5.2.2 PageHelper使用 111
+第6章 Spring MVC常用注解 114
+6.1 请求映射注解 114
+6.1.1 @Controller注解 114
+6.1.2 @RequestMapping注解 116
+6.1.3 @GetMapping和@PostMapping注解 120
+6.1.4 Model和ModelMap 121
+6.1.5 ModelAndView 122
+6.1.6 请求方法可出现参数和可返回类型 123
+6.2 参数绑定注解 125
+6.2.1 @RequstParam注解 125
+6.2.2 @PathVariable注解 126
+6.2.3 @RequestHeader注解 127
+6.2.4 @CookieValue注解 128
+6.2.5 @ModelAttribute注解 129
+6.2.6 @SessionAttribute和@SessionAttributes注解 134
+6.2.7 @ResponseBody和@RequestBody注解 136
+6.3 信息转换详解 138
+6.3.1 HttpMessageConverter 138
+6.3.2 RequestMappingHandlerAdapter 140
+6.3.3 自定义HttpMessageConverter 141
+第7章 Spring数据校验 142
+7.1 数据校验概述 142
+7.2 Spring的Validation校验框架 143
+7.3 JSR 303校验 147
+第8章 Spring和MyBatis事务管理 152
+8.1 Spring事务管理 152
+8.1.1 Spring事务回顾 152
+8.1.2 Spring声明式事务 153
+8.1.3 Spring注解事务行为 153
+8.2 MyBatis事务管理 155
+第9章 MyBatis缓存机制 160
+9.1 MyBatis的缓存模式 160
+9.2 一级查询缓存 161
+9.2.1 一级缓存概述 161
+9.2.2 一级缓存示例 161
+9.2.3 一级缓存生命周期 164
+9.3 二级查询缓存 165
+9.3.1 二级缓存概述 165
+9.3.2 二级缓存示例 166
+9.3.3 cache-ref共享缓存 168
+9.4 MyBatis缓存原理 170
+9.4.1 MyBatis缓存的工作原理 170
+9.4.2 装饰器模式 171
+9.4.3 Cache接口及其实现 173
+第10章 Spring MVC原理剖析 176
+10.1 Spring MVC执行流程 176
+10.1.1 Spring MVC执行流程 176
+10.1.2 前端控制器DispatcherServlet 178
+10.2 处理映射器和适配器 182
+10.2.1 处理映射器 182
+10.2.2 处理适配器 183
+10.3 视图解析器 195
+10.3.1 概述 195
+10.3.2 视图解析流程 195
+10.3.3 常用视图解析器 195
+10.3.4 ViewResolver链 201
+第11章 MyBatis原理剖析 203
+11.1 MyBatis整体框架 203
+11.1.1 概述 203
+11.1.2 接口层 203
+11.1.3 核心处理层 206
+11.1.4 基础支撑层 207
+11.2 MyBatis初始化流程 208
+11.3 MyBatis执行流程 211
+第12章 高并发点赞项目实践 215
+12.1 高并发点赞项目 215
+12.1.1 项目概述 215
+12.1.2 数据库表和持久化类 216
+12.1.3 DAO层和Mapper映射文件 220
+12.1.4 Service层和DTO类 223
+12.1.5 Controller层和前端页面 227
+12.1.6 测试 229
+12.2 传统点赞功能实现 229
+12.2.1 概述 229
+12.2.2 代码实现 231
+12.2.3 测试 235
+12.3 集成Redis缓存 235
+12.3.1 概述 235
+12.3.2 Redis安装和使用 236
+12.3.3 集成Redis缓存 243
+12.3.4 设计Redis数据结构 246
+12.3.5 代码实现 247
+12.3.6 集成Quartz定时器 251
+12.3.7 测试 255
+12.4 集成ActiveMQ 255
+12.4.1 概述 255
+12.4.2 ActiveMQ的安装 256
+12.4.3 集成ActiveMQ 258
+12.4.4 ActiveMQ异步消费 261
+12.4.5 测试 264
+
+第3篇 深入剖析MyBatis源码
+
+第15章 MyBatis介绍 388
+
+15.1 MyBatis的历史 388
+
+15.2 MyBatis子项目 389
+
+15.3 MyBatis的自身定位 389
+
+15.3.1 JPA持久化框架 390
+
+15.3.2 MyBatis的功能 390
+
+15.3.3 MyBatis与JPA的异同 390
+
+15.4 MyBatis的架构 391
+
+15.4.1 模块 391
+
+15.4.2 MyBatis的项目包 392
+
+第16章 构建阶段 394
+
+16.1 关键类 394
+
+16.2 关键时序 395
+
+16.3 构建的入口：SqlSessionFactoryBuilder和SqlSessionFactory 396
+
+16.4 配置（Configuration）和配置构造器（XmlConfigBuilder） 397
+
+16.4.1 XmlConfigBuilder的初始化 397
+
+16.4.2 完整的mybatis-3-config.dtd 399
+
+16.4.3 解析配置文件构建Configuration配置 399
+
+16.5 SQL简介 418
+
+16.6 SQL映射的构建 419
+
+16.6.1 通过XML定义的SQL Mapper 419
+
+16.6.2 Configuration类中与SQL Mapping相关的类 420
+
+16.6.3 XmlMapperBuilder是如何工作的 421
+
+16.6.4 映射注解器定义的SQL Mapper 438
+
+16.6.5 小结 440
+
+第17章 执行阶段 441
+
+17.1 关键类 441
+
+17.2 关键接口及默认实现初始化 442
+
+17.2.1 SqlSession及其关联类的构建过程 442
+
+17.2.2 StatementHandler语句处理器 446
+
+17.3 DQL语句是如何执行的 448
+
+17.3.1 查询接口 448
+
+17.3.2 关键时序 449
+
+17.3.3 程序执行查询的入口：DefaultSqlSession#selectList(statement) 450
+
+17.3.4 生成执行语句：getMappedStatement() 450
+
+17.3.5 执行器查询：Executor#query() 451
+
+17.3.6 JDBC执行语句：SimpleStatementHandler#query() 455
+
+17.3.7 结果集处理：DefaultResultSetHandler#handlerResultSets() 455
+
+17.4 DML语句是如何执行的 460
+
+17.4.1 操作接口 460
+
+17.4.2 关键时序 460
+
+17.4.3 程序执行更新的入口：DefaultSqlSession#update() 461
+
+17.4.4 执行器执行方法：Executor#update() 461
+
+17.4.5 SQL语句执行：SimpleStatementHandler#update() 464
+
+17.4.6 结果集主键逻辑：Jdbc3KeyGenerator#processAfter() 464
+
+17.5 小结 466
+
+第18章 专题特性解析 467
+
+18.1 动态SQL支持 467
+
+18.1.1 XmlScriptBuilder解析配置 467
+
+18.1.2 NodeHandler构建SqlNode树 468
+
+18.1.3 SqlNode处理SQL语句 471
+
+18.2 MyBatis的缓存支持 477
+
+18.2.1 本地缓存 478
+
+18.2.2 二级缓存 482
+
+18.3 结果集支持：Object、List、Map和Cursor 491
+
+18.4 自定义扩展点及接口 496
+
+第19章 作为中间件如何承上启下 498
+
+19.1 MyBatis与底层的JDBC 498
+
+19.1.1 java.sql.DataSource 498
+
+19.1.2 java.sql.Connection 499
+
+19.1.3 java.sql.Statement 500
+
+19.1.4 java.sql.Resultset 502
+
+19.2 MyBatis的主流集成方式 502
+
+19.2.1 mybatis-spring简介 502
+
+19.2.2 Spring对JDBC的支持 502
+
+19.2.3 mybatis-spring与Spring 504
+
+
 #{}是预编译处理，${}是字符串替换；
 
 Mybatis在处理#{}时，会将sql中的#{}替换为?号，调用PreparedStatement的set方法来赋值；
