@@ -1,0 +1,546 @@
+1.1 大数据处理架构演进历程 1
+1.2 案例分析 8
+1.2.1 SK 电信驾驶安全性评分 8
+1.2.2 流式机器学习应用 12
+1.3 流式数据架构基本概念 17
+1.3.1 流 17
+1.3.2 时间 18
+1.3.3 窗口 21
+1.3.4 水印 23
+1.3.5 触发器 23
+1.3.6 数据处理模式 23
+1.3.7 如何理解流式数据架构的内在机制 27
+1.4 根据事件时间开滚动窗口 28
+1.4.1 what：转换／where：窗口 29
+1.4.2 when：水印 29
+1.4.3 when：触发器 32
+1.4.4 when：迟到生存期 34
+1.4.5 how：累加模式 35
+1.5 一致性 37
+1.5.1 有状态计算 37
+1.5.2 exactly-once 语义 38
+1.5.3 异步屏障快照 39
+1.5.4 保存点 44
+1.6 思考题 45
+第2 章 编程基础 46
+2.1 Flink 概述 46
+2.2 让轮子转起来 47
+2.2.1 本书约定 47
+2.2.2 搭建单机版环境 48
+2.2.3 配置IDEA 51
+2.3 编程模型 53
+2.3.1 分层组件栈 53
+2.3.2 流式计算模型 54
+2.3.3 流处理编程 57
+2.4 运行时 62
+2.4.1 运行时结构 62
+2.4.2 任务调度 66
+2.4.3 物理执行计划 69
+2.5 思考题 70
+第3 章 流处理API 71
+3.1 流处理API 概述 71
+3.2 时间处理 73
+3.2.1 时间 73
+3.2.2 水印 74
+3.2.3 周期性水印生成器 75
+3.2.4 间歇性水印生成器 77
+3.2.5 递增式水印生成器 78
+3.3 算子 79
+3.3.1 算子函数 80
+3.3.2 数据分区 83
+3.3.3 资源共享 85
+3.3.4 RichFunction 85
+3.3.5 输出带外数据 86
+3.4 窗口 86
+3.4.1 窗口分类 87
+3.4.2 窗口函数 90
+3.4.3 触发器 94
+3.4.4 清除器 96
+3.4.5 迟到生存期 96
+3.5 连接器 97
+3.5.1 HDFS 连接器 98
+3.5.2 Kafka 99
+3.5.3 异步I/O 102
+3.6 状态管理 104
+3.6.1 状态分类 104
+3.6.2 托管的Keyed State 104
+3.6.3 状态后端配置 106
+3.7 检查点 107
+3.8 思考题 108
+第4 章 批处理API 109
+4.1 批处理API 概述. 109
+4.1.1 程序结构 110
+4.1.2 Source 111
+4.1.3 Sink 112
+4.1.4 连接器 112
+4.2 算子 113
+4.2.1 算子函数 113
+4.2.2 广播变量 121
+4.2.3 文件缓存 122
+4.2.4 容错 123
+4.3 迭代 123
+4.3.1 深度神经网络训练 123
+4.3.2 网络社团发现算法 125
+4.3.3 Bulk Iteration 127
+4.3.4 Delta Iteration 的迭代形式 128
+4.4 注解 130
+4.4.1 直接转发 130
+4.4.2 非直接转发 131
+4.4.3 触达 132
+4.5 思考题 132
+第5 章 机器学习引擎架构与应用编程 133
+5.1 概述 133
+5.1.1 数据加载 134
+5.1.2 多项式曲线拟合的例子 135
+5.2 流水线 137
+5.2.1 机器学习面临的架构问题 137
+5.2.2 Scikit-learn 架构实践总结 138
+5.2.3 FlinkML 实现 140
+5.3 深入分析多项式曲线拟合 170
+5.3.1 数值计算的底层框架 170
+5.3.2 向量 172
+5.3.3 数据预处理 178
+5.3.4 特征变换 184
+5.3.5 线性拟合 188
+5.4 分类算法 190
+5.4.1 最优超平面 190
+5.4.2 凸优化理论 193
+5.4.3 求解最优超平面 198
+5.4.4 核方法 200
+5.4.5 软间隔 205
+5.4.6 优化解法 208
+5.4.7 SVM 的FlinkML 实现 211
+5.4.8 SVM 的应用 220
+5.5 推荐算法 221
+5.5.1 推荐系统的分类 221
+5.5.2 ALS-WR 算法 223
+5.5.3 FlinkML 实现 225
+5.5.4 ALS-WR 的应用 230
+5.6 思考题 230
+第6 章 关系型API 234
+6.1 为什么需要关系型API 234
+6.2 Calcite 235
+6.3 关系型API 概述. 236
+6.3.1 程序结构 236
+6.3.2 Table 运行时 239
+6.3.3 表注册 241
+6.3.4 TableSource 与TableSink 242
+6.3.5 查询 244
+6.3.6 相互转换 244
+6.4 动态表概述 247
+6.4.1 流式关系代数 247
+6.4.2 动态表 248
+6.4.3 持续查询 250
+6.5 思考题 255
+第7 章 复杂事件处理 256
+7.1 什么是复杂事件处理 256
+7.1.1 股票异常交易检测 256
+7.1.2 重新审视DataStream 与Table API 258
+7.2 复杂事件处理的自动机理论 259
+7.2.1 有穷自动机模型NFA 259
+7.2.2 NFAb 模型 261
+7.2.3 带版本号的共享缓存 263
+7.3 FlinkCEP API 265
+7.3.1 基本模式 266
+7.3.2 模式拼合 267
+7.3.3 模式分组 268
+7.3.4 匹配输出 269
+7.4 基于FlinkCEP 的股票异常交易检测的实现 270
+7.5 思考题 274
+第8 章 监控与部署 275
+8.1 监控 275
+8.1.1 度量指标 275
+8.1.2 指标的作用域 279
+8.1.3 监控配置 279
+8.2 集群部署模式 281
+8.2.1 Standalone 281
+8.2.2 YARN 281
+8.2.3 高可用 284
+8.3 访问安全 284
+
+第 1章　为何选择Flink 1
+1．1　流处理欠佳的后果 2
+1．1．1　零售业和市场营销 2
+1．1．2　物联网 3
+1．1．3　电信业 5
+1．1．4　银行和金融业 5
+1．2　连续事件处理的目标 6
+1．3　流处理技术的演变 6
+1．4　初探Flink 9
+1．5　生产环境中的Flink 12
+1．5．1　布衣格电信 13
+1．5．2　其他案例 14
+1．6　Flink的适用场景 15
+第 2章　流处理架构 17
+2．1　传统架构与流处理架构 17
+2．2　消息传输层和流处理层 18
+2．3　消息传输层的理想功能 19
+2．3．1　兼具高性能和持久性 20
+2．3．2　将生产者和消费者解耦 20
+2．4　支持微服务架构的流数据 21
+2．4．1　数据流作为中心数据源 22
+2．4．2　欺诈检测：流处理架构用例 22
+2．4．3　给开发人员带来的灵活性 24
+2．5　不限于实时应用程序 24
+2．6　流的跨地域复制 26
+第3章　Flink 的用途 29
+3．1　不同类型的正确性 29
+3．1．1　符合产生数据的自然规律 29
+3．1．2　事件时间 31
+3．1．3　发生故障后仍保持准确 32
+3．1．4　及时给出所需结果 33
+3．1．5　使开发和运维更轻松 33
+3．2　分阶段采用Flink 34
+第4章　对时间的处理 35
+4．1　采用批处理架构和Lambda 架构计数 35
+4．2　采用流处理架构计数 38
+4．3　时间概念 40
+4．4　窗口 41
+4．4．1　时间窗口 41
+4．4．2　计数窗口 43
+4．4．3　会话窗口 43
+4．4．4　触发器 44
+4．4．5　窗口的实现 44
+4．5　时空穿梭 44
+4．6　水印 45
+4．7　真实案例：爱立信公司的Kappa 架构 47
+第5章　有状态的计算 49
+5．1　一致性 50
+5．2　检查点：保证exactly-once 51
+5．3　保存点：状态版本控制 59
+5．4　端到端的一致性和作为数据库的流处理器 62
+5．5　Flink 的性能 65
+5．5．1　Yahoo! Streaming Benchmark 65
+5．5．2　变化1：使用Flink 状态 66
+5．5．3　变化2：改进数据生成器并增加吞吐量 67
+5．5．4　变化3：消除网络瓶颈 68
+5．5．5　变化4：使用MapR Streams 69
+5．5．6　变化5：增加key 基数 69
+5．6　结论 71
+第6章　批处理：一种特殊的流处理 73
+6．1　批处理技术 75
+6．2　案例研究：Flink 作为批处理器 76
+附录　其他资源 79
+
+About the Author
+About the Reviewers
+www.PacktPub.com
+Why subscribe?
+Customer Feedback
+Preface
+What this book covers
+What you need for this book
+Who this book is for
+Conventions
+Reader feedback
+Customer support
+Downloading the example code
+Downloading the color images of this book
+Errata
+Piracy
+Questions
+1. Introduction to Apache Flink
+History
+Architecture
+Distributed execution
+Job Manager
+Actor system
+Scheduler
+Check pointing
+Task manager
+Job client
+Features
+High performance
+Exactly-once stateful computation
+Flexible streaming windows
+Fault tolerance
+Memory management
+Optimizer
+Stream and batch in one platform
+Libraries
+Event time semantics
+Quick start setup
+Pre-requisite
+Installing on Windows
+Installing on Linux
+Cluster setup
+SSH configurations
+Java installation
+Flink installation
+Configurations
+Starting daemons
+Adding additional Job/Task Managers
+Stopping daemons and cluster
+Running sample application
+Summary
+2. Data Processing Using the DataStream API
+Execution environment
+Data sources
+Socket-based
+File-based
+Transformations
+Map
+FlatMap
+Filter
+KeyBy
+Reduce
+Fold
+Aggregations
+Window
+Global windows
+Tumbling windows
+Sliding windows
+Session windows
+WindowAll
+Union
+Window join
+Split
+Select
+Project
+Physical partitioning
+Custom partitioning
+Random partitioning
+Rebalancing partitioning
+Rescaling
+Broadcasting
+Data sinks
+Event time and watermarks
+Event time
+Processing time
+Ingestion time
+Connectors
+Kafka connector
+Twitter connector
+RabbitMQ connector
+ElasticSearch connector
+Embedded node mode
+Transport client mode
+Cassandra connector
+Use case - sensor data analytics
+Summary
+3. Data Processing Using the Batch Processing API
+Data sources
+File-based
+Collection-based
+Generic sources
+Compressed files
+Transformations
+Map
+Flat map
+Filter
+Project
+Reduce on grouped datasets
+Reduce on grouped datasets by field position key
+Group combine
+Aggregate on a grouped tuple dataset
+MinBy on a grouped tuple dataset
+MaxBy on a grouped tuple dataset
+Reduce on full dataset
+Group reduce on a full dataset
+Aggregate on a full tuple dataset
+MinBy on a full tuple dataset
+MaxBy on a full tuple dataset
+Distinct
+Join
+Cross
+Union
+Rebalance
+Hash partition
+Range partition
+Sort partition
+First-n
+Broadcast variables
+Data sinks
+Connectors
+Filesystems
+HDFS
+Amazon S3
+Alluxio
+Avro
+Microsoft Azure storage
+MongoDB
+Iterations
+Iterator operator
+Delta iterator
+Use case - Athletes data insights using Flink batch API
+Summary
+4. Data Processing Using the Table API
+Registering tables
+Registering a dataset
+Registering a datastream
+Registering a table
+Registering external table sources
+CSV table source
+Kafka JSON table source
+Accessing the registered table
+Operators
+The select operator
+The where operator
+The filter operator
+The as operator
+The groupBy operator
+The join operator
+The leftOuterJoin operator
+The rightOuterJoin operator
+The fullOuterJoin operator
+The union operator
+The unionAll operator
+The intersect operator
+The intersectAll operator
+The minus operator
+The minusAll operator
+The distinct operator
+The orderBy operator
+The limit operator
+Data types
+SQL
+SQL on datastream
+Supported SQL syntax
+Scalar functions
+Scalar functions in the table API
+Scala functions in SQL
+Use case - Athletes data insights using Flink Table API
+Summary
+5. Complex Event Processing
+What is complex event processing?
+Flink CEP
+Event streams
+Pattern API
+Begin
+Filter
+Subtype
+OR
+Continuity
+Strict continuity
+Non-strict continuity
+Within
+Detecting patterns
+Selecting from patterns
+Select
+flatSelect
+Handling timed-out partial patterns
+Use case - complex event processing on a temperature sensor
+Summary
+6. Machine Learning Using FlinkML
+What is machine learning?
+Supervised learning
+Regression
+Classification
+Unsupervised learning
+Clustering
+Association
+Semi-supervised learning
+FlinkML
+Supported algorithms
+Supervised learning
+Support Vector Machine
+Multiple Linear Regression
+Optimization framework
+Recommendations
+Alternating Least Squares
+Unsupervised learning
+k Nearest Neighbour join
+Utilities
+Data pre processing and pipelines
+Polynomial features
+Standard scaler
+MinMax scaler
+Summary
+7. Flink Graph API - Gelly
+What is a graph?
+Flink graph API - Gelly
+Graph representation
+Graph nodes
+Graph edges
+Graph creation
+From dataset of edges and vertices
+From dataset of tuples representing edges
+From CSV files
+From collection lists
+Graph properties
+Graph transformations
+Map
+Translate
+Filter
+Join
+Reverse
+Undirected
+Union
+Intersect
+Graph mutations
+Neighborhood methods
+Graph validation
+Iterative graph processing
+Vertex-Centric iterations
+Scatter-Gather iterations
+Gather-Sum-Apply iterations
+Use case - Airport Travel Optimization
+Summary
+8. Distributed Data Processing with Flink and Hadoop
+Quick overview of Hadoop
+HDFS
+YARN
+Flink on YARN
+Configurations
+Starting a Flink YARN session
+Submitting a job to Flink
+Stopping Flink YARN session
+Running a single Flink job on YARN
+Recovery behavior for Flink on YARN
+Working details
+Summary
+9. Deploying Flink on Cloud
+Flink on Google Cloud
+Installing Google Cloud SDK
+Installing BDUtil
+Launching a Flink cluster
+Executing a sample job
+Shutting down the cluster
+Flink on AWS
+Launching an EMR cluster
+Installing Flink on EMR
+Executing Flink on EMR-YARN
+Starting a Flink YARN session
+Executing Flink job on YARN session
+Shutting down the cluster
+Flink on EMR 5.3+
+Using S3 in Flink applications
+Summary
+10. Best Practices
+Logging best practices
+Configuring Log4j
+Configuring Logback
+Logging in applications
+Using ParameterTool
+From system properties
+From command line arguments
+From .properties file
+Naming large TupleX types
+Registering a custom serializer
+Metrics
+Registering metrics
+Counters
+Gauges
+Histograms
+Meters
+Reporters
+Monitoring REST API
+Config API
+Overview API
+Overview of the jobs
+Details of a specific job
+User defined job configuration
+Back pressure monitoring
+Summary
+
+第一部分（第1~2章）
+
+主要介绍了Flink的核心概念、特性、应用场景、基本架构，开发环境的搭建和配置，以及源代码的编译。
+
+第二部分（第3~9章）
+
+详细讲解了Flink的编程范式，各种编程接口的功能、应用场景和使用方法，以及核心模块和组件的原理和使用。
+
+第三部分（第10章）
+
+重点讲解了Flink的监控和优化，参数调优，以及对反压、Checkpoint和内存的优化。

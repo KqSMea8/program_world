@@ -1,0 +1,967 @@
+第一部分 Netty的概念及体系结构
+第1章 Netty——异步和事件驱动
+1.1 Java网络编程
+1.2 Netty简介
+1.3 Netty的核心组件
+1.4 小结
+第2章 你的第一款Netty应用程序
+2.1 设置开发环境
+2.2 Netty客户端/服务器概览
+2.3 编写Echo服务器
+2.4 编写Echo客户端
+2.5 构建和运行Echo服务器和客户端
+2.6 小结
+第3章 Netty的组件和设计
+3.1 Channel、EventLoop和ChannelFuture
+3.2 ChannelHandler和ChannelPipeline
+3.3 引导
+3.4 小结
+第4章 传输
+4.1 案例研究：传输迁移
+4.2 传输API
+4.3 内置的传输
+4.4 传输的用例
+4.5 小结
+第5章 ByteBuf
+5.1 ByteBuf的API
+5.2 ByteBuf类——Netty的数据容器
+5.3 字节级操作
+5.4 ByteBufHolder接口
+5.5 ByteBuf分配
+5.6 引用计数
+5.7 小结
+第6章 ChannelHandler和ChannelPipeline
+6.1 ChannelHandler家族
+6.2 ChannelPipeline接口
+6.3 ChannelHandlerContext接口
+6.4 异常处理
+6.5 小结
+第7章 EventLoop和线程模型
+7.1 线程模型概述
+7.2 EventLoop接口
+7.3 任务调度
+7.4 实现细节
+7.5 小结
+第8章 引导
+8.1 Bootstrap类
+8.2 引导客户端和无连接协议
+8.3 引导服务器
+8.4 从Channel引导客户端
+8.5 在引导过程中添加多个ChannelHandler
+8.6 使用Netty的ChannelOption和属性
+8.7 引导DatagramChannel
+8.8 关闭
+8.9 小结
+第9章 单元测试
+9.1 EmbeddedChannel概述
+9.2 使用EmbeddedChannel测试ChannelHandler
+9.3 测试异常处理
+9.4 小结
+第二部分 编解码器
+第10章 编解码器框架
+10.1 什么是编解码器
+10.2 解码器
+10.3 编码器
+10.4 抽象的编解码器类
+10.5 小结
+第11章 预置的ChannelHandler和编解码器
+11.1 通过SSL/TLS保护Netty应用程序
+11.2 构建基于Netty的HTTP/HTTPS应用程序
+11.3 空闲的连接和超时
+11.4 解码基于分隔符的协议和基于长度的协议
+11.5 写大型数据
+11.6 序列化数据
+11.7 小结
+第三部分 网络协议
+第12章 WebSocket
+12.1 WebSocket简介
+12.2 我们的WebSocket示例应用程序
+12.3 添加WebSocket支持
+12.4 测试该应用程序
+12.5 小结
+第13章 使用UDP广播事件
+13.1 UDP的基础知识
+13.2 UDP广播
+13.3 UDP示例应用程序
+13.4 消息POJO: LogEvent
+13.5 编写广播者
+13.6 编写监视器
+13.7 运行LogEventBroadcaster和LogEventMonitor
+13.8 小结
+第四部分 案例研究
+第14章 案例研究，第一部分
+14.1 Droplr——构建移动服务
+14.2 Firebase——实时的数据同步服务
+14.3 Urban Airship——构建移动服务
+14.4 小结
+第15章 案例研究，第二部分
+15.1 Netty在Facebook的使用：Nifty和Swift
+15.2 Netty在Twitter的使用：Finagle
+15.3 小结
+附录 Maven介绍
+A.1 什么是Maven
+A.1.1 安装和配置Maven
+A.1.2 Maven的基本概念
+A.2 POM示例
+A.2.1 一个项目的POM
+A.2.2 POM的继承和聚合
+A.3 Maven命令行
+
+
+第1章 Java的I/O演进之路
+1.1 I/O基础入门
+1.1.1 Linux网络I/O模型简介
+1.1.2 I/O多路复用技术
+1.2 Java的I/O演进
+1.3 总结
+第2章 NIO入门
+2.1 传统的BIO编程
+2.1.1 BIO通信模型图
+2.1.2 同步阻塞式I/O创建的TimeServer源码分析
+2.1.3 同步阻塞式I/O创建的TimeClient源码分析
+2.2 伪异步I/O编程
+2.2.1 伪异步I/O模型图
+2.2.2 伪异步I/O创建的TimeServer源码分析
+2.2.3 伪异步I/O弊端分析
+2.3 NIO编程
+2.3.1 NIO类库简介
+2.3.2 NIO服务端序列图
+2.3.3 NIO创建的TimeServer源码分析
+2.3.4 NIO客户端序列图
+2.3.5 NIO创建的TimeClient源码分析
+2.4 AIO编程
+2.4.1 AIO创建的TimeServer源码分析
+2.4.2 AIO创建的TimeClient源码分析
+2.4.3 AIO版本时间服务器运行结果
+2.5 4种I/O的对比
+2.5.1 概念澄清
+2.5.2 不同I/O模型对比
+2.6 选择Netty的理由
+2.6.1 不选择Java原生NIO编程的原因
+2.6.2 为什么选择Netty
+2.7 总结
+入门篇 Netty NIO开发指南
+第3章 Netty入门应用
+3.1 Netty开发环境的搭建
+3.1.1 下载Netty的软件包
+3.1.2 搭建Netty应用工程
+3.2 Netty服务端开发
+3.3 Netty客户端开发
+3.4 运行和调试
+3.4.1 服务端和客户端的运行
+3.4.2 打包和部署
+3.5 总结
+第4章 TCP粘包/拆包问题的解决之道
+4.1 TCP粘包/拆包
+4.1.1 TCP粘包/拆包问题说明
+4.1.2 TCP粘包/拆包发生的原因
+4.1.3 粘包问题的解决策略
+4.2 未考虑TCP粘包导致功能异常案例
+4.2.1 TimeServer的改造
+4.2.2 TimeClient的改造
+4.2.3 运行结果
+4.3 利用LineBasedFrameDecoder解决TCP粘包问题
+4.3.1 支持TCP粘包的TimeServer
+4.3.2 支持TCP粘包的TimeClient
+4.3.3 运行支持TCP粘包的时间服务器程序
+4.3.4 LineBasedFrameDecoder和StringDecoder的原理分析
+4.4 总结
+第5章 分隔符和定长解码器的应用
+5.1 DelimiterBasedFrameDecoder应用开发
+5.1.1 DelimiterBasedFrameDecoder服务端开发
+5.1.2 DelimiterBasedFrameDecoder客户端开发
+5.1.3 运行DelimiterBasedFrameDecoder服务端和客户端
+5.2 FixedLengthFrameDecoder应用开发
+5.2.1 FixedLengthFrameDecoder服务端开发
+5.2.2 利用telnet命令行测试EchoServer服务端
+5.3 总结
+中级篇 Netty编解码开发指南
+第6章 编解码技术
+6.1 Java序列化的缺点
+6.1.1 无法跨语言
+6.1.2 序列化后的码流太大
+6.1.3 序列化性能太低
+6.2 业界主流的编解码框架
+6.2.1 Google的Protobuf介绍
+6.2.2 Facebook的Thrift介绍
+6.2.3 JBoss Marshalling介绍
+6.3 总结
+第7章 MessagePack编解码
+7.1 MessagePack介绍
+7.1.1 MessagePack多语言支持
+7.1.2 MessagePack Java API介绍
+7.1.3 MessagePack 开发包下载
+7.2 MessagePack 编码器和解码器开发
+7.2.1 MessagePack 编码器开发
+7.2.2 MessagePack 解码器开发
+7.2.3 功能测试
+7.3 粘包/半包支持
+7.4 总结
+第8章 Google Protobuf编解码
+8.1 Protobuf的入门
+8.1.1 Protobuf开发环境搭建
+8.1.2 Protobuf编解码开发
+8.1.3 运行Protobuf例程
+8.2 Netty的Protobuf服务端开发
+8.2.1 Protobuf版本的图书订购服务端开发
+8.2.2 Protobuf版本的图书订购客户端开发
+8.2.3 Protobuf版本的图书订购程序功能测试
+8.3 Protobuf的使用注意事项
+8.4 总结
+第9章 JBoss Marshalling编解码
+9.1 Marshalling开发环境准备
+9.2 Netty的Marshalling服务端开发
+9.3 Netty的Marshalling客户端开发
+9.4 运行Marshalling客户端和服务端例程
+9.5 总结
+高级篇 Netty多协议开发和应用
+第10章 HTTP协议开发应用
+10.1 HTTP协议介绍
+10.1.1 HTTP协议的URL
+10.1.2 HTTP请求消息（HttpRequest）
+10.1.3 HTTP响应消息（HttpResponse）
+10.2 Netty HTTP服务端入门开发
+10.2.1 HTTP服务端例程场景描述
+10.2.2 HTTP服务端开发
+10.2.3 Netty HTTP文件服务器例程运行结果
+10.3 Netty HTTP+XML协议栈开发
+10.3.1 开发场景介绍
+10.3.2 HTTP+XML协议栈设计
+10.3.3 高效的XML绑定框架JiBx
+10.3.4 HTTP+XML编解码框架开发
+10.3.5 HTTP+XML协议栈测试
+10.3.6 小结
+10.4 总结
+第11章 WebSocket协议开发
+11.1 HTTP协议的弊端
+11.2 WebSocket入门
+11.2.1 WebSocket背景
+11.2.2 WebSocket连接建立
+11.2.3 WebSocket生命周期
+11.2.4 WebSocket连接关闭
+11.3 Netty WebSocket协议开发
+11.3.1 WebSocket服务端功能介绍
+11.3.2 WebSocket服务端开发
+11.3.3 运行WebSocket服务端
+11.4 总结
+第12章 私有协议栈开发
+12.1 私有协议介绍
+12.2 Netty协议栈功能设计
+12.2.1 网络拓扑图
+12.2.2 协议栈功能描述
+12.2.3 通信模型
+12.2.4 消息定义
+12.2.5 Netty协议支持的字段类型
+12.2.6 Netty协议的编解码规范
+12.2.7 链路的建立
+12.2.8 链路的关闭
+12.2.9 可靠性设计
+12.2.10 安全性设计
+12.2.11 可扩展性设计
+12.3 Netty协议栈开发
+12.3.1 数据结构定义
+12.3.2 消息编解码
+12.3.3 握手和安全认证
+12.3.4 心跳检测机制
+12.3.5 断连重连
+12.3.6 客户端代码
+12.3.7 服务端代码
+12.4 运行协议栈
+12.4.1 正常场景
+12.4.2 异常场景：服务端宕机重启
+12.4.3 异常场景：客户端宕机重启
+12.5 总结
+第13章 服务端创建
+13.1 原生NIO类库的复杂性
+13.2 Netty服务端创建源码分析
+13.2.1 Netty服务端创建时序图
+13.2.2 Netty服务端创建源码分析
+13.3 客户端接入源码分析
+13.4 总结
+第14章 客户端创建
+14.1 Netty客户端创建流程分析
+14.2.1 Netty客户端创建时序图
+14.2.2 Netty客户端创建流程分析
+14.2 Netty客户端创建源码分析
+14.2.1 客户端连接辅助类Bootstrap
+14.2.2 客户端连接操作
+14.2.3 异步连接结果通知
+14.2.4 客户端连接超时机制
+14.3 总结
+源码分析篇 Netty功能介绍和源码分析
+第15章 ByteBuf和相关辅助类
+15.1 ByteBuf功能说明
+15.1.1 ByteBuf的工作原理
+15.1.2 ByteBuf的功能介绍
+15.2 ByteBuf源码分析
+15.2.1 ByteBuf的主要类继承关系
+15.2.2 AbstractByteBuf源码分析
+15.2.3 AbstractReferenceCountedByteBuf源码分析
+15.2.4 UnpooledHeapByteBuf源码分析
+15.2.5 PooledByteBuf内存池原理分析
+15.2.6 PooledDirectByteBuf源码分析
+15.3 ByteBuf相关的辅助类功能介绍
+15.3.1 ByteBufHolder
+15.3.2 ByteBufAllocator
+15.3.3 CompositeByteBuf
+15.3.4 ByteBufUtil
+15.4 总结
+第16章 Channel和Unsafe
+16.1 Channel功能说明
+16.1.1 Channel的工作原理
+16.1.2 Channel的功能介绍
+16.2 Channel源码分析
+16.2.1 Channel的主要继承关系类图
+16.2.2 AbstractChannel源码分析
+16.2.3 AbstractNioChannel源码分析
+16.2.4 AbstractNioByteChannel源码分析
+16.2.5 AbstractNioMessageChannel源码分析
+16.2.6 AbstractNioMessageServerChannel源码分析
+16.2.7 NioServerSocketChannel源码分析
+16.2.8 NioSocketChannel源码分析
+16.3 Unsafe功能说明
+16.4 Unsafe源码分析
+16.4.1 Unsafe继承关系类图
+16.4.2 AbstractUnsafe源码分析
+16.4.3 AbstractNioUnsafe源码分析
+16.4.4 NioByteUnsafe源码分析
+16.5 总结
+第17章 ChannelPipeline和ChannelHandler
+17.1 ChannelPipeline功能说明
+17.1.1 ChannelPipeline的事件处理
+17.1.2 自定义拦截器
+17.1.3 构建pipeline
+17.1.4 ChannelPipeline的主要特性
+17.2 ChannelPipeline源码分析
+17.2.1 ChannelPipeline的类继承关系图
+17.2.2 ChannelPipeline对ChannelHandler的管理
+17.2.3 ChannelPipeline的inbound事件
+17.2.4 ChannelPipeline的outbound事件
+17.3 ChannelHandler功能说明
+17.3.1 ChannelHandlerAdapter功能说明
+17.3.2 ByteToMessageDecoder功能说明
+17.3.3 MessageToMessageDecoder功能说明
+17.3.4 LengthFieldBasedFrameDecoder功能说明
+17.3.5 MessageToByteEncoder功能说明
+17.3.6 MessageToMessageEncoder功能说明
+17.3.7 LengthFieldPrepender功能说明
+17.4 ChannelHandler源码分析
+17.4.1 ChannelHandler的类继承关系图
+17.4.2 ByteToMessageDecoder源码分析
+17.4.3 MessageToMessageDecoder源码分析
+17.4.4 LengthFieldBasedFrameDecoder源码分析
+17.4.5 MessageToByteEncoder源码分析
+17.4.6 MessageToMessageEncoder源码分析
+17.4.7 LengthFieldPrepender源码分析
+17.5 总结
+第18章 EventLoop和EventLoopGroup
+18.1 Netty的线程模型
+18.1.1 Reactor单线程模型
+18.1.2 Reactor多线程模型
+18.1.3 主从Reactor多线程模型
+18.1.4 Netty的线程模型
+18.1.5 最佳实践
+18.2 NioEventLoop源码分析
+18.2.1 NioEventLoop设计原理
+18.2.2 NioEventLoop继承关系类图
+18.2.3 NioEventLoop
+18.3 总结
+第19章 Future和Promise
+19.1 Future功能
+19.2 ChannelFuture源码分析
+19.3 Promise功能介绍
+19.4 Promise源码分析
+19.4.1 Promise继承关系图
+19.4.2 DefaultPromise
+19.5 总结
+架构和行业应用篇 Netty高级特性
+第20章 Netty架构剖析
+20.1 Netty逻辑架构
+20.1.1 Reactor通信调度层
+20.1.2 职责链ChannelPipeline
+20.1.3 业务逻辑编排层（Service ChannelHandler）
+20.2 关键架构质量属性
+20.2.1 高性能
+20.2.2 可靠性
+20.2.3 可定制性
+20.2.4 可扩展性
+20.3 总结
+第21章 Java多线程编程在Netty中的应用
+21.1 Java内存模型与多线程编程
+21.1.1 硬件的发展和多任务处理
+21.1.2 Java内存模型
+21.2 Netty的并发编程实践
+21.2.1 对共享的可变数据进行正确的同步
+21.2.2 正确使用锁
+21.2.3 volatile的正确使用
+21.2.4 CAS指令和原子类
+21.2.5 线程安全类的应用
+21.2.6 读写锁的应用
+21.2.7 线程安全性文档说明
+21.2.8 不要依赖线程优先级
+21.3 总结
+第22章 高性能之道
+22.1 RPC调用性能模型分析
+22.1.1 传统RPC调用性能差的三宗罪
+22.1.2 I/O通信性能三原则
+22.2 Netty高性能之道
+22.2.1 异步非阻塞通信
+22.2.2 高效的Reactor线程模型
+22.2.3 无锁化的串行设计
+22.2.4 高效的并发编程
+22.2.5 高性能的序列化框架
+22.2.6 零拷贝
+22.2.7 内存池
+22.2.8 灵活的TCP参数配置能力
+22.3 主流NIO框架性能对比
+22.4 总结
+第23章 可靠性
+23.1 可靠性需求
+23.1.1 宕机的代价
+23.1.2 Netty可靠性需求
+23.2 Netty高可靠性设计
+23.2.1 网络通信类故障
+23.2.2 链路的有效性检测
+23.2.3 Reactor线程的保护
+23.2.4 内存保护
+23.2.5 流量整形
+23.2.6 优雅停机接口
+23.3 优化建议
+23.3.1 发送队列容量上限控制
+23.3.2 回推发送失败的消息
+23.4 总结
+第24章 安全性
+24.1 严峻的安全形势
+24.1.1 OpenSSL Heart bleed漏洞
+24.1.2 安全漏洞的代价
+24.1.3 Netty面临的安全风险
+24.2 Netty SSL安全特性
+24.2.1 SSL单向认证
+24.2.2 SSL双向认证
+24.2.3 第三方CA认证
+24.3 Netty SSL源码分析
+24.3.1 客户端
+24.3.2 服务端
+24.3.3 消息读取
+24.3.4 消息发送
+24.4 Netty扩展的安全特性
+24.4.1 IP地址黑名单机制
+24.4.2 接入认证
+24.4 总结
+第25章 Netty未来展望
+25.1 应用范围
+25.2 技术演进
+25.3 社区活跃度
+25.4 Road Map
+25.5 总结
+附录A Netty参数配置表
+
+第1章 Netty服务端意外退出案例 1
+
+1.1 Netty服务端意外退出问题 1
+
+1.1.1 Java Daemon线程简介 2
+
+1.1.2 Netty服务端启动原理 4
+
+1.1.3 如何防止Netty服务端意外退出 6
+
+1.1.4 实际项目中的优化策略 8
+
+1.2 Netty优雅退出机制 9
+
+1.2.1 Java优雅退出机制 10
+
+1.2.2 Java优雅退出的注意点 12
+
+1.2.3 Netty优雅退出机制 14
+
+1.2.4 Netty优雅退出原理和源码分析 15
+
+1.2.5 Netty优雅退出的一些误区 20
+
+1.3 总结 21
+
+第2章 Netty客户端连接池资源泄漏案例 22
+
+2.1 Netty连接池资源泄漏问题 22
+
+2.1.1 连接池创建代码 23
+
+2.1.2 内存溢出和线程膨胀 23
+
+2.1.3 错用NIO编程模式 25
+
+2.1.4 正确的连接池创建方式 26
+
+2.1.5 并发安全和资源释放 28
+
+2.2 Netty客户端创建机制 29
+
+2.2.1 Java NIO客户端创建原理分析 29
+
+2.2.2 Netty客户端创建原理分析 32
+
+2.2.3 Bootstrap工具类源码分析 34
+
+2.3 总结 36
+
+第3章 Netty内存池泄漏疑云案例 37
+
+3.1 Netty内存池泄漏问题 37
+
+3.1.1 路由转发服务代码 38
+
+3.1.2 响应消息内存释放玄机 39
+
+3.1.3 采集堆内存快照分析 42
+
+3.1.4 ByteBuf申请和释放的理解误区 45
+
+3.2 Netty内存池工作机制 48
+
+3.2.1 内存池的性能优势 48
+
+3.2.2 内存池工作原理分析 51
+
+3.2.3 内存池核心代码分析 54
+
+3.3 总结 58
+
+第４章 ByteBuf故障排查案例 59
+
+4.1 HTTP协议栈ByteBuf使用问题 59
+
+4.1.1 HTTP响应Body获取异常 59
+
+4.1.2 ByteBuf非法引用问题 63
+
+4.1.3 ByteBuf使用注意事项 66
+
+4.2 Netty ByteBuf实现机制 67
+
+4.2.1 Java原生ByteBuffer的局限性 67
+
+4.2.2 Netty ByteBuf工作原理分析 67
+
+4.2.3 ByteBuf引用计数器工作原理和源码分析 70
+
+4.3 总结 73
+
+第5章 Netty发送队列积压导致内存泄漏案例 74
+
+5.1 Netty发送队列积压案例 74
+
+5.1.1 高并发故障场景 74
+
+5.1.2 内存泄漏原因分析 76
+
+5.1.3 如何防止发送队列积压 78
+
+5.1.4 其他可能导致发送队列积压的因素 80
+
+5.2 Netty消息发送工作机制 82
+
+5.2.1 WriteAndFlushTask原理和源码分析 83
+
+5.2.2 ChannelOutboundBuffer原理和源码分析 86
+
+5.2.3 消息发送源码分析 88
+
+5.2.4 消息发送高低水位控制 94
+
+5.3 总结 95
+
+第6章 API网关高并发压测性能波动案例 96
+
+6.1 高并发压测性能波动问题 96
+
+6.1.1 故障场景模拟 96
+
+6.1.2 性能波动原因定位 98
+
+6.1.3 主动内存泄漏定位法 101
+
+6.1.4 网关类产品的优化建议 102
+
+6.2 Netty消息接入内存申请机制 102
+
+6.2.1 消息接入的内存分配原理和源码分析 102
+
+6.2.2 Netty ByteBuf的动态扩容原理和源码分析 107
+
+6.3 总结 108
+
+第7章 Netty ChannelHandler并发安全案例 109
+
+7.1 Netty ChannelHandler并发安全问题 109
+
+7.1.1 串行执行的ChannelHandler 110
+
+7.1.2 跨链路共享的ChannelHandler 114
+
+7.1.3 ChannelHandler的并发陷阱 116
+
+7.2 Netty ChannelHandler工作机制 118
+
+7.2.1 职责链ChannelPipeline原理和源码分析 118
+
+7.2.2 用户自定义Event原理和源码分析 122
+
+7.3 总结 123
+
+第8章 车联网服务端接收不到车载终端消息案例 124
+
+8.1 车联网服务端接收不到车载终端消息问题 124
+
+8.1.1 故障现象 125
+
+8.1.2 故障期线程堆栈快照分析 126
+
+8.1.3 NioEventLoop线程防挂死策略 128
+
+8.2 NioEventLoop线程工作机制 129
+
+8.2.1 I/O读写操作原理和源码分析 130
+
+8.2.2 异步任务执行原理和源码分析 133
+
+8.2.3 定时任务执行原理和源码分析 135
+
+8.2.4 Netty多线程最佳实践 137
+
+8.3 总结 137
+
+第９章 Netty 3.X版本升级案例 139
+
+9.1 Netty 3.X的版本升级背景 139
+
+9.1.1 被迫升级场景 140
+
+9.1.2 升级不当遭遇各种问题 140
+
+9.2 版本升级后数据被篡改问题 141
+
+9.2.1 数据篡改原因分析 142
+
+9.2.2 问题总结 143
+
+9.3 升级后上下文丢失问题 143
+
+9.3.1 上下文丢失原因分析 144
+
+9.3.2 依赖第三方线程模型的思考 144
+
+9.4 升级后应用遭遇性能下降问题 145
+
+9.4.1 性能下降原因分析 145
+
+9.4.2 性能优化建议 146
+
+9.5 Netty线程模型变更分析 147
+
+9.5.1 Netty 3.X版本线程模型 147
+
+9.5.2 Netty 4.X版本线程模型 149
+
+9.5.3 线程模型变化点源码分析 150
+
+9.5.4 线程模型变化总结 152
+
+9.6 总结 154
+
+第10章 Netty并发失效导致性能下降案例 155
+
+10.1 业务ChannelHandler无法并发执行问题 155
+
+10.1.1 服务端并发设计相关代码分析 155
+
+10.1.2 无法并行执行的EventExecutorGroup 159
+
+10.1.3 并行执行优化策略和结果 161
+
+10.2 Netty DefaultEventExecutor工作机制 163
+
+10.2.1 DefaultEventExecutor原理和源码分析 164
+
+10.2.2 业务线程池优化策略 165
+
+10.2.3 Netty线程绑定机制原理和源码分析 168
+
+10.3 总结 170
+
+第11章 IoT百万长连接性能调优案例 171
+
+11.1 海量长连接接入面临的挑战 171
+
+11.1.1 IoT设备接入特点 172
+
+11.1.2 IoT服务端性能优化场景 172
+
+11.1.3 服务端面临的性能挑战 172
+
+11.2 智能家居内存泄漏问题 173
+
+11.2.1 服务端内存泄漏原因定位 173
+
+11.2.2 问题背后的一些思考 174
+
+11.3 操作系统参数调优 174
+
+11.3.1 文件描述符 175
+
+11.3.2 TCP/IP相关参数 175
+
+11.3.3 多网卡队列和软中断 177
+
+11.4 Netty性能调优 177
+
+11.4.1 设置合理的线程数 177
+
+11.4.2 心跳优化 180
+
+11.4.3 接收和发送缓冲区调优 183
+
+11.4.4 合理使用内存池 184
+
+11.4.5 防止I/O线程被意外阻塞 185
+
+11.4.6 I/O线程和业务线程分离 187
+
+11.4.7 针对端侧并发连接数的流控 187
+
+11.5 JVM相关性能优化 189
+
+11.5.1 GC调优 189
+
+11.5.2 其他优化手段 193
+
+11.6 总结 193
+
+第12章 静态检查修改不当引起性能下降案例 195
+
+12.1 Edge Service性能严重下降问题 195
+
+12.1.1 Edge Service热点代码分析 195
+
+12.1.2 静态检查问题不是简单的一改了之 197
+
+12.1.3 问题反思和改进 200
+
+12.2 克隆和浅拷贝 201
+
+12.2.1 浅拷贝存在的问题 201
+
+12.2.2 Netty的对象拷贝实现策略 203
+
+12.3 总结 204
+
+第13章 Netty性能统计误区案例 205
+
+13.1 时延毛刺排查相关问题 205
+
+13.1.1 时延毛刺问题初步分析 205
+
+13.1.2 服务调用链改进 207
+
+13.1.3 都是同步思维惹的祸 208
+
+13.1.4 正确的消息发送速度性能统计策略 209
+
+13.1.5 常见的消息发送性能统计误区 212
+
+13.2 Netty关键性能指标采集策略 212
+
+13.2.1 Netty I/O线程池性能指标 213
+
+13.2.2 Netty发送队列积压消息数 214
+
+13.2.3 Netty消息读取速度性能统计 215
+
+13.3 总结 215
+
+第14章 gRPC的Netty HTTP/2实践案例 216
+
+14.1 gRPC基础入门 216
+
+14.1.1 RPC框架简介 216
+
+14.1.2 当前主流的RPC框架 218
+
+14.1.3 gRPC框架特点 218
+
+14.1.4 为什么选择HTTP/2 219
+
+14.2 gRPC Netty HTTP/2服务端工作机制 220
+
+14.2.1 Netty HTTP/2服务端创建原理和源码分析 220
+
+14.2.2 服务端接收HTTP/2请求消息原理和源码分析 224
+
+14.2.3 服务端发送HTTP/2响应消息原理和源码分析 231
+
+14.3 gRPC Netty HTTP/2客户端工作机制 234
+
+14.3.1 Netty HTTP/2客户端创建原理和源码分析 235
+
+14.3.2 客户端发送HTTP/2请求消息原理和源码分析 238
+
+14.3.3 客户端接收HTTP/2响应消息原理和源码分析 242
+
+14.4 gRPC消息序列化机制 243
+
+14.4.1 Google Protobuf简介 243
+
+14.4.2 消息的序列化原理和源码分析 244
+
+14.4.3 消息的反序列化原理和源码分析 245
+
+14.5 gRPC线程模型 246
+
+14.5.1 服务端线程模型 246
+
+14.5.2 客户端线程模型 247
+
+14.5.3 线程模型总结 248
+
+14.6 总结 249
+
+第15章 Netty事件触发策略使用不当案例 250
+
+15.1 channelReadComplete方法被调用多次问题 250
+
+15.1.1 ChannelHandler调用问题 250
+
+15.1.2 生产环境问题模拟重现 252
+
+15.2 ChannelHandler使用的一些误区总结 255
+
+15.2.1 channelReadComplete方法调用 255
+
+15.2.2 ChannelHandler职责链调用 257
+
+15.3 总结 258
+
+第16章 Netty流量整形应用案例 259
+
+16.1 Netty流量整形功能 259
+
+16.1.1 通用的流量整形功能简介 260
+
+16.1.2 Netty流量整形功能简介 260
+
+16.2 Netty流量整形应用 261
+
+16.2.1 流量整形示例代码 261
+
+16.2.2 流量整形功能测试 263
+
+16.3 Netty流量整形工作机制 264
+
+16.3.1 流量整形工作原理和源码分析 264
+
+16.3.2 并发编程在流量整形中的应用 271
+
+16.3.3 使用流量整形的一些注意事项总结 274
+
+16.4 总结 278
+
+第17章 Netty SSL应用案例 279
+
+17.1 Netty SSL功能简介 279
+
+17.1.1 SSL安全特性 280
+
+17.1.2 Netty SSL实现机制 281
+
+17.2 Netty客户端SSL握手超时问题 282
+
+17.2.1 握手超时原因定位 282
+
+17.2.2 Netty SSL握手问题定位技巧 283
+
+17.3 SSL握手性能问题 284
+
+17.3.1 SSL握手性能热点分析 284
+
+17.3.2 缓存和对象池 285
+
+17.4 SSL事件监听机制 286
+
+17.4.1 握手成功事件 286
+
+17.4.2 SSL连接关闭事件 286
+
+17.5 总结 287
+
+第18章 Netty HTTPS服务端高并发宕机案例 288
+
+18.1 Netty HTTPS服务端宕机问题 288
+
+18.1.1 客户端大量超时 288
+
+18.1.2 服务端内存泄漏原因分析 289
+
+18.1.3 NioSocketChannel泄漏原因探究 290
+
+18.1.4 高并发场景下缺失的可靠性保护 292
+
+18.2 功能层面的可靠性优化 294
+
+18.2.1 Netty HTTPS服务端可靠性优化 295
+
+18.2.2 HTTPS客户端优化 296
+
+18.3 架构层面的可靠性优化 297
+
+18.3.1 端到端架构问题剖析 297
+
+18.3.2 HTTP Client切换到NIO 298
+
+18.3.3 同步RPC调用切换到异步调用 299
+
+18.3.4 协议升级到HTTP/2 303
+
+18.4 总结 307
+
+第19章 MQTT服务接入超时案例 308
+
+19.1 MQTT服务接入超时问题 308
+
+19.1.1 生产环境问题现象 308
+
+19.1.2 连接数膨胀原因分析 309
+
+19.1.3 无效连接的关闭策略 309
+
+19.1.4 问题总结 310
+
+19.2 基于Netty的可靠性设计 311
+
+19.2.1 业务定制I/O异常 311
+
+19.2.2 链路的有效性检测 312
+
+19.2.3 内存保护 313
+
+19.3 总结 315
+
+第20章 Netty实践总结 316
+
+20.1 Netty学习策略 316
+
+20.1.1 入门知识准备 316
+
+20.1.2 Netty入门学习 319
+
+20.1.3 项目实践 319
+
+20.1.4 Netty源码阅读策略 319
+
+20.2 Netty故障定位技巧 320
+
+20.2.1 接收不到消息 320
+
+20.2.2 内存泄漏 321
+
+20.2.3 性能问题 322
