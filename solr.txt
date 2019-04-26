@@ -1,0 +1,524 @@
+第1章 初识Solr
+1.1 Solr是什么
+1.2 Solr的历史
+1.3 为什么要选择Solr
+1.4 Solr功能预览
+1.5 Solr下载
+1.6 Solr学习资源
+1.7 Windows平台下部署Solr
+1.8 Linux平台下部署Solr
+1.9 玩转post.jar
+1.10 在Eclipse中编译Solr源码
+1.11 本章总结
+第2章 Solr基础
+2.1 Solr Core
+2.2 Solr DIH
+2.3 Solr Full Import全量导入
+2.4 Solr Delta-import增量导入
+2.5 Solr索引
+2.6 本章总结
+第3章 Solr配置
+3.1 solr.xml配置详解
+3.2 solrconfig.xml配置详解
+3.3 schema.xml配置详解
+3.4 data-config.xml配置详解
+3.5 zoo.cfg配置详解
+3.6 本章总结
+第4章 Solr分词
+4.1 分词的基本概念
+4.2 Solr分词器
+4.3 中文分词器
+4.4 本章总结
+第5章 Solr查询
+5.1 Solr查询概述
+5.2 Solr查询相关度简述
+5.3 Solr的查询语法解析器
+5.4 Lucene的基本查询语法
+5.5 Solr的标准查询语法解析器
+5.6 Solr DisMax
+5.7 Solr eDisMax
+5.8 Solr的其他查询语法解析器
+5.9 Query VS Filter Query
+5.10 Solr返回结果
+5.11 Solr排序
+5.12 调试查询结果
+5.13 本章总结
+第6章 Solr Facet
+6.1 理解Facet
+6.2 Facet简单示例
+6.3 Query Facet
+6.4 Range Facet
+6.5 FacetFilter
+6.6 Multiselect Faceting
+6.7 本章总结
+第7章 Solr高亮
+7.1 什么是Solr高亮
+7.2 Solr高亮的工作原理
+7.3 Facet ＆ Highlighting
+7.4 高亮多值域
+7.5 高亮参数
+7.6 FastVectorHighlighter
+7.7 PostingsHighlighter
+7.8 本章总结
+第8章 Solr Query Suggestion查询建议
+8.1 Spell-Check
+8.2 Autosuggest
+8.3 基于N-Gram实现Autosuggest
+8.4 基于用户行为实现Autosuggest
+8.5 本章总结
+第9章 Solr Group分组
+9.1 Result grouping VS Field collapsing
+9.2 按照指定域分组
+9.3 每个分组返回多个文档
+9.4 按照Function动态计算值分组
+9.5 按照任意Query分组
+9.6 Group的分页与排序
+9.7 Group ＆ Facet
+9.8 Group分布式查询
+9.9 Group缓存
+9.10 使用Collapsing Query Parser实现高效的Field Collapsing
+9.11 Solr Group VS SQL Group by
+9.12 本章总结
+第10章 Solr企业级应用
+10.1 Solr源码编译与补丁应用
+10.2 部署Solr
+10.3 Solr硬件要求与系统配置
+10.4 Solr数据批量导入
+10.5 Solr Shard与Replication
+10.6 Core管理
+10.7 Solr集群管理
+10.8 如何与Solr交互
+10.9 监控你的Solr
+10.10 Solr版本升级
+10.11 本章总结
+
+第11章Solr高级查询 1
+11.1Solr函数查询 2
+11.1.1Function语法 2
+11.1.2使用函数查询 4
+11.1.3将函数计算值作为“伪域”返回 5
+11.1.4根据函数进行排序 6
+11.1.5Solr中的内置函数 7
+11.1.6自定义函数 13
+11.2Solr地理空间查询 16
+11.2.1Solr地理空间简单查询 17
+11.2.2Solr地理空间高级查询 19
+11.3Pivot Facet 29
+11.4Solr Subfacet 31
+11.4.1Subfacet语法 32
+11.4.2Subfacet复杂示例 32
+11.5Solr Facet Function 34
+11.5.1聚合函数 35
+11.5.2聚合函数与Subfacet结合 35
+11.5.3Solr中的Percentile函数 36
+11.6JSON Facet API 39
+11.6.1JSON Facet API简介 39
+11.6.2JSON Facet简单使用 40
+11.6.3Facet类型 41
+11.6.4JSON Facet语法 41
+11.6.5Term Facet 42
+11.6.6Query Facet 43
+11.6.7Range Facet 43
+11.6.8Multi-Select Facet 44
+11.7Interval Facet 47
+11.8Hierarchical Facet 48
+11.9Solr Stats组件 50
+11.10　Solr Terms组件 52
+11.11　SolrTerm Vector组件 54
+11.12　Solr Query Elevation组件 56
+11.13　Solr Result Clustering组件 59
+11.14　本章总结 62
+第12章Solr查询进阶篇 63
+12.1Solr深度分页 63
+12.2Solr自定义排序 66
+12.3Solr Join查询 70
+12.3.1跨Core Join 71
+12.3.2跨Document Join 73
+12.3.3Block Join 74
+12.3.4Block Join Facet 77
+12.4深入Solr相关性评分 79
+12.4.1Field权重 79
+12.4.2Term权重 80
+12.4.3Payload权重 80
+12.4.4Function权重 81
+12.4.5邻近Term权重 82
+12.4.6Document权重 83
+12.4.7自定义Similarity插件 84
+12.5Solr NRT近实时查询 86
+12.6Solr Real-time Get查询 88
+12.7Solr评分查询 90
+12.8Solr MoreLikeThis组件 91
+12.9Solr自定义Query Parser 95
+12.10　本章总结 97
+第13章SolrJ 98
+13.1什么是SolrJ 98
+13.2SolrJ的环境依赖与配置 99
+13.3SolrClient介绍 101
+13.4SolrJ简单使用 103
+13.5SolrJ查询 106
+13.6使用SolrJ高效导出数据 110
+13.7SolrJ增量更新 111
+13.8SolrJ原子更新 112
+13.9使用SolrJ管理Core 116
+13.9.1创建Core 117
+13.9.2卸载Core 118
+13.9.3加载Core 119
+13.9.4交换Core 119
+13.9.5重命名Core 120
+13.9.6查看Core状态 120
+13.9.7Core合并 120
+13.9.8Core分裂 121
+13.10　使用SolrJ管理schema.xml 122
+13.10.1Field管理 122
+13.10.2FieldType管理 127
+13.10.3Schema管理 130
+13.10.4Schema管理的事务性批量操作 132
+13.11　使用SolrJ操作JSON Request API 133
+13.12　使用Spring Data Solr 136
+13.12.1Spring Data Solr环境搭建 136
+13.12.2Spring Data Solr的CRUD 138
+13.12.3Spring Data Solr中的查询 141
+13.12.4Spring Data Solr中的Repository详解 143
+13.12.5Spring Data Solr中Solr-Template工具类详解 146
+第14章SolrCloud 153
+14.1SolrCloud快速入门 153
+14.2SolrCloud工作原理 156
+14.2.1SolrCloud的核心概念 156
+14.2.2SolrCloud中的Shard 157
+14.2.3Collection VS Core 158
+14.2.4索引文档路由 161
+14.2.5Shard的几种状态 162
+14.2.6Replica的几种状态 162
+14.2.7Shard分割 163
+14.2.8SolrCloud里的自动提交 163
+14.2.9SolrCloud的分布式查询请求 164
+14.2.10读写端的自动容错 171
+14.2.11　Zookeeper 173
+14.3SolrCloud集群搭建 182
+14.3.1在Tomcat容器下搭建SolrCloud集群 183
+14.3.2在Jetty容器下搭建SolrCloud集群 189
+14.4SolrCloud的基本操作 194
+14.4.1Solr环境变量设置 194
+14.4.2创建Collection 195
+14.4.3删除Collection 196
+14.4.4启动Solr 196
+14.4.5停止Solr 197
+14.4.6查看Solr状态 198
+14.4.7Collection健康检测 198
+14.4.8管理Zookeeper上的配置文件 199
+14.5SlorCloud配置详解 201
+14.5.1solr.xml详解 201
+14.5.2zoo.cfg详解 204
+14.6SolrCloud分布式索引 205
+14.6.1添加索引文档到SolrCloud 205
+14.6.2SolrCloud里的近实时查询 206
+14.7SolrCloud分布式查询 207
+14.8SolrCloud Collection API 208
+14.8.1Collection常用操作API 209
+14.8.2Shard常用操作API 212
+14.8.3Replica常用操作API 215
+14.8.4集群管理API 216
+14.9Solr索引主从复制 217
+14.9.1索引复制简介 217
+14.9.2索引复制的术语 218
+14.9.3索引复制的配置 219
+14.9.4配置索引复制中继器 221
+14.9.5索引复制工作机制 222
+14.9.6ReplicationHandler HTTP接口 223
+14.10　跨数据中心的索引复制（CDCR） 224
+14.10.1什么是CDCR 224
+14.10.2CDCR的Push机制 225
+14.10.3CDCR搭建 226
+14.10.4CDCR配置详解 228
+14.10.5CDCR的HTTP接口 229
+14.10.6CDCR存在的限制 229
+14.11本章总结 230
+第15章Solr性能优化 231
+15.1Schema设计的注意事项 232
+15.2Solr索引更新与提交的优化建议 233
+15.3索引合并性能调优 234
+
+Mastering Apache Solr 7.x
+Packt Upsell
+Why subscribe?
+PacktPub.com
+Contributors
+About the authors
+About the reviewers
+Packt is searching for authors like you
+Preface
+Who this book is for
+What this book covers
+To get the most out of this book
+Download the example code files
+Download the color images
+Conventions used
+Get in touch
+Reviews
+Introduction to Solr 7
+Introduction to Solr
+History of Solr
+Lucene – the backbone of Solr
+Why choose Solr?
+Benefits of keyword search
+Benefits of ranked results
+Solr use cases
+Social media
+Science and research
+Search engine
+E-commerce
+Media and entertainment
+Government
+Education
+What's new in Solr 7?
+Replication for SolrCloud
+TLOG replicas
+PULL replicas
+Schemaless improvements
+Autoscaling
+Default numeric types
+Spatial fields
+SolrJ
+JMX and MBeans
+Other changes
+Summary
+Getting Started
+Solr installation
+Understanding various files and the folder structure
+bin
+Solr script
+Post script
+contrib
+DataImportHandler
+ContentExtractionLibrary
+LanguageIdentifier
+Clustering
+VelocityIntegration
+dist and docs
+example
+core.properties
+zoo.cfg
+solr.xml
+server
+Running Solr
+Running basic Solr commands
+Production Solr setup
+Loading sample data
+Loading data from MySQL
+Understanding the browse interface
+Using the Solr admin interface
+Dashboard
+Logging
+Cloud screens
+Tree view
+Graph view
+Collections or core admin
+Java properties
+Thread dump
+Collection-specific tools
+Overview
+Analysis
+DataImport
+Documents
+Files
+Query
+Stream
+Schema
+Core-specific tools
+Summary
+Designing Schemas
+How Solr works
+Getting started with Solr's basics
+The schema file of Solr
+Understanding field types
+Definitions and properties of field types
+Field type properties
+Field types available in Solr
+Understanding date fields
+Understanding currencies and exchange rates
+Understanding enum fields
+Field management
+Field properties
+Copying fields
+Dynamic fields
+Mastering Schema API
+Schema API in detail
+Schema operations
+Listing fields, field types, DynamicFields, and CopyField rules
+Deciphering schemaless mode
+Creating a schemaless example
+Schemaless mode configuration
+Managed schema
+Field guessing
+Summary
+Mastering Text Analysis Methodologies
+Understanding text analysis
+What is text analysis?
+How text analysis works
+Understanding analyzer
+What is an analyzer?
+How an analyzer works
+Understanding tokenizers
+What is a tokenizer?
+Available tokenizers in Solr
+Standard tokenizer
+White space tokenizer
+Classic tokenizer
+Keyword tokenizer
+Lower case tokenizer
+Letter tokenizer
+N-gram tokenizer
+Edge n-gram tokenizer
+Understanding filters
+What is a filter?
+Available filters in Solr
+Stop filter
+Classic filter
+Synonym filter
+Synonym graph filter
+ASCII folding filter
+Keep word filter
+KStem filter
+KeywordMarkerFilterFactory
+Word delimiter graph filter
+Understanding CharFilter
+Understanding PatternReplaceCharFilterFactor
+Understanding multilingual analysis
+Language identification
+Configuring Solr for multiple language search
+Creating separate fields per language
+Creating separate indexes per language
+Understanding phonetic matching
+Understanding Beider-Morse phonetic matching
+Summary
+Data Indexing and Operations
+Basics of Solr indexing
+Installing Postman
+Exploring the post tool
+Understanding index handlers
+Working with an index handler with the XML format
+Index handler with JSON
+Apache Tika and indexing
+Solr Cell basics
+Indexing a binary using Tika
+Language detection
+Language detection configuration
+Client APIs
+Summary
+Advanced Queries – Part I
+Search relevance
+Velocity search UI
+Query parsing and syntax
+Common query parameters
+Standard query parser
+Advantage
+Disadvantage
+Searching terms for standard query parser
+Term modifiers
+Wildcard searches
+Fuzzy searches
+Proximity searching
+Range searches
+Boolean operators
+Escaping special characters
+Grouping terms
+Dates and times in query strings
+Adding comments to the query string
+The DisMax Query Parser
+Advantages
+DisMax query parser parameters
+eDisMax Query Parser
+Response writer
+JSON
+Standard XML
+CSV
+Velocity
+Faceting
+Common parameters
+Field-value faceting parameters
+Range faceting
+Pivot faceting
+Interval faceting
+Highlighting
+Highlighting parameters
+Highlighter
+Unified highlighter (hl.method=unified)
+Original highlighter (hl.method=original)
+FastVector highlighter (hl.method=fastVector)
+Boundary scanners
+The breakIterator boundary scanner
+The simple boundary scanner
+Summary
+Advanced Queries – Part II
+Spellchecking
+Spellcheck parameters
+Implementation approaches
+IndexBasedSpellChecker
+DirectSolrSpellChecker
+FileBasedSpellChecker
+WordBreakSolrSpellChecker
+Distributed spellcheck
+Suggester
+Suggester parameters
+Running suggestions
+Pagination
+How to implement pagination
+Cursor pagination
+Result grouping
+Result grouping parameters
+Running result grouping
+Result clustering
+Result clustering parameters
+Result clustering implementation
+Install the clustering contrib
+Declare the cluster search component
+Declare the request handler and include the cluster search component
+Spatial search
+Spatial search implementation
+Field types
+Query parser
+Spatial search query parser parameters
+Function queries
+Summary
+Managing and Fine-Tuning Solr
+JVM configuration
+Managing the memory heap
+Managing solrconfig.xml
+User-defined properties
+Implicit Solr core properties
+Managing backups
+Backup in SolrCloud
+Standalone mode backups
+Backup API
+Backup status
+API to restore
+Restore status API
+Snapshot API
+JMX with Solr
+JMX configuration
+Logging configuration
+Log settings using the admin web interface
+Log level at startup
+Setting the environment variable
+Passing parameters in the startup script
+Configuring Log4J for logging
+SolrCloud overview
+SolrCloud in interactive mode
+SolrCloud – core concepts
+Routing documents
+Splitting shards
+Setting up ignore commits from client applications
+Enabling SSL – Solr security
+Prerequisites
+Generating a key and self-signed certificate
+Starting Solr with SSL system properties
+Performance statistics
+Statistics for request handlers
+Summary
+Client APIs – An Overview
+Client API overview
+JavaScript Client API
+SolrJ Client API
+Ruby Client API
+Python Client API
+Summary

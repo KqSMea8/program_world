@@ -1,0 +1,1221 @@
+第1章　初识lucene
+1.1　应对信息爆炸
+1.2　lucene是什么
+1.2.1　lucene能做些什么
+1.2.2　lucene的历史
+1.3　lucene和搜索程序组件
+1.3.1　索引组件
+1.3.2　搜索组件
+1.3.3　搜索程序的其他模块
+1.3.4　lucene与应用程序的整合点
+1.4　lucene实战：程序示例
+1.4.1　建立索引
+1.4.2　搜索索引
+1.5　理解索引过程的核心类
+1.5.1　indexwriter
+1.5.2　directory
+1.5.3　analyzer
+1.5.4　document
+1.5.5　field
+1.6　理解搜索过程的核心类
+1.6.1　indexsearcher
+1.6.2　term
+1.6.3　query
+1.6.4　termquery
+1.6.5　topdocs
+1.7　小结
+第2章　构建索引
+2.1　lucene如何对搜索内容进行建模
+2.1.1　文档和域
+2.1.2　灵活的架构
+2.1.3　反向规格化（denormalization）
+2.2　理解索引过程
+2.2.1　提取文本和创建文档
+2.2.2　分析文档
+2.2.3　向索引添加文档
+2.3　基本索引操作
+2.3.1　向索引添加文档
+2.3.2　删除索引中的文档
+2.3.3　更新索引中的文档
+2.4　域选项
+2.4.1　域索引选项
+2.4.2　域存储选项
+2.4.3　域的项向量选项
+2.4.4　reader、tokenstream和byte[ ]域值
+2.4.5　域选项组合
+2.4.6　域排序选项
+2.4.7　多值域
+2.5　对文档和域进行加权操作
+2.5.1　文档加权操作
+2.5.2　域加权操作
+2.5.3　加权基准（norms）
+2.6　索引数字、日期和时间
+2.6.1　索引数字
+2.6.2　索引日期和时间
+2.7　域截取（field truncation）
+2.8　近实时搜索（near-real-time search）
+2.9　优化索引
+2.10　其他directory子类
+2.11　并发、线程安全及锁机制
+2.11.1　线程安全和多虚拟机安全
+2.11.2　通过远程文件系统访问索引
+2.11.3　索引锁机制
+2.12　调试索引
+2.13　高级索引概念
+2.13.1　用indexreader删除文档
+2.13.2　回收被删除文档所使用过的磁盘空间
+2.13.3　缓冲和刷新
+2.13.4　索引提交
+2.13.5　acid事务和索引连续性
+2.13.6　合并段
+2.14　小结
+第3章　为应用程序添加搜索功能
+3.1　实现简单的搜索功能
+3.1.1　对特定项的搜索
+3.1.2　解析用户输入的查询表达式：queryparser
+3.2　使用indexsearcher类
+3.2.1　创建indexsearcher类
+3.2.2　实现搜索功能
+3.2.3　使用topdocs类
+3.2.4　搜索结果分页
+3.2.5　近实时搜索
+3.3　理解lucene的评分机制
+3.3.1　lucene如何评分
+3.3.2　使用explain（）理解搜索结果评分
+3.4　lucene的多样化查询
+3.4.1　通过项进行搜索：termquery类
+3.4.2　在指定的项范围内搜索：termrangequery类
+3.4.3　在指定的数字范围内搜索：numericrangequery类
+3.4.4　通过字符串搜索：prefixquery类
+3.4.5　组合查询：booleanquery类
+3.4.6　通过短语搜索：phrasequery类
+3.4.7　通配符查询：wildcardquery类
+3.4.8　搜索类似项：fuzzyquery类
+3.4.9　匹配所有文档：matchalldocsquery类
+3.5　解析查询表达式：queryparser
+3.5.1　query.tostring方法
+3.5.2　termquery
+3.5.3　项范围查询
+3.5.4　数值范围搜索和日期范围搜索
+3.5.5　前缀查询和通配符查询
+3.5.6　布尔操作符
+3.5.7　短语查询
+3.5.8　模糊查询
+3.5.9　matchalldocsquery
+3.5.10　分组查询
+3.5.11　域选择
+3.5.12　为子查询设置加权
+3.5.13　是否一定要使用queryparse
+3.6　小结
+第4章　lucene的分析过程
+4.1　使用分析器
+4.1.1　索引过程中的分析
+4.1.2　queryparser分析
+4.1.3　解析vs分析：分析器何时不再适用
+4.2　剖析分析器
+4.2.1　语汇单元的组成
+4.2.2　语汇单元流揭秘
+4.2.3　观察分析器
+4.2.4　语汇单元过滤器：过滤顺序的重要性
+4.3　使用内置分析器
+4.3.1　stopanalyzer
+4.3.2　standardanalyzer
+4.3.3　应当采用哪种核心分析器
+4.4　近音词查询
+4.5　同义词、别名和其他表示相同意义的词
+4.5.1　创建synonymanalyzer
+4.5.2　显示语汇单元的位置
+4.6　词干分析
+4.6.1　stopfilter保留空位
+4.6.2　合并词干操作和停用词移除操作
+4.7　域分析
+4.7.1　多值域分析
+4.7.2　特定域分析
+4.7.3　搜索未被分析的域
+4.8　语言分析
+4.8.1　unicode与字符编码
+4.8.2　非英语语种分析
+4.8.3　字符规范化处理
+4.8.4　亚洲语种分析
+4.8.5　有关非英语语种分析的其他问题
+4.9　nutch分析
+4.10　小结
+第5章　高级搜索技术
+5.1　lucene域缓存
+5.1.1　为所有文档加载域值
+5.1.2　段对应的reader
+5.2　对搜索结果进行排序
+5.2.1　根据域值进行排序
+5.2.2　按照相关性进行排序
+5.2.3　按照索引顺序进行排序
+5.2.4　通过域进行排序
+5.2.5　倒排序
+5.2.6　通过多个域进行排序
+5.2.7　为排序域选择类型
+5.2.8　使用非默认的locale方式进行排序
+5.3　使用multiphrasequery
+5.4　针对多个域的一次性查询
+5.5　跨度查询
+5.5.1　跨度查询的构建模块：spantermquery
+5.5.2　在域的起点查找跨度
+5.5.3　彼此相邻的跨度
+5.5.4　在匹配结果中排除重叠的跨度
+5.5.5　spanorquery类
+5.5.6　spanquery类和queryparser类
+5.6　搜索过滤
+5.6.1　termrangefilter
+5.6.2　numericrangefilter
+5.6.3　fieldcacherangefilter
+5.6.4　特定项过滤
+5.6.5　使用querywrapperfilter类
+5.6.6　使用spanqueryfilter类
+5.6.7　安全过滤器
+5.6.8　使用booleanquery类进行过滤
+5.6.9　prefixfilter
+5.6.10　缓存过滤结果
+5.6.11　将filter封装成query
+5.6.12　对过滤器进行过滤
+5.6.13　非lucene内置的过滤器
+5.7　使用功能查询实现自定义评分
+5.7.1　功能查询的相关类
+5.7.2　使用功能查询对最近修改过的文档进行加权
+5.8　针对多索引的搜索
+5.8.1　使用multisearch类
+5.8.2　使用parallelmultisearcher进行多线程搜索
+5.9　使用项向量
+5.9.1　查找相似书籍
+5.9.2　它属于哪个类别
+5.9.3　termvectormapper类
+5.10　使用fieldselector加载域
+5.11　停止较慢的搜索
+5.12　小结
+第6章　扩展搜索
+6.1　使用自定义排序方法
+6.1.1　针对地理位置排序方式进行文档索引
+6.1.2　实现自定义的地理位置排序方式
+6.1.3　访问自定义排序中的值
+6.2　开发自定义的collector
+6.2.1　collector基类
+6.2.2　自定义collector：booklinkcollector
+6.2.3　alldoccollector类
+6.3　扩展queryparser类
+6.3.1　自定义queryparser的行为
+6.3.2　禁用模糊查询和通配符查询
+6.3.3　处理数值域的范围查询
+6.3.4　处理日期范围
+6.3.5　对已排序短语进行查询
+6.4　自定义过滤器
+6.4.1　实现自定义过滤器
+6.4.2　搜索期间使用自定义过滤器
+6.4.3　另一种选择：filterquery类
+6.5　有效载荷（payloads）
+6.5.1　分析期间生成有效载荷
+6.5.2　搜索期间使用有效载荷
+6.5.3　有效载荷和跨度查询
+6.5.4　通过termpositions来检索有效载荷
+6.6　小结
+第2部分　lucene应用
+第7章　使用tika提取文本
+7.1　tika是什么
+7.2　tika的逻辑设计和api
+7.3　安装tika
+7.4　tika的内置文本提取工具
+7.5　编程实现文本提取
+7.5.1　索引lucene文档
+7.5.2　tika工具类
+7.5.3　选择自定义分析器
+7.6　tika的局限
+7.7　索引自定义的xml文件
+7.7.1　使用sax进行解析
+7.7.2　使用apache commons digester进行解析和索引
+7.8　其他选择
+7.9　小结
+第8章　lucene基本扩展
+8.1　luke：lucene的索引工具箱
+8.1.1　overview标签页：索引的全局视图
+8.1.2　浏览文档
+8.1.3　使用queryparser进行搜索
+8.1.4　files and plugins标签页
+8.2　分析器、语汇单元器和语汇单元过滤器
+8.2.1　snowballanalyzer
+8.2.2　ngram过滤器
+8.2.3　shingle过滤器
+8.2.4　获取捐赠分析器
+8.3　高亮显示查询项
+8.3.1　高亮显示模块
+8.3.2　独立的高亮显示示例
+8.3.3　使用css进行高亮显示处理
+8.3.4　高亮显示搜索结果
+8.4　fastvector highlighter类
+8.5　拼写检查
+8.5.1　生成提示列表
+8.5.2　选择最佳提示
+8.5.3　向用户展示搜索结果
+8.5.4　一些加强拼写检查的考虑
+8.6　引人注目的查询扩展功能
+8.6.1　morelikethis
+8.6.2　fuzzylikethisquery
+8.6.3　boostingquery
+8.6.4　termsfilter
+8.6.5　duplicatefilter
+8.6.6　regexquery
+8.7　构建软件捐赠模块（contrib module）
+8.7.1　源代码获取方式
+8.7.2　contrib目录的ant插件
+8.8　小结
+第9章　lucene高级扩展
+9.1　链式过滤器
+9.2　使用berkeley db存储索引
+9.3　wordnet同义词
+9.3.1　建立同义词索引
+9.3.2　将wordnet同义词链接到分析器中
+9.4　基于内存的快速索引
+9.5　xml queryparser：超出“one box”的搜索接口
+9.5.1　使用xmlqueryparser
+9.5.2　扩展xml查询语法
+9.6　外围查询语言
+9.7　spatial lucene
+9.7.1　索引空间数据
+9.7.2　搜索空间数据
+9.7.3　spatial lucene的性能特点
+9.8　远程进行多索引搜索
+9.9　灵活的queryparser
+9.10　其他内容
+9.11　小结
+第10章　其他编程语言使用lucene
+10.1　移植入门
+10.1.1　移植取舍
+10.1.2　选择合适的移植版本
+10.2　clucene（c++）
+10.2.1　移植目的
+10.2.2　api和索引兼容
+10.2.3　支持的平台
+10.2.4　当前情况以及未来展望
+10.3　lucene.net（c#和其他.net编程语言）
+10.3.1　api兼容
+10.3.2　索引兼容
+10.4　kinosearch和lucy（perl）
+10.4.1　kinosearch
+10.4.2　lucy
+10.4.3　其他perl选项
+10.5　ferret（ruby）
+10.6　php
+10.6.1　zend framework
+10.6.2　php bridge
+10.7　pylucene（python）
+10.7.1　api兼容
+10.7.2　其他python选项
+10.8　solr（包含多种编程语言）
+10.9　小结
+第11章　lucene管理和性能调优
+11.1　性能调优
+11.1.1　简单的性能调优步骤
+11.1.2　测试方法
+11.1.3　索引-搜索时延调优
+11.1.4　索引操作吞吐量调优
+11.1.5　搜索时延和搜索吞吐量调优
+11.2　多线程和并行处理
+11.2.1　使用多线程进行索引操作
+11.2.2　使用多线程进行搜索操作
+11.3　资源消耗管理
+11.3.1　磁盘空间管理
+11.3.2　文件描述符管理
+11.3.3　内存管理
+11.4　热备份索引
+11.4.1　创建索引备份
+11.4.2　恢复索引
+11.5　常见错误
+11.5.1　索引损坏
+11.5.2　修复索引
+11.6　小结
+第3部分　案例分析
+第12章　案例分析1：krugle
+12.1　krugle介绍
+12.2　应用架构
+12.3　搜索性能
+12.4　源代码解析
+12.5　子串搜索
+12.6　查询vs搜索
+12.7　改进空间
+12.7.1　fieldcache内存使用
+12.7.2　合并索引
+12.8　小结
+第13章　案例分析2：siren
+13.1　siren介绍
+13.2　siren优势
+13.2.1　通过所有域进行搜索
+13.2.2　一种高效词典
+13.2.3　可变域
+13.2.4　对多值域的高效处理
+13.3　使用siren索引实体
+13.3.1　数据模型
+13.3.2　实现问题
+13.3.3　索引概要
+13.3.4　索引前的数据准备
+13.4　使用siren搜索实体
+13.4.1　搜索内容
+13.4.2　根据单元限制搜索范围
+13.4.3　将单元合并成元组
+13.4.4　针对实体描述进行查询
+13.5　在solr中集成siren
+13.6　benchmark
+13.7　小结
+第14章　案例分析3：linkedin
+14.1　使用bobo browse进行分组搜索
+14.1.1　bobo browse的设计
+14.1.2　深层次分组搜索
+14.2　使用zoie进行实时搜索
+14.2.1　zoie架构
+14.2.2　实时vs近实时
+14.2.3　文档与索引请求
+14.2.4　自定义indexreaders
+14.2.5　与lucene的近实时搜索进行比较
+14.2.6　分布式搜索
+14.3　小结
+附录a　安装lucene
+a.1　二进制文件安装
+a.2　运行命令行演示程序
+a.3　运行web应用演示程序
+a.4　编译源代码
+a.5　排错
+附录b　lucene索引格式
+b.1　逻辑索引视图
+b.2　关于索引结构
+b.2.1　理解多文件索引结构
+b.2.2　理解复合索引结构
+b.2.3　转换索引结构
+b.3　倒排索引
+b.4　小结
+附录c　lucene/contrib benchmark
+c.1　运行测试脚本
+c.2　测试脚本的组成部分
+c.2.1　内容源和文档生成器
+c.2.2　查询生成器
+c.3　控制结构
+c.4　内置任务
+c.4.1　建立和使用行文件
+c.4.2　内置报表任务
+c.5　评估搜索质量
+c.6　出错处理
+c.7　小结
+附录d　资源
+d.1　lucene知识库
+d.2　国际化
+d.3　语言探测
+d.4　项向量
+d.5　lucene移植版本
+d.6　案例分析
+d.7　其他
+d.8　信息检索软件
+d.9　doug cutting的著作
+d.9.1　会议论文
+d.9.2　美国专利
+
+
+
+第1章 网络爬虫策略
+1.1 信息时代的飞跃
+1.1.1 搜索引擎的出现
+1.1.2 搜索之网络爬虫的由来
+1.2 网络爬虫
+1.2.1 网络爬虫的基础框架
+1.2.2 网络爬虫的策略分析
+1.2.3 暗网获取
+1.2.4 分布式爬虫
+1.3 实现Web搜索
+1.3.1 Web搜索的概念
+1.3.2 经典小实例展示
+1.4 疑难解析
+1.4.1 本节技术概念
+1.4.2 实例疑难解析
+1.5 实践心得
+1.5.1 如何快速实现Web搜索
+1.5.2 如何解决和发现代码错误
+1.6 本章小结
+
+第2章 搜索引擎技术中的Lucene
+2.1 Lucene到底是什么
+2.1.1 Lucene的由来
+2.1.2 Lucene的概念
+2.1.3 Lucene的适用范围
+2.2 Lucene的架构
+2.2.1 Lucene=“完整的搜索程序”吗
+2.2.2 搜索和索引组件介绍
+2.2.3 其他模块
+2.2.4 Lucene与应用的完美结合
+2.3 Lucene小程序
+2.3.1 创建索引
+2.3.2 搜索索引
+2.4 实践心得
+2.4.1 实现创建和搜索的技术解析
+2.4.2 实例创建过程中的个人心得
+2.5 本章小结
+
+第3章 创建索引实例
+3.1 开发前的软硬件准备
+3.1.1 开发语言和专业基础
+3.1.2 开发环境基础
+3.2 对文本文档进行索引
+3.2.1 新建文本文档
+3.2.2 基础的索引代码
+3.2.3 索引结果
+3.3 实例中用到的类和关键词
+3.3.1 实例中涉及的类
+3.3.2 实例中涉及的关键词
+3.4 本章技术要点和关键点
+3.4.1 本章技术要点
+3.4.2 本章关键点
+3.4.3 技术突破点
+3.5 开发中的个人心得分享
+3.6 本章小结
+
+第4章 初建索引
+4.1 建立数据库索引的前提和意义
+4.1.1 建立数据库索引的前提
+4.1.2 建立数据库索引的基本条件
+4.1.3 建立数据库索引的意义
+4.2 建立数据库索引实例
+4.2.1 新建索引类
+4.2.2 实例核心代码示例
+4.3 实例中重要的工具：Luke
+4.3.1 什么是Luke
+4.3.2 Luke的作用
+4.4 解决疑难问题的个人心得
+4.4.1 多样化实例的参考
+4.4.2 案例分析
+4.5 SQL Server 2005、SQL Server 2008以及Oracle数据库的区别
+4.6 本章小结
+
+第5章 分词技术详解
+5.1 分词的定义和意义
+5.2 英文分词介绍
+5.3 中文分词解析
+5.3.1 中文分词的目的
+5.3.2 中文分词的意义
+5.3.3 中文分词的方法
+5.4 实例的分词方法剖析
+5.4.1 IKAnalyzer的诞生
+5.4.2 IKAnalyzer的配置方法
+5.4.3 IKAnalyzer的使用
+5.5 分词技术的广泛应用
+5.5.1 搜索引擎网站的分词技术应用
+5.5.2 分词技术深入各个领域
+5.6 实践见解
+5.6.1 关于分词的问题
+5.6.2 关于搜索引擎分词和查找的个人心得
+5.7 本章小结
+
+第6章 jar包应用详解
+6.1 jar包的定义
+6.2 基本的jar包介绍
+6.2.1 连接SQL Server的jar包
+6.2.2 Lucene常用的jar包
+6.3 实例中的分词jar包IKAnalyzer3.2.
+6.3.1 概念
+6.3.2 适用范围和基本配置要求
+6.3.3 使用案例分析
+6.4 实例中的其他jar包应用
+6.4.1 实例包含的其他jar包
+6.4.2 适用范围和案例分析
+6.5 jar包的调用方法
+6.6 扩展：如何生成jar包和运行jar包
+6.7 实践分享
+6.7.1 如何在自己的项目中灵活运用jar包
+6.7.2 jar的路径问题
+6.7.3 jar包中class文件的反编译
+6.8 本章小结
+
+第7章 构建应用程序的实现
+7.1 建立实例的项目
+7.1.1 src目录
+7.1.2 webroot目录
+7.2 详解扩展词典和停止词
+7.2.1 为什么需要扩展词典和停止词
+7.2.2 扩展词典的应用
+7.2.3 停止词应用
+7.3 应用程序测试
+7.3.1 应用程序在MyEclipse下的调试
+7.3.2 搜索结果的分页技术
+7.3.3 实现界面搜索
+7.4 开发过程中的疑难问题分享
+7.4.1 停止词的准确应用
+7.4.2 扩展词典问题
+7.4.3 界面分页显示的实例分析
+7.4.4 localhost与127.0.0.1的异同
+7.4.5 src目录和webroot目录
+7.5 本章小结
+
+第8章 查询方法的实现
+8.1 查询的概念和意义
+8.1.1 搜索引擎实现查询的概念
+8.1.2 搜索引擎查询的意义
+8.2 查询的分类
+8.2.1 完全匹配查询
+8.2.2 模糊查询
+8.2.3 多域查询
+8.2.4 通配符查询
+8.2.5 其他查询
+8.2.6 组合查询
+8.3 实例分析
+8.3.1 完全匹配查询实例解析
+8.3.2 模糊查询实例分析
+8.3.3 多域查询实例分析
+8.3.4 通配符查询实例分析
+8.3.5 其他查询实例及分析
+8.3.6 组合查询实例及分析
+8.4 实践过程中的重难点解析
+8.4.1 使用什么查询方法
+8.4.2 模糊查询案例剖析
+8.4.3 Occur.MUST与Occur.SHOULD
+8.5 本章小结
+
+第9章 高亮显示技术
+9.1 高亮显示的概念和目的
+9.1.1 高亮显示的概念
+9.1.2 高亮显示的目的
+9.2 高亮显示的模块介绍
+9.2.1 高亮显示的步骤
+9.2.2 高亮显示的重要模块
+9.2.3 其他相关内容
+9.3 高亮实现搜索结果
+9.3.1 高亮显示的实例
+9.3.2 高亮显示的搜索结果
+9.3.3 高亮显示界面效果
+9.4 高亮显示的应用
+9.5 高亮显示的技术疑难分析
+9.5.1 如何解决高亮查询结果显示不完全的问题
+9.5.2 高亮显示的对应问题解析
+9.6 本章小结
+
+第10章 结果排序和词频统计
+10.1 排序和词频统计概念
+10.1.1 什么是搜索结果排序
+10.1.2 搜索结果排序的意义
+10.1.3 什么是词频统计
+10.1.4 词频统计的意义何在
+10.2 排序分类
+10.2.1 根据域值排序
+10.2.2 索引顺序排序
+10.2.3 根据相关性排序
+10.2.4 根据词频率排序
+10.2.5 其他
+10.3 实例分析
+10.3.1 根据域值排序的实例解析
+10.3.2 根据索引顺序排序的实例分析
+10.3.3 根据相关性排序的实例分析
+10.3.4 根据词频排序实例分析
+10.3.5 其他排序方法实例分析
+10.4 实践心得
+10.4.1 查询结果排序的问题
+10.4.2 关于词性处理的问题解析
+10.5 本章小结
+
+第11章 开发中的性能优化概述
+11.1 代码的优化
+11.1.1 什么是代码优化
+11.1.2 代码优化的意义
+11.1.3 如何实现代码的优化
+11.2 索引优化
+11.2.1 索引优化的目的
+11.2.2 索引优化的方法和途径
+11.2.3 索引优化的效果
+11.3 索引的备份和错误修复
+11.3.1 如何实现索引备份
+11.3.2 恢复索引的实现
+11.3.3 修复索引
+11.4 本章小结
+
+第12章 对瓶颈技术的未来设想
+12.1 海量数据库资源搜索
+12.1.1 什么是海量数据库
+12.1.2 海量数据库资源搜索的现状和瓶颈
+12.1.3 海量数据库搜索的未来设想
+12.2 高亮显示查询结果的未来设想
+12.2.1 高亮显示出现的意义
+12.2.2 高亮显示目前现状
+12.2.3 黄褪技术概述
+12.2.4 对高亮显示查询结果的未来展望
+12.3 搜索引擎开发的规范性约束
+12.3.1 搜索引擎开发的现状
+12.3.2 版本的控制
+12.3.3 未来国际规范性约束的展望
+
+第1章 信息检索模型 1
+
+1.1 信息检索概述 1
+
+1.1.1 信息过载 1
+
+1.1.2 信息检索定义 2
+
+1.1.3 信息检索常用术语 3
+
+1.1.4 信息检索系统 4
+
+1.2 分词算法 5
+
+1.2.1 分词算法概述 5
+
+1.2.2 词典匹配分词法 6
+
+1.2.3 语义理解分词法 6
+
+1.2.4 词频统计分词法 7
+
+1.3 倒排索引 7
+
+1.4 布尔检索模型 9
+
+1.5 tf-idf权重计算 11
+
+1.6 向量空间模型 13
+
+1.7 概率检索模型 16
+
+1.7.1 贝叶斯决策理论 17
+
+1.7.2 二值独立模型 18
+
+1.7.3 Okapi BM25模型 20
+
+1.7.4 BM25F模型 20
+
+1.8 本章小结 21
+
+第2章 Lucene开发入门 22
+
+2.1 Lucene概述 22
+
+2.1.1 Lucene简介 22
+
+2.1.2 Lucene特点 22
+
+2.1.3 Lucene架构 23
+
+2.2 Lucene开发准备 25
+
+2.2.1 下载Lucene文件库 25
+
+2.2.2 工程中引入Lucene 26
+
+2.2.3 下载Luke 27
+
+2.2.4 下载IK分词工具 28
+
+2.2.5 工程搭建 29
+
+2.3 Lucene分词详解 30
+
+2.3.1 Lucene分词系统 30
+
+2.3.2 分词器测试 31
+
+2.3.3 IK分词器配置 34
+
+2.3.4 中文分词器对比 36
+
+2.3.5 扩展停用词词典 38
+
+2.3.6 扩展自定义词典 38
+
+2.4 Lucene索引详解 40
+
+2.4.1 Lucene字段类型 40
+
+2.4.2 索引文档示例 41
+
+2.4.3 Luke中查看索引 46
+
+2.4.4 索引的删除 48
+
+2.4.5 索引的更新 49
+
+2.5 Lucene查询详解 50
+
+2.5.1 搜索入门 51
+
+2.5.2 多域搜索（MultiFieldQueryParser） 52
+
+2.5.3 词项搜索（TermQuery） 53
+
+2.5.4 布尔搜索（BooleanQuery） 53
+
+2.5.5 范围搜索（RangeQuery） 54
+
+2.5.6 前缀搜索（PrefixQuery） 55
+
+2.5.7 多关键字搜索（PhraseQuery） 55
+
+2.5.8 模糊搜索（FuzzyQuery） 55
+
+2.5.9 通配符搜索（WildcardQuery） 56
+
+2.6 Lucene查询高亮 56
+
+2.7 Lucene新闻高频词提取 58
+
+2.7.1 问题提出 58
+
+2.7.2 需求分析 58
+
+2.7.3 编程实现 58
+
+2.8 本章小结 61
+
+第3章 Lucene文件检索项目实战 62
+
+3.1 需求分析 62
+
+3.2 架构设计 63
+
+3.3 文本内容抽取 64
+
+3.3.1 Tika简介 64
+
+3.3.2 Tika下载 64
+
+3.3.3 搭建工程 65
+
+3.3.4 内容抽取 66
+
+3.3.5 自动解析 68
+
+3.4 工程搭建 71
+
+3.5 索引文档 72
+
+3.6 查询界面 75
+
+3.7 文件检索 77
+
+3.8 结果展示 80
+
+3.9 本章小结 85
+
+第4章 从Lucene到Elasticsearch 86
+
+4.1 Elasticsearch概述 86
+
+4.1.1 诞生过程 86
+
+4.1.2 流行度分析 88
+
+4.1.3 架构解读 89
+
+4.1.4 优点 89
+
+4.1.5 应用场景 90
+
+4.1.6 核心概念 92
+
+4.1.7 对比RDMS 94
+
+4.1.8 文档结构 94
+
+4.2 安装Elasticsearch 95
+
+4.2.1 安装Java 96
+
+4.2.2 下载Elasticsearch 97
+
+4.2.3 启动Elasticsearch 97
+
+4.2.4 后台运行Elasticsearch 99
+
+4.2.5 关闭Elasticsearch 99
+
+4.2.6 基本配置 100
+
+4.3 中文分词器配置 101
+
+4.3.1 IK分词器安装 101
+
+4.3.2 扩展本地词库 102
+
+4.3.3 配置远程词库 103
+
+4.4 Head插件使用指南 105
+
+4.4.1 Head插件的安装 105
+
+4.4.2 Head插件的使用 107
+
+4.5 REST命令 109
+
+4.5.1 CURL工具 110
+
+4.5.2 Kibana Dev Tools 111
+
+4.6 本章小结 112
+
+第5章 Elasticsearch集群入门 113
+
+5.1 索引管理 113
+
+5.1.1 新建索引 113
+
+5.1.2 更新副本 115
+
+5.1.3 读写权限 115
+
+5.1.4 查看索引 116
+
+5.1.5 删除索引 117
+
+5.1.6 索引的打开与关闭 118
+
+5.1.7 复制索引 118
+
+5.1.8 收缩索引 119
+
+5.1.9 索引别名 120
+
+5.2 文档管理 123
+
+5.2.1 新建文档 123
+
+5.2.2 获取文档 125
+
+5.2.3 更新文档 127
+
+5.2.4 查询更新 129
+
+5.2.5 删除文档 129
+
+5.2.6 查询删除 130
+
+5.2.7 批量操作 130
+
+5.2.8 版本控制 133
+
+5.2.9 路由机制 136
+
+5.3 映射详解 137
+
+5.3.1 映射分类 137
+
+5.3.2 动态映射 138
+
+5.3.3 日期检测 140
+
+5.3.4 静态映射 141
+
+5.3.5 字段类型 142
+
+5.3.6 元字段 156
+
+5.3.7 映射参数 162
+
+5.3.8 映射模板 180
+
+5.4 本章小结 181
+
+第1章 搜索引擎总体结构
+第2章 网络爬虫的原理与应用
+第3章 索引内容提取
+第4章 中文分词的原理与实现
+第5章 让搜索引擎理解自然语言
+第6章 Lucene原理与应用
+第7章 搜索引擎用户界面
+第8章 使用Solr实现企业搜索
+第9章 地理信息系统案例分析
+第10章 户外活动搜索案例分析
+
+
+Free Access for Packt account holders
+Preface
+What this book covers
+What you need for this book
+Who this book is for
+Sections
+Getting ready
+How to do it…
+How it works…
+There's more…
+See also
+Conventions
+Reader feedback
+Customer support
+Downloading the example code
+Errata
+Piracy
+Questions
+1. Introducing Lucene
+Introduction
+How Lucene works
+Why is Lucene so popular?
+Some Lucene implementations
+Installing Lucene
+How to do it...
+How it works…
+Setting up a simple Java Lucene project
+Getting ready
+How to do it...
+How it works...
+Obtaining an IndexWriter
+How to do it…
+How it works…
+Creating an analyzer
+Getting ready
+How to do it...
+How it works…
+Creating fields
+How to do it...
+How It Works
+Creating and writing documents to an index
+How to do it...
+How it works…
+Deleting documents
+How to do it...
+How it works…
+Obtaining an IndexSearcher
+How to do it...
+How it works…
+Creating queries with the Lucene QueryParser
+How to do it...
+How it works…
+Performing a search
+How to do it...
+How it works…
+Enumerating results
+How to do it...
+How it works…
+2. Analyzing Your Text
+Introduction
+Obtaining a common analyzer
+Getting ready
+How to do it...
+How it works...
+There's more…
+Obtaining a TokenStream
+Getting ready
+How to do it...
+How it works…
+Obtaining TokenAttribute values
+Getting ready
+How to do it…
+How it works…
+Using PositionIncrementAttribute
+Getting ready
+How to do it...
+How it works…
+Using PerFieldAnalyzerWrapper
+Getting ready
+How to do it…
+How it works…
+Defining custom TokenFilters
+How to do it…
+How it works…
+Defining custom analyzers
+How to do it…
+How it works…
+Defining custom tokenizers
+How to do it…
+How it works…
+Defining custom attributes
+How to do it…
+How it works…
+3. Indexing Your Data
+Introduction
+Obtaining an IndexWriter
+How to do it...
+How it works...
+Creating a StringField
+How to do it...
+How it works...
+Creating a TextField
+How to do it...
+How it works...
+Creating a numeric field
+How to do it...
+How it works...
+Creating a DocValue Field
+How to do it...
+How it works...
+Transactional commits and index versioning
+How to do it...
+How it works...
+Reusing field and document objects per thread
+How to do It...
+How it works...
+Delving into field norms
+How to do it...
+How it works...
+Changing similarity implementation used during indexing
+Getting ready
+How to do it…
+4. Searching Your Indexes
+Introduction
+Obtaining IndexReaders
+How to do it...
+How it works...
+Un-inverting single-valued fields in memory with FieldCache
+How to do it...
+How it works...
+TermVectors
+How to do it...
+How it works...
+IndexSearcher
+How to do it...
+How it works...
+Constructing queries
+How to do it...
+How it works...
+Specifying sort logic
+How to do it...
+How it works...
+Forming a search result
+How to do it...
+How it works...
+Pagination
+How to do it...
+How it works...
+Using Collectors
+How to do it...
+How it works...
+Sorting with custom FieldComparator
+How to do it...
+How it works...
+5. Near Real-time Searching
+Introduction
+Using the DirectoryReader to open index in Near Real-Time
+How to do it...
+How it works...
+Using the SearcherManager to refresh IndexSearcher
+How to do it...
+How it works...
+Generational indexing with TrackingIndexWriter
+How to do it…
+How it works...
+Maintaining search sessions with SearcherLifetimeManager
+How to do it…
+How it works…
+Performance tuning: latency and throughput
+How to do it…
+How it works…
+6. Querying and Filtering Data
+Introduction
+Performing advanced filtering
+How to do it...
+How it works…
+Creating a custom filter
+How to do it...
+Searching with QueryParser
+How to do it..
+Wildcard search
+Term range search
+Autogenerated phrase query
+Date resolution
+Default operator
+Enable position increments
+Fuzzy query
+Lowercase expanded term
+Phrase slop
+TermQuery and TermRangeQuery
+How to do it..
+BooleanQuery
+How to do it..
+How it works…
+PrefixQuery and WildcardQuery
+How to do it...
+How it works…
+PhraseQuery and MultiPhraseQuery
+How to do it...
+How it works…
+FuzzyQuery
+How to do it...
+How it works…
+NumericRangeQuery
+How to do it…
+How it works…
+DisjunctionMaxQuery
+How to do it…
+How it works…
+RegexpQuery
+How to do it…
+SpanQuery
+How to do it...
+How it works…
+CustomScoreQuery
+How to do it…
+How it works…
+7. Flexible Scoring
+Introduction
+Overriding similarity
+How to do it…
+How it works…
+There's more…
+The BM25 model
+The language model
+The divergence from randomness model
+The information-based Model
+Implementing the BM25 model
+How to do It…
+How it works…
+Implementing the language model
+How to do it…
+Implementing the divergence from randomness model
+How to do It…
+How it works…
+Implementing the information-based model
+How to do It…
+How it works…
+8. Introducing Elasticsearch
+Introduction
+Getting Elasticsearch
+Getting ready
+How to do it...
+How it works...
+There's more…
+Creating a new index
+How to do it…
+How it works…
+Predefine field mappings
+How to do it...
+How it works....
+Adding a document
+How to do it...
+How it works...
+Deleting a document
+How to do it…
+How it works…
+Updating a document
+How to do it…
+How it works…
+Performing bulk indexing
+How to do it…
+How it works…
+Searching the index
+How to do it...
+How it works...
+There's more…
+Scaling Elasticsearch
+How to do it…
+How it works…
+There's more…
+9. Extending Lucene with Modules
+Introduction
+Exploring spatial search
+Getting ready…
+How to do it…
+How it works…
+There's more…
+Implementing joins
+Getting ready…
+How to do it…
+Performing faceting
+Getting ready…
+How to do it…
+How it works…
+Implementing grouping
+Getting ready…
+How to do it…
+Employing autosuggest
+Getting ready…
+How to do it…
+Implementing highlighting
+Getting ready…
+How to do it…
+How it works…
+Index
+

@@ -1,0 +1,208 @@
+第一部分 基础篇
+第 1 章 Presto概述2
+1.1 Presto 背景及发展2
+1.2 Presto 特点2
+1.3 基本概念3
+1.3.1 Presto 服务进程3
+1.3.2 Presto 模型4
+1.3.3 Presto 查询执行模型 5
+1.4 Presto 整体架构9
+1.4.1 硬件架构9
+1.4.2 软件架构9
+1.5 小结11
+第 2 章 Presto 安装与部署12
+2.1 环境说明 12
+2.2 准备工作13
+2.2.1 建立 SSH 信任关系13
+2.2.2 安装 Java 17
+2.2.3 安装 Maven 17
+2.2.4 安装 Hive 18
+2.3 源码编译21
+2.3.1 下载源码 21
+2.3.2 源码结构说明 22
+2.3.3 编译 26
+2.4 部署 30
+2.4.1 服务部署 30
+2.4.2 客户端部署 38
+2.4.3 JDBC 使用 40
+2.5 小结 42
+第二部分 核心设计篇
+第 3 章 Presto RESTful 框架解析 44
+3.1 Statement 服务接口 44
+3.2 Query 服务接口 47
+3.3 Stage 服务接口48
+3.4 Task 服务接口49
+3.5 小结 52
+第 4 章 提交查询 53
+4.1 提交查询的步骤 53
+4.2 源码解析 53
+4.3 提交查询的流程 60
+4.4 小结 61
+第 5 章 生成查询执行计划 62
+5.1 基本概念 63
+5.1.1 Node 63
+5.1.2 Metadata API 67
+5.2 词法与语法分析 68
+5.2.1 语法规则 69
+5.2.2 词法分析 69
+5.2.3 语法分析 71
+5.3 获取 QueryExecution 72
+5.3.1 获取 QueryExecutionFactory 72
+5.3.2 创建 QueryExecution 73
+5.3.3 启动 QueryExecution 74
+5.4 语义分析 77
+5.4.1 Statement 分析 77
+5.4.2 Relation 分析84
+5.4.3 表达式分析 91
+5.5 执行计划生成91
+5.5.1 执行计划节点 91
+5.5.2 SQL 执行计划93
+5.5.3 Relation 执行计划95
+5.5.4 Query 执行计划 99
+5.6 执行计划优化102
+5.6.1 ImplementSampleAsFilter 102
+5.6.2 CanonicalizeExpressions 102
+5.6.3 SimplifyExpressions 102
+5.6.4 UnaliasSymbolReferences 103
+5.6.5 PruneRedundantProjections 103
+5.6.6 SetFlatteningOptimizer 103
+5.6.7 LimitPushDown 104
+5.6.8 PredicatePushDown 104
+5.6.9 MergeProjections 104
+5.6.10 ProjectionPushDown 104
+5.6.11 IndexJoinOptimizer105
+5.6.12 CountConstantOptimizer 105
+5.6.13 WindowFilterPushDown 105
+5.6.14 HashGenerationOptimizer 105
+5.6.15 PruneUnreferencedOutputs 106
+5.6.16 MetadataQueryOptimizer 106
+5.6.17 SingleDistinctOptimizer 106
+5.6.18 BeginTableWrite 106
+5.6.19 AddExchanges 107
+5.6.20 PickLayout 107
+5.7 执行计划分段107
+5.7.1 Source 107
+5.7.2 Fixed 107
+5.7.3 Single 107
+5.7.4 Coordinator_only 107
+5.8 示例108
+5.8.1 Count 执行计划108
+5.8.2 Join 执行计划108
+5.9 小结110
+第 6 章 查询调度 111
+6.1 生成调度执行器 111
+6.2 查询调度过程 113
+6.2.1 NodeManager 114
+6.2.2 NodeSelector 115
+6.3 小结 118
+第 7 章 查询执行 119
+7.1 查询执行逻辑 120
+7.2 Task 调度120
+7.2.1 Source Task 调度120
+7.2.2 Fixed Task 调度126
+7.2.3 Single Task 调度 128
+7.2.4 Coordinator_Only Task 调度 128
+7.3 Task 执行129
+7.3.1 创建 Task 129
+7.3.2 更新 Task 135
+7.3.3 运行 Task 140
+7.4 小结 147
+第 8 章 队列 148
+8.1 配置说明 148
+8.1.1 queues 队列定义149
+8.1.2 rules 规则定义 149
+8.2 队列加载 150
+8.3 队列匹配 151
+8.4 小结 154
+第 9 章 System Connector 155
+9.1 System Connector 使用155
+9.1.1 Information_schema 155
+9.1.2 Metadata 157
+9.1.3 Runtime 157
+9.2 System Connector 实现159
+9.2.1 Information_schema 实现160
+9.2.2 System Connector 实现163
+9.3 小结 168
+第 10 章 Hive Connector 169
+10.1 与 Hive 的结合 170
+10.2 Split 分片管理 175
+10.3 数据读取179
+10.4 Create Table As Select 的实现 182
+10.5 小结186
+第 11 章 Kafka Connector 187
+11.1 认识 Kafka Connector 187
+11.1.1 配置187
+11.1.2 配置属性187
+11.1.3 内置字段189
+11.1.4 表定义文件190
+11.1.5 Kafka 中的 key 和 message 191
+11.1.6 行解码192
+11.1.7 日期和时间解码器194
+11.1.8 文本解码器194
+11.1.9 数值解码器194
+11.2 Kafka 连接器使用教程194
+11.2.1 安装 Apache Kafka195
+11.2.2 下载数据195
+11.2.3 在 Presto 中配置 Kafka topics 197
+11.2.4 基本数据查询197
+11.2.5 添加表定义文件199
+11.2.6 将 message 中所有值映射到不同列200
+11.2.7 使用实时数据202
+11.3 Kafka Connector 获取数据 207
+11.3.1 Split 分片管理207
+11.3.2 数据读取209
+11.4 小结210
+第 12 章 Connector 开发211
+12.1 创建 Maven 工程 211
+12.2 注册 Plugin 213
+12.3 Connector 213
+12.4 Metadata 215
+12.5 SplitManager 217
+12.6 RecordSetProvider 218
+12.7 小结 219
+第 13 章 Functions 开发220
+13.1 Function 注册 220
+13.2 窗口函数 225
+13.3 聚合函数 229
+13.4 小结 232
+第三部分 高级篇
+第 14 章 JD-Presto 功能改造234
+14.1 PDBO 功能开发234
+14.1.1 JDBC Split 剖析235
+14.1.2 JdbcRecordCursor 剖析 238
+14.1.3 分批次读取实现原理 240
+14.1.4 动态步长实现原理 243
+14.1.5 条件下发 245
+14.1.6 PDBO 配置定义 247
+14.2 DDL 及 DML 支持 250
+14.2.1 Hive 连接器 Insert 功能 250
+14.2.2 Hive 连接器 CTAS 动态分区表功能 252
+14.3 动态增加、修改、删除 Catalog 254
+14.3.1 目的 254
+14.3.2 现状 254
+14.3.3 实现 255
+14.3.4 效果 258
+14.4 小结 258
+第 15 章 Presto 性能调优259
+15.1 合理设计分区 259
+15.2 Group By 字句优化 259
+15.3 使用模糊聚合函数 259
+15.4 合并多条 Like 子句为一条 regexp_like 子句260
+15.5 大表放在 Join 子句左边260
+15.6 关闭 distributed hash join 261
+15.7 使用 ORC 存储 261
+15.8 小结 262
+第 16 章 Presto 应用场景 263
+16.1 ETL 263
+16.2 实时数据计算264
+16.3 Ad-Hoc 查询266
+16.4 实时数据流分析266
+16.5 小结268
+附录 A 常见问题及解决办法269
+A.1 同时访问两个 Hadoop 集群269
+A.2 Kafka 集群重启后无法获取数据272
+A.3 Task exceeded max memory size 277
+A.4 SQL 中 In 子句太长导致栈溢出错误278
+A.5 高并发导致大量查询出错279
+附录 B Presto 配置参数说明 282
+附录 C Presto 执行信息说明289

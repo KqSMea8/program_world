@@ -1,4 +1,1014 @@
+第1章　初探Java虚拟机 1
+1.1 知根知底：追溯Java的发展历程 2
+1.1.1 那些依托Java虚拟机的语言大咖们 2
+1.1.2 Java发展史上的里程碑 2
+1.2 跨平台的真相：Java虚拟机来做中介 4
+1.2.1 理解Java虚拟机的原理 4
+1.2.2 看清Java虚拟机的种类 5
+1.3 一切看我的：Java语言规范 6
+1.3.1 词法的定义 6
+1.3.2 语法的定义 7
+1.3.3 数据类型的定义 8
+1.3.4 Java语言规范总结 9
+1.4 一切听我的：Java虚拟机规范 9
+1.5 数字编码就是计算机世界的水和电 10
+1.5.1 整数在Java虚拟机中的表示 10
+1.5.2 浮点数在Java虚拟机中的表示 12
+1.6 抛砖引玉：编译和调试虚拟机 14
+1.7 小结 19
+第2章　认识Java虚拟机的基本结构 20
+2.1 谋全局者才能成大器：看穿Java虚拟机的架构 20
+2.2 小参数能解决大问题：学会设置Java虚拟机的参数 22
+2.3 对象去哪儿：辨清Java堆 23
+2.4 函数如何调用：出入Java栈 25
+2.4.1 局部变量表 27
+2.4.2 操作数栈 32
+2.4.3 帧数据区 32
+2.4.4 栈上分配 33
+2.5 类去哪儿了：识别方法区 35
+2.6 小结 37
+第3章　常用Java虚拟机参数 38
+3.1 一切运行都有迹可循：掌握跟踪调试参数 38
+3.1.1 跟踪垃圾回收——读懂虚拟机日志 39
+3.1.2 类加载/卸载的跟踪 42
+3.1.3 系统参数查看 44
+3.2 让性能飞起来：学习堆的配置参数 45
+3.2.1 最大堆和初始堆的设置 45
+3.2.2 新生代的配置 49
+3.2.3 堆溢出处理 52
+3.3 别让性能有缺口：了解非堆内存的参数配置 54
+3.3.1 方法区配置 55
+3.3.2 栈配置 55
+3.3.3 直接内存配置 55
+3.4 Client和Server二选一：虚拟机的工作模式 58
+3.5 小结 59
+第4章　垃圾回收概念与算法 60
+4.1 内存管理清洁工：认识垃圾回收 60
+4.2 清洁工具大PK：讨论常用的垃圾回收算法 61
+4.2.1 引用计数法（Reference Counting） 62
+4.2.2 标记清除法（Mark-Sweep） 63
+4.2.3 复制算法（Copying） 64
+4.2.4 标记压缩法（Mark-Compact） 66
+4.2.5 分代算法（Generational Collecting） 67
+4.2.6 分区算法（Region） 68
+4.3 谁才是真正的垃圾：判断可触及性 69
+4.3.1 对象的复活 69
+4.3.2 引用和可触及性的强度 71
+4.3.3 软引用——可被回收的引用 72
+4.3.4 弱引用——发现即回收 76
+4.3.5 虚引用——对象回收跟踪 77
+4.4 垃圾回收时的停顿现象：Stop-The-World案例实战 79
+4.5 小结
+1.1 从机器语言到Java——詹爷，你好 1
 
+1.2 兼容的选择：一场生产力的革命 6
+
+1.3 中间语言翻译 10
+
+1.3.1 从中间语言翻译到机器码 11
+
+1.3.2 通过C 程序翻译 11
+
+1.3.3 直接翻译为机器码 13
+
+1.3.4 本地编译 16
+
+1.4 神奇的指令 18
+
+1.4.1 常见汇编指令 20
+
+1.4.2 JVM 指令 21
+
+1.5 本章总结 24
+
+第2 章 Java 执行引擎工作原理：方法调用 25
+
+2.1 方法调用 26
+
+2.1.1 真实的机器调用 26
+
+2.1.2 C 语言函数调用 41
+
+2.2 JVM 的函数调用机制 47
+
+2.3 函数指针 53
+
+2.4 CallStub 函数指针定义 60
+
+2.5 _call_stub_entry 例程 72
+
+2.6 本章总结 114
+
+第3 章 Java 数据结构与面向对象 115
+
+3.1 从Java 算法到数据结构 116
+
+3.2 数据类型简史 120
+
+3.3 Java 数据结构之偶然性 127
+
+3.4 Java 类型识别 130
+
+3.4.1 class 字节码概述 131
+
+3.4.2 魔数与JVM 内部的int 类型 134
+
+3.4.3 常量池与JVM 内部对象模型 135
+
+3.5 大端与小端 141
+
+3.5.1 大端和小端的概念 144
+
+3.5.2 大小端产生的本质原因 146
+
+3.5.3 大小端验证 147
+
+3.5.4 大端和小端产生的场景 149
+
+3.5.5 如何解决字节序反转 152
+
+3.5.6 大小端问题的避免 154
+
+3.5.7 JVM 对字节码文件的大小端处理 154
+
+3.6 本章总结 157
+
+第4 章 Java 字节码实战 158
+
+4.1 字节码格式初探 158
+
+4.1.1 准备测试用例 159
+
+4.1.2 使用javap 命令分析字节码文件 159
+
+4.1.3 查看字节码二进制 162
+
+4.2 魔数与版本 163
+
+4.2.1 魔数 165
+
+4.2.2 版本号 165
+
+4.3 常量池 166
+
+4.3.1 常量池的基本结构 166
+
+4.3.2 JVM 所定义的11 种常量 167
+
+4.3.3 常量池元素的复合结构 167
+
+4.3.4 常量池的结束位置 169
+
+4.3.5 常量池元素总数量 169
+
+4.3.6 第一个常量池元素 170
+
+4.3.7 第二个常量池元素 171
+
+4.3.8 父类常量 171
+
+4.3.9 变量型常量池元素 172
+
+4.4 访问标识与继承信息 174
+
+4.4.1 access_flags 174
+
+4.4.2 this_class 175
+
+4.4.3 super_class 176
+
+4.4.4 interface 177
+
+4.5 字段信息 177
+
+4.5.1 fields_count 177
+
+4.5.2 field_info fields[fields_count] 178
+
+4.6 方法信息 182
+
+4.6.1 methods_count 182
+
+4.6.2 method_info methods[methods_count] 183
+
+4.7 本章回顾 203
+
+第5 章 常量池解析 204
+
+5.1 常量池内存分配 206
+
+5.1.1 常量池内存分配总体链路 207
+
+5.1.2 内存分配 212
+
+5.1.3 初始化内存 221
+
+5.2 oop-klass 模型 222
+
+5.2.1 两模型三维度 223
+
+5.2.2 体系总览 224
+
+5.2.3 oop 体系 226
+
+5.2.4 klass 体系 229
+
+5.2.5 handle 体系 232
+
+5.2.6 oop、klass、handle 的相互转换 237
+
+5.3 常量池klass 模型（1） 242
+
+5.3.1 klassKlass 实例构建总链路 244
+
+5.3.2 为klassOop 申请内存 248
+
+5.3.3 klassOop 内存清零 251
+
+5.3.4 初始化mark 251
+
+5.3.5 初始化klassOop._metadata 256
+
+5.3.6 初始化klass 257
+
+5.3.7 自指 258
+
+5.4 常量池klass 模型（2） 258
+
+5.4.1 constantPoolKlass 模型构建 258
+
+5.4.2 constantPoolOop 与klass 261
+
+5.4.3 klassKlass 终结符 264
+
+5.5 常量池解析 264
+
+5.5.1 constantPoolOop 域初始化 264
+
+5.5.2 初始化tag 266
+
+5.5.3 解析常量池元素 267
+
+5.6 本章总结 276
+
+第6 章 类变量解析 277
+
+6.1 类变量解析 278
+
+6.2 偏移量 282
+
+6.2.1 静态变量偏移量 282
+
+6.2.2 非静态变量偏移量 284
+
+6.2.3 Java 字段内存分配总结 309
+
+6.3 从源码看字段继承 315
+
+6.3.1 字段重排与补白 316
+
+6.3.2 private 字段可被继承吗 322
+
+6.3.3 使用HSDB 验证字段分配与继承 325
+
+6.3.4 引用类型变量内存分配 333
+
+6.4 本章总结 338
+
+第7 章 Java 栈帧 340
+
+7.1 entry_point 例程生成 341
+
+7.2 局部变量表创建 349
+
+7.2.1 constMethod 的内存布局 349
+
+7.2.2 局部变量表空间计算 352
+
+7.2.3 初始化局部变量区 355
+
+7.3 堆栈与栈帧 364
+
+7.3.1 栈帧是什么 364
+
+7.3.2 硬件对堆栈的支持 383
+
+7.3.3 栈帧开辟与回收 386
+
+7.3.4 堆栈大小与多线程 388
+
+7.4 JVM 的栈帧 392
+
+7.4.1 JVM 栈帧与大小确定 392
+
+7.4.2 栈帧创建 396
+
+7.4.3 局部变量表 418
+
+7.5 栈帧深度与slot 复用 430
+
+7.6 最大操作数栈与操作栈复用 433
+
+7.7 本章总结 436
+
+第8 章 类方法解析 437
+
+8.1 方法签名解析与校验 442
+
+8.2 方法属性解析 444
+
+8.2.1 code 属性解析 444
+
+8.2.2 LVT&LVTT 446
+
+8.3 创建methodOop 452
+
+8.4 Java 方法属性复制 456
+
+8.5 与 458
+
+8.6 查看运行时字节码指令 479
+
+8.7 vtable 486
+
+8.7.1 多态 486
+
+8.7.2 C++中的多态与vtable 488
+
+8.7.3 Java 中的多态实现机制 490
+
+8.7.4 vtable 与invokevirtual 指令 497
+
+8.7.5 HSDB 查看运行时vtable 499
+
+8.7.6 miranda 方法 502
+
+8.7.7 vtable 特点总结 505
+
+8.7.8 vtable 机制逻辑验证 506
+
+8.8 本章总结 508
+
+第9 章 执行引擎 510
+
+9.1 执行引擎概述 511
+
+9.2 取指 513
+
+9.2.1 指令长度 516
+
+9.2.2 JVM 的两级取指机制 524
+
+9.2.3 取指指令放在哪 529
+
+9.2.4 程序计数器在哪里 531
+
+9.3 译码 532
+
+9.3.1 模板表 532
+
+9.3.2 汇编器 538
+
+9.3.3 汇编 546
+
+9.4 栈顶缓存 555
+
+9.5 栈式指令集 563
+
+9.6 操作数栈在哪里 574
+
+9.7 栈帧重叠 578
+
+9.8 entry_point 例程机器指令 583
+
+9.9 执行引擎实战 585
+
+9.9.1 一个简单的例子 585
+
+9.9.2 字节码运行过程分析 587
+
+9.10 字节码指令实现 594
+
+9.10.1 iconst_3 594
+
+9.10.2 istore_0 596
+
+9.10.3 iadd 597
+
+9.11 本章总结 598
+
+第10 章 类的生命周期 599
+
+10.1 类的生命周期概述 599
+
+10.2 类加载 602
+
+10.2.1 类加载——镜像类与静态字段 609
+
+10.2.2 Java 主类加载机制 614
+
+10.2.3 类加载器的加载机制 620
+
+10.2.4 反射加载机制 621
+
+10.2.5 import 与new 指令 622
+
+10.3 类的初始化 623
+
+10.4 类加载器 626
+
+10.4.1 类加载器的定义. 626
+
+10.4.2 系统类加载器与扩展类加载器创建 632
+
+10.4.3 双亲委派机制与破坏 634
+
+10.4.4 预加载 636
+
+10.4.5 引导类加载 638
+
+10.4.6 加载、链接与延迟加载 639
+
+10.4.7 父加载器 643
+
+10.4.8 加载器与类型转换 646
+
+10.5 类实例分配 647
+
+10.5.1 栈上分配与逃逸分析 650
+
+10.5.2 TLAB 654
+
+10.5.3 指针碰撞与eden 区分配 655
+
+10.5.4 清零 656
+
+10.5.5 偏向锁 657
+
+10.5.6 压栈与取指 658
+
+10.6 本章总结 660
+
+Introduction to JVM Languages
+Credits
+About the Author
+About the Reviewer
+www.PacktPub.com
+Why subscribe?
+Customer Feedback
+Preface
+What this book covers
+What you need for this book
+Who this book is for
+Conventions
+Reader feedback
+Customer support
+Downloading the example code
+Downloading the color images of this book
+Errata
+Piracy
+Questions
+Java Virtual Machine
+JVM implementations
+Why develop on JVM?
+JVM adapts to market changes
+Java Class Library
+Ecosystem
+Scenario 1 – Using a JVM application server
+Scenario 2 – Using a general high-level web application framework
+Scenario 3 – Using a microservice framework
+Popular use cases
+Web applications
+Big data
+IoT
+JVM concepts
+Virtual machine
+The JIT compiler
+Primitive datatypes
+Classes
+Reference types
+References and null references
+Garbage collector
+Example
+Backward compatibility
+Build tools
+Java editions
+Java SE
+Java EE
+Example – Java Persistence API as implemented by two application servers
+Java ME
+Other languages on JVM
+Why choose a language other than Java?
+Java is a very verbose language
+Java is not ideal for everything or everyone
+Missing classes in Java Class Library
+Mixing JVM languages in a project
+Increasing build process complexity
+Language runtime libraries
+Writing unit tests in a different language
+Summary
+Developing on the Java Virtual Machine
+JDK
+Installing JDK
+Downloading JDK
+Installing JDK on Windows
+Installing JDK on macOS
+Installing JDK on Linux
+Downloading API documentation
+Exploring JDK
+The directory structure
+JDK commands
+GUI monitoring tools
+Java VisualVM
+Oracle Mission Control
+JConsole
+JRE
+Class organization with packages
+What are packages?
+Choosing a package name
+Package name examples
+Fully qualified class name
+Java Class Library
+Java Class Library organization
+Package overview
+Fundamental classes of the java.lang package
+The Object class (java.lang.Object)
+Important object methods
+The String class (java.lang.String)
+Primitive wrapper classes (Integer, Long, Short, Char, Float, Double in java.lang)
+Autoboxing examples
+Exceptions and errors (java.lang.Exception and java.lang.Error)
+The Collections API - java.util.ArrayList and java.util.HashMap
+ArrayList (java.util.ArrayList)
+Commonly used methods of the ArrayList class
+ArrayList usage example
+HashMap (java.util.HashMap)
+Commonly used methods of the HashMap class
+HashMap usage example
+Preparing your classes for the Collections API
+About hashCode()
+About equals ()
+The hashing mechanism
+Running JVM applications on the command line
+At least one class must have a static main() method
+Required directory structure for class files
+Setting ClassPath for a JVM instance
+Placing class files inside a JAR archive
+Runnable JAR file
+Running a program with the java command
+Run a project consisting of separate class files
+Running a project that is placed inside a runnable JAR file
+Other useful parameters of the java command
+-D to pass properties and values
+-ea to enable assertions
+A hands-on example project to run on JVM
+A ClassPath example
+Eclipse IDE
+Downloading Eclipse IDE
+Installing Eclipse IDE
+Summary
+Java
+OOP in Java
+Defining classes
+Class access modifiers
+Final class modifier - locking a class
+Defining packages
+Importing classes
+Adding class members - variables and methods
+Instance variables
+Methods
+Modifiers
+Protecting class members with access modifiers
+Access modifier example
+Static modifier - instance variables and class variables
+Final modifier - locking a class member
+Overloading methods
+Constructors and finalizers
+Constructors
+Finalizers
+Extending a class
+Overriding methods
+Calling constructors of a parent class
+Abstract classes
+Interfaces
+Upcasting and downcasting
+Writing Java code
+Operators
+Conditional checks
+The if...else statement
+The switch...case statement
+POJO
+Arrays
+Generics and Collections
+Loops
+The for loop
+The normal for loop
+The enhanced for loop
+The while loop
+The do...while loop
+Exceptions
+Runtime exceptions
+Threads
+Lambdas
+Style guide
+Quiz
+Summary
+Java Programming
+Configuring Eclipse IDE
+Creating a web service in Java
+Creating a new Gradle project in Eclipse IDE
+Exploring the generated project
+Modifying the Gradle build file
+Building the project
+Coding the backend class
+Backend class business rules
+Creating a dummy implementation of the method
+Creating the test case class and writing its first unit test
+Implementing an input validation check
+Writing the second unit test
+Implementing the business logic
+Creating an executable application task
+Creating a web service
+Running the web service
+Creating Javadoc documentation
+Summary
+Scala
+Installing Scala
+Scala's Read-Eval-Print-Loop shell
+Functional versus imperative programming
+Scala language syntax and rules
+Statically typed language
+Mutable and immutable variables
+Common Scala types
+Any class
+AnyRef class - reference classes
+AnyVal class - value classes
+Strings
+OOP in Scala
+Defining packages and subpackages
+Importing members
+Defining classes
+Instance variables and methods
+Instance variables
+Instance methods
+Access modifiers for class instance members
+Constructors
+Extending a class
+Overriding methods
+Overloading methods
+Abstract classes
+Traits
+Singleton objects
+Operator overloading
+Case classes
+Scala's standard library
+Generics
+Collections
+Immutable list
+Mutable list
+Immutable map
+Mutable map
+XML processing
+Functional programming in Scala
+Iterating through collections using functions
+The map, filter, and reduce design pattern
+Map - transform data
+Filter - filter items from a collection or array
+Reduce - for performing calculations
+Currying
+Quiz
+Summary
+Scala Programming
+Scala IDE for the Eclipse plugin
+Installing Scala IDE for Eclipse
+Switching to the Scala IDE perspective
+SBT
+Installing SBT
+Creating an SBT-based Eclipse IDE project
+Creating a new SBT project
+Loading the SBTEclipse plugin
+Generating a new Eclipse IDE project with SBTEclipse
+Importing the generated project in Eclipse IDE
+The Scala compiler (scalac)
+Creating a singleton object with the main() method
+Creating a singleton object that extends the App trait
+Creating an Akka project
+Adding an Akka dependency to the SBT build file
+Updating the Scala IDE project
+Akka concepts
+Actors
+Actor references (ActorRef)
+Messages
+Dispatchers
+Creating our first Akka actor - QuotesHandlerActor
+Creating messages
+Writing a ScalaTest-based unit test
+Implementing a message handler
+Creating QuotePrinterActor
+The main application
+Summary
+Clojure
+Installing Clojure
+Creating a start script
+Creating a start script on Windows
+Creating a start script on macOS and Linux
+Clojure's interactive shell (REPL)
+Clojure language
+Syntax
+Expressions
+Defining variables
+Defining functions
+Data structures
+Numeric types
+Strings and characters
+Collections
+Lists
+Vectors
+Sets
+Hash-maps
+Iteration over arrays and loops
+Conditions
+Working with Java classes
+Creating simple Java classes with deftype and defrecord
+Managing states with agents
+Agent example
+Style guide
+Quiz
+Summary
+Clojure Programming
+The Counterclockwise plugin for Eclipse IDE
+Installing the Counterclockwise plugin
+Switching to the Java perspective
+Leiningen's build tool
+Installing Leiningen
+Creating executable programs in Clojure
+Compiling to class files without Leiningen
+Compiling projects with Leiningen
+Creating a new Counterclockwise project
+Clojure REPL in Eclipse IDE
+Updating the project's Clojure version
+Adding a dependency
+Exploring monads by applying test-driven development
+The Luminus web framework
+Creating a Luminus project
+Importing the project in Counterclockwise
+Exploring the Luminus project
+Adding a page to the web application
+Summary
+Kotlin
+Installing Kotlin
+Launch scripts
+Kotlin's REPL interactive shell
+Kotlin language fundamentals
+Defining local variables
+Defining a function
+Kotlin's types
+Kotlin basic types
+Strings
+Null safety handling
+Option 1 - Adding a conditional check
+Option 2 - Using the safe call operator ?.
+Option 3 - Using the Elvis operator ?:
+Option 4 - Using the !! operator
+Conversions
+Collections and generics
+Loops
+OOP in Kotlin
+Defining packages
+Importing members
+Defining classes and constructors
+Adding members to classes
+Adding functions
+The main entry function
+Adding properties
+Inheritance
+Interfaces
+Visibility modifiers
+Singleton and companion objects
+Data classes
+Lambdas and inline functions
+Procedural programming in Kotlin
+Style guide
+Quiz
+Summary
+Kotlin Programming
+Kotlin for the Eclipse IDE plugin
+Installing the Kotlin plugin for the Eclipse IDE
+Switching to Kotlin perspective
+Apache Maven
+Installing Apache Maven
+Downloading a preconfigured Kotlin starter kit
+Importing the project in the Eclipse IDE
+Exploring the pom.xml build file
+Updating the build file in Eclipse
+Creating a JavaFX desktop GUI application
+Preparing the project
+Creating a runnable application
+Writing an extension function
+Layout panes
+Implementing a BorderPane-based layout
+Implementing animation
+Debugging the program
+Summary
+Groovy
+Installing Groovy
+GroovyConsole and GroovyShell
+GroovyConsole
+GroovyShell
+Groovy Language
+Object-oriented programming in Groovy
+Groovy is fully object oriented
+Access modifiers
+Adding properties to a class
+Optional types
+Automatically creating a fully featured POJO
+Creating immutable classes
+Groovy Development Kit (GDK)
+Groovy Strings (GStrings)
+Collections
+Lists
+Maps
+Dynamic and static programming
+Meta programming
+Static programming in Groovy
+Quiz
+Summary
+Groovy Programming
+Installing the Groovy Eclipse plugin
+Switching to Java perspective
+Apache Ivy and IvyDE
+Installing Apache IvyDE plugin for Eclipse IDE
+Creating and configuring the project
+Creating a new Groovy Eclipse project
+Creating an ivy.xml file for Ivy
+Java Database Connectivity (JDBC)
+H2 database
+Creating an in-memory database
+Generating XML using MarkupBuilder
+Generating XML based on SQL
+The Vert.x microservice platform
+Adding Vert.x dependency to Ivy
+Creating the web service
+Summary
+Other JVM languages
+Oracle Nashorn
+Embedding Nashorn in JVM-based projects
+Running Nashorn
+Jython (Python)
+Differences between CPython and Jython
+Running Jython
+JRuby (Ruby)
+Ruby on Rails and JRuby
+Running JRuby
+Frege (Haskell)
+Calling Java code from Frege
+Running Frege
+Ceylon
+Ceylon's module system
+Running Ceylon
+Summary
+Quiz Answers
+Chapter 3: Java
+Chapter 5: Scala
+Chapter 7: Clojure
+Chapter 9: Kotlin
+Chapter 11: Groovy
+
+第1章　垃圾回收概述 1
+1.1　Java发展概述 1
+1.2　本书常见术语 4
+1.3　回收算法概述 6
+1.3.1　分代管理算法 7
+1.3.2　复制算法 7
+1.3.3　标记清除 8
+1.3.4　标记压缩 9
+1.3.5　算法小结 9
+1.4　JVM垃圾回收器概述 9
+1.4.1　串行回收 9
+1.4.2　并行回收 10
+1.4.3　并发标记回收 10
+1.4.4　垃圾优先回收 10
+第2章　G1的基本概念 14
+2.1　分区 14
+2.2　G1停顿预测模型 20
+2.3　卡表和位图 22
+2.4　对象头 24
+2.5　内存分配和管理 27
+2.6　线程 30
+2.6.1　栈帧 32
+2.6.2　句柄 34
+2.6.3　JVM本地方法栈中的对象 36
+2.6.4　Java本地方法栈中的对象 40
+2.7　日志解读 40
+2.8　参数介绍和调优 41
+第3章　G1的对象分配 43
+3.1　对象分配概述 43
+3.2　快速分配 46
+3.3　慢速分配 56
+3.3.1　大对象分配 58
+3.3.2　最后的分配尝试 60
+3.4　G1垃圾回收的时机 61
+3.4.1　分配时发生回收 61
+3.4.2　外部调用的回收 61
+3.5　参数介绍和调优 62
+第4章　G1的Ref?ine线程 64
+4.1　记忆集 64
+4.2　Ref?ine线程的功能及原理 72
+4.2.1　抽样线程 72
+4.2.2　管理RSet 74
+4.2.3　Mutator处理DCQ 78
+4.2.4　Ref?ine线程的工作原理 78
+4.3　Ref?inement Zone 85
+4.4　RSet涉及的写屏障 86
+4.5　日志解读 87
+4.6　参数介绍和调优 90
+第5章　新生代回收 93
+5.1　YGC算法概述 93
+5.2　YGC代码分析 96
+5.2.1　并行任务 96
+5.2.2　其他处理 115
+5.3　YGC算法演示 116
+5.3.1　选择CSet 117
+5.3.2　根处理 117
+5.3.3　RSet处理 118
+5.3.4　复制 119
+5.3.5　Redirty 120
+5.3.6　释放空间 120
+5.4　日志解读 121
+5.4.1　YGC日志 121
+5.4.2　大对象日志分析 125
+5.4.3　对象年龄日志分析 125
+5.5　参数介绍和调优 126
+第6章　混合回收 129
+6.1　并发标记算法详解 130
+6.2　并发标记算法的难点 133
+6.2.1　三色标记法 133
+6.2.2　难点示意图 133
+6.2.3　再谈写屏障 135
+6.3　G1中混合回收的步骤 141
+6.4　混合回收中并发标记处理的线程 145
+6.4.1　并发标记线程启动的时机 147
+6.4.2　根扫描子阶段 148
+6.4.3　并发标记子阶段 152
+6.4.4　再标记子阶段 159
+6.4.5　清理子阶段 160
+6.4.6　启动混合收集 167
+6.5　并发标记算法演示 170
+6.5.1　初始标记子阶段 171
+6.5.2　根扫描子阶段 171
+6.5.3　并发标记子阶段 171
+6.5.4　再标记子阶段 172
+6.5.5　清理子阶段 173
+6.6　GC活动图 174
+6.7　日志解读 174
+6.8　参数优化 178
+第7章　Full GC 181
+7.1　Evac失败 181
+7.2　串行FGC 187
+7.2.1　标记活跃对象 188
+7.2.2　计算对象的新地址 190
+7.2.3　更新引用对象的地址 190
+7.2.4　移动对象完成压缩 193
+7.2.5　后处理 194
+7.3　并行FGC 196
+7.3.1　并行标记活跃对象 197
+7.3.2　计算对象的新地址 198
+7.3.3　更新引用对象的地址 200
+7.3.4　移动对象完成压缩 200
+7.3.5　后处理 201
+7.4　日志解读 201
+7.5　参数介绍和调优 202
+第8章　G1中的引用处理 203
+8.1　引用概述 203
+8.2　可回收对象发现 207
+8.3　在GC时的处理发现列表 210
+8.4　重新激活可达的引用 214
+8.5　日志解读 215
+8.6　参数介绍和调优 215
+第9章　G1的新特性：字符串去重 217
+9.1　字符串去重概述 217
+9.2　日志解读 220
+9.3　参数介绍和调优 222
+9.4　字符串去重和String.intern的区别 222
+9.5　String.intern中的实现 223
+第10章　线程中的安全点 226
+10.1　安全点的基本概念 226
+10.2　G1并发线程进入安全点 227
+10.3　解释线程进入安全点 230
+10.4　编译线程进入安全点 230
+10.5　正在执行本地代码的线程进入安全点 233
+10.6　安全点小结 236
+10.7　日志分析 236
+10.8　参数介绍和调优 238
+第11章　垃圾回收器的选择 241
+11.1　如何衡量垃圾回收器 241
+11.2　G1调优的方向 243
+第12章　新一代垃圾回收器 247
+12.1　Shenandoah 247
+12.2　ZGC 258
+附录A　编译调试JVM 262
+附录B　本地内存跟踪 272
+附录C　阅读JVM需要了解的C++知识 276
 
 
 194. 说一下 jvm 的主要组成部分？及其作用？

@@ -1,0 +1,206 @@
+Cloudera 官方推荐序（中文）
+Cloudera 官方推荐序（英文）
+推荐序二
+推荐序三
+推荐序四
+推荐序五
+推荐序六
+推荐序七
+作者序
+目录
+第1章 Impala概述、安装与配置
+第2章 Impala入门示例
+第3章 Impala概念及架构
+第4章 SQL语句
+第5章 Impala shell
+第6章 Impala管理
+第7章 Impala存储
+第8章 Impala分区
+第9章 Impala性能优化
+第10章 Impala设计原则与应用案例
+
+Credits
+About the Author
+About the Reviewer
+www.PacktPub.com
+Support files, eBooks, discount offers and more
+Why Subscribe?
+Free Access for Packt account holders
+Preface
+What this book covers
+What you need for this book
+Who this book is for
+Conventions
+Reader feedback
+Customer support
+Errata
+Piracy
+Questions
+1. Getting Started with Impala
+Impala requirements
+Dependency on Hive for Impala
+Dependency on Java for Impala
+Hardware dependency
+Networking requirements
+User account requirements
+Installing Impala
+Installing Impala with Cloudera Manager
+Installing Impala without Cloudera Manager
+Configuring Impala after installation
+Starting Impala
+Stopping Impala
+Restarting Impala
+Upgrading Impala
+Upgrading Impala using parcels with Cloudera Manager
+Upgrading Impala using packages with Cloudera Manager
+Upgrading Impala without Cloudera Manager
+Impala core components
+Impala daemon
+Impala statestore
+Impala metadata and metastore
+The Impala programming interface
+The Impala execution architecture
+Working with Apache Hive
+Working with HDFS
+Working with HBase
+Impala security
+Authorization
+The SELECT privilege
+The INSERT privilege
+The ALL privilege
+Authentication through Kerberos
+Auditing
+Impala security guidelines for a higher level of protection
+Summary
+2. The Impala Shell Commands and Interface
+Using Cloudera Manager for Impala
+Launching Impala shell
+Connecting impala-shell to the remotely located impalad daemon
+Impala-shell command-line options with brief explanations
+General command-line options
+Connection-specific options
+Query-specific options
+Secure connectivity-specific options
+Impala-shell command reference
+General commands
+Query-specific commands
+Table- and database-specific commands
+Summary
+3. The Impala Query Language and Built-in Functions
+Impala SQL language statements
+Database-specific statements
+The CREATE DATABASE statement
+The DROP DATABASE statement
+The SHOW DATABASES statement
+Using database-specific query sentence in an example
+Table-specific statements
+The CREATE TABLE statement
+The CREATE EXTERNAL TABLE statement
+The ALTER TABLE statement
+The DROP TABLE statement
+The SHOW TABLES statement
+The DESCRIBE statement
+The INSERT statement
+The SELECT statement
+Internal and external tables
+Data types
+Operators
+Functions
+Clauses
+Query-specific SQL statements in Impala
+Defining VIEWS in Impala
+Loading data from HDFS using the LOAD DATA statement
+Comments in Impala SQL statements
+Built-in function support in Impala
+The type conversion function
+Unsupported SQL statements in Impala
+Summary
+4. Impala Walkthrough with an Example
+Creating an example scenario
+Example dataset one – automobiles (automobiles.txt)
+Example dataset two – motorcycles (motorcycles.txt)
+Data and schema considerations
+Commands for loading data into Impala tables
+HDFS specific commands
+Loading data into the Impala table from HDFS
+Launching the Impala shell
+Database and table specific commands
+SQL queries against the example database
+SQL join operation with the example database
+Using various types of SQL statements
+Summary
+5. Impala Administration and Performance Improvements
+Impala administration
+Administration with Cloudera Manager
+The Impala statestore UI
+Impala High Availability
+Single point of failure in Impala
+Improving performance
+Enabling block location tracking
+Enabling native checksumming
+Enabling Impala to perform short-circuit read on DataNode
+Adding more Impala nodes to achieve higher performance
+Optimizing memory usage during query execution
+Query execution dependency on memory
+Using resource isolation
+Testing query performance
+Benchmarking queries
+Verifying data locality
+Choosing an appropriate file format and compression type for better performance
+Fine-tuning Impala performance
+Partitioning
+Join queries
+Table and column statistics
+Summary
+6. Troubleshooting Impala
+Troubleshooting various problems
+Impala configuration-related issues
+The block locality issue
+Native checksumming issues
+Various connectivity issues
+Connectivity between Impala shell and Impala daemon
+ODBC/JDBC-specific connectivity issues
+Query-specific issues
+Issues specific to User Access Control (UAC)
+Platform-specific issues
+Impala port mapping issues
+HDFS-specific problems
+Input file format-specific issues
+Using Cloudera Manager to troubleshoot problems
+Impala log analysis using Cloudera Manager
+Using the Impala web interface for monitoring and troubleshooting
+Using the Impala statestore web interface
+Using the Impala Maintenance Mode
+Checking Impala events
+Summary
+7. Advanced Impala Concepts
+Impala and MapReduce
+Impala and Hive
+Key differences between Impala and Hive
+Impala and Extract, Transform, Load (ETL)
+Why Impala is faster than Hive in query processing
+Impala processing strategy
+Impala and HBase
+Using Impala to query HBase tables
+File formats and compression types supported in Impala
+Processing different file and compression types in Impala
+The regular text file format with Impala tables
+The Avro file format with Impala tables
+The RCFile file format with Impala tables
+The SequenceFile file format with Impala tables
+The Parquet file format with Impala tables
+The unsupported features in Impala
+Impala resources
+Summary
+A. Technology Behind Impala and Integration with Third-party Applications
+Technology behind Impala
+Data visualization using Impala
+Tableau and Impala
+Microsoft Excel and Impala
+Microstrategy and Impala
+Zoomdata and Impala
+Real-time query with Impala on Hadoop
+Real-time query subscriptions with Impala
+What is new in Impala 1.2.0 (Beta)
+Index
+
