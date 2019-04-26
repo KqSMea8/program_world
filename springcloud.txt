@@ -1,3 +1,448 @@
+1.1 什么是架构 1
+
+1.2 几个相关概念 3
+
+1.3 从软件的生命周期看架构设计 7
+
+1.4 架构的形式与特点 9
+
+1.5 架构的目标与方法 13
+
+1.6 架构的不同风格 18
+
+第2章 微服务领域驱动设计 30
+
+2.1 领域驱动设计 31
+
+2.1.1 领域驱动设计概览 31
+
+2.1.2 问题域与解决方案域 34
+
+2.1.3 限界上下文 35
+
+2.1.4 上下文映射 40
+
+2.1.5 领域架构 43
+
+2.2 微服务的设计 48
+
+2.2.1 限界上下文的边界 48
+
+2.2.2 限界上下文即微服务 51
+
+2.2.3 识别限界上下文 53
+
+2.2.4 微服务之间的协作 59
+
+2.3 小结 63
+
+第3章 Apache Dubbo框架的原理与实现 64
+
+3.1 Dubbo框架的选型与使用 64
+
+3.1.1 Dubbo框架的选型 64
+
+3.1.2 Dubbo框架的使用 65
+
+3.2 Dubbo框架的原理分析 70
+
+3.2.1 总体架构分析 70
+
+3.2.2 Dubbo Bean的加载 73
+
+3.2.3 Dubbo Extension机制 77
+
+3.2.4 Dubbo消费端 91
+
+3.2.5 Dubbo服务端 126
+
+3.2.6 Dubbo的通信机制 144
+
+3.3 基于Dubbo的自动化Mock系统 165
+
+3.3.1 Mock模拟系统的产生 166
+
+3.3.2 Dubbo Mock的使用 167
+
+3.3.3 Dubbo Mock的原理解析 168
+
+3.3.4 自动化Mock系统的实现 170
+
+第4章 Spring Boot/Spring Cloud实践 177
+
+4.1 Spring Boot原理剖析 178
+
+4.1.1 Spring Boot Quick Start 178
+
+4.1.2 Spring Boot之SpringApplication 180
+
+4.1.3 spring-boot-loaded模块分析 186
+
+4.1.4 spring-boot-autoconfigure模块分析 190
+
+4.1.5 Spring Boot Conditional注解分析 195
+
+4.2 Dubbo Spring Boot Starter 198
+
+4.2.1 Dubbo Spring Boot Starter简介 198
+
+4.2.2 Dubbo Initializr及sample 198
+
+4.2.3 dubbo-spring-boot-autoconfigure模块 201
+
+4.2.4 dubbo-spring-boot-actuator模块 204
+
+4.3 Spring Cloud栈 211
+
+4.3.1 为什么微服务架构需要Spring Cloud 212
+
+4.3.2 Spring Cloud技术栈总览 214
+
+4.3.3 spring-cloud-scaffold基础库集合 215
+
+4.4 基于Maven Archetype的脚手架 239
+
+4.4.1 Maven Archetype 239
+
+4.4.2 脚手架的搭建 240
+
+4.4.3 生成脚手架 247
+
+第5章 微服务稳定性保证的常用手段 250
+
+5.1 微服务的稳定性 250
+
+5.2 高可用 250
+
+5.2.1 限流原理与实现 250
+
+5.2.2 断路器原理与实现 256
+
+5.2.3 超时与重试 260
+
+5.3 高并发 262
+
+5.3.1 异步 263
+
+5.3.2 缓存 270
+
+5.4 总结 272
+
+第6章 微服务下如何保证事务的一致性 273
+
+6.1 从本地事务到分布式事务的演变 273
+
+6.2 强一致性解决方案 276
+
+6.2.1 二阶段提交协议 276
+
+6.2.2 三阶段提交协议 278
+
+6.3 最终一致性解决方案 280
+
+6.3.1 TCC模式 280
+
+6.3.2 补偿模式 285
+
+6.3.3 可靠事件模式 286
+
+6.4 开源项目的分布式事务实现解读 288
+
+6.4.1 Apache RocketMQ 288
+
+6.4.2 ServiceComb 289
+
+第7章 百亿流量微服务网关的设计与实现 293
+
+7.1 API网关概述 293
+
+7.1.1 分布式服务架构、微服务架构与 API 网关 293
+
+7.1.2 API网关的定义、职能与关注点 296
+
+7.1.3 API网关的分类与技术分析 298
+
+7.2 开源网关的分析与调研 300
+
+7.2.1 常见的开源网关介绍 300
+
+7.2.2 四大开源网关的对比分析 308
+
+7.2.3 开源网关的技术总结 309
+
+7.3 百亿流量交易系统API网关设计 310
+
+7.3.1 百亿流量交易系统API网关的现状和面临问题 310
+
+7.3.2 业务网关的设计与最佳实践 313
+
+第8章 微服务编排 317
+
+8.1 Netflix Conductor 317
+
+8.2 Netflix Conductor的架构 319
+
+8.3 Conductor的使用案例 320
+
+8.4 Netflix Conductor源码分析 328
+
+8.4.1 Client层源码分析 330
+
+8.4.2 Server端源码分析 337
+
+8.4.3 core端源码分析 344
+
+第9章 微服务数据抽取与统计 356
+
+9.1 案例小故事 356
+
+9.2 数据仓库概述 358
+
+9.2.1 什么是数据仓库 358
+
+9.2.2 数据仓库架构 360
+
+9.2.3 数据仓库建模方法 361
+
+9.2.4 数据抽取、转换和加载 361
+
+9.2.5 数据统计 362
+
+9.3 数据仓库工具Hive 362
+
+9.3.1 安装Hive 364
+
+9.3.2 Hive数据库 366
+
+9.3.3 Hive表 367
+
+9.4 使用Sqoop抽取数据 369
+
+9.4.1 安装Sqoop 370
+
+9.4.2 将MySQL表数据导入Hive表 372
+
+9.5 ETL作业调度 375
+
+第10章 微服务双活体系建设 377
+
+10.1 系统高可用 377
+
+10.2 双活数据中心 379
+
+10.2.1 单机房部署 379
+
+10.2.2 双机房部署 380
+
+10.2.3 基于支付场景的双活体系建设 383
+
+第11章 基于支付场景下的微服务改造与性能优化 399
+
+11.1 支付场景的介绍 399
+
+11.2 支付业务建模和服务划分 400
+
+11.3 支付场景下微服务架构的详解与分析 402
+
+11.3.1 业务架构分析 402
+
+11.3.2 技术平台详解 404
+
+11.4 从代码层面提升微服务架构的性能 407
+
+11.4.1 从代码和设计的角度看 407
+
+11.4.2 从整体架构的角度看 418
+
+11.5 微服务架构中常见的一些故障分析技巧 421
+
+第12章 遗留系统的微服务架构改造 426
+
+12.1 代码分层结构的转变 426
+
+12.2 遗留系统的债券与思考 430
+
+12.3 从单体系统拆分服务的方法论 431
+
+12.4 遗留系统的微服务架构改造 436
+
+12.4.1 从代码重构开始 436
+
+12.4.2 拆分服务需要面向服务进行架构设计 437
+
+12.4.3 改造是一个渐进的过程 437
+
+12.4.4 单元测试是基石 440
+
+12.4.5 面向失败的设计 440
+
+12.4.6 前后端分离 441
+
+12.4.7 共享现有数据库 441
+
+12.4.8 灰度发布的必要性 442
+
+12.4.9 日志聚合与全链路监控 442
+
+第13章 Service Mesh详解 443
+
+13.1 Service Mesh是什么 443
+
+13.2 Service Mesh的背景 443
+
+13.3 Service Mesh介绍 444
+
+13.3.1 Service Mesh架构 444
+
+13.3.2 Service Mesh能做什么 445
+
+13.4 Service Mesh的价值 446
+
+13.5 Service Mesh现状 447
+
+13.6 Service Mesh存在的问题 448
+
+13.7 Istio详解 449
+
+13.7.1 Istio架构 449
+
+13.7.2 数据平面 450
+
+13.7.3 控制平面 455
+
+13.7.4 Isito案例 458
+
+13.8 Service Mesh展望 461
+
+第14章 微服务监控实战 463
+
+14.1 APM原理与应用 464
+
+14.1.1 什么是APM 464
+
+14.1.2 APM监控点 464
+
+14.1.3 APM深入解析 464
+
+14.2 Prometheus监控系统介绍 492
+
+14.2.1 Prometheus的主要特点 493
+
+14.2.2 Prometheus的架构及组件介绍 493
+
+14.2.3 Prometheus的安装 494
+
+14.2.4 使用Prometheus对MySQL进行监控 498
+
+14.2.5 Prometheus的告警机制 501
+
+第1章 微服务架构与项目设计
+任务1 了解大觅网业务场景
+任务2 了解微服务架构
+1.2.1 软件架构分类
+1.2.2 微服务架构概念
+任务3 了解大觅网架构设计
+任务4 了解大觅网项目管理设计
+1.4.1 代码版本管理设计
+1.4.2 代码规范管理设计
+1.4.3 团队协作管理设计
+第2章 Spring Cloud初体验
+任务1 了解Spring Cloud
+2.1.1 Spring Cloud简介
+2.1.2 Spring Cloud和Spring Boot
+2.1.3 Spring Cloud体系介绍
+任务2 使用Eureka实现注册中心及注册服务
+2.2.1 Eureka简介
+2.2.2 编写Eureka Server
+2.2.3 注册微服务到Eureka Server
+2.2.4 为Eureka Server添加用户认证
+任务3 使用Feign实现声明式REST调用
+2.3.1 微服务间接口调用
+2.3.2 接口调用参数
+任务4 使用Hystrix实现微服务的容错处理
+2.4.1 容错
+2.4.2 使用Hystrix处理容错
+2.4.3 容错可视化监控
+第3章 虚拟化技术Docker+Jenkins
+任务1 安装Docker
+3.1.1 Docker和虚拟机
+3.1.2 Docker相关概念
+3.1.3 Docker运行原理
+3.1.4 在Ubuntu环境中安装Docker
+任务2 使用Docker命令管理Docker
+3.2.1 Docker镜像操作命令
+3.2.2 Docker容器操作命令
+任务3 使用docker-compose管理Docker
+3.3.1 docker-compose介绍
+3.3.2 docker-compose.yml常用命令
+3.3.3 docker-compose常用命令
+任务4 使用Docker+Jenkins实现CI
+3.4.1 Jenkins介绍
+3.4.2 Jenkins的安装
+3.4.3 Jenkins的配置
+3.4.4 使用Jenkins配置普通任务
+3.4.5 使用Jenkins Pipeline配置流水线任务
+第4章 分布式日志处理
+任务1 了解分布式架构下系统的监控问题
+4.1.1 接口监控问题
+4.1.2 日志监控问题
+任务2 使用Sleuth实现微服务跟踪
+4.2.1 微服务项目整合Spring Cloud Sleuth
+4.2.2 Spring Cloud Sleuth整合Zipkin
+任务3 搭建ELK+Kafka环境
+4.3.1 Elasticsearch介绍及环境搭建
+4.3.2 Kibana介绍及环境搭建
+4.3.3 Logstash介绍及环境搭建
+4.3.4 Kafka介绍及环境搭建
+任务4 使用ELK+Kafka实现日志收集
+4.4.1 发送日志信息到Kafka
+4.4.2 在Logstash中定义收集规则
+4.4.3 在Kibana中定义规则查询日志
+第5章 分布式业务实现
+任务1 使用RabbitMQ实现分布式事务
+5.1.1 分布式事务简介
+5.1.2 消息中间件简介
+5.1.3 RabbitMQ的安装与配置
+5.1.4 使用RabbitMQ实现分布式事务
+任务2 使用Redis-setnx实现分布式锁
+第6章 分布式部署实现
+任务1 使用Spring Cloud Ribbon实现大觅网服务负载均衡
+6.1.1 Ribbon简介
+6.1.2 服务消费者整合Ribbon
+6.1.3 负载均衡策略
+6.1.4 通过配置方式更改负载均衡策略
+任务2 使用Spring Cloud Zuul实现大觅网微服务统一网关
+6.2.1 微服务网关介绍
+6.2.2 搭建Zuul微服务网关
+6.2.3 使用过滤器过滤请求
+任务3 使用Spring Cloud Config实现大觅网分布式配置
+6.3.1 编写Config Server
+6.3.2 编写Config Client
+6.3.3 加密解密
+6.3.4 刷新配置
+6.3.5 用户认证
+第7章 分布式数据存储
+任务1 使用Elasticsearch实现商品全文检索
+7.1.1 Elasticsearch基础概念
+7.1.2 Elasticsearch语法
+7.1.3 编写Elasticsearch Java客户端
+任务2 使用Mycat实现水平分库
+7.2.1 Mycat简介
+7.2.2 Mycat安装及配置
+7.2.3 实现大觅网水平分库
+第8章 集成测试
+任务1 使用Sonar对大觅网代码进行规范测试
+8.1.1 配合Jenkins自动检测代码
+8.1.2 Sonar规则配置
+任务2 使用JMeter进行大觅网压力测试
+8.2.1 了解压力测试相关概念
+8.2.2 使用JMeter进行大觅网接口测试
+8.2.3 JMeter报告分析
+任务3 使用Issue进行大觅网前后端联调任务管理
+8.3.1 Issue简介
+8.3.2 使用Issue进行Bug管理
+
+
 1 微服务架构概述 1
 1．1 单体应用架构存在的问题 1
 1．2 如何解决单体应用架构存在的问题 3
@@ -786,3 +1231,720 @@
 
 15.5 小结 343
 
+第1章　微服务架构设计 1
+1．1　直面微服务架构　1
+1．1．1　分布式系统与微服务架构　1
+1．1．2　微服务架构的优势与挑战　3
+1．1．3　实施微服务架构　5
+1．2　服务建模方法　6
+1．2．1　服务的模型　6
+1．2．2　服务的边界　7
+1．2．3　服务的数据　7
+1．3　服务拆分与集成　8
+1．3．1　服务拆分　8
+1．3．2　服务集成　9
+1．4　微服务架构的基础组件和
+关键要素　10
+1．4．1　微服务架构的基础组件　11
+1．4．2　微服务架构的关键元素　11
+1．5　实现微服务架构　13
+1．5．1　微服务架构技术体系　13
+1．5．2　微服务架构实现技术选型　14
+1．6　案例分析　17
+1．7　全书架构　18
+1．8　本章小结　19
+第2章　使用Spring Boot构建
+服务　21
+2．1　引入Spring Boot　21
+2．2　基于Spring Boot的第一个服务　23
+2．2．1　环境准备　23
+2．2．2　实现RESTful服务　24
+2．3　Spring Boot常见功能　28
+2．3．1　集成Spring Data　28
+2．3．2　集成消息中间件　37
+2．3．3　系统监控　39
+2．4　Spring Boot基本原理　44
+2．5　本章小结　46
+第3章　Spring Cloud Netflix
+Eureka与服务治理　47
+3．1　服务治理解决方案　48
+3．1．1　服务治理的需求和模型　48
+3．1．2　服务治理的基本方案　49
+3．2　构建Eureka服务　52
+3．2．1　构建单个Eureka服务器　52
+3．2．2　构建Eureka服务器集群　55
+3．3　使用Eureka注册和发现服务　57
+3．3．1　通过配置实现服务注册　58
+3．3．2　获取服务注册信息　59
+3．4　Eureka基本架构　61
+3．4．1　Eureka服务注册和发现架构　61
+3．4．2　Eureka高可用架构　64
+3．4．3　Eureka区域亲和性　65
+3．5　本章小结　66
+第4章　Spring Cloud Netflix Ribbon
+与负载均衡　67
+4．1　负载均衡　68
+4．1．1　负载均衡的类型　68
+4．1．2　负载均衡的算法　70
+4．2　使用Ribbon实现客户端负载均衡　71
+4．2．1　Spring Cloud Netflix Ribbon
+简介　71
+4．2．2　使用DiscoveryClient查找服务　72
+4．2．3　通过RestTemplate调用服务　74
+4．3　Ribbon基本架构　78
+4．3．1　Ribbon核心机制　79
+4．3．2　Ribbon负载均衡策略　81
+4．3．3　@LoadBalanced注解与
+RestTemplate　82
+4．3．4　@RibbonClient注解与自定义
+负载均衡策略　83
+4．4　本章小结　85
+第5章　Spring Cloud Netflix
+Hystrix与服务容错　86
+5．1　服务消费者容错思想和模式　87
+5．1．1　服务消费者容错的需求　87
+5．1．2　服务隔离　88
+5．1．3　服务熔断　90
+5．1．4　服务回退　91
+5．2　使用Hystrix实现服务容错　91
+5．2．1　引入Hystrix　92
+5．2．2　使用Hystrix实现服务隔离　93
+5．2．3　使用Hystrix实现服务熔断　96
+5．2．4　使用Hystrix实现服务回退　99
+5．3　Hystrix基本原理　101
+5．3．1　服务隔离　101
+5．3．2　服务熔断　103
+5．3．3　Hystrix配置项　105
+5．4　本章小结　109
+第6章　Spring Cloud Netflix Zuul
+与API网关　110
+6．1　服务网关的设计理念　111
+6．1．1　服务网关的作用　111
+6．1．2　服务网关的结构和功能　112
+6．2　使用Zuul构建服务网关　113
+6．2．1　构建Zuul服务器　113
+6．2．2　配置Zuul服务路由　115
+6．3　Zuul基本架构　120
+6．3．1　ZuulFilter组件架构　120
+6．3．2　使用Zuul过滤器　124
+6．4　本章小结　129
+第7章　Spring Cloud Config
+与配置中心　130
+7．1　分布式配置中心方案　131
+7．1．1　分布式配置模型　131
+7．1．2　配置中心实现工具　133
+7．2　构建配置中心服务器　134
+7．2．1　引入Spring Cloud Config　134
+7．2．2　实现基于本地文件系统的
+配置方案　135
+7．2．3　实现基于Git的配置方案　139
+7．3　使用配置服务　140
+7．3．1　访问配置项　141
+7．3．2　配置数据安全性　145
+7．4　Spring Cloud Config特性　148
+7．4．1　Spring Cloud Config对比
+Zookeeper　148
+7．4．2　Spring Cloud Config高可用　149
+7．5　本章小结　150
+第8章　Spring Cloud Stream与
+事件驱动　151
+8．1　事件驱动架构与模型　152
+8．1．1　基本事件驱动架构与实现
+机制　152
+8．1．2　事件驱动与领域模型　155
+8．2　引入Spring Cloud Stream　157
+8．2．1　Spring Cloud Stream基本
+架构　157
+8．2．2　Spring Cloud Stream与Spring
+Integration　159
+8．2．3　Spring Cloud Stream与消息
+中间件　162
+8．3　实现消息发布者　165
+8．3．1　消息发送场景与实现流程　165
+8．3．2　在服务中添加消息发布者　166
+8．4　实现消息消费者　170
+8．4．1　消息消费场景与实现流程　170
+8．4．2　在服务中添加消息消费者　172
+8．5　本章小结　177
+第9章　Spring Cloud Security与
+服务安全　178
+9．1　服务访问安全性与OAuth协议　178
+9．1．1　微服务架构中的安全性设计　179
+9．1．2　OAuth协议　180
+9．2　构建OAuth认证服务器　184
+9．2．1　引入Spring Cloud Security　185
+9．2．2　初始化用户与客户端　186
+9．2．3　生成Token　191
+9．3　使用OAuth保护服务访问　195
+9．3．1　集成OAuth认证服务　195
+9．3．2　创建服务访问策略　196
+9．3．3　使用OAuth2RestTemplate
+传播Token　201
+9．4　本章小结　206
+第10章　Spring Cloud Sleuth与
+服务监控　207
+10．1　服务监控与Spring Cloud Sleuth　207
+10．1．1　服务监控基本原理　207
+10．1．2　引入Spring Cloud Sleuth　209
+10．2　整合Spring Cloud Sleuth与
+Zipkin　215
+10．2．1　Zipkin基本结构　215
+10．2．2　引入Zipkin　216
+10．2．3　使用Zipkin跟踪服务调用
+链路　218
+10．2．4　使用Zipkin实现自定义
+跟踪　226
+10．3　本章小结　228
+第11章　Spring Test与服务测试　230
+11．1　微服务测试的方法　231
+11．1．1　单元测试　231
+11．1．2　集成测试　233
+11．1．3　端到端测试　233
+11．2　测试Spring Boot应用程序　234
+11．2．1　初始化测试环境　234
+11．2．2　执行单元测试　237
+11．3　使用Mock和注解实施集成
+测试　241
+11．3．1　使用@JsonTest注解测试
+JSON数据　242
+11．3．2　使用@DataJpaTest注解测试
+Repository层　244
+11．3．3　使用Mock测试Service层　248
+11．3．4　使用Mock和@WebMvcTest
+注解测试Controller层　252
+11．4　消费者驱动的契约测试　254
+11．4．1　面向契约的端对端测试　254
+11．4．2　实现面向契约的端对端
+测试　257
+11．5　本章小结　266
+第12章　Docker与服务部署　267
+12．1　Docker与微服务架构　267
+12．1．1　Docker的优势　268
+12．1．2　Docker组件与命令　268
+12．2　使用Dockerfile构建服务镜像　272
+12．2．1　Dockerfile命令　272
+12．2．2　使用Dockerfile命令构建
+镜像　273
+12．3　使用Docker Compose编排
+服务　276
+12．3．1　Docker Compose组件与
+命令　276
+12．3．2　使用Docker Compose　279
+12．3．3　Docker Compose案例分析　281
+
+第1章 微服务架构开发2
+1.1 单体架构应用的困境2
+1.2 微服务架构3
+1.2.1 如何定义微服务架构4
+1.2.2 微服务架构的优点5
+1.2.3 微服务架构的缺点6
+1.3 微服务架构设计7
+1.3.1 微服务粒度7
+1.3.2 微服务拆分原则8
+1.3.3 微服务自治原则9
+1.3.4 微服务交互原则10
+1.3.5 微服务架构迁移10
+1.4 不应使用微服务架构的情形11
+第2章 微服务基础——Spring Boot12
+2.1 Spring与Spring Boot12
+2.2 快速启动Spring Boot13
+2.2.1 编写pom.xml文件14
+2.2.2 编写应用引导类16
+2.2.3 编写配置文件17
+2.2.4 运行项目17
+2.3 使用Spring Boot构建示例项目19
+2.3.1 经典三层应用架构19
+2.3.2 设计领域对象20
+2.3.3 实现数据管理23
+2.3.4 编写业务逻辑层29
+2.3.5 编写RESTful API31
+2.3.6 数据库初始化35
+2.3.7 启动测试36
+2.4 Spring Boot特性37
+2.4.1 Spring Boot自动配置机制37
+2.4.2 Spring Boot扩展属性配置38
+2.4.3 Spring Boot日志配置39
+2.5 关于敏捷开发40
+2.6 关于RESTful API设计41
+2.6.1 以资源为中心进行URL设计42
+2.6.2 正确使用HTTP方法及状态码42
+2.6.3 查询及分页处理原则43
+2.6.4 其他指导原则43
+第2篇 Spring Cloud组件实战
+第3章 Spring Cloud简介46
+3.1 微服务架构的核心关键点46
+3.2 Spring Cloud技术概览49
+3.2.1 Spring Cloud子项目50
+3.2.2 为何选择Spring Cloud53
+3.3 Spring Cloud版Hello World示例54
+第4章 服务治理与负载均衡58
+4.1 什么是服务治理58
+4.2 构建服务治理——Eureka59
+4.2.1 搭建微服务Parent工程60
+4.2.2 搭建服务治理服务器——Eureka服务器62
+4.2.3 搭建服务提供者——注册服务64
+4.2.4 搭建服务消费者——获取服务68
+4.3 使用客户端负载均衡——Ribbon72
+4.3.1 什么是客户端负载均衡72
+4.3.2 启用Ribbon74
+4.3.3 负载均衡测试75
+4.4 使用Feign简化微服务调用77
+4.5 深入Eureka80
+4.5.1 服务注册及相关原理80
+4.5.2 Eureka自我保护模式82
+4.5.3 注册一个服务实例需要的时间84
+4.5.4 Eureka高可用集群及示例84
+4.5.5 多网卡及IP指定88
+4.5.6 Eureka服务访问安全89
+4.6 深入Ribbon90
+4.6.1 Ribbon客户端负载均衡原理90
+4.6.2 Ribbon负载均衡策略及配置92
+4.6.3 直接使用Ribbon API94
+4.7 深入Feign96
+4.7.1 Feign的参数绑定96
+4.7.2 Feign中的继承97
+4.7.3 Feign与Swagger的冲突98
+4.8 微服务健康监控99
+4.9 异构服务解决方案——Sidecar101
+第5章 微服务容错保护——Hystrix102
+5.1 什么是微服务容错保护102
+5.2 快速启动Hystrix103
+5.2.1 引入Hystrix依赖104
+5.2.2 开启Hystrix支持104
+5.2.3 修改UserService实现104
+5.2.4 容错测试105
+5.2.5 服务降级的两种实现方式107
+5.2.6 在Feign中使用Hystrix回退109
+5.3 Hystrix容错机制分析110
+5.3.1 Hystrix整体处理流程111
+5.3.2 HystrixCommand与HystrixObservableCommand113
+5.3.3 断路器原理分析115
+5.3.4 Hystrix异常——HystrixBadRequestException117
+5.4 服务隔离117
+5.4.1 线程池隔离与信号量隔离118
+5.4.2 服务隔离的颗粒度119
+5.4.3 服务隔离配置119
+5.4.4 小结120
+5.5 服务降级模式121
+5.5.1 快速失败121
+5.5.2 静默失败121
+5.5.3 返回默认值122
+5.5.4 返回组装的值122
+5.5.5 返回远程缓存123
+5.5.6 主/从降级模式124
+5.6 请求缓存127
+5.7 请求合并128
+5.8 Hystrix监控130
+5.8.1 Hystrix仪表盘131
+5.8.2 Turbine仪表盘集群监控133
+5.8.3 Turbine与消息服务器集成136
+第6章 API服务网关——Zuul137
+6.1 API服务网关138
+6.2 Spring Cloud与Netflix Zuul139
+6.3 启用Zuul路由服务140
+6.3.1 构建Zuul路由服务器141
+6.3.2 路由测试142
+6.3.3 负载均衡测试144
+6.3.4 Hystrix容错与监控测试146
+6.4 路由配置规则146
+6.4.1 服务路由默认规则147
+6.4.2 自定义微服务访问路径148
+6.4.3 忽略指定微服务149
+6.4.4 设置路由前缀149
+6.4.5 通过静态URL路径配置路由映射150
+6.4.6 路由配置顺序151
+6.4.7 自定义路由规则151
+6.5 Zuul路由其他设置151
+6.5.1 Header设置152
+6.5.2 HttpClient配置153
+6.5.3 路由配置的动态加载153
+6.6 Zuul容错与回退153
+6.6.1 实现Zuul的回退154
+6.6.2 服务超时156
+6.7 Zuul过滤器157
+6.7.1 过滤器特性158
+6.7.2 过滤器类型及生命周期159
+6.7.3 自定义Zuul过滤器160
+6.7.4 禁用Zuul过滤器161
+6.7.5 关于Error过滤器的一点补充162
+6.8 @EnableZuulServer与@EnableZuulProxy比较164
+6.8.1 EnableZuulServer注解的过滤器164
+6.8.2 EnableZuulProxy注解的过滤器165
+第7章 统一配置中心——Config166
+7.1 Spring Cloud Config简介166
+7.2 快速启动168
+7.2.1 构建配置服务器168
+7.2.2 创建应用配置文件169
+7.2.3 升级微服务配置172
+
+第1章　微服务架构介绍
+1.1　微服务架构的出现
+1.2　微服务架构的流派
+1.3　云原生与微服务
+1.4　本章小结
+第2章　Spring Cloud总览
+2.1　Spring Cloud架构
+2.2　Spring Cloud特性
+2.3　本章小结
+第3章　Spring Cloud的基础：Spring Boot
+3.1　Spring Boot简介
+3.2　构建一个微服务
+3.3　Spring Boot配置文件
+3.4　本章小结
+第4章　服务注册与发现：Eureka
+4.1　基础应用
+4.2　服务发现原理
+4.3　Eureka Client源码解析
+4.4　Eureka Server源码解析
+4.5　进阶应用
+4.6　本章小结
+第5章　声明式RESTful客户端：Spring Cloud OpenFeign
+5.1　基础应用
+5.2　源码分析
+5.3　进阶应用
+5.4　本章小结
+第6章　断路器：Hystrix
+6.1　基础应用
+6.2　Hystrix原理
+6.3　源码解析
+6.4　进阶应用
+6.5　本章小结
+第7章　客户端负载均衡器：Spring Cloud Netflix Ribbon
+7.1　负载均衡
+7.2　基础应用
+7.3　源码分析
+7.4　进阶应用
+7.5　本章小结
+第8章　API网关：Spring Cloud Gateway
+8.1　Spring Cloud Gateway介绍
+8.2　基础应用
+8.3　源码解析
+8.4　应用进阶
+8.5　本章小结
+第9章　配置中心：Spring Cloud Config
+9.1　基础应用
+9.2　源码解析
+9.3　应用进阶
+9.4　本章小结
+第10章　消息驱动：Spring Cloud Stream
+10.1　消息队列
+10.2　基础应用
+10.3　源码分析
+10.4　进阶应用
+10.5　本章小结
+第11章　消息总线：Spring Cloud Bus
+11.1　基础应用
+11.2　源码解析
+11.3　应用进阶
+11.4　本章小结
+第12章　认证与授权：Spring Cloud Security
+12.1　基础应用
+12.2　整体架构
+12.3　源码解析
+12.4　进阶应用
+12.5　本章小结
+第13章　服务链路追踪：Spring Cloud Sleuth
+13.1　链路监控组件简介
+13.2　基础应用
+
+第1章 微服务与Spring Cloud
+1.1 微服务架构概述
+1.2 Spring Cloud与中间件
+1.3 Spring Cloud增强生态
+1.4 本章小结
+第2章 Spring Cloud Eureka上篇
+2.1 服务发现概述
+2.2 Spring Cloud Eureka入门案例
+2.3 Eureka Server的REST API简介
+2.4 本章小结
+第3章 Spring Cloud Eureka下篇
+3.1 Eureka的核心类
+3.2 服务的核心操作
+3.3 Eureka的设计理念
+3.4 Eureka参数调优及监控
+3.5 Eureka实战
+3.6 Eureka故障演练
+3.7 本章小结
+第4章 Spring Cloud Feign的使用扩展
+4.1 Feign概述
+4.2 Feign的基础功能
+4.3 Feign的实战运用
+4.4 venus-cloud-feign设计与使用
+4.5 本章小结
+第5章 Spring Cloud Ribbon实战运用
+5.1 Spring Cloud Ribbon概述
+5.2 Spring Cloud Ribbon实战
+5.3 Spring Cloud Ribbon进阶
+5.4 本章小结
+第6章 Spring Cloud Hystrix实战运用
+6.1 Spring Cloud Hystrix概述
+6.2 Spring Cloud Hystrix实战运用
+6.3 本章小结
+第7章 Spring Cloud Zuul基础篇
+7.1 Spring Cloud Zuul概述
+7.2 Spring Cloud Zuul入门案例
+7.3 Spring Cloud Zuul典型配置
+7.4 本章小结
+第8章 Spring Cloud Zuul中级篇
+8.1 Spring Cloud Zuul Filter链
+8.2 Spring Cloud Zuul权限集成
+8.3 Spring Cloud Zuul限流
+8.4 Spring Cloud Zuul动态路由
+8.5 Spring Cloud Zuul灰度发布
+8.6 Spring Cloud Zuul文件上传
+8.7 Spring Cloud Zuul实用小技巧
+8.8 本章小结
+第9章 Spring Cloud Zuul高级篇
+9.1 Spring Cloud Zuul多层负载
+9.2 Spring Cloud Zuul应用优化
+9.3 Spring Cloud Zuul原理＆核心源码解析
+9.4 本章小结
+第10章 Spring Cloud基础综合案例
+10.1 基础框架
+10.2 实战扩展
+10.3 生产环境各组件参考配置
+10.4 本章小结
+第11章 Spring Cloud Config上篇
+11.1 Spring Cloud Config配置中心概述
+11.2 刷新配置中心信息
+11.3 本章小结
+第12章 Spring Cloud Config下篇
+12.1 服务端Git配置详解与实战
+12.2 关系型数据库的配置中心的实现
+12.3 非关系型数据库的配置中心的实现
+12.4 Spring Cloud Config使用技能
+12.5 Spring Cloud Config功能扩展
+12.6 高可用部分
+12.7 Spring Cloud与Apollo配置使用
+12.8 Spring Cloud与Apollo结合使用实战
+12.9 本章总结
+第13章 Spring Cloud Consul上篇
+13.1 Consul简介
+13.2 Spring Cloud Consul简介
+13.3 本章小节
+第14章 Spring Cloud Consul下篇
+14.1 Spring Cloud Consul深入
+14.2 Spring Cloud Consul功能重写
+14.3 常见问题排查
+14.4 本章小节
+第15章 Spring Cloud认证和鉴权
+15.1 微服务安全与权限
+15.2 Spring Cloud认证与鉴权方案
+15.3 Spring Cloud认证鉴权实战案例
+15.4 本章小结
+第16章 Spring Cloud全链路监控
+16.1 全链路监控概述
+16.2 Sleuth基本用法
+16.3 Sleuth深入用法
+16.4 Spring Cloud与SkyWalking
+16.5 Spring Cloud与Skywalking实战
+16.6 Spring Cloud与Pinpoint
+16.7 Spring Cloud与Pinpoint实战
+16.8 本章总结
+第17章 Spring Cloud Gateway上篇
+17.1 Spring Cloud Gateway概述
+17.2 Spring Cloud Gateway的工作原理
+17.3 Spring Cloud Gateway入门案例
+17.4 Spring Cloud Gateway的路由断言
+17.5 Spring Cloud Gateway的内置Filter
+17.6 本章小结
+第18章 Spring Cloud Gateway下篇
+18.1 Gateway基于服务发现的路由规则
+18.2 Gateway Filter和Global Filter
+18.3 Spring Cloud Gateway实战
+18.4 Spring Cloud Gateway源码篇
+18.5 本章小结
+第19章 Spring Cloud与gRPC上篇
+19.1 Spring Cloud为什么需要gRPC
+19.2 gRPC简介
+19.3 gRPC的一些核心概念
+19.4 RPC的生命周期
+19.5 gRPC依赖于Protocol Buffers
+19.6 gRPC基于HTTP2
+19.7 gRPC基于Netty进行IO处理
+19.8 gRPC案例实战
+19.9 本章小结
+第20章 gRPC在Spring Cloud与gRPC下篇
+20.1 gRPC Spring Boot Starter介绍
+20.2 gRPC Spring Boot Starter架构设计
+20.3 gRPC Spring Boot Starter源码分析
+20.4 案例实战
+20.5 本章小结
+第21章 Spring Cloud版本控制与灰度发布
+21.1 背景
+21.2 常见发布方式
+21.3 版本控制与灰度发布实战
+21.4 本章小结
+第22章 Spring Cloud容器化
+22.1 Java服务Docker化
+22.2 Spring Cloud组件的Docker化
+22.3 使用Kubernetes管理
+22.4 本章小结
+第23章 Dubbo向Spring Cloud迁移
+23.1 将Dubbo服务纳入Spring Cloud体系中
+23.2 将Spring Cloud服务Dubbo化
+23.3 本章小结
+第24章 Spring Cloud与分布式事务
+24.1 概述
+24.2 解决方案
+24.3 实战
+24.4 本章小结
+第25章 Spring Cloud与领域驱动实践
+25.1 领域驱动概述
+25.2 领域驱动核心概念
+25.3 Halo框架的设计
+25.4 Spring Cloud与Halo实战
+
+第1章　Spring Cloud与微服务概述 2
+1.1　传统的单体应用 2
+1.1.1　改进单体应用的架构 2
+1.1.2　向微服务靠拢 3
+1.2　什么是微服务 4
+1.2.1　使用微服务架构的优势和劣势 4
+1.2.2　重构前的准备工作 5
+1.3　什么是Spring Cloud 5
+1.3.1　Spring Cloud模块介绍 5
+1.3.2　Spring Cloud版本介绍 6
+1.4　本章小结 7
+第2章　实战前的准备工作 8
+2.1　开发环境的准备 8
+2.2　Spring Boot入门 9
+2.2.1　Spring Boot简介 9
+2.2.2　搭建Spring Boot项目 9
+2.2.3　编写第一个REST接口 11
+2.2.4　读取配置文件 11
+2.2.5　profiles多环境配置 13
+2.2.6　热部署 13
+2.2.7　actuator监控 15
+2.2.8　统一异常处理 16
+2.2.9　异步执行 18
+2.2.10　随机端口 21
+2.3　本章小结 23
+第二部分　基础篇
+第3章　Eureka注册中心 26
+3.1　Eureka 26
+3.2　使用Eureka编写注册中心服务 27
+3.3　编写服务提供者 29
+3.3.1　创建项目注册到Eureka 29
+3.3.2　编写提供接口 30
+3.4　编写服务消费者 31
+3.4.1　直接调用接口 31
+3.4.2　通过Eureka来消费接口 32
+3.5　开启Eureka认证 33
+3.6　Eureka高可用搭建 33
+3.6.1　高可用原理 33
+3.6.2　搭建步骤 34
+3.7　常用配置讲解 35
+3.7.1　关闭自我保护 35
+3.7.2　自定义Eureka的Instance ID 35
+3.7.3　自定义实例跳转链接 36
+3.7.4　快速移除已经失效的服务信息 37
+3.8　扩展使用 38
+3.8.1　Eureka REST API 38
+3.8.2　元数据使用 40
+3.8.3　EurekaClient使用 41
+3.8.4　健康检查 43
+3.8.5　服务上下线监控 45
+3.9　本章小结 46
+第4章　客户端负载均衡Ribbon 47
+4.1　Ribbon 47
+4.1.1　Ribbon模块 47
+4.1.2　Ribbon使用 48
+4.2　RestTemplate结合Ribbon使用 49
+4.2.1　使用RestTemplate与整合Ribbon 49
+4.2.2　RestTemplate负载均衡示例 52
+4.2.3　@LoadBalanced注解原理 53
+4.2.4　Ribbon API使用 57
+4.2.5　Ribbon饥饿加载 58
+4.3　负载均衡策略介绍 59
+4.4　自定义负载策略 60
+4.5　配置详解 61
+4.5.1　常用配置 61
+4.5.2　代码配置Ribbon 62
+4.6　重试机制 63
+4.7　本章小结 64
+第5章　声明式REST客户端Feign 65
+5.1　使用Feign调用服务接口 65
+5.1.1　在Spring Cloud中集成Feign 66
+5.1.2　使用Feign调用接口 66
+5.2　自定义Feign的配置 67
+5.2.1　日志配置 67
+5.2.2　契约配置 69
+5.2.3　Basic认证配置 69
+5.2.4　超时时间配置 70
+5.2.5　客户端组件配置 71
+5.2.6　GZIP压缩配置 72
+5.2.7　编码器解码器配置 72
+5.3　脱离Spring Cloud 使用Feign 73
+5.3.1　原生注解方式 73
+5.3.2　构建Feign对象 74
+5.3.3　其他配置 75
+5.4　本章小结 76
+第6章　Hystrix 服务容错处理 77
+6.1　Hystrix 77
+6.1.1　Hystrix的简单使用 77
+6.1.2　回退支持 78
+6.1.3　信号量策略配置 79
+6.1.4　线程隔离策略配置 79
+6.1.5　结果缓存 80
+6.1.6　缓存清除 81
+6.1.7　合并请求 83
+6.2　在Spring Cloud中使用Hystrix 84
+6.2.1　简单使用 84
+6.2.2　配置详解 85
+6.2.3　Feign整合Hystrix服务容错 88
+6.2.4　Feign中禁用Hystrix 90
+6.3　Hystrix监控 91
+6.4　整合Dashboard查看监控数据 92
+6.5　Turbine聚合集群数据 94
+6.5.1　Turbine使用 94
+6.5.2　context-path导致监控失败 95
+6.6　本章小结 95
+第7章　API网关 96
+7.1　Zuul 简介 96
+7.2　使用Zuul构建微服务网关 97
+7.2.1　简单使用 97
+7.2.2　集成Eureka 98
+7.3　Zuul路由配置 98
+7.4　Zuul过滤器讲解 99
+7.4.1　过滤器类型 100
+7.4.2　请求生命周期 100
+7.4.3　使用过滤器 101
+7.4.4　过滤器禁用 103
+7.4.5　过滤器中传递数据 103
+7.4.6　过滤器拦截请求 104
+7.4.7　过滤器中异常处理 106
+7.5　Zuul容错和回退 108
+7.5.1　容错机制 108
+7.5.2　回退机制 109
+7.6　Zuul高可用 111
+7.7　本章小结 111
+第三部分　实战篇
+第8章　分布式配置管理 114
+8.1　自研配置管理框架Smconf简介 114
+8.2　Smconf工作原理 115
+8.3　Smconf 部署 116
+8.3.1　Mongodb安装 116
+8.3.2　Zookeeper安装 117
+8.3.3　Smconf Server部署 118
+8.4　项目中集成Smconf 119
+8.4.1　集成Smconf 119
+8.4.2　使用Smconf 120
+8.4.3　配置更新回调 121
+8.5　Smconf详细使用 122
+8.5.1　源码编译问题 122
+8.5.2　后台账号管理 122
+8.5.3　REST API 123
+8.6　Smconf源码解析 125
+8.6.1　Client启动 125
+8.6.2　启动加载配置 127
+8.6.3　配置修改推送原理 128
+8.7　本章小结 129
+第9章　Sleuth服务跟踪 130
+9.1　Spring Cloud集成Sleuth 130
+9.2　整合Logstash 131
+9.2.1　ELK简介 131
+9.2.2　输出JSON格式日志 131
+9.3　整合Zipkin 133
+9.3.1　创建Zipkin数据收集服务 133
+9.3.2　项目集成Zipkin发送调用链数据 134
