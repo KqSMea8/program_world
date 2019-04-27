@@ -1,0 +1,91 @@
+功能强大的代码自动生成工具 Auto Maker | 软件推介
+授权协议：GPLv2
+开发语言：Java
+
+操作系统：跨平台
+
+软件作者：ldh_123
+
+一个代码自动生成工具，能够通过设计好的数据库结构，直接生成可以运行的代码，包含常用的开发框架，把日常对表的crud操作代码，自动生成，让开发者更多的关注业务。
+
+功能列表
+
+pojo 支持常用set, get pojo结构，以及Lombok.
+mybatis的mapper，支持常用的crud，还支持唯一索引的rud，表与表支持的关联查询：多对一，一对多， 多对多。
+service 支持有或没有接口
+controller支持json服务，以及生成页面
+普通的客户端外，还支持javafx Ui 客服端
+前端table可以定制
+页面采用自定义标签，jsp采用tag布局，freemarker采用宏定义
+生成代码结构
+
+包容了很多常用的开发框架，后续也会增加更多的框架，结构如下：
+
+spring boot + spring mvc + spring + mybatis + swagger2 微服务端
+spring boot + spring mvc+ spring + mybatis + swagger2 + easyui 后台结构
+spring boot + spring mvc + spring + mybatis + swagger2 + bootstrap +jsp 后台结构
+spring boot + spring mvc + spring + mybatis + swagger2 + bootstrap + freemarker 后台结构
+javafx UI 桌面客户端
+spring boot + spring + mybatis + javafx UI 桌面程序
+vertx + sync + quasar + bootstrap +freemarker vertx结构
+子项目说明
+
+core 项目
+
+所有子项目的基础，包含了对数据库结构的描述。
+
+server 项目
+
+通过spring boot 生成微服务接口，包含了数据的增删改查的json接口
+
+Web 项目
+
+1、可以生成easyui前端界面
+
+2、可以生成bootstrap + jsp前端界面
+
+3、可以生成bootstrap + freemarker 前端界面
+
+4、支持vertx结构
+
+desktop
+
+1、可以生成javafx客户端桌面应用2，可以生成javafx+spring+mybatis桌面应用
+
+操作图
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
