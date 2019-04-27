@@ -2689,11 +2689,7 @@ SpringBoot热部署实现有两种方式：
      <groupId>org.springframework.boot</groupId>
      <artifactId>spring-boot-devtools</artifactId>
  </dependency>
-1
-2
-3
-4
-5
+
 然后：使用 shift+ctrl+alt+"/" （IDEA中的快捷键） 选择"Registry" 然后勾选 compiler.automake.allow.when.app.running
 
 109. jpa 和 hibernate 有什么区别？
@@ -3259,13 +3255,7 @@ class
 
 https://spring.io/blog/2016/08/30/custom-test-slice-with-spring-boot-1-4
 
-总结
-感谢Spring Boot，编写基于Spring的微服务正变得前所未有的简单。我希望通过这些最佳实践，你的实施过程不仅会变得很快，而且从长远来看也会更加强大和成功。祝你好运！
-
-干货分享
-最近将个人学习笔记整理成册，使用PDF分享。关注我，回复如下代码，即可获得百度盘地址，无套路领取！
-
-
+============================================
 
 
 
