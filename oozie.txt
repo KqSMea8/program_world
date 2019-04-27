@@ -1,0 +1,154 @@
+第9章 定期自动执行ETL作业
+9.1 crontab 256
+9.2 Oozie简介 260
+9.2.1 Oozie的体系结构 260
+9.2.2 CDH 5.7.0中的Oozie 262
+9.3 建立定期装载工作流 262
+9.4 建立协调器作业定期自动执行工作流 271
+9.5 Oozie优化 275
+9.6 小结 276
+
+Apache Oozie Essentials
+Credits
+About the Author
+About the Reviewers
+www.PacktPub.com
+Support files, eBooks, discount offers, and more
+Why subscribe?
+Free access for Packt account holders
+Preface
+What this book covers
+What you need for this book
+Who this book is for
+Conventions
+Reader feedback
+Customer support
+Downloading the example code
+Errata
+Piracy
+Questions
+1. Setting up Oozie
+Configuring Oozie in Hortonworks distribution
+Installing Oozie using tar ball
+Creating a test virtual machine
+Building Oozie source code
+Summary of the build script
+Codehaus Maven move
+Download dependency jars
+Preparing to create a WAR file
+Create a WAR file
+Configure Oozie MySQL database
+Configure the shared library
+Start server testing and verification
+Summary
+2. My First Oozie Job
+Installing and configuring Hue
+Oozie concepts
+Workflows
+Coordinator
+Bundles
+Book case study
+Running our first Oozie job
+Types of nodes
+Control flow nodes
+Action nodes
+Oozie web console
+The Oozie command line
+Summary
+3. Oozie Fundamentals
+Chapter case study
+The Decision node
+The Email action
+Expression Language functions
+Basic EL constants
+Basic EL functions
+Workflow EL functions
+Hadoop EL constants
+HDFS EL functions
+Email action configuration
+Job property file
+Submission from the command line
+Workflow states
+Summary
+4. Running MapReduce Jobs
+Chapter case study
+Running MapReduce jobs from Oozie
+The job.properties file
+Running the job
+Running Oozie MapReduce job
+Coordinators
+Datasets
+Frequency and time
+Cron syntax for frequency
+Timezone
+The ＜done-flag＞ tag
+Initial instance
+My first Coordinator
+Coordinator v1 definition
+job.properties v1 definition
+Coordinator v2 definition
+job.properties v2 definition
+Checking the job log
+Running a MapReduce streaming job
+Summary
+5. Running Pig Jobs
+Chapter case study
+The Pig command line
+The config-default.xml file
+Pig action
+Pig Coordinator job v2
+Parameters in the Dataset's input and output events
+current(int n)
+hoursInDay(int n)
+daysInMonth(int n)
+latest(int n)
+Coordinator controls
+Pig Coordinator job v3
+Summary
+6. Running Hive Jobs
+Chapter case study
+Running a Hive job from the command line
+Hive action
+Validating Oozie Workflow
+Hive 2 action
+Parameterization of Coordinator jobs
+dateOffset(String baseDate, int instance, String timeUnit)
+dateTzOffet(String baseDate, String timezone)
+formatTime(String timeStamp, String format)
+Summary
+7. Running Sqoop Jobs
+Chapter case study
+Running Sqoop command line
+Sqoop action
+HCatalog
+HCatalog datasets
+HCatalog EL functions
+HCatalog Coordinator functions
+Pig script
+The job.properties file
+The Sqoop action Coordinator
+Running the job
+Checking data in the Hive table
+Summary
+8. Running Spark Jobs
+Spark action
+Bundles
+Data pipelines
+Summary
+9. Running Oozie in Production
+Packaging and continuous delivery
+Oozie in secured cluster
+Rerun
+Rerun Workflow
+Rerun Coordinator
+Rerun Bundle
+Summary
+Index
+
+Install and configure an Oozie server, and get an overview of basic concepts
+Journey through the world of writing and configuring workflows
+Learn how the Oozie coordinator schedules and executes workflows based on triggers
+Understand how Oozie manages data dependencies
+Use Oozie bundles to package several coordinator apps into a data pipeline
+Learn about security features and shared library management
+Implement custom extensions and write your own EL functions and actions
