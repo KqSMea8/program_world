@@ -1,7 +1,3 @@
-
-Hadoop 指南-目录
-
-第Ⅰ部分Hadoop基础知识
 dy 章初识Hadoop3
 1.1数据！数据！3
 1.2数据的存储与分析5
@@ -62,9 +58,6 @@ dy 章初识Hadoop3
 9.5MapReduce库类276
 第Ⅲ部分Hadoop的操作
 dy 0章构建Hadoop集群279
-…………已省略更多目录
-
-Hive编程指南-目录
 
 dy 章 基础知识
 1.1 Hadoop和MapReduce综述
@@ -1856,15 +1849,224 @@ dy 章 基础知识
  4.6.6 修改表属性
  4.6.7 修改存储属性
  4.6.8 众多的修改表语句
+=======================
+Hive源码系列（七）编译模块之词法、语法解析 （中）
+这篇主要举实际案例说明怎么使用antlr工具、利用antlr生成的Lexer、Parser、TreeParser代码，获取asttree。这些都是hive获取asttree的过程，理解了这些，再理解hive的asttree就很容易了
+程序设计语言入门小案例一般都用“Hello World”，在编译领域的入门往往选择计算器。而我们这次的小案例就更简单：一个只能计算【两】个【整数】相【加】的计算器，比如：计算1+1...
+先来考虑一下如果何下手，在我们的计算器中，只接受输入整数和加号，其它的一概不理。这里说的是整数，如果输入了一个字母，我们一定是要拒绝的...对于这一块要写对应的词法规则，这个阶段的过程就叫做词法分析
+输入满足词法的规则，并不代表我们就能接受，如果是【加号】【整数】【整数】或者【整数】【整数】【加号】这样的排列，我们是不能接受的，这里接受的合法语法是【整数】【加号】【整数】，因此我们需要在词法规则的基础上再定义语法规则，规则定输入满足这样句式的才算是合法... 我们把这个阶段叫做语法分析
+弄清楚了我们的词法、语法规则后，我们需要以antlr的语言把这些写出来。
+antlr语法博大精深，我觉得没必要钻的太深，实现这个案例，用不到antlr太多复杂的语法，只用看懂就行
 
-…………已省略更多目录
+1、使用antlrworks
 
-Spark快速大数据分析-目录
+双击antlrworks-1.5.1.jar启动antlrworks
 
-推荐序 xi
-译者序 xiv
-序 xvi
-前言 xvii
+File-->New
+
+
+
+
+
+
+
+选择ANTLR 3 Grammer  (*.g)  新建Calculator语法文件
+
+
+
+
+
+
+
+输入规则：
+
+
+
+
+
+
+
+ctrl+s 保存
+
+
+
+
+
+
+
+Antlr的语法文件通常会保存在一个 .g的文件中，我们的语法文件叫做 Caculator.g，保存在E:\hive\anltr\calculator 目录 下
+
+在E:\hive\anltr\calculator目录 创建output目录
+
+File-->Preferences设置Output path
+
+
+
+
+
+
+
+运行调试，点击图标中的小甲虫
+
+
+
+
+
+
+
+在弹出来的调试界面中，选择 text
+
+输入 1+2
+
+
+
+
+
+
+
+
+
+
+
+
+
+之后将会在output窗口看到被识别出来的token流，以及具体语法分析树和ASTTree的结果
+
+
+
+
+
+
+
+
+
+
+
+到此，就是简单使用anltrworks用语法文件来解析输入数据的过程
+
+
+
+2、使用eclipse
+
+
+
+新建一个java项目，antlr-my
+
+File-->New-->Java Project
+
+
+
+
+
+
+
+在antlr-my项目下创建grammar、lib
+
+
+
+
+
+
+
+下载antlr-3.4-complete.jar   hive中用的是antlr3.4
+
+http://www.java2s.com/Code/Jar/a/Downloadantlr34completejar.htm
+
+将antlr-3.4-complete.jar放在lib下面
+
+
+
+
+
+
+
+创建语法文件：
+
+在grammar上面右键， New -> Other,选择 ANTLR中的Combined Grammar
+
+
+
+输入文件名Caculator
+
+
+
+
+
+设置antlr-my项目相关的antlr插件检查设置：
+
+在antlr-my项目上右键 -->Properties-->ANTLR
+
+
+
+
+
+
+
+
+
+
+
+
+
+以上设置完了之后，点ok
+
+在Calculator.g文件中输入内容：
+
+
+
+
+
+
+
+点击Interpreter,在expr区域输入表达式1+2 点击执行按钮：
+
+
+
+
+
+
+
+我们可以看到下图中具体语法分析树的结果
+
+
+
+
+
+
+
+3、用java来获取ASTTree
+
+
+
+antlr自动生成了词法分析器CalculatorLexer.java和语法分析器 CalculatorParser.java的代码
+
+
+
+
+
+
+
+创建测试类：TestCalculator.java
+
+
+
+
+
+
+
+能够获取生成的ASTTree
+
+
+
+
+
+
+
+
+微信扫一扫
+关注该公众号
+
+====================
 dy 章 Spark数据分析导论 1
 1．1 Spark是什么 1
 1．2 一个大一统的软件栈 2
