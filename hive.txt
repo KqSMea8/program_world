@@ -2124,3 +2124,65 @@ dy 章 Spark数据分析导论 1
 4．6 总结 61
 第5章 数据读取与保存 63
 5．1 动机 63
+
+-----------
+
+文档中心  弹性 MapReduce  EMR 开发教程  Hue 使用指南  Hive 元数据管理
+Hive 元数据管理
+最近更新时间：2018-07-05 20:30:31
+
+ 编辑   查看pdf
+使用 Hue 之前，您首先需要通过 EMR 的快捷入口登录Hue，且 Hue 上的用户名建议是 hadoop。
+
+进入 Hue 的 Hive 编辑模式，并选择对应的数据库
+
+选择数据库
+
+在 Hue 的 Hive SQL 编辑框里面输入 hive-SQL 创建表和导入数据
+
+ drop table hive_test;
+create table hive_test (a int, b string) ROW FORMAT DELIMITED FIELDS TERMINATED BY ’,’;
+load data local inpath "/usr/local/service/hadoop/bin/hive_test.data" into table hive_t
+单击执行按钮如下图：
+
+执行
+
+Hue 可以将查询结果以图表的方式展示，执行这个 SQL
+
+ select * from hive_test limit 10;
+执行完成后，结果数据如图所示：
+
+执行结果
+
+选择图例模式，在这里选择了"pie"，可以看到结果图
+
+结果图
+
+==============
+文档中心  弹性 MapReduce  EMR 开发教程  Hive 开发指南  Hive 最佳实践
+Hive 最佳实践
+最近更新时间：2017-11-17 10:42:44
+
+ 编辑   查看pdf
+执行引擎设置
+腾讯云 EMR 中的 Hive 目前支持三种执行引擎：
+
+MR
+TEZ
+Spark
+如果需要 TEZ 那么在初始购买集群的时候需要勾选 TEZ，在普通情况下建议执行引擎为 TEZ，这样您会获得更好的计算效率。
+
+存储选择
+腾讯云存储介质目前支持本地数据盘、普通云硬盘、SSD 云硬盘以及 COS 对象存储，如果您对成本敏感，那么基于 COS 的数据仓库方式是一个不错的选择
+
+数据格式
+腾讯云压缩支持 snappy、lzo 等压缩算法，如果使用 Hive 建议您的数据文件格式使用 ORC 或者 parquet 的格式，这样您会更节省空间以及会获得更好的计算效率
+
+查询引擎如何选择
+腾讯云 EMR 目前支持的查询引擎有 Presto、SparkSQL、Hive，如果您想实现多种数据源耦合查询建议您使用 Presto，如果普通数据仓库建议您使用 Hive+TEZ 的模式，如果您对时延比较敏感可以考虑SparkSQL。
+
+数据安全
+如果您是使用 COS 作为底层存储，建议您使用外部表的方式，以免误删数据，而如果是存储在 HDFS 那么建议您开启 HDFS 回收站来避免数据误删除。
+
+
+

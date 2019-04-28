@@ -152,3 +152,95 @@ Understand how Oozie manages data dependencies
 Use Oozie bundles to package several coordinator apps into a data pipeline
 Learn about security features and shared library management
 Implement custom extensions and write your own EL functions and actions
+
+====================
+
+Oozie 任务调度
+
+
+
+ 编辑   查看pdf
+准备工作流数据
+
+Hue 的任务调度基于工作流，我们先创建一个包含 Hive script 脚本的工作流，Hive script 脚本的内容如下:
+
+ create database if not exists hive_sample;
+show databases;
+use hive_sample;
+show tables;
+create table if not exists hive_sample (a int, b string);
+show tables;
+insert into hive_sample select 1, "a";
+select * from hive_sample;
+将以上内容保存为 hive_sample.sql 文件, Hive 工作流还需要一个 hive-site.xml 配置文件，这个配置文件可以在集群中安装了 Hive 组件的节点上找到。具体的路径在： /usr/local/service/hive/conf/hive-site.xml, 复制一个 hive-site.xml 文件，将其中对应配置修改为如下值
+
+ <property>
+  <name>hive.exec.local.scratchdir</name>
+  <value>/tmp/hive</value>
+</property>
+<property>
+  <name>hive.downloaded.resources.dir</name>
+  <value>/tmp/hive/${hive.session.id}_resources</value>
+</property>
+<property>
+  <name>hive.querylog.location</name>
+  <value>/tmp/hive</value>
+</property>
+<property>
+  <name>hive.server2.logging.operation.log.location</name>
+  <value>/tmp/hive/tmp/operation_logs</value>
+</property>
+创建工作流
+
+在 Hue 页面中选择 Workflows -> Editors -> Workflows
+
+创建工作流
+
+单击“create”
+
+creat
+
+进入当前 workflow 的 HDFS 空间
+
+进入HDFS
+
+上传 Hive script 文件和 hive-site.xml, 并在 lib 目录中加入 mySQL 的 jdbc jar 包
+
+加入包
+
+在工作流编辑页面中拖一个 Hive
+
+编辑页面
+
+选择刚刚上传的 Hive scipt 文件和 hive-site.xml 文件
+
+选择文件
+
+保存当前 workflow
+
+创建定时任务
+
+Hue 的定时任务是 coordinator, 类似于 Linux 的 crontab，支持的调度粒度可以到分钟级别, 选择 Workflows -> Editors -> Coordinator -> Create，创建 coordinator
+
+创建定时
+
+单击 "choose a workflow...", 选择一个创建好的流程
+
+选择流程
+
+选择需要调度的粒度和时间间隔，可以多选，用于支持多个时间间隔
+
+选择粒度
+
+执行定时任务
+
+选择 coordinator 的执行时间区间，然后单击"submiT"
+
+执行定时
+
+在 coordinator 的监控页面可以看到 coordinator 的调度情况
+
+监控
+
+除此以外 Hue 还支持管理 HDFS 上的数据、Hbase 数据管理，Yarn 任务管理等，更多资料请参考 这里
+

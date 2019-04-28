@@ -1,3 +1,4 @@
+https://help.aliyun.com/document_detail/73771.html?spm=a2c4g.11186623.2.14.52e84c309cTwZK
 AccessKey
 AccessKey（简称AK，包括Access Key Id和Access Key Secret），是访问阿里云API的密钥，在阿里云官网注册云账号后，可在accesskeys管理页面生成，用于标识用户，为访问MaxCompute或者其他云产品做签名验证。Access Key Secret必须保密。
 
@@ -3242,5 +3243,685 @@ UDF:0
 Complexity:1.0
 
 ----------
+脚本模式SQL
+更新时间：2019-04-24 14:45:09
+
+编辑 ·
+ · 我的收藏
+本页目录
+语法结构
+使用MaxCompute Studio执行脚本模式
+通过客户端 （odpscmd）提交脚本模式
+通过DataWorks使用脚本模式
+脚本模式SQL即Script Mode SQL。
+
+说明 脚本模式SQL目前无法使用计量预估（Cost SQL命令）完成费用预估，具体费用请以实际费用账单为准，详情请参见账单详情。
+MaxCompute当前的SQL引擎支持脚本模式。在脚本模式下编译脚本时，一个多语句的SQL脚本文件将被作为一个整体进行编译，无需您对单个语句进行编译。在提交运行时，SQL脚本文件会被整体提交，并生成一个执行计划，保证只需排队一次、执行一次，保证您能充分利用MaxCompute的资源。
+Script Mode的SQL语句书写便利，您只需要按照业务逻辑，用类似于普通编程语言的方式书写，无需考虑如何组织语句。
+
+工具支持
+
+MaxCompute Studio，详情请参见认识Studio。
+MaxCompute CMD命令行工具，详情请参见安装并配置客户端。
+DataWorks，详情请参见ODPS SCRIPT节点。
+语法结构
+试用
+--set
+set odps.sql.type.system.odps2=true;
+[set odps.stage.reducer.num=xxx;]
+[...]
+--ddl
+create table table1 xxx;
+[create table table2 xxx;]
+[...]
+--dml
+@var1 := SELECT [ALL | DISTINCT] select_expr, select_expr, ...
+        FROM table3
+        [WHERE where_condition];
+@var2 := SELECT [ALL | DISTINCT] select_expr, select_expr, ...
+        FROM table4
+        [WHERE where_condition];
+@var3 := SELECT [ALL | DISTINCT] var1.select_expr, var2.select_expr, ...
+        FROM @var1 join @var2 on ...;
+INSERT OVERWRITE|INTO TABLE [PARTITION (partcol1=val1, partcol2=val2 ...)]
+        SELECT [ALL | DISTINCT] select_expr, select_expr, ...
+        FROM @var3;
+[@var4 := SELECT [ALL | DISTINCT] var1.select_expr, var.select_expr, ... FROM @var1
+        UNION ALL | UNION
+        SELECT [ALL | DISTINCT] var1.select_expr, var.select_expr, ... FROM @var2;
+CREATE [EXTERNAL] TABLE [IF NOT EXISTS] table_name
+        AS
+        SELECT [ALL | DISTINCT] select_expr, select_expr, ...
+        FROM var4;]
+[...]
+脚本模式支持SET语句、部分DDL语句（不支持结果为屏显类型的语句如desc、show）、DML语句。
+一个脚本的完整形式是SET、DDL、DML语句按先后顺序排列。每种语句都可以包含0到多个具体的SQL语句，且不同类型的语句不能交错。
+多个语句以@开始的表示变量连接。
+一个脚本最多支持一个屏显结果的语句（如单独的SELECT语句），否则会发生报错。不建议在脚本中执行屏显的SELECT语句。
+一个脚本最多支持一个CREATE TABLE AS语句并且必须是最后一句。推荐您将建表语句与INSERT语句分开写。
+脚本模式下，一旦有一个语句失败，整个脚本的语句都不会执行成功。
+脚本模式下，只有当所有输入的数据都准备好并到达，才会生成一个作业进行数据处理。
+脚本模式下，如果一个表先被写再被读，则会发生报错，如下所示。
+试用
+insert overwrite table src2 select * from src where key > 0;
+@a := select * from src2;
+select * from @a;
+所以，为避免因表的先写后读产生的报错，应修改SQL脚本如下。
+试用
+@a := select * from src where key > 0;
+insert overwrite table src2 select * from @a;
+select * from @a;
+脚本模式SQL示例
+试用
+create table if not exists dest(key string , value bigint) partitioned by (d string);
+create table if not exists dest2(key string,value bigint) partitioned by (d string);
+@a := select * from src where value >0;
+@b := select * from src2 where key is not null;
+@c := select * from src3 where value is not null;
+@d := select a.key,b.value from @a left outer join @b on a.key=b.key and b.value>0;
+@e := select a.key,c.value from @a inner join @c on a.key=c.key;
+@f := select * from @d union select * from @e union select * from @a;
+insert overwrite table dest partition (d='20171111') select * from @f;
+@g := select e.key,c.value from @e join @c on e.key=c.key;
+insert overwrite table dest2 partition (d='20171111') SELECT * from @g;
+适用场景
+脚本模式适合用来改写本来要用层层嵌套子查询的单个语句，或者因为脚本复杂性而不得不拆成多个语句的脚本。
+如果多个输入的数据源数据准备完成的时间间隔很长（例如一个凌晨1点可以准备好，一个上午7点可以准备好），则不适合通过table variable衔接拼装为一个大的脚本模式SQL。
+使用MaxCompute Studio执行脚本模式
+使用MaxCompute Studio脚本模式，首先请保证MaxCompute Studio完成安装、添加项目链接、建立MaxCompute SQL脚本文件，详情请参见安装IntelliJ IDEA、项目空间连接管理、创建MaxCompute Script Module。编辑脚本页面如下。
+
+
+脚本编译后提交运行，查看执行计划图。虽然脚本上是多个语句，但执行计划图是一个相通的DAG图。
+
+通过客户端 （odpscmd）提交脚本模式
+您需要使用0.27上版本的odpscmd提交脚本。建议您下载安装最新版本。安装后，请使用 -s 参数提交脚本。
+
+编辑脚本模式的源码myscript.sql文件，调用odpscmd命令执行如下。
+
+odpscmd -s myscript.mxql;
+说明 -s 为odpscmd的命令行选项，类似于 -f、 -e，而非交互环境中的命令。odpscmd的交互环境中暂不支持脚本模式与表变量。
+通过DataWorks使用脚本模式
+在DataWorks中可以建立脚本模式的节点，如下图所示。
+
+在此节点中进行脚本模式的脚本编辑，编辑好后点击工具栏的运行按钮，提交脚本到MaxCompute执行。您从输出信息的logview url中可以查看到执行计划图和结果。
+
+----------
+MaxCompute不支持的DDL语法
+语法	MaxCompute	Hive	MySQL	Oracle	SQL Server
+CREATE TABLE—PRIMARY KEY	N	N	Y	Y	Y
+CREATE TABLE—NOT NULL	N	N	Y	Y	Y
+CREATE TABLE—CLUSTER BY	Y	Y	N	Y	Y
+CREATE TABLE—EXTERNAL TABLE	Y (OSS, OTS, TDDL)	Y	N	N	N
+CREATE TABLE—TEMPORARY TABLE	N	Y	Y	Y	Y （with #prefix）
+INDEX—CREATE INDEX	N	Y	Y	Y	Y
+VIRTUAL COLUMN	N	N (only 2 predefined)	N	Y	Y
+MaxCompute不支持的DML语法
+语法	MaxCompute	Hive	MySQL	Oracle	SQL Server
+CTE	Y	Y	Y	Y	Y
+SELECT—recursive CTE	N	N	N	Y	Y
+SELECT—GROUP BY ROLL UP	Y	Y	Y	Y	Y
+SELECT—GROUP BY CUBE	Y	Y	N	Y	Y
+SELECT—GROUPING SET	Y	Y	N	Y	Y
+SELECT—IMPLICT JOIN	Y	Y	N	Y	Y
+SELECT—PIVOT	N	N	N	Y	Y
+SEMI JOIN	Y	Y (corelated expression must be in WHERE, EXISTS must be corelated)	Y	N (has IN and EXISTS, but no SEMI JOIN grammer)	N (has IN and EXISTS, but no SEMI JOIN grammer)
+SELEC TRANSFROM	Y	Y	N	N	N
+SELECT—corelated subquery	Y	Y (corelated expression must be in WHERE, EXISTS must be corelated)	Y	Y	Y
+ORDER BY NULLS FIRST/LAST	Y	Y	Y	Y	Y
+LATERAL VIEW	Y	Y	N	Y (LATERAL keyword)	Y (CROSS APPLY keyword)
+SET OPERATOR—UNION (disintct)	Y	Y	Y	Y	Y
+SET OPERATOR—INTERSECT	Y	N	N	Y	Y
+SET OPERATOR—MINUS/EXCEPT	Y	N	N	Y	Y（keyword EXCEPT）
+INSERT INTO ... VALUES	Y	Y	Y	Y	Y
+INSERT INTO (ColumnList)	Y	Y	Y	Y	Y
+UPDATE … WHERE	N	Y	Y	Y	Y
+UPDATE … ORDER BY LIMIT	N	N	Y	N	Y
+DELETE … WHERE	N	Y	Y	Y	Y
+DELETE … ORDER BY LIMIT	N	N	Y	N	N
+ANALYTIC—reusable WINDOWING CLUSUE	Y	Y	N	N	N (can implement with join)
+ANALYTIC—CURRENT ROW	Y	Y	N	Y	Y
+ANALYTIC—UNBOUNDED	Y	N	Y	Y	Y
+ANALYTIC—RANGE …	N	Y	N	Y	Y
+WHILE DO	N	N	Y	Y	Y
+MaxCompute不支持的SCRIPTING语法
+语法	MaxCompute	Hive	MySQL	Oracle	SQL Server
+TABLE VARIABLE	Y	Y (TEMPORARY TABLE)	Y (TEMPORARY TABLE)	Y (TEMPLORARY TABLE)	Y
+SCALER VARIABLE	Y	Y	Y (DECLARE x INT)	Y	Y
+ERROR HANDLING—RAISE ERROR	N	N	Y	Y	Y
+ERROR HANDLING—TRY CATCH	N	N	N	Y	Y
+FLOW CONTROL—LOOP	N	N	Y	Y	Y
+CURSOR	N	N	Y	Y	Y
+------------
+SQL限制项
+更新时间：2019-04-25 15:54:59
+
+编辑 ·
+ · 我的收藏
+若您没有注意SQL限制条件，可能会发生业务启动后停止的现象。为避免此类现象的发生，本文对MaxCompute SQL限制项做了以下汇总。
+
+边界名	最大值/限制条件	分类	说明
+表名长度	128字节	长度限制	表名、列名中不能有特殊字符，只能用英文的a-z、A-Z、数字和下划线_，且以字母开头。
+注释长度	1024字节	长度限制	注释内容是长度不超过1024字节的有效字符串。
+表的列定义	1200个	数量限制	单表的列定义个数最多1200个。
+单表分区数	60000	数量限制	一张表最多允许60000个分区。
+表的分区层级	6级	数量限制	在表中建的分区层次不能超过6级。
+表统计定义个数	100个	数量限制	表统计定义个数。
+表统计定义长度	64000	长度限制	表统计项定义长度。
+屏显	10000行	数量限制	SELECT语句屏显默认最多输出10000行。
+INSERT目标个数	256个	数量限制	multiins同时INSERT的数据表数量。
+UNION ALL	256个表	数量限制	最多允许256个表的UNION ALL。
+MAPJOIN	256个小表	数量限制	MAPJOIN最多允许256张小表。
+MAPJOIN内存限制	640M	数量限制	MAPJOIN所有小表的内存限制不能超过640M。
+窗口函数	5个	数量限制	一个SELECT中最多允许5个窗口函数。
+ptinsubq	1000行	数量限制	一个partition列in subquery时，subquery的返回结果不可超过1000行。
+SQL语句长度	2M	长度限制	允许的SQL语句的最大长度。
+WHERE子句条件个数	256个	数量限制	WHERE子句中可使用条件个数。
+列记录长度	8M	数量限制	表中单个单元的最大长度。
+IN的参数个数	1024	数量限制	IN的最大参数限制，例如in (1,2,3….,1024)。in(…)如果参数过多，会造成编译时的压力；1024是建议值、不是限制值。
+jobconf.json	1M	长度限制	jobconf.json的大小为1M。当表包含的Partition数量太多时，可能超过jobconf.json，超过1M。
+视图	不可写	操作限制	视图不支持写入，不支持INSERT操作。
+列的数据类	不允许	操作限制	不允许修改列的数据类型、列位置。
+Java UDF函数	不能是abstract或者static	操作限制	Java UDF函数不能是abstract或static。
+最多查询分区个数	10000	数量限制	最多查询分区个数不能超过10000。
+
+
+表操作
+更新时间：2019-04-10 15:12:18
+
+编辑 ·
+ · 我的收藏
+本页目录
+创建表
+查看表信息
+删除表
+重命名表
+修改表owner
+修改表的注释
+修改表的修改时间
+修改表的Hash Clustering属性
+清空非分区表里的数据
+本文为您介绍如何通过客户端创建、查看、删除、重命名和修改表信息。
+
+创建表
+创建表的语法格式，如下所示：
+试用
+CREATE [EXTERNAL] TABLE [IF NOT EXISTS] table_name
+[(col_name data_type [COMMENT col_comment], ...)]
+[COMMENT table_comment]
+[PARTITIONED BY (col_name data_type [COMMENT col_comment], ...)]
+[CLUSTERED BY (col_name [, col_name, ...]) [SORTED BY (col_name [ASC | DESC] [, col_name [ASC | DESC] ...])] INTO number_of_buckets BUCKETS] -- 用于创建Hash Clustering表时设置表的Shuffle和Sort属性
+[STORED BY StorageHandler] -- 仅限外部表
+[WITH SERDEPROPERTIES (Options)] -- 仅限外部表
+[LOCATION OSSLocation];-- 仅限外部表
+[LIFECYCLE days]
+[AS select_statement]
+ CREATE TABLE [IF NOT EXISTS] table_name
+ LIKE existing_table_name
+创建表时，如果不指定if not exists选项而存在同名表，则返回出错。若指定此选项，则无论是否存在同名表，即使原表结构与要创建的目标表结构不一致，均返回成功。已存在的同名表的元信息不会被改动。
+表名与列名均对大小写不敏感，不能有特殊字符，只能用英文的a-z，A-Z及数字和下划线_，且以字母开头，名称的长度不超过128字节。
+单表的列定义个数最多1200个。
+数据类型：BIGINT、DOUBLE、BOOLEAN、DATETIME、DECIMAL和STRING等，MaxCompute2.0版本扩展了很多数据类型。
+说明 目前MaxCompute SQL及新版本Mapreduce支持的Set命令分为以下两种方式：
+session级别：要使用新数据类型（TINYINT、SMALLINT、 INT、 FLOAT、VARCHAR、TIMESTAMP BINARY），需在建表语句前加上set语句set odps.sql.type.system.odps2=true;，并与建表语句一起提交执行。
+project级别：即支持对project级别进行新类型打开。project的Owner可根据需要对project进行设置，命令为：
+试用
+setproject odps.sql.type.system.odps2=true;
+对setproject的详细说明请参见：其他操作。
+Partitioned by指定表的分区字段，目前支持TINYINT、SMALLINT、INT、BIGINT、VARCHAR和STRING类型。
+分区值不允许有双字节字符（如中文），必须是以英文字母a-z，A-Z开始后可跟字母数字，名称的长度不超过128字节。允许的字符包括：空格、冒号（:）、下划线（_）、美元符（$）、井号（#）、点（.），感叹号（!）和（@），出现其他字符行为未定义，例如（\t）、（\n）、（/）等。当利用分区字段对表进行分区时，新增分区、更新分区内数据和读取分区数据均不需要做全表扫描，可以提高处理效率。
+
+一张表最多允许60000个分区，单表的分区层次不能超过6级。
+注释内容是长度不超过1024字节的有效字符串。
+lifecycle表的生命周期，单位：天。create table like语句不会复制源表的生命周期属性。
+CLUSTERED BY指定Hash Key。MaxCompute将对指定列进行Hash运算，按照Hash值分散到各个Bucket里面。
+为避免数据倾斜和热点，取得较好的并行执行效果，CLUSTERED BY列适宜选择取值范围大，重复键值少的列。此外，为了达到Join优化的目的，也应该考虑选取常用的Join/Aggregation Key，即类似于传统数据库中的主键。
+SORTED BY用于指定在Bucket内字段的排序方式。建议Sorted By和Clustered By一致，以取得较好的性能。此外，当SORTED BY子句指定之后，MaxCompute将自动生成索引，并且在查询的时候利用索引来加快执行。
+INTO number_of_buckets BUCKETS指定了哈希桶的数目。这个数字必须填写，且由数据量大小来决定。此外，缺省条件下MaxCompute只能支持最多1111个reducer，所以此处最多也只支持1111个哈希桶。您可以使用set odps.sql.reducer.instances=xxx;来提升这个限制，但最大不得超过4000，否则会影响性能。
+选择哈希桶数目时，请您遵循以下两个原则：
+
+哈希桶大小适中：经验值是每个Bucket的大小在500M左右比较合理。例如，分区大小估计为500G，初略估算Bucket数目应该设为1000，这样平均每个Bucket大小约为500M。对于特别大的表，500M的限制可以突破，每个Bucket在2-3G左右比较合适。同时，可以结合set odps.sql.reducer.instances=xxx来突破1111个桶的限制。
+对于需要经常Join的两个表，哈希桶数目应设为一样，这样才能够优化Join，省略掉Shuffle和Sort步骤。如果按照上述原则计算两个表的哈希桶数不一致，建议统一使用数字大的Bucket Number，保证合理的并发度和执行效率。
+Hash Clustering表还有以下优点：
+优化Bucket Pruning
+优化Aggregation
+优化存储
+Hash Clustering表有以下限制：
+不支持insert into，只能通过insert overwrite来添加数据。
+不支持tunnel直接upload到range cluster表，因为tunnel上传数据是无序的。
+有关外部表的更多详情请参见访问OSS非结构化数据。
+示例如下：
+
+假设创建表sale_detail来保存销售记录，该表使用销售时间（sale_date）和销售区域 （region）作为分区列，建表语句如下所示：
+试用
+create table if not exists sale_detail
+(
+shop_name     string,
+customer_id   string,
+total_price   double
+)
+partitioned by (sale_date string,region string);
+-- 创建一张分区表sale_detail
+通过 create table...as select...语句创建表，并在建表的同时将数据复制到新表中，如下所示：
+试用
+create table sale_detail_ctas1 as
+select * from sale_detail;
+此时，如果sale_detail中存在数据，上面的示例会将sale_detail的数据全部复制到sale_detail_ctas1表中。
+说明 此处sale_detail是一张分区表，而通过 create table...as select...语句创建的表不会复制分区属性，只会把源表的分区列作为目标表的一般列处理，即sale_detail_ctas1是一个含有5列的非分区表。
+在 create table...as select...语句中，如果在select子句中使用常量作为列的值，建议指定列的名字，如下所示：
+试用
+create table sale_detail_ctas2 as
+        select shop_name,
+            customer_id,
+            total_price,
+            '2013' as sale_date,
+            'China' as region
+        from sale_detail;
+如果不加列的别名，如下所示：
+试用
+create table sale_detail_ctas3 as
+        select shop_name,
+            customer_id,
+            total_price,
+            '2013',
+            'China'
+        from sale_detail;
+则创建的表sale_detail_ctas3的第四、五列类似于_c5、_c6。
+
+如果希望源表和目标表具有相同的表结构，可以尝试使用 create table...like操作，如下所示：
+试用
+create table sale_detail_like like sale_detail;
+此时，sale_detail_like的表结构与sale_detail完全相同。除生命周期属性外，列名、列注释以及表注释等均相同。但sale_detail中的数据不会被复制到sale_detail_like表中。
+
+创建Hash Clustering表示例
+
+试用
+CREATE TABLE T1 (a string, b string, c bigint) CLUSTERED BY (c) SORTED by (c) INTO 1024 BUCKETS;--创建Hash Clustering非分区表
+CREATE TABLE T1 (a string, b string, c bigint) PARTITIONED BY (dt string) CLUSTERED BY (c) SORTED by (c) INTO 1024 BUCKETS;--创建Hash Clustering分区表
+查看表信息
+查看表信息的语法格式，如下所示：
+试用
+desc <table_name>;
+desc extended <table_name>;--查看外部表信息
+示例如下：
+假设查看上述示例中表sale_detail的信息，可输入如下命令：
+试用
+desc sale_detail;
+结果如下所示：
+试用
+odps@ $odps_project>desc sale_detail;
++--------------------------------------------------------------------+
+| Owner: ALIYUN$maojing.mj@alibaba-inc.com | Project: $odps_project
+                  |
+| TableComment:
+   |
++--------------------------------------------------------------------+
+| CreateTime:               2017-06-28 15:05:17
+   |
+| LastDDLTime:              2017-06-28 15:05:17
+   |
+| LastModifiedTime:         2017-06-28 15:05:17
+   |
++--------------------------------------------------------------------+
+| InternalTable: YES      | Size: 0
+   |
++--------------------------------------------------------------------+
+| Native Columns:
+   |
++--------------------------------------------------------------------+
+| Field           | Type       | Label | Comment
+   |
++--------------------------------------------------------------------+
+| shop_name       | string     |       |
+   |
+| customer_id     | string     |       |
+   |
+| total_price     | double     |       |
+   |
++--------------------------------------------------------------------+
+| Partition Columns:
+   |
++--------------------------------------------------------------------+
+| sale_date       | string     |
+   |
+| region          | string     |
+   |
++--------------------------------------------------------------------+
+OK
+假设查看上述示例表sale_detail_like中的信息，可输入如下命令：
+试用
+desc sale_detail_like
+结果如下所示：
+试用
+odps@ $odps_project>desc sale_detail_like;
++--------------------------------------------------------------------+
+| Owner: ALIYUN$maojing.mj@alibaba-inc.com | Project: $odps_project
+                  |
+| TableComment:
+   |
++--------------------------------------------------------------------+
+| CreateTime:               2017-06-28 15:42:17
+   |
+| LastDDLTime:              2017-06-28 15:42:17
+   |
+| LastModifiedTime:         2017-06-28 15:42:17
+   |
++--------------------------------------------------------------------+
+| InternalTable: YES      | Size: 0
+   |
++--------------------------------------------------------------------+
+| Native Columns:
+   |
++--------------------------------------------------------------------+
+| Field           | Type       | Label | Comment
+   |
++--------------------------------------------------------------------+
+| shop_name       | string     |       |
+   |
+| customer_id     | string     |       |
+   |
+| total_price     | double     |       |
+   |
++--------------------------------------------------------------------+
+| Partition Columns:
+   |
++--------------------------------------------------------------------+
+| sale_date       | string     |
+   |
+| region          | string     |
+   |
++--------------------------------------------------------------------+
+OK
+可见，除生命周期属性外，sale_detail_like的其他属性（字段类型，分区类型等）均与sale_detail完全一致。查看表信息的更多详情请参见表操作。
+说明 通过 Describe Table查看到的Size包含了在回收站的数据Size。如果您需要清空回收站，可以先执行 purge table table_name;，然后再 Describe Table查看除回收站以外的数据大小。您也可以执行 show recyclebin;查看本项目中回收站内的数据明细。
+如果您查看表sale_detail_ctas1的信息，会发现sale_date、region两个字段仅会作为普通列存在，而不是表的分区。
+
+随着MaxCompute类型系统的不断扩充（参见数据类型），执行desc命令后可以返回的类型也随着增多。要使用MaxCompute新类型，SQL语句都需要配合set flag新类型打开语句，但desc命令无需打开便可返回新类型。
+说明 若对desc table的输出结果有解析依赖，请及时更新适配解析MaxCompute新数据类型。
+示例：
+试用
+set odps.sql.type.system.odps2=true;
+CREATE TABLE test_newtype (
+    c1 tinyint
+    ,c2 smallint
+    ,c3 int
+    ,c4 BIGINT
+    ,c5 float
+    ,c6 DOUBLE
+    ,c7 decimal
+    ,c8 binary
+    ,c9 timestamp
+    ,c10 ARRAY<map<BIGINT,BIGINT>>
+    ,c11 map<STRING,ARRAY<BIGINT>>
+    ,c12 STRUCT<s1:STRING,s2:BIGINT>
+    ,c13 varchar(20))
+LIFECYCLE 1
+;
+desc test_newtype；返回（省略部分结果）：
+试用
+| Native Columns:                                                                    |
++------------------------------------------------------------------------------------+
+| Field           | Type       | Label | Comment                                     |
++------------------------------------------------------------------------------------+
+| c1              | tinyint    |       |                                             |
+| c2              | smallint   |       |                                             |
+| c3              | int        |       |                                             |
+| c4              | bigint     |       |                                             |
+| c5              | float      |       |                                             |
+| c6              | double     |       |                                             |
+| c7              | decimal    |       |                                             |
+| c8              | binary     |       |                                             |
+| c9              | timestamp  |       |                                             |
+| c10             | array<map<bigint,bigint>> |       |                              |
+| c11             | map<string,array<bigint>> |       |                              |
+| c12             | struct<s1:string,s2:bigint> |       |                            |
+| c13             | varchar(20) |       |                                            |
++------------------------------------------------------------------------------------+
+您也可以使用 DESC EXTENDED table_name;命令查看Hash Clustering Table的Clustering属性，如下所示，Clustering属性将显示在Extended Info中。
+试用
+
++------------------------------------------------------------------------------------+
+| Owner: ALIYUN$xxxxxxx@aliyun.com | Project: xxxxx |
+| TableComment: |
++------------------------------------------------------------------------------------+
+| CreateTime: 2017-12-25 11:18:26 |
+| LastDDLTime: 2017-12-25 11:18:26 |
+| LastModifiedTime: 2017-12-25 11:18:26 |
+| Lifecycle: 2 |
++------------------------------------------------------------------------------------+
+| InternalTable: YES | Size: 0 |
++------------------------------------------------------------------------------------+
+| Native Columns: |
++------------------------------------------------------------------------------------+
+| Field | Type | Label | Comment |
++------------------------------------------------------------------------------------+
+| a | string | | |
+| b | string | | |
+| c | bigint | | |
++------------------------------------------------------------------------------------+
+| Partition Columns: |
++------------------------------------------------------------------------------------+
+| dt | string | |
++------------------------------------------------------------------------------------+
+| Extended Info: |
++------------------------------------------------------------------------------------+
+| TableID: 91a3395d3ef64b4d9ee1d28527552864 |
+| IsArchived: false |
+| PhysicalSize: 0 |
+| FileNum: 0 |
+| ClusterType: hash |
+| BucketNum: 1024 |
+| ClusterColumns: [c] |
+| SortColumns: [c ASC] |
++------------------------------------------------------------------------------------+
+对于聚集属性分区表，除可使用上述命令查看Table属性，还需要通过以下命令查看分区的属性。
+试用
+DESC EXTENDED table_name partition(pt_spec);
+使用select命令查看表中的详细信息，请参见Select语法介绍。
+
+删除表
+删除表的语法格式，如下所示：
+试用
+DROP TABLE [IF EXISTS] table_name;
+说明
+如果不指定if exists选项而表不存在，则返回异常。若指定此选项，无论表是否存在，皆返回成功。
+删除外部表时，OSS上的数据不会被删除。
+示例如下：
+试用
+create table sale_detail_drop like sale_detail;
+    drop table sale_detail_drop;
+    --若表存在，成功返回；若不存在，异常返回；
+    drop table if exists sale_detail_drop2;
+    --无论是否存在 sale_detail_drop2 表，均成功返回。
+重命名表
+重命名表的语法格式，如下所示：
+试用
+ALTER TABLE table_name RENAME TO new_table_name;
+说明
+rename操作仅修改表的名字，不改动表中的数据。
+如果已存在与new_table_name同名表，则报错。
+如果table_name不存在，则报错。
+示例如下：
+试用
+create table sale_detail_rename1 like sale_detail;
+alter table sale_detail_rename1 rename to sale_detail_rename2;
+修改表owner
+MaxCompute SQL支持通过changeowner命令来修改表的拥有人（表owner）。
+
+语法格式如下：
+试用
+alter table table_name changeowner to 'ALIYUN$xxx@aliyun.com';
+修改表的注释
+修改表的注释的语法格式，如下所示：
+试用
+ALTER TABLE table_name SET COMMENT 'tbl comment';
+说明
+table_name必须是已存在的表。
+comment最长1024字节。
+示例如下：
+试用
+alter table sale_detail set comment 'new coments for table sale_detail';
+通过MaxCompute的desc命令可以查看表中comment的修改，详情请参见常用命令>表操作中的Describe Table。
+
+修改表的修改时间
+MaxCompute SQL提供touch操作用来修改表的LastDataModifiedTime，可将表的LastDataModifiedTime修改为当前时间。
+
+修改表的修改时间的语法格式，如下所示：
+试用
+ALTER TABLE table_name TOUCH;
+说明
+table_name不存在，则报错返回。
+此操作会改变表的LastDataModifiedTime的值，此时，MaxCompute会认为表的数据有变动，生命周期的计算会重新开始。
+修改表的Hash Clustering属性
+对于分区表，我们支持通过ALTER TABLE语句增加或者去除Hash Clustering属性。
+
+增加表的hash clustering属性：
+
+试用
+ALTER TABLE table_name
+[CLUSTERED BY (col_name [, col_name, ...]) [SORTED BY (col_name [ASC | DESC] [, col_name [ASC | DESC] ...])] INTO number_of_buckets BUCKETS]
+去除表的hash clustering属性：
+试用
+ALTER TABLE table_name NOT CLUSTERED;
+说明
+alter table改变聚集属性，只对于分区表有效，非分区表一旦聚集属性建立就无法改变。
+由于alter table只影响新分区，所以该语句不可以再指定PARTITIONALTER TABLE语句适用于存量表，在增加了新的聚集属性之后，新的分区将做hash cluster存储。
+清空非分区表里的数据
+将指定的非分区表中的数据清空，该命令不支持分区表。对于分区表，可以用ALTER TABLE table_name DROP PARTITION的方式将分区里的数据清除。
+
+清空非分区表里的数据的语法格式，如下所示：
+试用
+TRUNCATE TABLE table_name;
+
+修改表的生命周期
+修改表的生命周期属性的语法格式，如下所示：
+试用
+ALTER TABLE table_name SET lifecycle days;
+说明
+days参数为生命周期时间，只接受正整数，单位为天。
+如果表table_name是非分区表，自最后一次数据被修改开始计算，经过days天后数据仍未被改动，则此表无需您干预，将会被MaxCompute自动回收（类似drop table操作）。
+在MaxCompute中，每当表的数据被修改后，表的LastDataModifiedTime将会被更新，因此，MaxCompute会根据每张表的LastDataModifiedTime以及lifecycle的设置来判断是否要回收此表。
+如果table_name是分区表，则根据各分区的LastDataModifiedTime判断该分区是否该被回收。
+不同于非分区表，分区表的最后一个分区被回收后，该表不会被删除。
+生命周期只能设定到表级别，不能再分区级设置生命周期。
+创建表时即可指定生命周期。
+非分区表不支持取消lifecycle，只能修改lifecycle。分区表可以取消某个具体分区的lifecycle。
+示例如下：
+试用
+create table test_lifecycle(key string) lifecycle 100;
+ -- 新建test_lifecycle表，生命周期为100天。
+ alter table test_lifecycle set lifecycle 50;
+ -- 修改test_lifecycle表，将生命周期设为50天。
+禁止生命周期
+某些情况下，部分特定的分区不希望被生命周期功能自动回收掉，比如一个月的月初或双十一期间的数据，此时您可以禁止该分区被生命周期功能回收。
+
+禁止生命周期的语法格式，如下所示：
+试用
+ALTER TABLE table_name partition_spec ENABLE|DISABLE LIFECYCLE;
+示例如下：
+试用
+ALTER TABLE trans PARTITION(dt='20141111') DISABLE LIFECYCLE;
+
+===========
+分区和列操作
+更新时间：2019-02-13 19:14:08
+
+编辑 ·
+ · 我的收藏
+本页目录
+添加分区操作
+删除分区操作
+添加列操作
+修改列名操作
+修改列、分区的注释
+同时修改列名及列注释
+修改表、分区的修改时间
+修改分区值
+本文向您介绍如何在MaxCompute进行添加、修改列或添加、删除分区的命令操作。
+
+添加分区操作
+添加分区的语法格式，如下所示：
+试用
+ALTER TABLE TABLE_NAME ADD [IF NOT EXISTS] PARTITION partition_spec
+partition_spec:(partition_col1 = partition_col_value1, partition_col2 = partiton_col_value2, ...);
+说明
+分区名必须小写。
+仅支持新增分区，不支持新增分区字段。
+如果未指定if not exists而同名的分区已存在，则返回报错。
+目前MaxCompute单表支持的分区数量上限为6万。
+对于多级分区的表，如果想添加新的分区，必须指明全部的分区值。
+示例如下：
+
+假设为表sale_detail添加一个分区，如下所示：
+试用
+alter table sale_detail add if not exists partition (sale_date='201312', region='hangzhou');
+-- 成功添加分区，用来存储2013年12月杭州地区的销售记录。
+alter table sale_detail add if not exists partition (sale_date='201312', region='shanghai');
+-- 成功添加分区，用来存储2013年12月上海地区的销售记录。
+alter table sale_detail add if not exists partition(sale_date='20111011');
+-- 仅指定一个分区sale_date，出错返回
+alter table sale_detail add if not exists partition(region='shanghai');
+-- 仅指定一个分区region，出错返回
+删除分区操作
+删除分区的语法格式，如下所示：
+试用
+ALTER TABLE TABLE_NAME DROP [IF EXISTS] PARTITION partition_spec;
+partition_spec:(partition_col1 = partition_col_value1, partition_col2 = partiton_col_value2, ...)
+说明 如果分区不存在且未指定 if exists，则返回报错。
+示例如下：
+
+假设从表sale_detail中删除一个分区，如下所示：
+试用
+alter table sale_detail drop if exists partition(sale_date='201312',region='hangzhou');
+-- 成功删除2013年12月杭州分区的销售记录。
+添加列操作
+添加列的语法格式，如下所示：
+试用
+ALTER TABLE table_name ADD COLUMNS (col_name1 type1,col_name2 type2...);
+同时添加列和注释，如下所示：
+试用
+ALTER TABLE table_name ADD COLUMNS (col_name1 type1 comment 'XXX',col_name2 type2 comment 'XXX');
+说明 添加的新列不支持指定顺序，默认在最后一列。
+修改列名操作
+修改列名的语法格式，如下所示：
+试用
+ALTER TABLE table_name CHANGE COLUMN old_col_name RENAME TO new_col_name;
+说明
+old_col_name必须是已存在的列。
+表中不能有名为new_col_name的列。
+修改列、分区的注释
+修改列、分区注释的语法格式，如下所示：
+试用
+ALTER TABLE table_name CHANGE COLUMN col_name COMMENT comment_string;
+说明 COMMENT内容最长为1024字节。
+同时修改列名及列注释
+同时修改列名及列注释的语法格式，如下所示：
+试用
+ALTER TABLE table_name CHANGE COLUMN old_col_name new_col_name column_type COMMENT column_comment;
+说明
+old_col_name必须是已存在的列。
+表中不能有名为new_col_name的列。
+COMMENT内容最长为1024字节。
+修改表、分区的修改时间
+MaxCompute SQL提供touch操作用来修改分区的LastDataModifiedTime。效果会将分区的LastDataModifiedTime修改为当前时间。
+
+修改表、分区的修改时间的语法格式，如下所示：
+试用
+ALTER TABLE table_name TOUCH PARTITION(partition_col='partition_col_value', ...);
+说明
+table_name或partition_col不存在，则返回报错。
+指定的partition_col_value不存在，则返回报错。
+此操作会改变表的LastDataModifiedTime的值。此时，MaxCompute会认为表或分区的数据有变动，生命周期的计算会重新开始。
+修改分区值
+MaxCompute SQL支持通过rename操作更改对应表的分区值。
+
+修改分区值的语法格式，如下所示：
+试用
+ALTER TABLE table_name PARTITION (partition_col1 = partition_col_value1, partition_col2 = partiton_col_value2, ...)
+RENAME TO PARTITION (partition_col1 = partition_col_newvalue1, partition_col2 = partiton_col_newvalue2, ...);
+说明
+不支持修改分区列列名，只能修改分区列对应的值。
+修改多级分区的一个或者多个分区值，多级分区的每一级的分区值都必须写上。
+
+======
 
 
