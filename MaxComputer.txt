@@ -1,0 +1,3246 @@
+AccessKey
+AccessKey（简称AK，包括Access Key Id和Access Key Secret），是访问阿里云API的密钥，在阿里云官网注册云账号后，可在accesskeys管理页面生成，用于标识用户，为访问MaxCompute或者其他云产品做签名验证。Access Key Secret必须保密。
+
+安全
+MaxCompute多租户数据安全体系，主要包括用户认证、项目空间的用户与授权管理、跨项目空间的资源分享以及项目空间的数据保护。关于MaxCompute安全操作的更多详情请参见安全指南。
+
+C
+Console
+MaxCompute Console是运行在Window/Linux下的客户端工具，通过Console可以提交命令完成Project管理、DDL、DML等操作。对应的工具安装和常用参数请参见客户端。
+
+D
+Data type
+MaxCompute表中所有列对应的数据类型。目前支持的数据类型详情请参见基本概念>数据类型。
+
+DDL
+Data Definition Language（数据定义语言）。比如创建表、创建视图等操作，MaxCompute DDL语法请参见用户指南>DDL语句。
+
+DML
+Data Manipulation Language（数据操作语言）。比如INSERT操作，MaxCompute DML语法请参见用户指南>INSERT操作。
+
+F
+fuxi
+伏羲（fuxi）是飞天平台内核中负责资源管理和任务调度的模块，同时也为应用开发提供了一套编程基础框架。MaxCompute底层任务调度模块即fuxi的调度模块。
+
+I
+Instance（实例）
+作业的一个具体实例，表示实际运行的Job，类同Hadoop中Job的概念。详情请参见基本概念>任务实例。
+
+M
+MapReduce
+MaxCompute处理数据的一种编程模型，通常用于大规模数据集的并行运算。您可以使用MapReduce提供的接口（Java API）编写MapReduce程序，来处理MaxCompute中的数据。编程思想是将数据的处理方式分为Map（映射）和Reduce（规约）。
+
+在正式执行Map前，需要将输入的数据进行分片。所谓分片，就是将输入数据切分为大小相等的数据块，每一块作为单个Map Worker的输入被处理，以便于多个Map Worker同时工作。每个Map Worker在读入各自的数据后，进行计算处理，最终通过Reduce函数整合中间结果，从而得到最终计算结果。详情请参见MapReduce。
+
+O
+ODPS
+ODPS是MaxCompute的原名。
+
+P
+Partition（分区）
+分区Partition是指一张表下，根据分区字段（一个或多个组合）对数据存储进行划分。也就是说，如果表没有分区，数据是直接放在表所在的目录下。如果表有分区，每个分区对应表下的一个目录，数据是分别存储在不同的分区目录下。关于分区的更多介绍请参见基本概念>分区。
+
+Project（项目）
+项目空间（Project）是MaxCompute的基本组织单元，它类似于传统数据库的Database或Scheme的概念，是进行多用户隔离和访问控制的主要边界。详情请参见基本概念>项目空间。
+
+R
+Role（角色）
+角色是MaxCompute安全功能里使用的概念，可以看成是拥有相同权限的用户的集合。多个用户可以同时存在于一个角色下，一个用户也可以隶属于多个角色。给角色授权后，该角色下的所有用户拥有相同的权限。关于角色管理的更多介绍请参见安全指南>角色管理。
+
+Resource（资源）
+资源（Resource）是MaxCompute中特有的概念。您如果想使用MaxCompute的自定义函数（UDF）或MapReduce功能，都需要依赖资源来完成。详情请参见基本概念>资源。
+
+S
+SDK
+Software Development Kits软件开发工具包。一般都是一些被软件工程师用于为特定的软件包、软件实例、软件框架、硬件平台、操作系统、文档包等建立应用软件的开发工具的集合。MaxCompute目前支持Java SDK和Python SDK。
+
+授权
+项目空间管理员或者project owner授予您对MaxCompute中的Object（或称之为客体，例如表，任务，资源等）进行某种操作的权限，包括读、写、查看等。授权的具体操作请参见安全指南>用户管理。
+
+沙箱
+MaxCompute MapReduce及UDF程序在分布式环境中运行时受到Java沙箱的限制。
+
+T
+Table（表）
+表是MaxCompute的数据存储单元，详情请参见基本概念>表。
+
+Tunnel
+MaxCompute的数据通道，提供高并发的离线数据上传下载服务。您可以使用Tunnel服务向MaxCompute批量上传数据或者将数据下载。相关命令请参见Tunnel命令操作或批量数据通道SDK。
+
+U
+UDF
+广义的UDF，即User Defined Function，MaxCompute提供的Java编程接口开发自定义函数，详情请参见用户指南>UDF。
+
+狭义的UDF指用户自定义标量值函数（User Defined Scalar Function），它的输入与输出是一对一的关系，即读入一行数据，写出一条输出值。
+
+UDAF
+User Defined Aggregation Function，自定义聚合函数，它的输入与输出是多对一的关系， 即将多条输入记录聚合成一条输出值。可以与SQL中的Group By语句联用。详情请参见Java UDF>UDAF。
+
+UDTF
+User Defined Table Valued Function，自定义表值函数，用来解决一次函数调用输出多行数据的场景，也是唯一能返回多个字段的自定义函数。而UDF只能一次计算输出一条返回值。详情请参见Java UDF>UDAF。
+
+
+
+MaxCompute小文件有关场景及解决方案
+KB: 84446 ·
+更新时间：2018-07-30 13:48:26
+
+
+本页目录
+问题症状
+问题原因
+解决方案
+更多信息
+相关文章
+问题症状
+您在使用MaxCompute Java SDK的Tunnel传输数据的时候，有时会发现数据传输等待的时间很长，语句的执行性能不好。遇到这种情况，可能是因为您的MaxCompute小文件过多，从而影响性能。
+
+问题原因
+小文件产生的场景有很多，请参考下文：更多信息。
+
+解决方案
+您可以通过以下的命令来查看表中的小文件数量：
+
+试用
+desc extended + 表名
+您尝试执行下面的SQL语句来整合小文件：
+
+试用
+  set odps.merge.cross.paths=true;
+  set odps.merge.max.partition.count=100;   --默认优化10个分区，此时设置为优化100个分区。
+  ALTER TABLE 表名[partition] MERGE SMALLFILES;
+更多信息
+背景信息
+MaxCompute使用的Pangu分布式文件系统是按块BLOCK存放，一般的，文件大小比块大小小的文件（默认块大小为64M），叫做小文件。
+
+目前MaxCompute有以下场景可以产生小文件：
+
+Reduce计算过程会产生大量小文件；
+Tunnel数据采集过程中会生成小文件；
+Job执行过程中生成的各种临时文件、回收站保留的过期的文件等，主要分类为：
+TABLE_BACKUP：回收站中超过保留天数的表
+FUXI_JOB_TMP：作业运行临时目录
+TMP_TABLE：作业运行中产生的临时表
+INSTANCE：作业运行时保留在meta表中的日志
+LIFECYCLE：超过生命周期的的数据表或分区
+INSTANCEPROFILE：作业提交及执行完成后的profile信息
+VOLUME_TMP：没有meta信息，但在pangu上有路径的数据
+TEMPRESOURCE：用户自定义函数使用的一次性临时资源文件
+FAILOVER：系统发生failover时保留的临时文件
+问题影响
+小文件过多会带来以下影响：
+
+影响Fuxi 启动map instance，默认情况下一个小文件对应一个instance，造成浪费资源，影响整体的执行性能。
+过多的小文件给pangu 文件系统带来压力，且影响空间的有效利用，严重的会直接导致pangu不可服务。
+处理方式
+不同原因产生的小文件，需要有不同的处理方法：
+
+Reduce过程中产生的小文件
+您需要使用insert overwrite源表（或分区）即可，或者写入到新表删除源表。
+
+Tunnel数据采集过程中产生的小文件
+调用Tunnel SDK时，当buffer达到64MB时提交一次;
+使用console时避免频繁上传小文件，建议积累较大时一次性上传;
+如果导入的是分区表，建议给分区设置生命周期，过期不用的数据自动清理;
+Insert overwrite源表（或分区）；
+ALTER合并模式，通过console命令进行合并：
+试用
+ALTER TABLE tablename [PARTITION] MERGE SMALLFILES;
+临时表
+您在用临时表建议创建时都加上生命周期，到期后垃圾回收自动回收；
+
+
+血缘信息上下游表的相关信息，多久会更新？为什么会有重名？使用DataWorks提交任务时，${bdp.system.bizdate}这个时间,如果想取一年前、一个月前、半年前和一周前分别怎么操作？如何删除MaxCompute项目客户端运行odpscmd -f cmd_file，cmd_file中能有变量吗？有类似ptkill之类的方法批量kill超时任务的方式吗？mapjoin中大表和小表是否可以互换位置？如何通过MaxCompute做分布式处理并访问外网？MaxCompute客户端配置因本地时间不对导致超时如何在客户端上查看任务信息？MaxCompute支持快照吗？changelog的设置方式是什么？ODPS中可以设置表的过期时间，是否有办法设置分区的过期时间?MaxCompute会有lock-in问题吗？MaxCompute是否支持restful接口？运维中心补数据功能怎么使用？新建子管理账号，但子账号不能访问MaxCompute的功能，是什么原因？将开通数据保护的MaxCompute表数据导入另一项目空间如何查看某个MaxCompute项目及每张数据表所使用的磁盘空间？如何调用Package中的表？项目Owner能否更换为子账号？MaxCompute页面“运行任务”一类的栏目功能在哪里能看到？
+
+
+MaxCompute SQL基本区别
+主要区别	问题现象	解决办法
+应用场景	不支持事务（没有 commit 和 rollback，不推荐使用 Insert Into）
+
+建议代码具有等幂性支持重跑，推荐 Insert Overwrite 写入数据。
+
+
+不支持索引和主外键约束	-
+不支持自增字段和默认值	如果有默认值，请在数据写入时自行赋值。
+
+
+表分区	单表支持 6 万个分区	-
+一次查询输入的分区不能超过1万，否则执行会报错；另外如果是 2 级分区且查询时只根据 2 级分区进行过滤，总的分区数大于 1 万也可能导致报错	一次查询输入的分区数不能大于 1 万
+
+一次查询输出的分区数不能大于2048
+
+精度	DOUBLE类型存在精度问题	不建议在关联时候进行直接等号关联两个DOUBLE字段，推荐的做法是把两个数做减法，如果差距小于一个预设的值就认为是相同，比如 abs(a1- a2) < 0.000000001。
+
+目前产品上已经支持高精度的类型DECIMAL	如果有更高精度要求的，可以先把数据存为 STRING类型，然后使用 UDF来实现对应的计算。
+
+数据类型转换	各种预期外的错误，代码维护问题。	如果有2个不同的字段类型需要做Join，建议您先把类型转好后再Join。
+
+日期型和字符串的隐式转换	在需要传入日期型的函数里如果传入一个字符串，字符串和日期类型的转换根据yyyy-mm-dd hh:mi:ss格式进行转换。
+
+其他格式转换	日期函数 > TO_DATE
+DDL与DML的区别及解法
+
+
+主要区别	问题现象	解决办法
+表结构	不能修改分区列列名，只能修改分区列对应的值。	分区和分区列的区别
+支持增加列，但是不支持删除列以及修改列的数据类型。	SQL常见问题
+INSERT	语法上最直观的区别是：Insert into/overwrite 后面有个关键字Table。	-
+数据插入表的字段映射不是根据Select的别名做的，而是根据Select的字段的顺序和表里的字段的顺序。	-
+UPDATE/DELETE	目前不支持Update/Delete语句。	更新和删除数据
+SELECT	输入表的数量不能超过16张	-
+一个非分组列同一个Group By Key中的数据有多条，不使用聚合函数的话就没办法展示	Group by查询中的Select字段，应是Group By的分组字段，或者需要使用聚合函数。
+子查询	子查询必须要有别名	建议查询不要带别名
+IN/NOT IN	In/Not In,Exist/Not Exist，后面的子查询数据量不能超过 1000 条	如何使用Not In
+如果业务上已经保证了子查询返回结果的唯一性，可以考虑去掉Distinct，从而提升查询性能。
+SQL返回10000条	MaxCompute限制了单独执行Select语句时返回的数据条数	其他操作
+需要查询的结果数据条数很多	如何获取所有数据
+MAPJOIN	Join不支持笛卡尔积	Join必须要用on设置关联条件
+如果有一些小表需要做广播表，需要用 Mapjoin Hint
+
+如何解决Join报错
+
+ORDER BY	Order By后面需要配合Limit n使用	如果希望做很大的数据量的排序，甚至需要做全表排序，可以把这个N设置的很大
+
+MaxCompute 查询数据的排序
+
+UNION ALL	参与UNION ALL运算的所有列的属性不同，抛异常	参与UNION ALL运算的所有列的数据类型、列个数、列名称必须完全一致
+
+UNION ALL查询外面需要再嵌套一层子查询	-
+
+
+
+快速掌握SQL写法
+更新时间：2019-01-23 00:43:03
+
+编辑 ·
+ · 我的收藏
+本页目录
+数据集准备
+SQL操作
+本文通过课程实践的方式，为您介绍MaxCompute SQL，让您快速掌握SQL的写法，并清楚MaxCompute SQL和标准SQL的区别，请结合 MaxCompute SQL 基础文档 进行阅读。
+
+数据集准备
+这里选择大家比较熟悉的Emp/Dept表做为数据集。为方便大家操作，特提供相关的 MaxCompute建表语句和数据文件（emp表数据文件，dept表数据文件），您可自行在MaxCompute项目上创建表并上传数据。
+
+创建emp表的DDL语句，如下所示：
+
+试用
+
+CREATE TABLE IF NOT EXISTS emp (
+  EMPNO string ,
+  ENAME string ,
+  JOB string ,
+  MGR bigint ,
+  HIREDATE datetime ,
+  SAL double ,
+  COMM double ,
+  DEPTNO bigint );
+创建 dept 表的 DDL 语句，如下所示：
+
+试用
+
+CREATE TABLE IF NOT EXISTS dept (
+  DEPTNO bigint ,
+  DNAME string ,
+  LOC string);
+SQL操作
+初学SQL常遇到的问题点
+使用Group by，那么Select的部分要么是分组项，要么就得是聚合函数。
+
+Order by后面必须加Limit n。
+
+Select表达式中不能用子查询，可以改写为Join。
+
+Join不支持笛卡尔积，以及MapJoin的用法和使用场景。
+
+Union all需要改成子查询的格式。
+
+In/Not in语句对应的子查询只能有一列，而且返回的行数不能超过1000，否则也需要改成Join。
+
+编写SQL进行解题
+题目一：列出至少有一个员工的所有部门。
+
+为了避免数据量太大的情况下导致 常遇问题点 中的第6点，您需要使用Join 进行改写。如下所示：
+
+试用
+
+SELECT d.*
+FROM dept d
+JOIN (
+    SELECT DISTINCT deptno AS no
+    FROM emp
+) e
+ON d.deptno = e.no;
+题目二：列出薪金比SMITH多的所有员工。
+
+MapJoin的典型场景，如下所示：
+
+试用
+
+SELECT /*+ MapJoin(a) */ e.empno
+    , e.ename
+    , e.sal
+FROM emp e
+JOIN (
+    SELECT MAX(sal) AS sal
+    FROM `emp`
+    WHERE `ENAME` = 'SMITH'
+) a
+ON e.sal > a.sal;
+题目三：列出所有员工的姓名及其直接上级的姓名。
+
+非等值连接，如下所示：
+
+试用
+
+SELECT a.ename
+    , b.ename
+FROM emp a
+LEFT OUTER JOIN emp b
+ON b.empno = a.mgr;
+题目四：列出最低薪金大于1500的各种工作。
+
+Having 的用法，如下所示：
+
+试用
+
+SELECT emp.`JOB`
+    , MIN(emp.sal) AS sal
+FROM `emp`
+GROUP BY emp.`JOB`
+HAVING MIN(emp.sal) > 1500;
+题目五：列出在每个部门工作的员工数量、平均工资和平均服务期限。
+
+时间处理上有很多好用的内建函数，如下所示：
+
+试用
+
+SELECT COUNT(empno) AS cnt_emp
+    , ROUND(AVG(sal), 2) AS avg_sal
+    , ROUND(AVG(datediff(getdate(), hiredate, 'dd')), 2) AS avg_hire
+FROM `emp`
+GROUP BY `DEPTNO`;
+题目六： 列出每个部门的薪水前3名的人员的姓名以及他们的名次（Top n的需求非常常见）。
+
+SQL 语句如下所示：
+
+试用
+
+SELECT *
+FROM (
+  SELECT deptno
+    , ename
+    , sal
+    , ROW_NUMBER() OVER (PARTITION BY deptno ORDER BY sal DESC) AS nums
+  FROM emp
+) emp1
+WHERE emp1.nums < 4;
+题目七： 用一个SQL写出每个部门的人数、CLERK（办事员）的人数占该部门总人数占比。
+
+SQL语句如下所示：
+
+试用
+
+SELECT deptno
+    , COUNT(empno) AS cnt
+    , ROUND(SUM(CASE
+      WHEN job = 'CLERK' THEN 1
+      ELSE 0
+    END) / COUNT(empno), 2) AS rate
+FROM `EMP`
+GROUP BY deptno;
+
+修改不兼容SQL实战
+更新时间：2019-01-23 00:50:07
+
+编辑 ·
+ · 我的收藏
+本页目录
+group.by.with.star
+bad.escape
+column.repeated.in.creation
+string.join.double
+window.ref.prev.window.alias
+select.invalid.token.after.star
+agg.having.ref.prev.agg.alias
+order.by.no.limit
+generated.column.name.multi.window
+non.boolean.filter
+post.select.ambiguous
+duplicated.partition.column
+order.by.col.ambiguous
+in.subquery.without.result
+ctas.if.not.exists
+worker.restart.instance.timeout
+divide.nan.or.overflow
+small.table.exceeds.mem.limit
+sigkill.oom
+wm_concat.first.argument.const
+pt.implicit.convertion.failed
+having.use.select.alias
+dynamic.pt.to.static
+lot.not.in.subquery
+MaxCompute 开发团队近期已经完成了 MaxCompute2.0 灰度升级。新升级的版本完全拥抱开源生态，支持更多的语言功能，带来更快的运行速度，同时新版本会执行更严格的语法检测，以致于一些在老编译器下正常执行的不严谨的语法 case 在 MaxCompute2.0 下会报错。
+
+为了使 MaxCompute2.0 灰度升级更加平滑，MaxCompute 框架支持回退机制，如果 MaxCompute2.0 任务失败，会回退到 MaxCompute1.0 执行。回退本身会增加任务 E2E 时延。鼓励大家提交作业之前，手动关闭回退set odps.sql.planner.mode=lot;以避免 MaxCompute 框架回退策略修改对大家造成影响。
+
+MaxCompute 团队会根据线上回退情况，邮件或者钉钉等通知有问题任务的 Owner，请大家尽快完成 SQL 任务修改，否则会导致任务失败。烦请大家仔细 check 以下报错情况，进行自检，以免通知遗漏造成任务失败。
+
+下面列举常见的一些会报错的语法：
+
+group.by.with.star
+SELECT * …GROUP BY… 的问题。
+
+旧版 MaxCompute 中，即使 * 中覆盖的列不在 group by key 内，也支持 select * from group by key 的语法，但 MaxCompute2.0 和 Hive 兼容，并不允许这种写法，除非 group by 列表是所有源表中的列。示例如下：
+
+场景一：group by key 不包含所有列
+
+错误写法：
+
+试用
+SELECT * FROM t GROUP BY key;
+报错信息：
+
+试用
+FAILED: ODPS-0130071:[1,8] Semantic analysis exception - column reference t.value should appear in GROUP BY key
+正确改法：
+
+试用
+SELECT DISTINCT key FROM t;
+场景二：group by key 包含所有列
+
+不推荐写法：
+
+试用
+SELECT * FROM t GROUP BY key, value; -- t has columns key and value
+虽然 MaxCompute2.0 不会报错，但推荐改为：
+
+试用
+SELECT DISTINCT key, value FROM t;
+bad.escape
+错误的 escape 序列问题。
+
+按照 MaxCompute 文档的规定，在 string literal 中应该用反斜线加三位8进制数字表示从 0 到 127 的 ASCII 字符，例如：使用 \001， \002 表示 0，1 等。但目前\01，\0001 也被当作 \001 处理了。
+
+这种行为会给新用户带来困扰，比如需要用 “\0001” 表示 “\000” + “1”，便没有办法实现。同时对于从其他系统迁移而来的用户而言，会导致正确性错误。
+
+说明 \000后面在加数字，如 \0001 - \0009或 \00001的写法可能会返回错误。
+MaxCompute2.0 会解决此问题，需要 script 作者将错误的序列进行修改，示例如下：
+
+错误写法：
+
+试用
+SELECT split(key, "\01"), value like "\0001" FROM t;
+报错信息：
+
+试用
+
+FAILED: ODPS-0130161:[1,19] Parse exception - unexpected escape sequence: 01
+ODPS-0130161:[1,38] Parse exception - unexpected escape sequence: 0001
+正确改法：
+
+试用
+SELECT split(key, "\001"), value like "\001" FROM t;
+column.repeated.in.creation
+create table 时列名重复的问题。
+
+如果 create table 时列名重复，MaxCompute2.0 将会报错，示例如下：
+
+错误写法：
+
+试用
+CREATE TABLE t (a BIGINT, b BIGINT, a BIGINT);
+报错信息：
+
+试用
+FAILED: ODPS-0130071:[1,37] Semantic analysis exception - column repeated in creation: a
+正确改法：
+
+试用
+CREATE TABLE t (a BIGINT, b BIGINT);
+string.join.double
+写 JOIN 条件时，等号的左右两边分别是 String 和 Double 类型。
+
+出现上述情况，旧版 MaxCompute 会把两边都转成 Bigint，但会导致严重的精度损失问题，例如：1.1 = “1” 在连接条件中会被认为是相等的。但 MaxCompute2.0 会与 Hive 兼容转为 Double。
+
+不推荐写法：
+
+试用
+SELECT * FROM t1 JOIN t2 ON t1.double_value = t2.string_value;
+warning 信息：
+
+试用
+WARNING:[1,48]  implicit conversion from STRING to DOUBLE, potential data loss, use CAST function to suppress
+推荐改法：
+
+试用
+select * from t1 join t2 on t.double_value = cast(t2.string_value as double);
+除以上改法外，也可使用用户期望的其他转换方式。
+
+window.ref.prev.window.alias
+Window Function 引用同级 Select List 中的其他 Window Function Alias 的问题。
+
+示例如下：
+
+如果 rn 在 t1 中不存在，错误写法如下：
+
+试用
+
+SELECT row_number() OVER (PARTITION BY c1 ORDER BY c1) rn,
+row_number() OVER (PARTITION by c1 ORDER BY rn) rn2
+FROM t1;
+报错信息：
+
+试用
+FAILED: ODPS-0130071:[2,45] Semantic analysis exception - column rn cannot be resolved
+正确改法：
+
+试用
+
+SELECT row_number() OVER (PARTITION BY c1 ORDER BY rn) rn2
+FROM
+(
+SELECT c1, row_number() OVER (PARTITION BY c1 ORDER BY c1) rn
+FROM t1
+) tmp;
+select.invalid.token.after.star
+select * 后面接 alias 的问题。
+
+Select 列表里面允许用户使用 * 代表选择某张表的全部列，但 * 后面不允许加 alias（即使 * 展开之后只有一列也不允许），新一代编译器将会对类似语法进行报错，示例如下：
+
+错误写法：
+
+试用
+select * as alias from dual;
+报错信息：
+
+试用
+FAILED: ODPS-0130161:[1,10] Parse exception - invalid token 'as'
+正确改法：
+
+试用
+select * from dual;
+agg.having.ref.prev.agg.alias
+有 Having 的情况下，Select List 可以出现前面 Aggregate Function Alias 的问题。示例如下：
+
+错误写法：
+
+试用
+
+SELECT count(c1) cnt,
+sum(c1) / cnt avg
+FROM t1
+GROUP BY c2
+HAVING cnt > 1;
+报错信息：
+
+试用
+
+FAILED: ODPS-0130071:[2,11] Semantic analysis exception - column cnt cannot be resolved
+ODPS-0130071:[2,11] Semantic analysis exception - column reference cnt should appear in GROUP BY key
+其中 s、cnt 在源表 t1 中都不存在，但因为有 HAVING，旧版 MaxCompute 并未报错，MaxCompute2.0 则会提示 column cannot be resolve，并报错。
+
+正确改法：
+
+试用
+
+SELECT cnt, s, s/cnt avg
+FROM
+(
+SELECT count(c1) cnt,
+sum(c1) s
+FROM t1
+GROUP BY c2
+HAVING count(c1) > 1
+) tmp;
+order.by.no.limit
+ORDER BY 后没有 LIMIT 语句的问题。
+
+MaxCompute 默认 order by 后需要增加 limit 限制数量，因为 order by 是全量排序，没有 limit 时执行性能较低。示例如下：
+
+错误写法：
+
+试用
+
+select * from (select *
+from (select cast(login_user_cnt as int) as uv, '3' as shuzi
+from test_login_cnt where type = 'device' and type_name = 'mobile') v
+order by v.uv desc) v
+order by v.shuzi limit 20;
+报错信息：
+
+试用
+FAILED: ODPS-0130071:[4,1] Semantic analysis exception - ORDER BY must be used with a LIMIT clause
+正确改法：
+
+在子查询 order by v.uv desc 中增加 limit。
+
+另外，MaxCompute1.0 对于 view 的检查不够严格。比如在一个不需要检查 LIMIT 的 Projec（odps.sql.validate.orderby.limit=false）中，创建了一个 View：
+
+试用
+CREATE VIEW dual_view AS SELECT id FROM dual ORDER BY id;
+若访问此 View：
+
+试用
+SELECT * FROM dual_view;
+MaxCompute1.0 不会报错，而 MaxCompute2.0 会报如下错误信息：
+
+试用
+FAILED: ODPS-0130071:[1,15] Semantic analysis exception - while resolving view xdj.xdj_view_limit - ORDER BY must be used with a LIMIT clause
+generated.column.name.multi.window
+使用自动生成的 alias 的问题。
+
+旧版 MaxCompute 会为 Select 语句中的每个表达式自动生成一个 alias，这个 alias 会最后显示在 console 上。但是，它并不承诺这个 alias 的生成规则，也不承诺这个 alias 的生成规则会保持不变，所以不建议用户使用自动生成的 alias。
+
+MaxCompute2.0 会对使用自动生成 alias 的情况给予警告，由于牵涉面较广，暂时无法直接给予禁止。
+
+对于某些情况，MaxCompute 的不同版本间生成的 alias 规则存在已知的变动，但因为已有一些线上作业依赖于此类 alias，这些查询在 MaxCompute 版本升级或者回滚时可能会失败，存在此问题的用户，请修改您的查询，对于感兴趣的列，显式地指定列的别名。示例如下：
+
+不推荐写法：
+
+试用
+SELECT _c0 FROM (SELECT count(*) FROM dual) t;
+建议改法：
+
+试用
+SELECT c FROM (SELECT count(*) c FROM dual) t;
+non.boolean.filter
+使用了非 boolean 过滤条件的问题。
+
+MaxCompute 不允许布尔类型与其他类型之间的隐式转换，但旧版 MaxCompute 会允许用户在某些情况下使用 Bigint 作为过滤条件。MaxCompute2.0 将不再允许，如果您的脚本中存在这样的过滤条件，请及时修改。示例如下：
+
+错误写法：
+
+试用
+select id, count(*) from dual group by id having id;
+报错信息：
+
+试用
+FAILED: ODPS-0130071:[1,50] Semantic analysis exception - expect a BOOLEAN expression
+正确改法：
+
+试用
+select id, count(*) from dual group by id having id <> 0;
+post.select.ambiguous
+在 order by、 cluster by、 distribute by、sort by 等语句中，引用了名字冲突的列的问题。
+
+旧版 MaxCompute 中，系统会默认选取 Select 列表中的后一列作为操作对象，MaxCompute2.0 将会进行报错，请及时修改。示例如下：
+
+错误写法：
+
+试用
+select a, b as a from t order by a limit 10;
+报错信息：
+
+试用
+FAILED: ODPS-0130071:[1,34] Semantic analysis exception - a is ambiguous, can be both t.a or null.a
+正确改法：
+
+试用
+select a as c, b as a from t order by a limit 10;
+本次推送修改会包括名字虽然冲突但语义一样的情况，虽然不会出现歧义，但是考虑到这种情况容易导致错误，作为一个警告，希望用户进行修改。
+
+duplicated.partition.column
+在 query 中指定了同名的 partition 的问题。
+
+旧版 MaxCompute 在用户指定同名 partition key 时并未报错， 而是后一个的值直接覆盖了前一个，容易产生混乱。MaxCompute2.0 将会对此情况进行报错，示例如下：
+
+错误写法一：
+
+试用
+insert overwrite table partition (ds = '1', ds = '2'）select ... ;
+实际上，在运行时 ds = ‘1’ 被忽略。
+
+正确改法：
+
+试用
+insert overwrite table partition (ds = '2'）select ... ;
+错误写法二：
+
+试用
+create table t (a bigint, ds string) partitioned by (ds string);
+正确改法：
+
+试用
+create table t (a bigint) partitioned by (ds string);
+order.by.col.ambiguous
+Select list 中 alias 重复，之后的 Order by 子句引用到重复的 alias 的问题。
+
+错误写法：
+
+试用
+
+SELECT id, id
+FROM dual
+ORDER BY id;
+正确改法：
+
+试用
+
+SELECT id, id id2
+FROM dual
+ORDER BY id;
+需要去掉重复的 alias，Order by 子句再进行引用。
+
+in.subquery.without.result
+colx in subquery 没有返回任何结果，则 colx 在源表中不存在的问题。
+
+错误写法：
+
+试用
+
+SELECT * FROM dual
+WHERE not_exist_col IN (SELECT id FROM dual LIMIT 0);
+报错信息：
+
+试用
+FAILED: ODPS-0130071:[2,7] Semantic analysis exception - column not_exist_col cannot be resolved
+ctas.if.not.exists
+目标表语法错误问题。
+
+如果目标表已经存在，旧版 MaxCompute 不会做任何语法检查，MaxCompute2.0 则会做正常的语法检查，这种情况会出现很多错误信息，示例如下：
+
+错误写法：
+
+试用
+
+CREATE TABLE IF NOT EXISTS dual
+AS
+SELECT * FROM not_exist_table;
+报错信息：
+
+试用
+FAILED: ODPS-0130131:[1,50] Table not found - table meta_dev.not_exist_table cannot be resolved
+worker.restart.instance.timeout
+旧版 MaxCompute UDF 每输出一条记录，便会触发一次对分布式文件系统的写操作，同时会向 Fuxi 发送心跳，如果 UDF 10 分钟没有输出任何结果，会得到如下错误提示：
+
+试用
+FAILED: ODPS-0123144: Fuxi job failed - WorkerRestart errCode:252,errMsg:kInstanceMonitorTimeout, usually caused by bad udf performance.
+MaxCompute2.0 的 Runtime 框架支持向量化，一次会处理某一列的多行来提升执行效率。但向量化可能导致原来不会报错的语句（2 条记录的输出时间间隔不超过 10 分钟），因为一次处理多行，没有及时向 Fuxi 发送心跳而导致 timeout。
+
+遇到这个错误，建议首先检查 UDF 是否有性能问题，每条记录需要数秒的处理时间。如果无法优化 UDF 性能，可以尝试手动设置 batch row 大小来绕开（默认为1024）：
+
+试用
+set odps.sql.executionengine.batch.rowcount=16;
+divide.nan.or.overflow
+旧版 MaxCompute 不会做除法常量折叠的问题。
+
+比如如下语句，旧版 MaxCompute 对应的物理执行计划如下：
+
+试用
+
+EXPLAIN
+SELECT IF(FALSE, 0/0, 1.0)
+FROM dual;
+In Task M1_Stg1:
+    Data source: meta_dev.dual
+    TS: alias: dual
+      SEL: If(False, Divide(UDFToDouble(0), UDFToDouble(0)), 1.0)
+        FS: output: None
+由此可以看出，IF 和 Divide 函数仍然被保留，运行时因为 IF 第一个参数为 false，第二个参数 Divide 的表达式不需要求值，所以不会出现除零异常。
+
+而 MaxCompute2.0 则支持除法常量折叠，所以会报错。如下所示：
+
+错误写法：
+
+试用
+
+SELECT IF(FALSE, 0/0, 1.0)
+FROM dual;
+报错信息：
+
+试用
+FAILED: ODPS-0130071:[1,19] Semantic analysis exception - encounter runtime exception while evaluating function /, detailed message: DIVIDE func result NaN, two params are 0.000000 and 0.000000
+除了上述的 nan，还可能遇到 overflow 错误，比如：
+
+错误写法：
+
+试用
+
+SELECT IF(FALSE, 1/0, 1.0)
+FROM dual;
+报错信息：
+
+试用
+FAILED: ODPS-0130071:[1,19] Semantic analysis exception - encounter runtime exception while evaluating function /, detailed message: DIVIDE func result overflow, two params are 1.000000 and 0.000000
+正确改法：
+
+建议去掉 /0 的用法，换成合法常量。
+
+CASE WHEN 常量折叠也有类似问题，比如：CASE WHEN TRUE THEN 0 ELSE 0/0，MaxCompute2.0 常量折叠时所有子表达式都会求值，导致除0错误。
+
+CASE WHEN 可能涉及更复杂的优化场景，比如：
+
+试用
+
+SELECT CASE WHEN key = 0 THEN 0 ELSE 1/key END
+FROM (
+SELECT 0 AS key FROM src
+UNION ALL
+SELECT key FROM src) r;
+优化器会将除法下推到子查询中，转换类似于：
+
+试用
+
+M (
+SELECT CASE WHEN 0 = 0 THEN 0 ELSE 1/0 END c1 FROM src
+UNION ALL
+SELECT CASE WHEN key = 0 THEN 0 ELSE 1/key END c1 FROM src) r;
+报错信息：
+
+试用
+FAILED: ODPS-0130071:[0,0] Semantic analysis exception - physical plan generation failed: java.lang.ArithmeticException: DIVIDE func result overflow, two params are 1.000000 and 0.000000
+其中 UNION ALL 第一个子句常量折叠报错，建议将 SQL 中的 CASE WHEN 挪到子查询中，并去掉无用的 CASE WHEN 和去掉/0用法：
+
+试用
+
+SELECT c1 END
+FROM (
+SELECT 0 c1 END FROM src
+UNION ALL
+SELECT CASE WHEN key = 0 THEN 0 ELSE 1/key END) r;
+small.table.exceeds.mem.limit
+旧版 MaxCompute 支持 Multi-way Join 优化，多个 Join 如果有相同 Join Key，会合并到一个 Fuxi Task 中执行，比如下面例子中的 J4_1_2_3_Stg1：
+
+试用
+
+EXPLAIN
+SELECT t1.*
+FROM t1 JOIN t2 ON t1.c1 = t2.c1
+JOIN t3 ON t1.c1 = t3.c1;
+旧版 MaxCompute 物理执行计划：
+
+试用
+
+In Job job0:
+root Tasks: M1_Stg1, M2_Stg1, M3_Stg1
+J4_1_2_3_Stg1 depends on: M1_Stg1, M2_Stg1, M3_Stg1
+
+In Task M1_Stg1:
+    Data source: meta_dev.t1
+
+In Task M2_Stg1:
+    Data source: meta_dev.t2
+
+In Task M3_Stg1:
+    Data source: meta_dev.t3
+
+In Task J4_1_2_3_Stg1:
+    JOIN: t1 INNER JOIN unknown INNER JOIN unknown
+        SEL: t1._col0, t1._col1, t1._col2
+            FS: output: None
+如果增加 MapJoin hint，旧版 MaxCompute 物理执行计划不会改变。也就是说对于旧版 MaxCompute 优先应用 Multi-way Join 优化，并且可以忽略用户指定 MapJoin hint。
+
+试用
+
+EXPLAIN
+SELECT /*+mapjoin(t1)*/ t1.*
+FROM t1 JOIN t2 ON t1.c1 = t2.c1
+JOIN t3 ON t1.c1 = t3.c1;
+旧版 MaxCompute 物理执行计划同上。
+
+MaxCompute2.0 Optimizer 会优先使用用户指定的 MapJoin hint，对于上述例子，如果 t1 比较大的话，会遇到类似错误：
+
+试用
+FAILED: ODPS-0010000:System internal error - SQL Runtime Internal Error: Hash Join Cursor HashJoin_REL… small table exceeds, memory limit(MB) 640, fixed memory used …, variable memory used …
+对于这种情况，如果 MapJoin 不是期望行为，建议去掉 MapJoin hint。
+
+sigkill.oom
+同 small.table.exceeds.mem.limit，如果用户指定了 MapJoin hint，并且用户本身所指定的小表比较大。在旧版 MaxCompute 下有可能被优化成 Multi-way Join 从而成功。但在 MaxCompute2.0 下，用户可能通过设定 odps.sql.mapjoin.memory.max 来避免小表超限的错误，但每个 MaxCompute worker 有固定的内存限制，如果小表本身过大，则 MaxCompute worker 会由于内存超限而被杀掉，错误类似于：
+
+试用
+Fuxi job failed - WorkerRestart errCode:9,errMsg:SigKill(OOM), usually caused by OOM(outof memory).
+这里建议您去掉 MapJoin hint，使用 Multi-way Join。
+
+wm_concat.first.argument.const
+聚合函数中关于 WM_CONCAT 的说明，一直要求 WM_CONCAT 第一个参数为常量，旧版 MaxCompute 检查不严格，比如源表没有数据，就算 WM_CONCAT 第一个参数为 ColumnReference，也不会报错。
+
+试用
+
+函数声明：
+string wm_concat(string separator, string str)
+参数说明：
+separator：String类型常量，分隔符。其他类型或非常量将引发异常。
+MaxCompute2.0，会在 plan 阶段便检查参数的合法性，假如 WM_CONCAT 的第一个参数不是常量，会立即报错。示例如下：
+
+错误写法：
+
+试用
+SELECT wm_concat(value, ',') FROM src GROUP BY value;
+报错信息：
+
+试用
+FAILED: ODPS-0130071:[0,0] Semantic analysis exception - physical plan generation failed: com.aliyun.odps.lot.cbo.validator.AggregateCallValidator$AggregateCallValidationException: Invalid argument type - The first argument of WM_CONCAT must be constant string.
+pt.implicit.convertion.failed
+srcpt 是一个分区表，并有两个分区：
+
+试用
+
+CREATE TABLE srcpt(key STRING, value STRING) PARTITIONED BY (pt STRING);
+ALTER TABLE srcpt ADD PARTITION (pt='pt1');
+ALTER TABLE srcpt ADD PARTITION (pt='pt2');
+对于以上 SQL，String 类型 pt 列 IN INT 类型常量，都会转为 Double 进行比较。即使 Project 设置了 odps.sql.udf.strict.mode=true，旧版 MaxCompute 不会报错，所有 pt 都会过滤掉，而 MaxCompute2.0 会直接报错。示例如下：
+
+错误写法：
+
+试用
+SELECT key FROM srcpt WHERE pt IN (1, 2);
+报错信息：
+
+试用
+FAILED: ODPS-0130071:[0,0] Semantic analysis exception - physical plan generation failed: java.lang.NumberFormatException: ODPS-0123091:Illegal type cast - In function cast, value 'pt1' cannot be casted from String to Double.
+建议避免 String 分区列和 INT 类型常量比较，将 INT 类型常量改成 String 类型。
+
+having.use.select.alias
+SQL 规范定义 Group by + Having 子句是 Select 子句之前阶段，所以 Having 中不应该使用 Select 子句生成的 Column alias，示例如下：
+
+错误写法：
+
+试用
+SELECT id id2 FROM DUAL GROUP BY id HAVING id2 > 0;
+报错信息：
+
+试用
+FAILED: ODPS-0130071:[1,44] Semantic analysis exception - column id2 cannot be resolvedODPS-0130071:[1,44] Semantic analysis exception - column reference id2 should appear in GROUP BY key
+其中 id2 为 Select 子句中新生成的 Column alias，不应该在 Having 子句中使用。
+
+dynamic.pt.to.static
+MaxCompute2.0 动态分区某些情况会被优化器转换成静态分区处理，示例如下：
+
+试用
+INSERT OVERWRITE TABLE srcpt PARTITION(pt) SELECT id, 'pt1' FROM dual;
+会被转化成
+
+试用
+INSERT OVERWRITE TABLE srcpt PARTITION(pt='pt1') SELECT id FROM dual;
+如果用户指定的分区值不合法，比如错误的使用了’${bizdate}’，MaxCompute2.0 语法检查阶段便会报错。详情请参见分区 。
+
+错误写法：
+
+试用
+INSERT OVERWRITE TABLE srcpt PARTITION(pt) SELECT id, '${bizdate}' FROM dual LIMIT 0;
+报错信息：
+
+试用
+FAILED: ODPS-0130071:[1,24] Semantic analysis exception - wrong columns count 2 in data source, requires 3 columns (includes dynamic partitions if any)
+旧版 MaxCompute 因为 LIMIT 0，SQL 最终没有输出任何数据，动态分区不会创建，所以最终不报错。
+
+lot.not.in.subquery
+In subquery 中 null 值的处理问题。
+
+在标准 SQL 的 IN 运算中，如果后面的值列表中出现 null，则返回值不会出现 false，只可能是 null 或者 true。如 1 in (null, 1, 2, 3) 为 true，而 1 in (null, 2, 3) 为 null，null in (null, 1, 2, 3) 为 null。同理 not in 操作在列表中有 null 的情况下，只会返回 false 或者 null，不会出现 true。
+
+MaxCompute2.0 会用标准的行为进行处理，收到此提醒的用户请注意检查您的查询，IN 操作中的子查询中是否会出现空值，出现空值时行为是否与您预期相符，如果不符合预期请做相应的修改。示例如下：
+
+试用
+select * from t where c not in (select accepted from c_list);
+若 accepted 中不会出现 null 值，则此问题可忽略。若出现空值，则 c not in (select accepted from c_list) 原先返回 true，则新版本返回 null。
+
+正确改法：
+
+试用
+select * from t where c not in (select accepted from c_list where accepted is not null)
+
+
+分区剪裁合理性评估
+更新时间：2018-07-18 11:44:53
+
+编辑 ·
+ · 我的收藏
+本页目录
+背景及目的
+问题示例
+判断分区剪裁是否生效
+分区剪裁失效的场景分析
+影响及思考
+背景及目的
+MaxCompute的 分区表 是指在创建表时指定分区空间，即指定表内的某几个字段作为分区列。使用数据时，如果指定了需要访问的分区名称，则只会读取相应的分区，避免全表扫描，提高处理效率，降低费用。
+
+分区剪裁是指对分区列指定过滤条件，使得 SQL 执行时只用读取表的部分分区数据，避免全表扫描引起的数据错误及资源浪费。看起来非常简单，但是实际上经常会出现分区失效的情况，本文将通过示例为您介绍一些常见问题的解决方案。
+
+问题示例
+测试表 test_part_cut 的分区，如下图所示：
+
+
+执行以下 SQL 代码：
+
+试用
+
+select count(*)
+from test_part_cut
+where ds= bi_week_dim('20150102');
+
+--其中为bi_week_dim自定义函数:返回格式为 （年,第几周）：
+--如果是正常日期，判断日期是所传入参数中年份所属周，以周四为一周的起始日期，如果碰到20140101因为属于周三所以算在2013年最后一周返回2013,52。而20150101则返回是2015,1。
+--如果是类似20151231是周四又恰逢与20160101在同一周，则返回2016,1。
+bi_week_dim(‘20150102’)的返回结果是 2015,1，不符合表 test_part_cut 的分区值，通常我们会认为上面的 SQL 不会读任何分区，而实际情况却是 该 SQL 读了表 test_part_cut 的所有分区，LogView 如下图所示：
+
+
+从上图可以看出，该 SQL 在执行的时候读取了表 test_part_cut 的所有分区。
+
+由上述示例可见，分区剪裁使用尽管简单，但也容易出错。因此，本文将从以下两方面进行介绍：
+
+判断 SQL 中分区剪裁是否生效。
+
+了解常见的导致分区剪裁失效的场景。
+
+判断分区剪裁是否生效
+通过 explain 命令查看 SQL 的执行计划，用于发现 SQL 中的分区剪裁是否生效。  
+
+分区剪裁未生效的效果。
+
+试用
+
+explain
+select seller_id
+from xxxxx_trd_slr_ord_1d
+where ds=rand();
+
+看上图中红框的内容，表示读取了表 xxxxx_trd_slr_ord_1d 的 1344 个分区，即该表的所有分区。
+
+分区剪裁生效的效果。
+
+试用
+
+explain
+select seller_id
+from xxxxx_trd_slr_ord_1d
+where ds='20150801';
+
+看上图中红框的内容，表示只读取了表 xxxxx_trd_slr_ord_1d 的 20150801 的分区。
+
+分区剪裁失效的场景分析
+分区剪裁在使用自定义函数或者部分系统函数的时候会失效，在 Join 关联时的 Where 条件中也有可能会失效。下面针对这两种场景分别举例说明。  
+
+自定义函数导致分区剪裁失效
+当分区剪裁的条件中使用了用户自定义函数，则分区剪裁会失效，即使是使用系统函数也可能会导致分区剪裁失效。所以，对于分区值的限定，如果使用了非常规函数需要用 explain 命令通过查看执行计划，确定分区剪裁是否已经生效。
+
+试用
+
+explain
+select ...
+from xxxxx_base2_brd_ind_cw
+where ds = concat(SPLIT_PART(bi_week_dim(' ${bdp.system.bizdate}'), ',', 1), SPLIT_PART(bi_week_dim(' ${bdp.system.bizdate}'), ',', 2))
+
+可以看出上面的 SQL 因为分区剪裁使用了用户自定义的函数导致全表扫描。   
+
+Join 使用时分区剪裁失效
+在 SQL 语句中，使用 Join 进行关联时，如果分区剪裁条件放在 where 中，则分区剪裁会生效，如果放在 on 条件中，从表的分区剪裁会生效，主表则不会生效。下面针对三种 Join 具体说明。
+
+Left Outer Join
+
+分区剪裁条件均放在 on 中
+
+试用
+
+explain
+select a.seller_id
+    ,a.pay_ord_pbt_1d_001
+from xxxxx_trd_slr_ord_1d a
+left outer join
+     xxxxx_seller b
+on a.seller_id=b.user_id
+and a.ds='20150801'
+and b.ds='20150801';
+
+ 由上图可见，左表进行全表扫描，只有右表的分区裁剪有效果。
+
+分区剪裁条件均放在 where 中
+
+试用
+
+explain
+select a.seller_id
+    ,a.pay_ord_pbt_1d_001
+from xxxxx_trd_slr_ord_1d a
+left outer join
+    xxxxx_seller b
+on a.seller_id=b.user_id
+where a.ds='20150801'
+and b.ds='20150801';
+
+由上图可见，两张表的分区裁剪都有效果。
+
+Right Outer Join
+
+与 Left Outer Join 类似，分区剪裁条件如果放在 on 中则只有 Right Outer Join的左表生效，如果放在 where 中，则两张表都会生效。
+
+Full Outer Join
+
+分区剪裁条件只有都放在 where 中才会生效，放在 on 中则都不会生效。
+
+影响及思考
+分区剪裁如果失效会影响比较大，且用户不容易发现。因此，分区剪裁失效最好在代码提交的时候发现比较合适。  
+
+对于用户自定义函数不能用于分区剪裁的问题，需要平台再深入思考解决方法。
+
+
+分组取出每组数据的前N条
+KB: 51065 ·
+更新时间：2018-07-17 11:11:59
+
+编辑 ·
+本页目录
+示例数据
+实现方法
+本文将为您介绍如何对数据进行分组，取出每组数据的前 N 条数据。
+
+示例数据
+目前的数据，如下表所示：
+
+empno	ename	job	sal
+7369	SMITH	CLERK	800.0
+7876	SMITH	CLERK	1100.0
+7900	JAMES	CLERK	950.0
+7934	MILLER	CLERK	1300.0
+7499	ALLEN	SALESMAN	1600.0
+7654	MARTIN	SALESMAN	1250.0
+7844	TURNER	SALESMAN	1500.0
+7521	WARD	SALESMAN	1250.0
+实现方法
+您可以通过以下两种方法实现：
+
+取出每条数据的行号，再用 where 语句进行过滤。
+
+试用
+
+SELECT * FROM (
+  SELECT empno
+  , ename
+  , sal
+  , job
+  , ROW_NUMBER() OVER (PARTITION BY job ORDER BY sal) AS rn
+  FROM emp
+) tmp
+WHERE rn < 10;
+使用 UDTF 实现 Split 函数。
+
+详情请参见 此文 中最后的示例。这个例子可以更迅速地判断当前的序号，如果是已经超过预定的条数（比如 10 条），便不做处理了，从而提高计算效率。
+
+SQL实现多行数据转一条
+KB: 51068 ·
+更新时间：2018-07-17 11:11:41
+
+编辑 ·
+本页目录
+场景示例
+本文将为您介绍，如何使用 SQL 实现多条数据压缩为一条。
+
+场景示例
+以下表数据为例：
+
+class	gender	name
+1	M	LiLei
+1	F	HanMM
+1	M	Jim
+2	F	Kate
+2	M	Peter场景一
+根据需求，常见场景如下：
+
+class	names
+1	LiLei,HanMM,Jim
+2	Kate,Peter
+类似这样使用某个分隔符做字符串拼接，可以使用如下语句：
+
+试用
+SELECT class, wm_concat(',', name) FROM students GROUP BY class;
+场景二
+
+另外一种常见需求，如下所示：
+
+class	cnt_m	cnt_f
+1	2	1
+2	1	1
+类似这样转多列的需求，可以使用如下语句：
+
+
+SELECT
+class
+,SUM(CASE WHEN gender = 'M' THEN 1 ELSE 0 END) AS cnt_m
+,SUM(CASE WHEN gender = 'F' THEN 1 ELSE 0 END) AS cnt_f
+FROM students
+GROUP BY class;
+
+
+概述
+目前MaxCompute提供了以下几种Join类型：
+
+类型	含义
+Inner Join	输出符合关联条件的数据
+Left Join	输出左表的所有记录，对于右表符合关联的数据，输出右表，没有符合的，右表补null。
+Right Join	输出右表的所有记录，对于左表符合关联的数据，输出左表，没有符合的，左表补null。
+Full Join	输出左表和右表的所有记录，对于没有关联上的数据，未关联的另一侧补null。
+Left Semi Join	对于左表中的一条数据，如果右表存在符合关联条件的行，则输出左表。
+Left Anti Join	对于左表中的一条数据，如果对于右表所有的行，不存在符合关联条件的数据，则输出左表。
+说明 User Defined Join 指定两个输入流，您可以自己实现Join的逻辑，这里不展开讨论。
+根据不同的场景，用户可以使用不同的Join类型来实现对应的关联操作。但是在实际使用过程中，存在这样的错误示例：
+试用
+A (LEFT/RIGHT/FULL/LEFT SEMI/LEFT ANTI) JOIN B
+ON a.key = b.key and A.ds='20180101' and B.ds='20180101';
+这里用户的本意是希望在A和B中获取某一个分区的数据进行JOIN操作，也就是：
+试用
+(SELECT * FROM A WHERE ds='20180101') A
+(LEFT/RIGHT/FULL/LEFT SEMI/LEFT ANTI)  JOIN
+(SELECT * FROM B WHERE ds='20180101') B
+ON a.key = b.key
+然而针对不同的Join类型，两者可能并不等价，不仅无法将分区条件下推，导致全表扫描，而且会导致正确性问题。这里简要辨析一下过滤条件分别在：
+
+子查询的WHERE条件。
+JOIN ON条件。
+JOIN ON后的WHERE条件。
+原理
+这里先说明一个JOIN和WHERE条件的计算顺序，对于：
+
+试用
+(SELECT * FROM A WHERE {subquery_where_condition} A) A
+JOIN
+(SELECT * FROM B WHERE {subquery_where_condition} B) B
+ON {on_condition}
+WHERE {where_condition}
+来说，计算顺序为：
+
+子查询中的{subquery_where_condition}
+JOIN的{on_condition}的条件
+JOIN结果集合{where_condition}的计算
+对于不同的JOIN类型，过滤语句放在{subquery_where_condition}、{on_condition}和{where_condition}中，有时结果是一致的，有时候结果又是不一致的。下面分情况进行讨论。
+
+实验
+准备
+首先构造表A：
+
+试用
+CREATE TABLE A AS SELECT * FROM VALUES (1, 20180101),(2, 20180101),(2, 20180102) t (key, ds);
+key	ds
+1	20180101
+2	20180101
+2	20180102
+表B：
+
+试用
+CREATE TABLE B AS SELECT * FROM VALUES (1, 20180101),(3, 20180101),(2, 20180102) t (key, ds);
+key	ds
+1	20180101
+3	20180101
+2	20180102
+则他们的笛卡尔乘积为：
+
+a.key	a.ds	b.key	b.ds
+1	20180101	1	20180101
+1	20180101	3	20180101
+1	20180101	2	20180102
+2	20180101	1	20180101
+2	20180101	3	20180101
+2	20180101	2	20180102
+2	20180102	1	20180101
+2	20180102	3	20180101
+2	20180102	2	20180102
+Inner Join
+结论：过滤条件在{subquery_where_condition}、{on_condition}和{where_condition}中都是等价的。
+
+Inner Join的处理逻辑是将左右表进行笛卡尔乘积，然后选择满足ON表达式的行进行输出。
+
+第一种情况，子查询中过滤：
+试用
+SELECT A.*, B.*
+FROM
+(SELECT * FROM A WHERE ds='20180101') A
+JOIN
+(SELECT * FROM B WHERE ds='20180101') B
+ON a.key = b.key;
+非常简单，结果只有一条：
+
+a.key	a.ds	b.key	b.ds
+1	20180101	1	20180101
+第二种情况，JOIN 条件中过滤：
+试用
+SELECT A.*, B.*
+FROM A JOIN B
+ON a.key = b.key and A.ds='20180101' and B.ds='20180101';
+笛卡尔积的结果有9条，满足ON条件的结果同样只有1条：
+
+a.key	a.ds	b.key	b.ds
+1	20180101	1	20180101
+第三种情况，JOIN后的WHERE条件过滤：
+试用
+SELECT A.*, B.*
+FROM A JOIN B
+ON a.key = b.key
+WHERE A.ds='20180101' and B.ds='20180101';
+来说，笛卡尔积的结果有9条，满足ON条件a.key = b.key的结果有3条，分别是：
+
+a.key	a.ds	b.key	b.ds
+1	20180101	1	20180101
+2	20180102	2	20180102
+2	20180101	2	20180102
+此时对于这个结果再进行过滤A.ds='20180101' and B.ds='20180101'，结果只有1条：
+
+a.key	a.ds	b.key	b.ds
+1	20180101	1	20180101
+可以看到，将过滤条件放在三个不同的地方，得到了三种不同的结果。
+
+Left Join
+结论：过滤条件在{subquery_where_condition}、{on_condition}和{where_condition}不一定等价。
+
+对于左表的过滤条件，放在{subquery_where_condition}和{where_condition}是等价的。
+
+对于右表的过滤条件，放在{subquery_where_condition}和{on_condition}中是等价的。
+
+Left Join的处理逻辑是将左右表进行笛卡尔乘积，然后对于满足ON表达式的行进行输出，对于左表中不满足ON表达式的行，输出左表，右表补NULL。
+
+第一种情况，子查询中过滤：
+试用
+SELECT A.*, B.*
+FROM
+(SELECT * FROM A WHERE ds='20180101') A
+LEFT JOIN
+(SELECT * FROM B WHERE ds='20180101') B
+ON a.key = b.key;
+过滤后，左右侧有两条，右侧有一条，结果有两条：
+
+a.key	a.ds	b.key	b.ds
+1	20180101	1	20180101
+2	20180101	NULL	NULL
+第二种情况，JOIN 条件中过滤：
+试用
+SELECT A.*, B.*
+FROM A JOIN B
+ON a.key = b.key and A.ds='20180101' and B.ds='20180101';
+笛卡尔积的结果有9条，满足ON条件的结果同样只有1条，则对于左表剩余的两条输出左表，右表补NULL：
+
+a.key	a.ds	b.key	b.ds
+1	20180101	1	20180101
+2	20180101	NULL	NULL
+2	20180102	NULL	NULL
+第三种情况，JOIN后的WHERE条件过滤：
+试用
+SELECT A.*, B.*
+FROM A JOIN B
+ON a.key = b.key
+WHERE A.ds='20180101' and B.ds='20180101';
+来说，笛卡尔积的结果有9条，满足ON条件a.key = b.key的结果有3条，分别是：
+
+a.key	a.ds	b.key	b.ds
+1	20180101	1	20180101
+2	20180101	2	20180102
+2	20180102	2	20180102
+此时对于这个结果再进行过滤A.ds='20180101' and B.ds='20180101'，结果只有1条：
+
+a.key	a.ds	b.key	b.ds
+1	20180101	1	20180101
+可以看到，将过滤条件放在三个不同的地方，得到了三种不同的结果。
+
+Right Join
+Right Join和Left Join是类似的，只是左右表的区别。结论：过滤条件在{subquery_where_condition}、{on_condition}和{where_condition}不一定等价。对于右表的过滤条件，放在{subquery_where_condition}和{where_condition}是等价的。对于左表的过滤条件，放在{subquery_where_condition}和{on_condition}中是等价的。
+
+Full Join
+结论：过滤条件写在{subquery_where_condition}、{on_condition}和{where_condition}均不等价。
+
+FULL Join的处理逻辑是将左右表进行笛卡尔乘积，然后对于满足ON表达式的行进行输出，对于两侧表中不满足ON表达式的行，输出有数据的表，另一侧补NULL。
+
+第一种情况，子查询中过滤：
+试用
+SELECT A.*, B.*
+FROM
+(SELECT * FROM A WHERE ds='20180101') A
+FULL JOIN
+(SELECT * FROM B WHERE ds='20180101') B
+ON a.key = b.key;
+过滤后，左右侧有两条，右侧有两条，结果有三条：
+
+a.key	a.ds	b.key	b.ds
+1	20180101	1	20180101
+2	20180101	NULL	NULL
+NULL	NULL	3	20180101
+第二种情况，JOIN 条件中过滤：
+试用
+SELECT A.*, B.*
+FROM A FULL JOIN B
+ON a.key = b.key and A.ds='20180101' and B.ds='20180101';
+笛卡尔积的结果有9条，满足ON条件的结果同样只有1条，则对于左表剩余的两条输出左表，右表补NULL。右表剩余的两条输出右表，左表补NULL：
+
+a.key	a.ds	b.key	b.ds
+1	20180101	1	20180101
+2	20180101	NULL	NULL
+2	20180102	NULL	NULL
+NULL	NULL	3	20180101
+NULL	NULL	2	20180102
+第三种情况，JOIN后的WHERE条件过滤：
+试用
+SELECT A.*, B.*
+FROM A FULL JOIN B
+ON a.key = b.key
+WHERE A.ds='20180101' and B.ds='20180101';
+笛卡尔积的结果有9条，满足ON条件a.key = b.key的结果有3条，分别是：
+
+a.key	a.ds	b.key	b.ds
+1	20180101	1	20180101
+2	20180101	2	20180102
+2	20180102	2	20180102
+再对没有JOIN上的数据进行输出，另一侧补NULL，得到结果：
+
+a.key	a.ds	b.key	b.ds
+1	20180101	1	20180101
+2	20180101	2	20180102
+2	20180102	2	20180102
+NULL	NULL	3	20180101
+此时对于这个结果再进行过滤A.ds='20180101' and B.ds='20180101'，结果只有1条：
+
+a.key	a.ds	b.key	b.ds
+1	20180101	1	20180101
+可以看到，和LEFT JOIN类似，得到了三种不同的结果。
+
+Left Semi Join
+结论：过滤条件写在{subquery_where_condition}、{on_condition}和{where_condition}是等价的。
+
+LEFT SEMI Join的处理逻辑是对于左表的每一条记录，都去和右表进行匹配，如果匹配成功，则输出左表。这里需要注意的是由于只输出左表，所以JOIN后的Where条件中不能写右侧的过滤条件。LEFT SEMI JOIN常用来实现exists的语义：
+
+第一种情况，子查询中过滤：
+试用
+SELECT A.*
+FROM
+(SELECT * FROM A WHERE ds='20180101') A
+LEFT SEMI JOIN
+(SELECT * FROM B WHERE ds='20180101') B
+ON a.key = b.key;
+过滤后，左右侧有两条，最终符合a.key = b.key的只有一条：
+
+a.key	a.ds
+1	20180101
+第二种情况，JOIN 条件中过滤：
+试用
+SELECT A.*
+FROM A LEFT SEMI JOIN B
+ON a.key = b.key and A.ds='20180101' and B.ds='20180101';
+对于左侧的三条记录，满足ON条件的结果同样只有1条：
+
+a.key	a.ds
+1	20180101
+第三种情况，JOIN后的WHERE条件过滤：
+试用
+SELECT A.*
+FROM A LEFT SEMI JOIN
+(SELECT * FROM B WHERE ds='20180101') B
+ON a.key = b.key
+WHERE A.ds='20180101';
+左侧能符合ON条件的有一条：
+
+a.key	a.ds
+1	20180101
+此时对于这个结果再进行过滤A.ds='20180101'，结果仍然保持1条：
+
+a.key	a.ds
+1	20180101
+可以看到，LEFT SEMI JOIN和INNER JOIN类似，无论过滤条件放在哪里，结果都是一致的。
+
+Left Anti Join
+结论：过滤条件写在{subquery_where_condition}、{on_condition}和{where_condition}不一定等价。
+
+对于左表的过滤条件，放在{subquery_where_condition}和{where_condition}是等价的。
+
+对于右表的过滤条件，放在{subquery_where_condition}和{on_condition}中是等价的，右表表达式不能放在{where_condition}中。
+
+LEFT ANTI Join的处理逻辑是对于左表的每一条记录，都去和右表进行匹配，如果右表所有的记录都没有匹配成功，则输出左表。同样由于只输出左表，所以JOIN后的Where条件中不能写右侧的过滤条件。LEFT SEMI JOIN常常用来实现not exists的语义。
+
+第一种情况，子查询中过滤：
+试用
+SELECT A.*
+FROM
+(SELECT * FROM A WHERE ds='20180101') A
+LEFT ANTI JOIN
+(SELECT * FROM B WHERE ds='20180101') B
+ON a.key = b.key;
+过滤后，左侧有两条，右侧有两条，结果有1条：
+
+a.key	a.ds
+2	20180101
+第二种情况，JOIN 条件中过滤：
+试用
+SELECT A.*
+FROM A LEFT ANTI JOIN B
+ON a.key = b.key and A.ds='20180101' and B.ds='20180101';
+对于左侧的三条记录，只有第一条有满足ON条件的结果，所以输出剩余的两条记录：
+
+a.key	a.ds
+2	20180101
+2	20180102
+第三种情况，JOIN后的WHERE条件过滤：
+试用
+SELECT A.*
+FROM A LEFT ANTI JOIN
+(SELECT * FROM B WHERE ds='20180101') B
+ON a.key = b.key
+WHERE A.ds='20180101';
+左侧能通过ON条件的有两条：
+
+a.key	a.ds
+2	20180101
+2	20180102
+此时对于这个结果再进行过滤 A.ds='20180101'，结果为1条：
+a.key	a.ds
+2	20180101
+可以看到，LEFT ANTI JOIN中，过滤条件WHERE语句分别放在JOIN ON条件中、条件前和条件后，得到的结果是不相同的。
+
+以上内容只是针一个常用场景测试的几种不同的写法，没有具体的推导过程，对于涉及到不等值表达式的场景会更加复杂，如果您有兴趣可以尝试推导一下。
+
+总结
+过滤条件放在不同的位置语义可能大不相同，对于用户而言，如果只是进行过滤数据后再JOIN的操作，可以简要记住以下几点。
+
+INNER JOIN/LEFT SEMI JOIN 对于两侧的表达式可以随便写。
+LEFT JOIN/LEFT ANTI JOIN 左表的过滤条件要放到{subquery_where_condition}或者{where_condition}，右表的过滤条件要放到{subquery_where_condition}或者{on_condition}中。
+RIGHT JOIN和LEFT JOIN相反，右表的过滤条件要放到{subquery_where_condition}或者{where_condition}，左表的过滤条件要放到{subquery_where_condition}或者{on_condition}。
+FULL OUTER JOIN 只能放到{subquery_where_condition}中。
+当然如果还是觉得规则比较复杂的话，最好的方法就是每次都把过滤条件写到子查询中
+
+==============
+
+当前很多用户的数据存放在传统的关系型数据库（RDS，做业务读写操作）中，当业务数据量庞大的时候，传统关系型数据库会显得有些吃力，此时经常会将数据迁移到大数据计算服务MaxCompute上。MaxCompute为您提供了完善的数据导入方案以及多种经典的分布式计算模型，能够更快速的解决海量数据存储和计算问题，有效降低企业成本。作为MaxCompute开发套件的DataWorks为MaxCompute提供一站式的数据同步、工作流开发、数据管理和数据运维等功能。数据集成概述为您介绍阿里集团对外提供的稳定高效、弹性伸缩的数据同步平台。
+
+最佳实践合集
+通过使用DataWorks数据同步功能，将Hadoop数据迁移到阿里云MaxCompute大数据计算服务上，请参见Hadoop数据迁移MaxCompute最佳实践。详细的视频介绍，请参见Hadoop数据迁移到MaxCompute最佳实践（视频）。自建Hadoop迁移阿里云MaxCompute实践定期整理一些数据迁移和脚本迁移遇到的问题及解决方案，帮助企业快速拥有阿里巴巴同款数据仓库，构建自己的数据平台，并开展数据业务。
+使用DataWorks数据集成同步功能，自动创建分区，动态的将RDS中的数据迁移到MaxCompute大数据计算服务上。请参见RDS迁移到MaxCompute实现动态分区。
+利用DataWorks数据集成，将JSON数据从OSS迁移到MaxCompute，并使用MaxCompute内置字符串函数GET_JSON_OBJECT提取JSON信息。详细描述请参见JSON数据从OSS迁移到MaxCompute最佳实践。
+利用DataWorks数据集成直接从MongoDB提取JSON字段到MaxCompute，请参见JSON数据从MongoDB迁移到MaxCompute最佳实践。
+
+Hadoop数据迁移MaxCompute最佳实践
+更新时间：2019-04-28 14:11:24
+
+编辑 ·
+ · 我的收藏
+本页目录
+环境准备
+数据准备
+数据同步
+验证结果
+MaxCompute数据迁移到Hadoop
+本文向您详细介绍如何通过使用DataWorks数据同步功能，将HDFS上的数据迁移到阿里云MaxCompute大数据计算服务上或从MaxCompute将数据迁移到HDFS。无论您是使用Hadoop还是Spark，均可以参见本文进行与MaxCompute之间的数据双向同步。
+
+环境准备
+Hadoop集群搭建
+进行数据迁移前，您需要保证自己的Hadoop集群环境正常。本文使用阿里云EMR服务自动化搭建Hadoop集群，详细过程请参见：步骤二：创建集群。
+
+本文使用的EMR Hadoop版本信息如下：
+
+EMR版本: EMR-3.11.0
+
+集群类型: HADOOP
+
+软件信息: HDFS2.7.2 / YARN2.7.2 / Hive2.3.3 / Ganglia3.7.2 / Spark2.2.1 / HUE4.1.0 / Zeppelin0.7.3 / Tez0.9.1 / Sqoop1.4.6 / Pig0.14.0 / ApacheDS2.0.0 / Knox0.13.0
+
+Hadoop集群使用经典网络，区域为华东1（杭州），主实例组ECS计算资源配置公网及内网IP，高可用选择为否（非HA模式），具体配置如下所示。
+
+
+MaxCompute
+请参见：开通MaxCompute。
+
+开通MaxCompute服务并创建好项目，本文中在华东1（杭州）区域创建项目bigdata_DOC，同时启动DataWorks相关服务，如下所示。
+
+
+数据准备
+Hadoop集群创建测试数据
+进入EMR Hadoop集群控制台界面，使用交互式工作台，新建交互式任务doc。本例中HIVE建表语句。
+
+试用
+CREATE TABLE IF NOT
+EXISTS hive_doc_good_sale(
+
+   create_time timestamp,
+
+   category STRING,
+
+   brand STRING,
+
+   buyer_id STRING,
+
+   trans_num BIGINT,
+
+   trans_amount DOUBLE,
+
+   click_cnt BIGINT
+
+   )
+
+   PARTITIONED BY (pt string) ROW FORMAT
+DELIMITED FIELDS TERMINATED BY ',' lines terminated by '\n'
+选择运行，观察到Query executed successfully提示则说明成功在EMR Hadoop集群上创建了测试用表格hive_doc_good_sale，如下图所示。
+
+
+插入测试数据，您可以选择从OSS或其他数据源导入测试数据，也可以手动插入少量的测试数据。本文中手动插入数据如下。
+
+试用
+insert into
+hive_doc_good_sale PARTITION(pt =1 ) values('2018-08-21','外套','品牌A','lilei',3,500.6,7),('2018-08-22','生鲜','品牌B','lilei',1,303,8),('2018-08-22','外套','品牌C','hanmeimei',2,510,2),(2018-08-22,'卫浴','品牌A','hanmeimei',1,442.5,1),('2018-08-22','生鲜','品牌D','hanmeimei',2,234,3),('2018-08-23','外套','品牌B','jimmy',9,2000,7),('2018-08-23','生鲜','品牌A','jimmy',5,45.1,5),('2018-08-23','外套','品牌E','jimmy',5,100.2,4),('2018-08-24','生鲜','品牌G','peiqi',10,5560,7),('2018-08-24','卫浴','品牌F','peiqi',1,445.6,2),('2018-08-24','外套','品牌A','ray',3,777,3),('2018-08-24','卫浴','品牌G','ray',3,122,3),('2018-08-24','外套','品牌C','ray',1,62,7) ;
+完成插入数据后，您可以使用select * from hive_doc_good_sale where pt =1;语句检查Hadoop集群表中是否已存在数据可用于迁移。
+
+
+利用DataWorks新建目标表
+在管理控制台，单击对应的MaxCompute项目进入数据开发页面，单击新建表。
+
+
+在弹框中输入SQL建表语句，本例中使用的建表语句如下。
+
+试用
+CREATE TABLE IF NOT EXISTS hive_doc_good_sale(
+   create_time string,
+   category STRING,
+   brand STRING,
+   buyer_id STRING,
+   trans_num BIGINT,
+   trans_amount DOUBLE,
+   click_cnt BIGINT
+   )
+   PARTITIONED BY (pt string) ;
+在建表过程中，需要考虑到HIVE数据类型与MaxCompute数据类型的映射，当前数据映射关系可参见。与Hive数据类型映射表。
+
+由于本文使用DataWorks进行数据迁移，而DataWorks数据同步功能当前暂不支持timestamp类型数据，因此在DataWorks建表语句中，将create_time设置为string类型。上述步骤同样可通过odpscmd命令行工具完成，命令行工具安装和配置请参见：安装并配置客户端。执行过程如下所示。
+
+
+说明 考虑到部分HIVE与MaxCompute数据类型的兼容问题，建议在odpscmd客户端上执行以下命令。
+试用
+set odps.sql.type.system.odps2=true;set
+odps.sql.hive.compatible=true;
+完成建表后，可在DataWorks数据开发 > 表查询一栏查看到当前创建的MaxCompute上的表，如下所示。
+
+
+数据同步
+新建自定义资源组
+由于MaxCompute项目所处的网络环境与Hadoop集群中的数据节点（data node）网络通常不可达，我们可通过自定义资源组的方式，将DataWorks的同步任务运行在Hadoop集群的Master节点上（Hadoop集群内Master节点和数据节点通常可达）。
+
+查看Hadoop集群data node
+在EMR控制台上单击首页 > 集群管理 > 集群 > 主机列表。
+
+
+您也可以通过点击上图中Master节点的ECS ID，进入ECS实例详情页，通过点击远程连接进入ECS，通过hadoop dfsadmin –report命令查看data node，如下图所示。
+
+
+由上图可以看到，在本例中，data node只具有内网地址，很难与DataWorks默认资源组互通，所以我们需要设置自定义资源组，将master node设置为执行DataWorks数据同步任务的节点。
+
+新建自定义资源组
+进入DataWorks数据集成页面，选择资源组，点击新增资源组，如下图所示。关于自定义资源组的详细信息请参见新增调度资源。
+
+
+在添加服务器步骤中，需要输入ECS UUID和机器IP等信息（对于经典网络类型，需输入服务器名称，对于专有网络类型，需输入服务器UUID。目前仅DataWorks V2.0华东2区支持经典网络类型的调度资源添加，对于其他区域，无论您使用的是经典网络还是专有网络类型，在添加调度资源组时都请选择专有网络类型），机器IP需填写master node公网IP（内网IP有可能不可达）。ECS的UUID需要进入master node管理终端，通过命令dmidecode | grep UUID获取（如果您的hadoop集群并非搭建在EMR环境上，也可以通过该命令获取），如下所示。
+
+
+完成添加服务器后，需保证master node与DataWorks网络可达，如果您使用的是ECS服务器，需设置服务器安全组。如果您使用的内网IP互通，可参见添加安全组。如果您使用的是公网IP，可直接设置安全组公网出入方向规则，本文中设置公网入方向放通所有端口（实际应用场景中，为了您的数据安全，强烈建议设置详细的放通规则），如下图所示。
+
+
+完成上述步骤后，按照提示安装自定义资源组agent，观察到当前状态为可用，说明新增自定义资源组成功。
+
+
+如果状态为不可用，您可以登录master node，使用tail –f/home/admin/alisatasknode/logs/heartbeat.log命令查看DataWorks与master node之间心跳报文是否超时，如下图所示。
+
+
+新建数据源
+关于DataWorks新建数据源详细步骤，请参见数据源配置。
+
+DataWorks新建项目后，默认设置自己为数据源odps_first。因此我们只需添加Hadoop集群数据源:在DataWorks数据集成页面，点击数据源>新增数据源，在弹框中选择HDFS类型的数据源。
+
+
+在弹出窗口中填写数据源名称及defaultFS。对于EMR Hadoop集群而言，如果Hadoop集群为HA集群，则此处地址为hdfs://emr-header-1的IP:8020，如果Hadoop集群为非HA集群，则此处地址为hdfs://emr-header-1的IP:9000。在本文中，emr-header-1与DataWorks通过公网连接，因此此处填写公网IP并放通安全组。
+
+
+完成配置后，点击测试连通性，如果提示“测试连通性成功”，则说明数据源添加正常。
+
+说明 如果EMR Hadoop集群设置网络类型为专有网络，则不支持连通性测试。
+配置数据同步任务
+在DataWorks数据集成页面单击同步任务，选择新建>脚本模式，在导入模板弹窗选择数据源类型如下。
+
+
+完成导入模板后，同步任务会转入脚本模式，本文中配置脚本如下，相关解释请参见脚本模式配置。
+
+
+在配置数据同步任务脚本时，需注意DataWorks同步任务和HIVE表中数据类型的转换如下。
+
+在Hive表中的数据类型	DataX/DataWorks 内部类型
+TINYINT,SMALLINT,INT,BIGINT	Long
+FLOAT,DOUBLE,DECIMAL	Double
+String,CHAR,VARCHAR	String
+BOOLEAN	Boolean
+Date,TIMESTAMP	Date
+Binary	Binary
+详细代码如下：
+
+试用
+{
+  "configuration": {
+    "reader": {
+      "plugin": "hdfs",
+      "parameter": {
+        "path": "/user/hive/warehouse/hive_doc_good_sale/",
+        "datasource": "HDFS1",
+        "column": [
+          {
+            "index": 0,
+            "type": "string"
+          },
+          {
+            "index": 1,
+            "type": "string"
+          },
+          {
+            "index": 2,
+            "type": "string"
+          },
+          {
+            "index": 3,
+            "type": "string"
+          },
+          {
+            "index": 4,
+            "type": "long"
+          },
+          {
+            "index": 5,
+            "type": "double"
+          },
+          {
+            "index": 6,
+            "type": "long"
+          }
+        ],
+        "defaultFS": "hdfs://121.199.11.138:9000",
+        "fieldDelimiter": ",",
+        "encoding": "UTF-8",
+        "fileType": "text"
+      }
+    },
+    "writer": {
+      "plugin": "odps",
+      "parameter": {
+        "partition": "pt=1",
+        "truncate": false,
+        "datasource": "odps_first",
+        "column": [
+          "create_time",
+          "category",
+          "brand",
+          "buyer_id",
+          "trans_num",
+          "trans_amount",
+          "click_cnt"
+        ],
+        "table": "hive_doc_good_sale"
+      }
+    },
+    "setting": {
+      "errorLimit": {
+        "record": "1000"
+      },
+      "speed": {
+        "throttle": false,
+        "concurrent": 1,
+        "mbps": "1",
+        "dmu": 1
+      }
+    }
+  },
+  "type": "job",
+  "version": "1.0"
+}
+其中，path参数为数据在Hadoop集群中存放的位置，您可以在登录master node后，使用hdfs dfs –ls /user/hive/warehouse/hive_doc_good_sale命令确认。对于分区表，您可以不指定分区，DataWorks数据同步会自动递归到分区路径，如下图所示。
+
+
+完成配置后，点击运行。如果提示任务运行成功，则说明同步任务已完成。如果运行失败，可通过复制日志进行进一步排查。
+
+
+验证结果
+在DataWorks数据开发/表查询页面，选择表hive_doc_good_sale后，点击数据预览可查看HIVE数据是否已同步到MaxCompute。您也可以通过新建一个table查询任务，在任务中输入脚本select * FROM hive_doc_good_sale where pt =1;后，点击运行来查看表结果，如下图所示。
+
+
+当然，您也可以通过在odpscmd命令行工具中输入select * FROM hive_doc_good_sale where pt =1;查询表结果。
+
+MaxCompute数据迁移到Hadoop
+如果您想实现MaxCompute数据迁移到Hadoop。步骤与上述步骤类似，不同的是同步脚本内的reader和writer对象需要对调，具体实现脚本举例如下。
+试用
+
+{
+  "configuration": {
+    "reader": {
+      "plugin": "odps",
+      "parameter": {
+      "partition": "pt=1",
+      "isCompress": false,
+      "datasource": "odps_first",
+      "column": [
+        "create_time",
+        "category",
+        "brand",
+      "buyer_id",
+      "trans_num",
+      "trans_amount",
+      "click_cnt"
+    ],
+    "table": "hive_doc_good_sale"
+    }
+  },
+  "writer": {
+    "plugin": "hdfs",
+    "parameter": {
+    "path": "/user/hive/warehouse/hive_doc_good_sale",
+    "fileName": "pt=1",
+    "datasource": "HDFS_data_source",
+    "column": [
+      {
+        "name": "create_time",
+        "type": "string"
+      },
+      {
+        "name": "category",
+        "type": "string"
+      },
+      {
+        "name": "brand",
+        "type": "string"
+      },
+      {
+        "name": "buyer_id",
+        "type": "string"
+      },
+      {
+        "name": "trans_num",
+        "type": "BIGINT"
+      },
+      {
+        "name": "trans_amount",
+        "type": "DOUBLE"
+      },
+      {
+        "name": "click_cnt",
+        "type": "BIGINT"
+      }
+    ],
+    "defaultFS": "hdfs://47.99.162.100:9000",
+    "writeMode": "append",
+    "fieldDelimiter": ",",
+    "encoding": "UTF-8",
+    "fileType": "text"
+    }
+  },
+  "setting": {
+    "errorLimit": {
+      "record": "1000"
+  },
+  "speed": {
+    "throttle": false,
+    "concurrent": 1,
+    "mbps": "1",
+    "dmu": 1
+  }
+  }
+},
+"type": "job",
+"version": "1.0"
+}
+您需要参见配置HDFS Writer在运行上述同步任务前对Hadoop集群进行设置，在运行同步任务后手动拷贝同步过去的文件。
+
+
+
+更新时间：2019-02-28 17:07:26
+
+编辑 ·
+ · 我的收藏
+本页目录
+准备工作
+自动创建分区
+补数据实验
+Hash实现非日期字段分区
+本文向您详细介绍如何使用DataWorks数据集成同步功能，自动创建分区，动态的将RDS中的数据，迁移到MaxCompute大数据计算服务上。
+
+准备工作
+开通MaxCompute服务并创建工作空间，本文选择的区域是华北2（北京）。
+说明 如果您是第一次使用DataWorks，请确认已经根据准备工作，准备好账号和项目角色、项目空间等。
+新增数据源
+新增RDS数据源作为数据来源；同时需要新增ODPS数据源作为目标数据源接收RDS数据。
+
+配置完成后，在数据集成控制台单击 数据源可以看到新增的数据源，如图所示。
+
+自动创建分区
+准备工作完成后，需要将RDS中的数据定时每天同步到MaxCompute中，自动创建按天日期的分区。详细的数据同步任务的操作和配置请参见DataWorks数据开发和运维。
+
+创建目标表
+在ODPS数据库中创建RDS对应的目标表ods_user_info_d。在控制台上 数据开发选项下右键单击 新建ODPS SQL节点创建create_table_ddl表，输入建表语句，如图所示。
+
+SQL如下。
+试用
+
+CREATE TABLE IF NOT EXISTS ods_user_info_d (
+uid STRING COMMENT '用户ID',
+gender STRING COMMENT '性别',
+age_range STRING COMMENT '年龄段',
+zodiac STRING COMMENT '星座'
+)
+PARTITIONED BY (
+dt STRING
+);
+您也可以在 业务流程 > 表下选择 新建表，如图所示。
+
+详细的信息请参见建表并上传数据。
+
+新建业务流程
+进入DataWorks管理控制台，单击对应项目后的 进入数据开发，开始数据开发操作。选择 数据开发 > 业务流程下的 新建业务流程workshop，如图所示。
+
+新建并配置同步任务节点
+在新创建的业务流程workshop下，新建同步节点rds_sync，如图所示。
+
+分别选择数据来源和数据去向，如图所示。
+
+配置分区参数，如图所示。
+
+单击右侧调度配置弹出基础属性页面，参数值默认为系统自带的时间参数：${bizdate}，格式为yyyymmdd，如图所示。
+
+说明 默认 参数值与 数据去向中的 分区信息值对应，在我们调度执行迁移任务的时候，目标表的分区值会被自动替换为任务执行日期的前一天，默认用户会在当前执行前一天的业务数据，这个日期也叫做业务日期。如果用户要使用当天任务运行的日期作为分区值，需要自定义参数值。
+自定义参数设置：用户可以自主选择某一天和格式配置，如下所示。
+后N年：$[add_months(yyyymmdd,12*N)]
+前N年：$[add_months(yyyymmdd,-12*N)]
+前N月：$[add_months(yyyymmdd,-N)]
+后N周：$[yyyymmdd+7*N]
+后N月：$[add_months(yyyymmdd,N)]
+前N周：$[yyyymmdd-7*N]
+后N天：$[yyyymmdd+N]
+前N天：$[yyyymmdd-N]
+后N小时：$[hh24miss+N/24]
+前N小时：$[hh24miss-N/24]
+后N分钟：$[hh24miss+N/24/60]
+前N分钟：$[hh24miss-N/24/60]
+说明
+请以中括号[]编辑自定义变量参数的取值计算公式，例如 key1=$[yyyy-mm-dd]。
+默认情况下，自定义变量参数的计算单位为天。例如 $[hh24miss-N/24/60] 表示 (yyyymmddhh24miss-(N/24/60 * 1天)) 的计算结果，然后按 hh24miss 的格式取时分秒。
+使用 add_months 的计算单位为月。例如 $[add_months(yyyymmdd,12 N)-M/24/60] 表示 (yyyymmddhh24miss-(12 * N * 1月))-(M/24/60 * 1天) 的结果，然后按 yyyymmdd 的格式取年月日。
+详细的参数设置请参见参数配置。
+
+测试运行。
+保存所有配置，单击运行，如图所示。
+
+
+查看运行日志，如图所示。
+
+
+可以看到MaxCompute（日志中打印原名ODPS）的日志信息中，partition分区值dt=20181025，自动替换成功。检查下实际的数据有没有转移到ODPS表中，如下图。
+
+说明 在MaxCompute2.0中分区表查询需要添加分区筛选，不支持全量查询，SQL语句如下。
+试用
+--查看是否成功写入MaxCompute
+select count(*) from ods_user_info_d where dt=业务日期;
+SELECT命令详情请参见Select操作。
+
+此时看到数据已经迁移到ODPS表中，并且成功创建了一个分区值。那么这个任务在执行定时调度的时候，会每天将RDS中的数据同步到MaxCompute中的按照日期自动创建的分区里。
+
+补数据实验
+如果用户的数据有很多运行日期之前的历史数据，想要实现自动同步和自动分区，此时您可以进入DataWorks的运维中心，选择当前的同步数据节点，选择补数据功能来实现。
+
+首先，我们需要在RDS端把历史数据按照日期筛选出来，比如历史数据2018-09-13这天的数据，我们要自动同步到MaxCompute的20180825的分区中。在迁移阶段可以设置where过滤条件，如图所示。
+
+补数据操作。
+单击 保存 > 提交。提交后到 运维中心 > 任务列表 > 周期任务中的rds_sync节点，单击 补数据 > 当前节点，如图所示。
+
+跳转至补数据节点页面，选择日期区间，单击确定，如图所示。
+
+此时会同时生成多个同步的任务实例按顺序执行，如图所示。
+
+查看运行的日志，可以看到运行过程中对RDS数据的抽取，如下图。
+
+我们看到MaxCompute已自动创建分区。
+
+查看运行结果。
+查看数据写入的情况，以及是否自动创建了分区，数据是否已同步到分区表中，如图所示。
+
+
+查询对应分区信息，如下图。
+
+说明 在maxcompute2.0中分区表查询需要添加分区筛选，SQL语句如下。其中分区列需要更新为业务日期，如任务运行的日期为20180717，那么业务日期为20180716。
+试用
+--查看是否成功写入MaxCompute
+select count(*) from ods_user_info_d where dt=业务日期;
+Hash实现非日期字段分区
+如果用户数据量比较大，或者第一次全量的数据并不是按照日期字段进行分区，而是按照省份等非日期字段分区，那么此时数据集成操作就不能做到自动分区了。也就是说，可以按照RDS中某个字段进行hash，将相同的字段值自动存放到这个字段对应值的MaxCompute分区中。
+
+步骤如下：
+首先我们需要把数据全量同步到MaxCompute的一个临时表。创建一个SQL脚本节点。单击运行 > 保存 > 提交。
+sql命令如下。
+
+试用
+drop table if exists ods_user_t;
+CREATE TABLE ods_user_t (
+        dt STRING,
+	uid STRING,
+        gender STRING,
+        age_range STRING,
+        zodiac STRING);
+insert overwrite table ods_user_t select dt,uid,gender,age_range,zodiac from ods_user_info_d;--将ODPS表中的数据存入临时表。
+创建同步任务的节点mysql_to_odps，就是简单的同步任务，将RDS数据全量同步到MaxCompute，不需要设置分区，如图所示。
+
+使用sql语句进行动态分区到目标表，命令如下。
+试用
+drop table if exists ods_user_d;
+//创建一个ODPS分区表（最终目的表）
+	CREATE TABLE ods_user_d (
+	uid STRING,
+        gender STRING,
+        age_range STRING,
+        zodiac STRING
+)
+PARTITIONED BY (
+	dt STRING
+);
+//执行动态分区sql，按照临时表的字段dt自动分区，dt字段中相同的数据值，会按照这个数据值自动创建一个分区值
+//例如dt中有些数据是20180913，会自动在ODPS分区表中创建一个分区，dt=20181025
+//动态分区sql如下
+//可以注意到sql中select的字段多写了一个dt，就是指定按照这个字段自动创建分区
+insert overwrite table ods_user_d partition(dt)select dt,uid,gender,age_range,zodiac from ods_user_t;
+//导入完成后，可以把临时表删除，节约存储成本
+drop table if exists ods_user_t;
+在MaxCompute中我们通过SQL语句来完成同步。详细的SQL语句介绍请参见阿里云大数据利器MaxCompute学习之--分区表的使用。
+
+最后将三个节点配置成一个工作流，按顺序执行，如图所示。
+
+查看执行过程。我们可以重点观察最后一个节点的动态分区过程，如图所示。
+
+查看数据。动态的自动化分区完成。相同的日期数据迁移到了同一个分区中，如图所示。
+
+对应查询分区信息，如图所示。
+
+如果是以省份字段命名分区，执行步骤参请考上述内容。
+
+DataWorks数据同步功能可以完成大部分自动化作业，尤其是数据的同步迁移，调度等，了解更多的调度配置请参见调度配置时间属性。
+
+Eclipse Java UDF开发最佳实践
+更新时间：2019-02-02 15:07:41
+
+编辑 ·
+ · 我的收藏
+本页目录
+准备工作
+开发步骤
+测试Java UDF
+使用Java UDF
+使用Java UDF结果验证
+更多信息
+本文为您详细介绍如何使用Eclipse开发工具配合ODPS插件进行Java UDF开发的全流程操作。
+
+准备工作
+在开始使用Eclipse开发Java UDF开发之前，您需要做如下准备工作。
+
+使用Eclipse安装ODPS插件。
+创建ODPS Project。
+在Eclipse中单击 File > New > ODPS Project输入项目名称，单击 Config ODPS console installation path，配置odpscmd客户端安装路径，如下图。
+
+输入客户端 整体安装包的路径后，单击 Apply。ODPS插件会为您自动解析出客户端Version，如下图。
+
+单击 Finish完成项目创建。
+开发步骤
+步骤1：在ODPS Project中创建Java UDF
+在左侧 Package Exploer中右键单击新建的ODPS Java UDF项目，选则 New > UDF，如下图。
+
+输入UDF的Package名称（本例中为com.aliyun.example.udf）和Name（本例中为Upper2Lower），单击 Finish完成UDF创建，如下图。
+
+完成UDF创建后，您可以看到生成了默认Java代码，请注意 不要改变实现evaluate()方法名称。
+
+步骤2：实现UDF类文件中的evaluate方法
+将您想要实现的功能代码写到evaluate方法中，且不要改变evaluate()方法的名称。这里为您简单示例一个大写字母转化为小写字母的功能，如下图。
+
+试用
+package com.aliyun.example.udf;
+
+import com.aliyun.odps.udf.UDF;
+
+public class Upper2Lower extends UDF {
+    public String evaluate(String s) {
+        if (s == null) { return null; }
+        return s.toLowerCase();
+    }
+}
+完成代码后，请及时保存。
+测试Java UDF
+为了测试Java UDF代码，我们可以首先在MaxCompute上存放一些大写字母作为输入数据。您可以利用odpscmd客户端使用SQL语句 create table upperABC(upper string);新建一个名为upperABC的测试表格，如下图。
+
+使用SQL语句 insert into upperABC values('ALIYUN');在表格中插入测试用的大写字母“ALIYUN”。
+完成测试数据准备后，单击 Run > Run Configurations配置测试参数，如下图。
+
+配置测试参数： Project一栏中填写我们创建的Java ODPS Project名称， Select ODPS project中填写您的MaxCompute项目名称（请注意与odpscmd客户端当前连接的MaxCompute项目保持一致）， Table一栏填写我们刚才创建的测试表格名称。完成配置后点击 Run进行测试，如下图。
+
+您可以在下方的 Console中看到测试结果，如下图所示。
+说明 测试结果只是Eclipse获取表格中的数据后在本地转换的结果，并不代表MaxCompute中的数据已经转换为小写的aliyun了。
+
+使用Java UDF
+确定测试结果正确后，可以开始正式使用Java UDF了，操作步骤如下。
+导出Jar包
+在左侧新建的ODPS Project上右键单击，选择 Export，如下图。
+
+在弹框中选择 JAR file，单击 Next，如下图。
+
+在对话框中JAR file处填写Jar包名称，单击 Finish即可导出至当前workspace目录下，如下图。
+
+使用DataWorks引用Jar包
+登录DataWorks控制台，进入同一个项目（本例中为项目MaxCompute_DOC）的数据开发页面。选择 业务流程 > 资源 > 新建资源 > JAR，新建一个JAR类型资源，如下图。
+
+在弹窗中上传您刚导出的Jar资源，如下图。
+
+刚才只是将Jar资源上传到DataWorks，接下来您需要单击进入Jar资源，单击 提交并解锁（提交）按钮将资源上传至MaxCompute，如下图。
+
+完成上传后，您可以在odpscmd客户端使用 list resources命令查看您上传的Jar资源。
+创建资源函数
+现在Jar资源已经存在于您的MaxCompute项目中了，接下来您需要单击 业务流程 > 函数 > 新建函数，新建一个Jar资源对应的函数，本例中命名函数名称为upperlower_Java。完成后，依次单击 保存和 提交并解锁（提交），如下图。
+
+完成提交后，您可以在odpscmd客户端使用 list functions命令查看已注册的函数。到此，您使用Eclipse开发工具完成注册的Java UDF函数upperlower_Java已经可用了。
+使用Java UDF结果验证
+打开您的odpscmd命令行界面，运行 select upperlower_Java('ABCD') from dual;命令，可以观察到该Java UDF已经可以转换字母的大小写了，函数运行正常。
+
+
+Java UDF
+更新时间：2019-04-01 18:03:56
+
+编辑 ·
+ · 我的收藏
+本页目录
+参数与返回值类型
+UDF
+其他UDF示例
+UDAF
+UDTF
+其他UDTF示例
+复杂数据类型示例
+HIVE UDF兼容示例
+MaxCompute的UDF包括UDF，UDAF 和UDTF三种函数，本文将重点介绍如何通过Java实现这三种函数。
+
+参数与返回值类型
+MaxCompute 2.0版本升级后，Java UDF支持的数据类型从原来的Bigint，String，Double，Boolean扩展了更多基本的数据类型，同时还扩展支持了ARRAY，MAP，STRUCT等复杂类型，以及Writable参数。
+
+Java UDF使用新基本类型的方法，如下所示：
+UDTF通过@Resolve注解来获取signature，如：@Resolve("smallint->varchar(10)")。
+UDF通过反射分析evaluate来获取signature，此时MaxCompute内置类型与Java类型符合一一映射关系。
+UDAF通过@Resolve注解来获取signature，MaxCompute2.0支持在注解中使用新类型，如：@Resolve("smallint->varchar(10)")。
+Java UDF使用复杂类型的方法，如下所示：
+UDTF通过@Resolve annotation来指定signature，如：@Resolve("array<string>,struct<a1:bigint,b1:string>,string->map<string,bigint>,struct<b1:bigint>")。
+UDF通过evaluate方法的signature来映射UDF的输入输出类型，此时参考 MaxCompute类型与Java类型的映射关系。其中array对应java.util.List，map对应java.util.Map，struct对应com.aliyun.odps.data.Struct。
+UDAF通过@Resolve注解来获取signature，MaxCompute2.0支持在注解中使用新类型，如： @Resolve("smallint->varchar(10)")。
+说明
+您可以使用type,*实现任意个数的传参，例如@resolve("string,*->array<string>")，请注意此处array后需要加subtype。
+com.aliyun.odps.data.Struct从反射看不出field name和field type，所以需要用@Resolve annotation来辅助。即如果需要在UDF中使用 struct，要求在UDF class上也标注上@Resolve注解，这个注解只会影响参数或返回值中包含com.aliyun.odps.data.Struct的重载。
+目前class上只能提供一个@Resolve annotation，因此一个UDF中带有struct参数或返回值的重载只能有一个。
+MaxCompute数据类型与Java类型的对应关系，如下所示：
+MaxCompute Type	Java Type
+Tinyint	java.lang.Byte
+Smallint	java.lang.Short
+Int	java.lang.Integer
+Bigint	java.lang.Long
+Float	java.lang.Float
+Double	java.lang.Double
+Decimal	java.math.BigDecimal
+Boolean	java.lang.Boolean
+String	java.lang.String
+Varchar	com.aliyun.odps.data.Varchar
+Binary	com.aliyun.odps.data.Binary
+Datetime	java.util.Date
+Timestamp	java.sql.Timestamp
+Array	java.util.List
+Map	java.util.Map
+Struct	com.aliyun.odps.data.Struct
+说明
+在UDF中使用输入或输出参数的类型请务必使用Java Type，否则会报错ODPS-0130071。
+Java中对应的数据类型以及返回值数据类型是对象，首字母请务必大写。
+SQL中的NULL值通过Java中的NULL引用表示，因此Java primitive type是不允许使用的，因为无法表示SQL中的NULL值。
+此处Array类型对应的Java类型是List，而不是数组。
+UDF
+实现UDF需要继承com.aliyun.odps.udf.UDF类，并实现evaluate方法。evaluate方法必须是非static的public方法 。Evaluate方法的参数和返回值类型将作为SQL中UDF的函数签名。这意味着您可以在UDF中实现多个evaluate方法，在调用UDF时，框架会依据UDF调用的参数类型匹配正确的evaluate方法 。
+
+说明
+不同的jar包最好不要有类名相同但实现功能逻辑不一样的类。如UDF(UDAF/UDTF)： udf1、udf2分别对应资源udf1.jar、udf2.jar，如果两个jar包里都包含一个com.aliyun.UserFunction.class类，当同一个sql中同时使用到这两个udf时，系统会随机加载其中一个类，那么就会导致UDF执行行为不一致甚至编译失败。
+
+UDF的示例如下：
+试用
+package org.alidata.odps.udf.examples;
+  import com.aliyun.odps.udf.UDF;
+
+public final class Lower extends UDF {
+  public String evaluate(String s) {
+    if (s == null) {
+        return null;
+    }
+        return s.toLowerCase();
+  }
+}
+可以通过实现void setup(ExecutionContext ctx)和void close()来分别实现UDF的初始化和结束代码。
+
+UDF的使用方式与MaxCompute SQL中普通的内建函数相同，详情请参见 内建函数。
+说明 如果1个SQL中同时使用2个UDF，执行时2个UDF会共享一个classpath，不会隔离。如果2个UDF引用的resource资源都包含同一个class，则classloader会引用哪个class是不确定的。因此，请您尽量避免此种情况出现。
+新版的MaxCompute支持定义Java UDF时，使用Writable类型作为参数和返回值。下面为MaxCompute类型和Java Writable类型的映射关系。
+MaxCompute Type	Java Writable Type
+tinyint	ByteWritable
+smallint	ShortWritable
+int	IntWritable
+bigint	LongWritable
+float	FloatWritable
+double	DoubleWritable
+decimal	BigDecimalWritable
+boolean	BooleanWritable
+string	Text
+varchar	VarcharWritable
+binary	BytesWritable
+datetime	DatetimeWritable
+timestamp	TimestampWritable
+interval_year_month	IntervalYearMonthWritable
+interval_day_time	IntervalDayTimeWritable
+array	暂不支持
+map	暂不支持
+struct	暂不支持
+使用Writable类型实现Concat的示例如下：
+试用
+package com.aliyun.odps.udf.example;
+import com.aliyun.odps.io.Text;
+import com.aliyun.odps.udf.UDF;
+public class MyConcat extends UDF {
+  private Text ret = new Text();
+  public Text evaluate(Text a, Text b) {
+    if (a == null || b == null) {
+      return null;
+    }
+    ret.clear();
+    ret.append(a.getBytes(), 0, a.getLength());
+    ret.append(b.getBytes(), 0, b.getLength());
+    return ret;
+  }
+}
+说明
+所有的Writable类型所在的package为com.aliyun.odps.io。如果您要使用该类型，可到API文档地址下载odps-sdk-commons包。
+
+MaxCompute提供的SDK包整体信息，如下表所示：
+包名	描述
+odps-sdk-core	MaxCompute的基础功能，例如：对表，Project的操作，以及 Tunnel 均在此包中
+odps-sdk-commons	一些Util封装
+odps-sdk-udf	UDF功能的主体接口
+odps-sdk-mapred	MapReduce功能
+odps-sdk-graph	Graph Java SDK，搜索关键词“odps-sdk-graph”
+如果您想了解使用Intellij IDEA开发工具完成完整的Java UDF开发示例，请参见IntelliJ IDEA Java UDF开发最佳实践。使用Eclipse开发工具完成完整的Java UDF开发示例，请参见Eclipse Java UDF开发最佳实践。
+
+其他UDF示例
+如以下代码，定义了一个有三个overloads的UDF，其中第一个用了array作为参数，第二个用了map作为参数，第三个用了struct。由于第三个overloads了struct作为参数或者返回值，因此要求必须要对UDF class打上 @Resolve annotation，来指定struct的具体类型。
+试用
+import com.aliyun.odps.udf.UDF;
+import com.aliyun.odps.udf.annotation.Resolve;
+@Resolve("struct,string->string")
+public class UdfArray extends UDF {
+    public String evaluate(List vals, Long len) {
+        return vals.get(len.intValue());
+    }
+
+    public String evaluate(Map map, String key) {
+        return map.get(key);
+    }
+
+    public String evaluate(Struct struct, String key) {
+        return struct.getFieldValue("a") + key;
+    }
+}
+用户可以直接将复杂类型传入UDF中：
+试用
+create function my_index as 'UdfArray' using 'myjar.jar';
+select id, my_index(array('red', 'yellow', 'green'), colorOrdinal) as color_name from co
+UDAF
+实现Java UDAF类需要继承 com.aliyun.odps.udf.Aggregator，并实现如下几个接口：
+试用
+import com.aliyun.odps.udf.ContextFunction;
+import com.aliyun.odps.udf.ExecutionContext;
+import com.aliyun.odps.udf.UDFException;
+public abstract class Aggregator implements ContextFunction {
+    @Override
+    public void setup(ExecutionContext ctx) throws UDFException {
+    }
+
+    @Override
+    public void close() throws UDFException {
+    }
+
+    /**
+     * 创建聚合Buffer * @return Writable 聚合buffer
+     */
+    abstract public Writable newBuffer();
+
+    /**
+     * @param buffer 聚合buffer * @param args SQL中调用UDAF时指定的参数，不能为null，但是args里面的元素可以为null，代表对应的输入数据是null * @throws UDFException
+     */
+    abstract public void iterate(Writable buffer, Writable[] args) throws UDFException;
+
+    /**
+     * 生成最终结果 * @param buffer * @return Object UDAF的最终结果 * @throws UDFException
+     */
+    abstract public Writable terminate(Writable buffer) throws UDFException;
+
+    abstract public void merge(Writable buffer, Writable partial) throws UDFException;
+}
+其中最重要的是iterate，merge和terminate三个接口，UDAF的主要逻辑依赖于这三个接口的实现。此外，还需要您实现自定义的Writable buffer。
+
+以实现求平均值avg为例，下图简要说明了在MaxCompute UDAF中这一函数的实现逻辑及计算流程：
+
+在上图中，输入数据被按照一定的大小进行分片（有关分片的描述请参见 MapReduce），每片的大小适合一个worker在适当的时间内完成。这个分片大小的设置需要您手动配置完成。
+UDAF的计算过程分为两个阶段：
+第一阶段：每个worker统计分片内数据的个数及汇总值，您可以将每个分片内的数据个数及汇总值视为一个中间结果。
+第二阶段：worker汇总上一个阶段中每个分片内的信息。在最终输出时，r.sum / r.count即是所有输入数据的平均值。
+计算平均值的UDAF的代码示例，如下所示：
+试用
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+import com.aliyun.odps.io.DoubleWritable;
+import com.aliyun.odps.io.Writable;
+import com.aliyun.odps.udf.Aggregator;
+import com.aliyun.odps.udf.UDFException;
+import com.aliyun.odps.udf.annotation.Resolve;
+@Resolve("double->double")
+public class AggrAvg extends Aggregator {
+  private static class AvgBuffer implements Writable {
+    private double sum = 0;
+    private long count = 0;
+    @Override
+    public void write(DataOutput out) throws IOException {
+      out.writeDouble(sum);
+      out.writeLong(count);
+    }
+    @Override
+    public void readFields(DataInput in) throws IOException {
+      sum = in.readDouble();
+      count = in.readLong();
+    }
+  }
+  private DoubleWritable ret = new DoubleWritable();
+  @Override
+  public Writable newBuffer() {
+    return new AvgBuffer();
+  }
+  @Override
+  public void iterate(Writable buffer, Writable[] args) throws UDFException {
+    DoubleWritable arg = (DoubleWritable) args[0];
+    AvgBuffer buf = (AvgBuffer) buffer;
+    if (arg != null) {
+      buf.count += 1;
+      buf.sum += arg.get();
+    }
+  }
+  @Override
+  public Writable terminate(Writable buffer) throws UDFException {
+    AvgBuffer buf = (AvgBuffer) buffer;
+    if (buf.count == 0) {
+      ret.set(0);
+    } else {
+      ret.set(buf.sum / buf.count);
+    }
+    return ret;
+  }
+  @Override
+  public void merge(Writable buffer, Writable partial) throws UDFException {
+    AvgBuffer buf = (AvgBuffer) buffer;
+    AvgBuffer p = (AvgBuffer) partial;
+    buf.sum += p.sum;
+    buf.count += p.count;
+  }
+}
+使用Writable类型实现Concat的示例如下：
+试用
+package com.aliyun.odps.udf.example;
+import com.aliyun.odps.io.Text;
+import com.aliyun.odps.udf.UDF;
+public class MyConcat extends UDF {
+  private Text ret = new Text();
+  public Text evaluate(Text a, Text b) {
+    if (a == null || b == null) {
+      return null;
+    }
+    ret.clear();
+    ret.append(a.getBytes(), 0, a.getLength());
+    ret.append(b.getBytes(), 0, b.getLength());
+    return ret;
+  }
+}
+说明
+所有的Writable类型所在的package为com.aliyun.odps.io。如果您要使用该类型，可到API文档地址下载odps-sdk-commons包。
+
+MaxCompute提供的SDK包整体信息，如下表所示：
+包名	描述
+odps-sdk-core	MaxCompute的基础功能，例如：对表，Project的操作，以及 Tunnel 均在此包中
+odps-sdk-commons	一些Util封装
+odps-sdk-udf	UDF功能的主体接口
+odps-sdk-mapred	MapReduce功能
+odps-sdk-graph	Graph Java SDK，搜索关键词“odps-sdk-graph”
+说明
+Writable[] writables：表示一行数据。代码中是指你传入的列，比如writables[0]表示第一列，writables[1]表示第二列。
+iterate(Writable writable,Writable[] writables)方法：writable是指一个阶段性的汇总数据，在不同map任务中，group by后得出的数据（可理解为一个集合），每行执行一次。
+merge()方法：将不同的map直接结算的结果进行汇总。
+terminate()方法：返回数据。
+newBuffer()方法：创建初始返回结果的值。
+Writable的readFields方法， 由于partial的writable对象是重用的，同一个对象的readFields方法会被调用多次。该方法期望每次调用的时候重置整个对象，如果对象中包含collection，需要清空。
+UDAF在SQL中的使用语法与普通的内建聚合函数相同，详情请参见聚合函数。
+关于如何运行UDTF的方法与 UDF 类似，详情请参见运行 UDF。
+String对应的Writable类型为Text。
+UDTF
+Java UDTF需要继承 com.aliyun.odps.udf.UDTF类。这个类需要实现4个接口，如下表所示：
+接口定义	描述
+public void setup(ExecutionContext ctx) throws UDFException	初始化方法，在UDTF处理输入数据前，调用用户自定义的初始化行为。在每个Worker内setup会被先调用一次。
+public void process(Object[] args) throws UDFException	这个方法由框架调用，SQL中每一条记录都会对应调用一次process，process的参数为SQL语句中指定的UDTF输入参数。输入参数以Object[]的形式传入，输出结果通过forward函数输出。用户需要在process函数内自行调用forward，以决定输出数据。
+public void close() throws UDFException	UDTF的结束方法，此方法由框架调用，并且只会被调用一次，即在处理完最后一条记录之后。
+public void forward(Object …o) throws UDFException	用户调用forward方法输出数据，每次forward代表输出一条记录。对应SQL语句UDTF的as子句指定的列。
+UDTF 的程序示例，如下所示：
+试用
+package org.alidata.odps.udtf.examples;
+import com.aliyun.odps.udf.UDTF;
+import com.aliyun.odps.udf.UDTFCollector;
+import com.aliyun.odps.udf.annotation.Resolve;
+import com.aliyun.odps.udf.UDFException;
+// TODO define input and output types, e.g., "string,string->string,bigint".
+   @Resolve("string,bigint->string,bigint")
+   public class MyUDTF extends UDTF {
+     @Override
+     public void process(Object[] args) throws UDFException {
+       String a = (String) args[0];
+       Long b = (Long) args[1];
+       for (String t: a.split("\\s+")) {
+         forward(t, b);
+       }
+     }
+   }
+说明 以上只是程序示例，关于如何在MaxCompute中运行 UDTF的方法与UDF类似，详情请参见：运行UDF。
+在SQL中可以这样使用这个UDTF，假设在MaxCompute上创建UDTF时注册函数名为 user_udtf：
+试用
+select user_udtf(col0, col1) as (c0, c1) from my_table;
+假设my_table的col0，col1的值如下所示：
+试用
++------+------+
+| col0 | col1 |
++------+------+
+| A B | 1 |
+| C D | 2 |
++------+------+
+则 select 出的结果，如下所示：
+试用
++----+----+
+| c0 | c1 |
++----+----+
+| A  | 1  |
+| B  | 1  |
+| C  | 2  |
+| D  | 2  |
++----+----+
+其他UDTF示例
+在UDTF中，您可以读取MaxCompute的 资源。利用UDTF读取MaxCompute资源的示例，如下所示。
+编写UDTF程序，编译成功后导出jar包（udtfexample1.jar）。
+试用
+package com.aliyun.odps.examples.udf;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.Iterator;
+import com.aliyun.odps.udf.ExecutionContext;
+import com.aliyun.odps.udf.UDFException;
+import com.aliyun.odps.udf.UDTF;
+import com.aliyun.odps.udf.annotation.Resolve;
+/**
+ * project: example_project
+ * table: wc_in2
+ * partitions: p2=1,p1=2
+ * columns: colc,colb
+ */
+@Resolve("string,string->string,bigint,string")
+public class UDTFResource extends UDTF {
+  ExecutionContext ctx;
+  long fileResourceLineCount;
+  long tableResource1RecordCount;
+  long tableResource2RecordCount;
+  @Override
+  public void setup(ExecutionContext ctx) throws UDFException {
+  this.ctx = ctx;
+  try {
+   InputStream in = ctx.readResourceFileAsStream("file_resource.txt");
+   BufferedReader br = new BufferedReader(new InputStreamReader(in));
+   String line;
+   fileResourceLineCount = 0;
+   while ((line = br.readLine()) != null) {
+     fileResourceLineCount++;
+   }
+   br.close();
+   Iterator<Object[]> iterator = ctx.readResourceTable("table_resource1").iterator();
+   tableResource1RecordCount = 0;
+   while (iterator.hasNext()) {
+     tableResource1RecordCount++;
+     iterator.next();
+   }
+   iterator = ctx.readResourceTable("table_resource2").iterator();
+   tableResource2RecordCount = 0;
+   while (iterator.hasNext()) {
+     tableResource2RecordCount++;
+     iterator.next();
+   }
+ } catch (IOException e) {
+   throw new UDFException(e);
+ }
+}
+   @Override
+   public void process(Object[] args) throws UDFException {
+     String a = (String) args[0];
+     long b = args[1] == null ? 0 : ((String) args[1]).length();
+     forward(a, b, "fileResourceLineCount=" + fileResourceLineCount + "|tableResource1RecordCount="
+     + tableResource1RecordCount + "|tableResource2RecordCount=" + tableResource2RecordCount);
+    }
+}
+添加资源到MaxCompute。
+试用
+Add file file_resource.txt;
+Add jar udtfexample1.jar;
+Add table table_resource1 as table_resource1;
+Add table table_resource2 as table_resource2;
+在MaxCompute中创建UDTF函数（my_udtf）。
+试用
+create function mp_udtf as com.aliyun.odps.examples.udf.UDTFResource using
+'udtfexample1.jar, file_resource.txt, table_resource1, table_resource2';
+在MaxCompute创建资源表table_resource1、table_resource2和物理表tmp1，并插入相应的数据。
+运行该UDTF。
+试用
+select mp_udtf("10","20") as (a, b, fileResourceLineCount) from tmp1;
+返回：
++-------+------------+-------+
+| a | b      | fileResourceLineCount |
++-------+------------+-------+
+| 10    | 2          | fileResourceLineCount=3|tableResource1RecordCount=0|tableResource2RecordCount=0 |
+| 10    | 2          | fileResourceLineCount=3|tableResource1RecordCount=0|tableResource2RecordCount=0 |
++-------+------------+-------+
+复杂数据类型示例
+如以下代码，定义了一个有三个overloads的UDF，其中第一个用了array作为参数，第二个用了map作为参数，第三个用了struct。由于第三个overloads用了struct作为参数或者返回值，因此要求必须要对UDF class上@Resolve annotation，来指定struct的具体类型。
+试用
+@Resolve("struct<a:bigint>,string->string")
+public class UdfArray extends UDF {
+  public String evaluate(List<String> vals, Long len) {
+    return vals.get(len.intValue());
+  }
+  public String evaluate(Map<String,String> map, String key) {
+    return map.get(key);
+  }
+  public String evaluate(Struct struct, String key) {
+    return struct.getFieldValue("a") + key;
+  }
+}
+您可以直接将复杂类型传入UDF中，如下所示：
+试用
+create function my_index as 'UdfArray' using 'myjar.jar';
+select id, my_index(array('red', 'yellow', 'green'), colorOrdinal) as color_name from colors;
+HIVE UDF兼容示例
+MaxCompute 2.0支持了Hive风格的UDF，有部分的HIVE UDF、UDTF可以直接在MaxCompute上使用。
+
+说明 目前支持兼容的Hive版本为2.1.0; 对应Hadoop版本为2.7.2。UDF如果是在其他版本的Hive/Hadoop开发的，可能需要使用此Hive/Hadoop版本重新编译。
+示例如下：
+试用
+package com.aliyun.odps.compiler.hive;
+import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
+import org.apache.hadoop.hive.ql.metadata.HiveException;
+import org.apache.hadoop.hive.ql.udf.generic.GenericUDF;
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+public class Collect extends GenericUDF {
+  @Override
+  public ObjectInspector initialize(ObjectInspector[] objectInspectors) throws UDFArgumentException {
+    if (objectInspectors.length == 0) {
+      throw new UDFArgumentException("Collect: input args should >= 1");
+    }
+    for (int i = 1; i < objectInspectors.length; i++) {
+      if (objectInspectors[i] != objectInspectors[0]) {
+        throw new UDFArgumentException("Collect: input oi should be the same for all args");
+      }
+    }
+    return ObjectInspectorFactory.getStandardListObjectInspector(objectInspectors[0]);
+  }
+  @Override
+  public Object evaluate(DeferredObject[] deferredObjects) throws HiveException {
+    List<Object> objectList = new ArrayList<>(deferredObjects.length);
+    for (DeferredObject deferredObject : deferredObjects) {
+      objectList.add(deferredObject.get());
+    }
+    return objectList;
+  }
+  @Override
+  public String getDisplayString(String[] strings) {
+    return "Collect";
+  }
+}
+说明 对应HIVE UDF的使用请参考：
+HivePlugins
+DeveloperGuide UDTF
+GenericUDAFCaseStudy
+该udf可以将任意类型、数量的参数打包成array输出。假设输出jar包名为 test.jar：
+试用
+--添加资源
+Add jar test.jar;
+--创建function
+CREATE FUNCTION hive_collect as 'com.aliyun.odps.compiler.hive.Collect' using 'test.jar';
+--使用function
+set odps.sql.hive.compatible=true;
+select hive_collect(4y,5y,6y) from dual;
++------+
+| _c0  |
++------+
+| [4, 5, 6] |
++------+
+说明 该UDF可以支持所有的类型，包括array，map，struct等复杂类型。
+使用兼容hive的udf需要注意：
+MaxCompute的add jar命令会永久地在project中创建一个resource，所以创建udf时需要指定jar包，无法自动将所有jar包加入classpath。
+在使用兼容的HIVE UDF的时候，需要在sql前加set语句set odps.sql.hive.compatible=true;语句，set语句和sql语句一起提交执行。
+在使用兼容的HIVE UDF时，还要注意MaxCompute的Java沙箱限制。
+
+ntelliJ IDEA是Java语言的集成开发环境，可以帮助我们快速的开发Java程序。本文为您详细介绍如何使用IntelliJ IDEA进行Java UDF开发。
+
+前提条件
+在开始UDF开发实践之前，您需要做如下准备工作：
+准备IntelliJ IDEA开发工具，请参见安装Studio。
+通过IntelliJ IDEA MaxCompute Studio创建MaxCompute项目连接。
+连接MaxCompute项目成功后，您需要创建MaxCompute Java Module。
+开发环境准备完成后即可开发UDF，下面将为您介绍一个字符小写转换功能的UDF实现示例。
+
+说明 更多UDF开发的相关资料请参见Java UDF。
+操作步骤
+创建Java UDF Project
+首先在您的IntelliJ IDEA中展开已创建的MaxCompute Java Module目录，导航至 src > main > java > New，单击 MaxCompute Java ，如下图所示。
+
+填写 Name，输入 package名称.文件名， Kind选择UDF，单击 OK ，如下图所示。
+
+说明
+Name：填写创建的MaxCompute Java Class名称，如果还没创建package，可以在此处填写packagename.classname，会自动生成package。
+Kind：选择类型。目前支持的类型有：自定义函数（UDF/UDAF/UDTF）、MapReduce（Driver/Mapper/Reducer）、非结构化开发（StorageHandler/Extractor）等。
+编辑Java UDF代码
+在您新建的Java UDF项目（本例中的porjectLower）中编辑代码，如下图。
+
+示例代码如下。
+试用
+package <package名称>;
+import com.aliyun.odps.udf.UDF;
+public class Lower extends UDF {
+   public String evaluate(String s) {
+      if (s == null) {
+          return null;
+      }
+      return s.toLowerCase();
+   }
+}
+说明 这里的代码模板可在您的Intellij IDEA中自定义，具体操作路径： Settings > Editor > File Code Templates，然后在Code标签页中寻找MaxCompute对应的模板修改。
+测试UDF
+开发UDF完成后，可通过单元测试和本地运行两种方式进行测试，看是否符合预期结果，操作如下。
+单元测试
+在您的Modul项目中examples目录下有各种类型的单元测试示例，您可参考示例编写自己的Unit Test。
+
+测试结果如下。
+
+我们可以看到大写字母"ALIYUN"已经成功转换成小写字母"aliyun"输出。
+本地运行
+在您的IntelliJIDEA中本地运行UDF时，需要指定运行数据源，有以下两种方式设定测试数据源：
+MaxCompute Studio通过Tunnel服务自动下载指定项目下的表数据到warehouse目录下。
+提供Mock项目及表数据，即您可参考warehouse下的example_project自行设置。
+操作步骤
+为了测试Java UDF代码，我们可以首先在MaxCompute上存放一些大写字母作为输入数据。您可以利用script脚本文件或者odpscmd客户端使用SQL语句create table upperABC(upper string);新建一个名为upperABC的测试表格，如图。
+
+右击UDF类，单击Run '类名.main()'，弹出run configurations对话框，如下图。
+
+说明
+UDF/UDAF/UDTF一般作用于select子句中表的某些列，需要配置MaxCompute project，table和column（元数据来源于project explorer和warehouse下的Mock项目）。复杂类型的调试也是支持的。
+如果指定项目下的表数据未被下载到warehouse中，需要先下载数据，默认下载100条。默认下载100条，如需更多数据，可配置Download record limit项。
+UDF的local run框架会将warehouse中指定列的数据作为UDF的输入，开始本地运行UDF，您可以在控制台看到日志输出和结果打印。
+如果采用Mock项目或已下载数据，则直接运行。
+单击 OK，运行结果如下图。
+
+发布UDF
+此时我们的 Lower.java测试通过，接下来我们要将其打包成jar资源上传到MaxCompute服务端上。一个UDF要想发布到服务端供生产使用，要经过 打包 > 上传 > 注册三个步骤。针对此，IntelliJ IDEA MaxCompute Studio提供了一键发布功能（Studio会依次执行maven clean package，上传jar和注册UDF三个步骤，一次完成）。具体的操作如下。右键单击UDF的Java文件，选择 Deploy to server，弹框里选择注册到哪一个MaxCompute project，依次输入 Function name和 Resource name，Resource name可以修改，如下图。
+
+说明
+如果您想了解打包、上传和注册的详细操作步骤，请参见打包、上传和注册。
+
+填写完成后，单击 OK即可完成注册，成功后会有提示。您可在连接的MaxCompute项目下找到已经注册好的Function函数，如图所示。
+
+试用UDF
+成功注册UDF后，即可试用UDF。在您的Module项目中打开SQL脚本，执行命令 select Lower_test('ALIYUN');，显示结果如下图所示。
+
+您也可以在odpscmd客户端使用 select Lower_test('ALIYUN') from uppperABC;命令测试您的Java UDF函数。到此，您使用IntelliJIDEA上开发的Java UDF函数Lower_test已经可用了。
+-----------
+
+解决DataWorks 10M文件限制问题最佳实践
+更新时间：2019-02-19 17:50:09
+
+编辑 ·
+ · 我的收藏
+本文向您介绍如何解决用户在DataWorks上执行MapReduce作业的时候，文件大于10M的JAR和资源文件不能上传到DataWorks的问题，方便您使用调度功能定期执行MapReduce作业。
+
+解决方案：
+将大于10M的resources通过MaxCompute客户端上传。
+客户端下载地址：客户端。
+客户端配置AK、EndPoint请参考：安装并配置客户端和配置Endpoint。
+向客户端添加资源命令：
+
+试用
+//添加资源
+add jar C:\test_mr\test_mr.jar -f;
+目前通过MaxCompute客户端上传的资源，在DataWorks左侧资源列表是找不到的，只能通过list resources查看确认资源：
+试用
+//查看资源
+list resources;
+减小Jar文件(瘦身Jar)，因为DataWorks执行MR作业的时候，一定要在本地执行，所以保留一个main函数就可以。
+试用
+jar
+-resources test_mr.jar,test_ab.jar --resources在客户端注册后直接引用
+-classpath test_mr.jar --瘦身策略：在gateway上提交要有main和相关的mapper和reducer，额外的三方依赖可以不需要，其他都可以放到resources
+com.aliyun.odps.examples.mr.test_mr wc_in wc_out;
+通过上述方法，我们可以在DataWorks上运行大于10M的MR作业。
+
+DataWorks实现指定UDF被指定用户访问
+更新时间：2019-01-24 14:56:15
+
+编辑 ·
+ · 我的收藏
+本页目录
+指定资源被指定用户访问产生背景
+前提条件
+常见方案
+通过role policy自定义role的权限集合
+总结
+指定资源被指定用户访问产生背景
+本文为您介绍如何在DataWorks中实现将具体的某个资源（表、UDF等）设置为仅能被指定的用户访问。此UDF涉及到数据的加密解密算法，属于数据安全管控范畴。
+
+前提条件
+您需要提前安装MaxCompute客户端，以实现指定UDF被指定用户访问的操作。详情请参见安装并配置客户端。
+
+常见方案
+您可通过以下三种方案，实现指定UDF被指定用户访问。
+
+package方案，通过打包授权进行权限精细化管控。
+Package通常是为了解决跨项目空间的共享数据及资源的用户授权问题。当通过package授予用户开发者角色后，用户则拥有所有权限，风险不可控。
+
+首先，用户熟知的DataWorks开发者角色的权限如下所示。
+
+由上图可见，开发者角色对工作空间中的package、functions、resources和table默认有全部权限，明显不符合权限配置的要求。
+
+其次，通过DataWorks添加子账号并赋予开发者角色，如下所示。
+
+由此可见，通过打包授权和DataWorks默认的角色都不能满足我们的需求。比如将子账号RAM$xxxxx.pt@aliyun-test.com:ramtest授予开发者角色，则默认拥有当前工作空间中所有Object的所有操作权限，详情请参见用户授权。
+
+在DataWorks中新建角色来进行高级管控。
+您可进入DataWorks控制台中的工作空间配置 > MaxCompute高级配置 > 自定义用户角色页面，进行高级管控。但是在MaxCompute高级配置中只能针对某个表/某个项目进行授权，不能对resource和UDF进行授权。
+
+Role policy方案，通过role policy自定义role的权限集合。
+通过policy可以精细化地管理到具体用户针对具体资源的具体权限粒度，下文将为您详细描述如何通过role policy方案实现指定UDF被指定用户访问。
+
+说明 为了安全起见，建议初学者使用测试项目来验证policy。
+通过role policy自定义role的权限集合
+创建默认拒绝访问UDF的角色。
+在客户端输入create role denyudfrole;，创建一个role denyudfrole。
+创建policy授权文件，如下所示。
+试用
+{
+"Version": "1", "Statement"
+
+[{
+"Effect":"Deny",
+"Action":["odps:Read","odps:List"],
+"Resource":"acs:odps:*:projects/sz_mc/resources/getaddr.jar"
+},
+{
+"Effect":"Deny",
+"Action":["odps:Read","odps:List"],
+"Resource":"acs:odps:*:projects/sz_mc/registration/functions/getregion"
+}
+ ] }
+设置和查看role policy。
+在客户端输入put policy /Users/yangyi/Desktop/role_policy.json on role denyudfrole;命令，设置role policy文件的存放路径等配置。
+
+通过 get policy on role denyudfrole;命令，查看role policy。
+
+在客户端输入grant denyudfrole to RAM$xxxx.pt@aliyun-test.com:ramtest;，添加子账号至role denyudfrole。
+验证拒绝访问UDF的角色是否创建成功。
+以子账号RAM$xxxx.pt@aliyun-test.com:ramtest登录MaxCompute客户端。
+
+登录客户端输入whoami;确认角色。
+
+通过show grants;查看当前登录用户权限。
+
+通过查询发现该RAM子账号有两个角色，一个是role_project_dev（即DataWorks默认的开发者角色），另一个是刚自定义创建的denyudfrole。
+
+验证自建UDF以及依赖的包的权限。
+
+
+通过上述验证发现，该子账号在拥有DataWorks开发者角色的前提下并没有自建UDF：getregion的读权限。但还需要结合project policy来实现该UDF只能被指定的用户访问。
+
+配置project policy。
+编写policy。
+试用
+{
+"Version": "1", "Statement":
+[{
+"Effect":"Allow",
+"Principal":"RAM$yangyi.pt@aliyun-test.com:yangyitest",
+"Action":["odps:Read","odps:List","odps:Select"],
+"Resource":"acs:odps:*:projects/sz_mc/resources/getaddr.jar"
+},
+{
+"Effect":"Allow",
+ "Principal":"RAM$xxxx.pt@aliyun-test.com:yangyitest",
+"Action":["odps:Read","odps:List","odps:Select"],
+"Resource":"acs:odps:*:projects/sz_mc/registration/functions/getregion"
+}] }
+设置和查询policy。
+通过put policy /Users/yangyi/Desktop/project_policy.json;命令设置policy文件的存放路径。
+
+通过 get policy;命令查看policy。
+
+通过whoami;和show grants;进行验证。
+
+运行SQL任务，查看是否只有指定的RAM子账号能够查看指定的UDF和依赖的包。
+
+
+总结
+关于DataWorks和MaxCompute的安全体系，总结如下。
+
+如果您不想让其他用户访问工作空间内具体的资源，在DataWorks中添加数据开发者权限后，再在MaxCompute客户端按照role policy的操作，将其配置为拒绝访问权限。
+如果您要指定用户访问资源，在DataWorks中配置数据开发者权限后，再在MaxCompute客户端按照project policy的操作，将其配置为允许访问权限。
+
+
+
+---------
+使用Java SDK运行安全命令最佳实践
+本文为您介绍在MaxCompute Console上通过Java SDK接口的SecurityManager.runQuery()方法运行安全相关的命令的最佳实践。
+
+背景信息
+用户运行安全相关的命令有以下两种方式：
+通过使用MaxComputeConsole 运行，详细的使用说明请参见安全指南和安全相关语句汇总。
+以下关键字开头的命令为MaxCompute安全相关的操作命令：
+试用
+GRANT/REVOKE ...
+SHOW  GRANTS/ACL/PACKAGE/LABEL/ROLE/PRINCIPALS
+SHOW  PRIV/PRIVILEGES
+LIST/ADD/REOVE  USERS/ROLES/TRUSTEDPROJECTS
+DROP/CREATE   ROLE
+CLEAR EXPIRED  GRANTS
+DESC/DESCRIBE   ROLE/PACKAGE
+CREATE/DELETE/DROP  PACKAGE
+ADD ... TO  PACKAGE
+REMOVE ... FROM  PACKAGE
+ALLOW/DISALLOW  PROJECT
+INSTALL/UNINSTALL  PACKAGE
+LIST/ADD/REMOVE   ACCOUNTPROVIDERS
+SET  LABLE  ...
+使用Java SDK接口SecurityManager.runQuery()方式运行，详细的SDK使用说明请参见MaxCompute SDK Java Doc。
+说明 MaxCompute安全相关的命令不是SQL命令，不能创建Instance通过SQL Task方式来运行。
+前提条件
+在开始使用Java SDK接口方法运行安全命令之前，您需要做如下准备工作：
+准备IntelliJ IDEA开发工具，请参见安装Studio。
+准备Access ID和Access Key。
+您可以登录阿里云官网，在右上角的用户名下单击 accesskeys进入Access Key管理页面获取，如下图。
+
+配置Endpoint，详细内容请参见配置Endpoint。
+创建空间项目<your_project>，通过IntelliJ IDEA MaxCompute Studio创建MaxCompute项目连接。
+在MaxCompute Studio上添加项目依赖。
+SecurityManager类在odps-sdk-core包中，因此在使用时需要配置：
+
+试用
+<dependency>
+  <groupId>com.aliyun.odps</groupId>
+  <artifactId>odps-sdk-core</artifactId>
+  <version>0.29.11-oversea-public</version>
+</dependency>
+准备工作完成后，您可以开始运行安全命令示例操作。例如，设置表 test_label列的访问级别为2，运行如下命令。
+试用
+SET LABEL 2 TO TABLE test_label(key, value);
+实施步骤
+创建测试表test_label，命令如下。
+试用
+CREATE TABLE IF NOT EXISTS test_label(
+ key  STRING,
+ value BIGINT
+);
+测试运行。
+Java代码如下。
+试用
+import com.aliyun.odps.Column;
+import com.aliyun.odps.Odps;
+import com.aliyun.odps.OdpsException;
+import com.aliyun.odps.OdpsType;
+import com.aliyun.odps.TableSchema;
+import com.aliyun.odps.account.Account;
+import com.aliyun.odps.account.AliyunAccount;
+import com.aliyun.odps.security.SecurityManager;
+
+public class test {
+  public static void main(String [] args) throws OdpsException {
+    try {
+      // init odps
+      Account account = new AliyunAccount("<your_accessid>", "<your_accesskey>");
+      Odps odps = new Odps(account);
+      odps.setEndpoint("http://service-corp.odps.aliyun-inc.com/api");
+      odps.setDefaultProject("<your_project>");
+
+      // set label 2 to table columns
+      SecurityManager securityManager = odps.projects().get().getSecurityManager();
+      String res = securityManager.runQuery("SET LABEL 2 TO TABLE test_label(key, value);", false);
+      System.out.println(res);
+    } catch (OdpsException e) {
+      e.printStackTrace();
+    }
+  }
+}
+查看运行结果：
+
+结果验证。
+程序运行完成后，在MaxCompute Console中运行 desc test_label;命令，可以看到set label命令已经生效了。
+
+其他安全相关的命令，都可以通过Java SDK来运行。
+
+
+----------------------
+
+Join语句中Where条件的位置
+当两个表进行Join操作时，主表的Where限制可以写在最后，但从表分区限制条件不要写在Where条件中，建议写在ON条件或者子查询中。主表的分区限制条件可以写在Where条件中（最好先用子查询过滤）。示例如下：
+试用
+select * from A join (select * from B where dt=20150301)B on B.id=A.id where A.dt=20150301；
+select * from A join B on B.id=A.id where B.dt=20150301； --不允许
+select * from (select * from A where dt=20150301)A join (select * from B where dt=20150301)B on B.id=A.id；
+第二个语句会先Join，后进行分区裁剪，数据量变大，性能下降。在实际使用过程中，应该尽量避免第二种用法。
+
+数据倾斜
+产生数据倾斜的根本原因是有少数Worker处理的数据量远远超过其他Worker处理的数据量，从而导致少数Worker的运行时长远远超过其他的平均运行时长，从而导致整个任务运行时间超长，造成任务延迟。
+
+更多数据倾斜优化的详情请参见计算长尾调优。
+
+Join造成的数据倾斜
+造成Join数据倾斜的原因是Join on的key分布不均匀。假设还是上述示例语句，现在将大表A和小表B进行Join操作，运行如下语句。
+试用
+select * from A join B on A.value= B.value;
+此时，复制logview的链接并打开webcosole页面，双击执行Join操作的fuxi job，可以看到此时在[Long-tails]区域有长尾，表示数据已经倾斜了。
+
+此时您可通过如下方法进行优化。
+由于表B是个小表并且没有超过512MB，您可将上述语句优化为mapjoin语句再执行，语句如下。
+试用
+select /*+ MAPJOIN(B) */ * from A join B on A.value= B.value;
+您也可将倾斜的key用单独的逻辑来处理，例如经常发生两边的key中有大量null数据导致了倾斜。则需要在Join前先过滤掉null的数据或者补上随机数，然后再进行Join，示例如下。
+试用
+select * from A join B
+on case when A.value is null then concat('value',rand() ) else A.value end = B.value;
+在实际场景中，如果您知道数据倾斜了，但无法获取导致数据倾斜的key信息，那么可以使用一个通用的方案，查看数据倾斜，如下所示。
+试用
+例如：select * from a join b on a.key=b.key; 产生数据倾斜。
+您可以执行：
+```sql
+select left.key, left.cnt * right.cnt from
+(select key, count(*) as cnt from a group by key) left
+join
+(select key, count(*) as cnt from b group by key) right
+on left.key=right.key;
+查看key的分布，可以判断a join b时是否会有数据倾斜。
+
+group by倾斜
+造成group by倾斜的原因是group by的key分布不均匀。
+
+假设表A内有两个字段（key，value），表内的数据量足够大，并且key的值分布不均，运行语句如下所示：
+试用
+select key,count(value) from A group by key;
+当表中的数据足够大时，您会在webcosole页面看见长尾。若想解决这个问题，您需要在执行SQL前设置防倾斜的参数，设置语句为set odps.sql.groupby.skewindata=true。
+
+错误使用动态分区造成的数据倾斜
+动态分区的SQL，在MaxCompute中会默认增加一个Reduce，用来将相同分区的数据合并在一起。这样做的好处，如下所示。
+可减少MaxCompute系统产生的小文件，使后续处理更快速。
+可避免一个Worker输出文件很多时占用内存过大。
+但也正是因为这个Reduce的引入，导致分区数据如果有倾斜的话，会发生长尾。因为相同的数据最多只会有10个Worker处理，所以数据量大，则会发生长尾，示例如下。insert overwrite table A2 partition(dt) select split_part(value,'\t',1) as field1, split_part(value,'\t',2) as field2, dt from A where dt='20151010';
+
+这种情况下，没有必要使用动态分区，所以可以改为如下语句：
+试用
+insert overwrite table A2 partition(dt='20151010')
+select
+split_part(value,'\t',1) as field1,
+split_part(value,'\t',2) as field2
+from A
+where dt='20151010';
+窗口函数的优化
+如果您的SQL语句中用到了窗口函数，一般情况下每个窗口函数会形成一个Reduce作业。如果窗口函数略多，那么就会消耗资源。在某些特定场景下，窗口函数是可以进行优化的。
+窗口函数over后面要完全相同，相同的分组和排序条件。
+多个窗口函数在同一层SQL执行。
+符合上述两个条件的窗口函数会合并为一个Reduce执行。SQL示例如下所示。
+试用
+select
+rank()over(partition by A order by B desc) as rank,
+row_number()over(partition by A order by B desc) as row_num
+from MyTable;
+子查询改Join
+例如有一个子查询，如下所示。
+试用
+SELECT * FROM table_a a WHERE a.col1 IN (SELECT col1 FROM table_b b WHERE xxx);
+当此语句中的table_b子查询返回的col1的个数超过1000个时，系统会报错为 records returned from subquery exceeded limit of 1000。此时您可以使用Join语句来代替，如下所示。
+试用
+SELECT a.* FROM table_a a JOIN (SELECT DISTINCT col1 FROM table_b b WHERE xxx) c ON (a.col1 = c.col1)
+说明
+如果没用Distinct，而子查询c返回的结果中有相同的col1的值，可能会导致a表的结果数变多。
+因为Distinct子句会导致查询全落到一个Worker里，如果子查询数据量比较大的话，可能会导致查询比较慢。
+如果已经从业务上控制了子查询里的col1不可能会重复，比如查的是主键字段，为了提高性能，可以把Distinct去掉。
+
+-------------
+
+计算长尾调优
+更新时间：2019-01-23 00:43:05
+
+编辑 ·
+ · 我的收藏
+本页目录
+Join 长尾
+Group By 长尾
+Distinct 长尾
+动态分区长尾
+通过 Combiner 解决长尾
+通过系统优化解决长尾
+通过业务优化解决长尾
+长尾问题是分布式计算中最常见的问题之一，也是典型的疑难杂症。究其原因，是因为数据分布不均，导致各个节点的工作量不同，整个任务需要等最慢的节点完成才能结束。
+
+处理这类问题的思路就是把工作分给多个 Worker 去执行，而不是一个 Worker 单独运行最重的那份工作。本文将为您介绍平时工作中遇到的一些典型的长尾问题的场景及其解决方案。
+
+Join 长尾
+问题原因：
+
+Join 出现长尾，是因为 Join 时出现某个 Key 里的数据特别多的情况。
+
+解决办法：
+
+您可以从以下四方面进行考虑：
+
+排除两张表都是小表的情况，若两张表里有一张大表和一张小表，可以考虑使用 mapjoin，对小表进行缓存，具体的语法和说明请参见Select语法介绍。如果是 MapReduce 作业，可以使用资源表的功能，对小表进行缓存。
+
+但是如果两张表都比较大，就需要先尽量去重。
+
+若还是不能解决，就需要从业务上考虑，为什么会有这样的两个大数据量的 Key 要做笛卡尔积，直接考虑从业务上进行优化。
+
+小表leftjoin大表，odps直接leftjoin较慢。此时可以先小表和大表mapjoin，这样能拿到小表和大表的交集中间表，且这个中间表一定是不大于大表的（只要不是有很大的key倾斜就不会膨胀的很大）。然后小表再和这个中间表进行leftjoin，这样效果等于小表leftjoin大表。
+
+Group By 长尾
+问题原因：
+
+Group By Key 出现长尾，是因为某个 Key 内的计算量特别大。
+
+解决办法：
+
+您可以通过以下两种方法解决：
+
+可对 SQL 进行改写，添加随机数，把长 Key 进行拆分。如下所示：
+
+试用
+SELECT Key,COUNT(*) AS Cnt FROM TableName GROUP BY Key;
+不考虑 Combiner，M 节点会 Shuffle 到 R 上，然后 R 再做 Count 操作。对应的执行计划是 M > R。但是如果对长尾的 Key 再做一次工作再分配，就变成如下语句：
+
+试用
+-- 假设长尾的Key已经找到是KEY001
+SELECT a.Key
+  , SUM(a.Cnt) AS Cnt
+FROM (
+  SELECT Key
+    , COUNT(*) AS Cnt
+FROM TableName
+GROUP BY Key,
+  CASE
+    WHEN Key = 'KEY001' THEN Hash(Random()) % 50
+    ELSE 0
+   END
+) a
+GROUP BY a.Key;
+由上可见，这次的执行计划变成了 M > R > R。虽然执行的步骤变长了，但是长尾的 Key 经过 2 个步骤的处理，整体的时间消耗可能反而有所减少。
+
+说明
+若数据的长尾并不严重，用这种方法人为地增加一次 R 的过程，最终的时间消耗可能反而更大。
+
+使用通用的优化策略 — 系统参数，设置如下：
+
+试用
+set odps.sql.groupby.skewindata=true。
+但是通用性的优化策略无法针对具体的业务进行分析，得出的结果不总是最优的。您可以根据实际的数据情况，用更加高效的方法来改写 SQL。
+
+Distinct 长尾
+对于 Distinct，上述 Group By 长尾时，把长 Key 进行拆分的策略已经不生效了。对这种场景，您可以考虑通过其他方式解决。
+
+解决办法：
+
+试用
+--原始SQL,不考虑Uid为空
+SELECT COUNT(uid) AS Pv
+    , COUNT(DISTINCT uid) AS Uv
+FROM UserLog;
+可以改写成如下语句：
+
+试用
+SELECT SUM(PV) AS Pv
+    , COUNT(*) AS UV
+FROM (
+    SELECT COUNT(*) AS Pv
+      , uid
+    FROM UserLog
+    GROUP BY uid
+) a;
+该解法是把 Distinct 改成了普通的 Count，这样的计算压力不会落到同一个 Reducer 上。而且这样改写后，既能支持前面提到的 Group By 优化，系统又能做 Combiner，性能会有较大的提升。
+
+动态分区长尾
+问题原因：
+
+动态分区功能为了整理小文件，会在最后启一个 Reduce，对数据进行整理，所以如果使用动态分区写入数据时若有倾斜，就会发生长尾。
+
+一般情况下，滥用动态分区的功能也是产生这类长尾的一个常见原因。
+
+解决办法：
+
+若写入的数据已经确定需要把数据写入某个具体分区，那可以在 Insert 的时候指定需要写入的分区，而不是使用动态分区。
+
+通过 Combiner 解决长尾
+对于 MapRedcuce 作业，使用 Combiner 是一种常见的长尾优化策略。在 WordCount 的示例中，已提到这种做法。通过 Combiner，减少 Mapper Shuffle 往 Reducer 的数据，可以大大减少网络传输的开销。对于 MaxCompute SQL，这种优化会由系统自动完成。
+
+说明
+Combiner 只是 Map 端的优化，需要保证是否执行 Combiner 的结果是一样的。以 WordCount 为例，传 2 个 (KEY,1) 和传 1 个 (KEY,2) 的结果是一样的。但是比如在做平均值时，便不能直接在 Combiner 里把 (KEY,1) 和 (KEY,2) 合并成 (KEY,1.5)。
+
+通过系统优化解决长尾
+针对长尾这种场景，除了前面提到的 Local Combiner，MaxCompute 系统本身还做了一些优化。比如在跑任务的时候，日志里突然打出如下的内容（+N backups 部分）：
+
+试用
+M1_Stg1_job0:0/521/521[100%] M2_Stg1_job0:0/1/1[100%] J9_1_2_Stg5_job0:0/523/523[100%] J3_1_2_Stg1_job0:0/523/523[100%] R6_3_9_Stg2_job0:1/1046/1047[100%]
+M1_Stg1_job0:0/521/521[100%] M2_Stg1_job0:0/1/1[100%] J9_1_2_Stg5_job0:0/523/523[100%] J3_1_2_Stg1_job0:0/523/523[100%] R6_3_9_Stg2_job0:1/1046/1047[100%]
+M1_Stg1_job0:0/521/521[100%] M2_Stg1_job0:0/1/1[100%] J9_1_2_Stg5_job0:0/523/523[100%] J3_1_2_Stg1_job0:0/523/523[100%] R6_3_9_Stg2_job0:1/1046/1047(+1 backups)[100%]
+M1_Stg1_job0:0/521/521[100%] M2_Stg1_job0:0/1/1[100%] J9_1_2_Stg5_job0:0/523/523[100%] J3_1_2_Stg1_job0:0/523/523[100%] R6_3_9_Stg2_job0:1/1046/1047(+1 backups)[100%]
+可以看到 1047 个 Reducer，有 1046 个已经完成了，但是最后一个一直没完成。系统识别出这种情况后，自动启动了一个新的 Reducer，跑一样的数据，然后看两个哪个快，取快的数据归并到最后的结果集里。
+
+通过业务优化解决长尾
+虽然前面的优化策略有很多，但仍然不能解决所有问题。有时碰到的长尾问题，还需要从业务角度上去考虑是否有更好的解决方法，示例如下：
+
+实际数据可能包含非常多的噪音。比如：需要根据访问者的 ID 进行计算，看每个用户的访问记录的行为。需要先去掉爬虫的数据（现在的爬虫已越来越难识别），否则爬虫数据很容易长尾计算的长尾。类似的情况还有根据 xxid 进行关联的时候，需要考虑这个关联字段是否存在为空的情况。
+
+一些业务特殊情况。比如：ISV 的操作记录，在数据量、行为方式上都会和普通的个人会有很大的区别。那么可以考虑针对大客户，使用特殊的分析方式进行单独处理。
+
+数据分布不均匀的情况下，不要使用常量字段做 Distribute by 字段来实现全排序。
+----------------
+长周期指标的计算优化方案
+更新时间：2019-01-23 00:56:34
+
+编辑 ·
+ · 我的收藏
+本页目录
+实验背景
+实验目的
+实验方案
+影响及思考
+场景示例
+实验背景
+电子商务公司（如淘宝）对用户数据分析的角度和思路可谓是应有尽有、层出不穷，所以在电商数据仓库和商业分析场景中，经常需要计算最近 N 天的访客数、购买用户数、老客数等类似的指标。
+
+这些指标有一个共同点：都需要根据用户在电商平台上（或网上店铺）一段时间积累的数据进行计算（这里讨论的前提是数据都存储在 MaxCompute 上）。
+
+一般情况下，这些指标的计算方式就是从日志明细表中计算就行了，如下代码计算商品最近 30 天的访客数：
+
+试用
+
+select item_id --商品id
+  ,count(distinct visitor_id) as ipv_uv_1d_001
+from 用户访问商品日志明细表
+where ds <= ${bdp.system.bizdate}
+and ds >=to_char(dateadd(to_date(${bdp.system.bizdate},'yyyymmdd'),-29,'dd'),'yyyymmdd')
+ group by item_id;
+说明 代码中的变量都是DataWorks的调度变量，仅适用于DataWorks的调度任务。为了方便后文不再提醒。
+当每天的日志量很大时，上面代码存在一个严重的问题，需要的 Map Instance 个数太多，甚至会超过 99999 个 Instance 个数的限制，Map Task 就没有办法顺利执行，更别说后续的操作了。
+
+为什么 Instance 个数需要那么多呢？是因为每天的日志数据很大，30 天的数据量更是惊人。此时 Select 操作需要大量的 Map Instance，结果超过了 Instance 的上限，导致代码无法运行。
+
+实验目的
+如何计算长周期的指标，又不影响性能呢？通常有以下两种思路：
+
+多天汇总的问题根源是数据量的问题，如果把数据量给降低了，便可解决此问题。
+
+减少数据量最直接的办法是把每天的数据量都给减少，因此需要构建临时表，对 1d 的数据进行轻度汇总，这样便可去掉很多重复数据，减少数据量。
+
+实验方案
+操作步骤
+构建中间表，每天汇总一次。
+
+比如对于上面的例子，可以构建一个 item_id+visitor_id 粒度的中间表。即构建item_id+visitior_id 粒度的日汇总表，记作 A。如下所示：
+
+试用
+
+insert overwrite table mds_itm_vsr_xx(ds='${bdp.system.bizdate} ')
+select item_id,visitor_id,count(1) as pv
+  from
+  （
+  select item_id,visitor_id
+  from 用户访问商品日志明细表
+  where ds =${bdp.system.bizdate}
+  group by item_id,visitor_id
+  ）a;
+计算多天的数据，依赖中间表进行汇总。
+
+对 A 进行 30 天的汇总，如下所示：
+
+试用
+
+select item_id
+        ,count(distinct visitor_id) as uv
+        ,sum(pv) as pv
+  from mds_itm_vsr_xx
+  where ds <= '${bdp.system.bizdate} '
+  and ds >= to_char(dateadd(to_date('${bdp.system.bizdate} ','yyyymmdd'),-29,'dd'),'yyyymmdd')
+  group by item_id;
+影响及思考
+上面讲述的方法，对每天的访问日志明细数据进行单天去重，从而减少了数据量，提高了性能。缺点是每次计算多天的数据的时候，都需要读取 N 个分区的数据。
+
+那么是否有一种方式，不需要读取 N 个分区的数据，而是把 N 个分区的数据压缩合并成一个分区的数据，让一个分区的数据包含历史数据的信息呢？
+
+业务上是有类似场景的，可以通过 增量累计方式计算长周期指标。
+
+场景示例
+求最近 1 天店铺商品的老买家数。老买家数的算法定义为：过去一段时间有购买的买家（比如过去 30 天）。
+
+一般情况下，老买家数计算方式如下所示：
+
+试用
+
+select item_id --商品id
+        ,buyer_id as old_buyer_id
+from 用户购买商品明细表
+where ds < ${bdp.system.bizdate}
+and ds >=to_char(dateadd(to_date(${bdp.system.bizdate},'yyyymmdd'),-29,'dd'),'yyyymmdd')
+group by item_id
+        ,buyer_id;
+改进思路：
+
+维护一张店铺商品和买家购买关系的维表记作表 A，记录买家和店铺的购买关系，以及第一次购买时间，最近一次购买时间，累计购买件数，累计购买金额等信息。
+
+每天使用最近 1 天的支付明细日志更新表 A 的相关数据。
+
+计算老买家时，最需要判断最近一次购买时间是否是 30天 之内就行了，从而做到最大程度上的数据关系对去重，减少了计算输入数据量。
+-------------------------
+Alias命令
+Alias功能主要为了满足在不修改代码的前提下，在MapReduce或自定义函数（UDF） 代码中，通过某个固定的资源名读取不同资源（数据）的需求。
+
+命令格式如下：
+试用
+alias <alias>=<real>;
+行为说明如下：
+
+为资源创建别名。
+
+示例如下：
+试用
+ADD TABLE src_part PARTITION (ds='20121208') AS res_20121208;
+ADD TABLE src_part PARTITION (ds='20121209') AS res_20121209;
+ALIAS resName=res_20121208;
+jar -resources resName -libjars work.jar  -classpath ./work.jar com.company.MainClass args ...;  // 作业一
+ALIAS resName=res_20121209;
+jar -resources resName -libjars work.jar  -classpath ./work.jar com.company.MainClass args ...; // 作业二
+上面的资源别名 resName在两个作业里引用到不同的资源表，代码可以不做修改也能读取到不同的数据。
+计量预估（Cost SQL命令）
+命令格式如下：
+试用
+cost sql <SQL Sentence>;
+行为说明如下：
+
+预估出一条SQL的计量信息，包含输入数据的大小、UDF个数以及SQL复杂等级。
+说明 该信息不能够作为实际计费标准，仅具有参考意义。
+示例如下：
+试用
+odps@ $odps_project >cost sql select distinct project_name, user_name from meta.m_security_users distribute by project_name sort by project_name;
+ID = 20150715113033121xxxxxxx
+Input:65727592 Bytes
+UDF:0
+Complexity:1.0
+
+----------
+
+

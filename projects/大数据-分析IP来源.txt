@@ -1,0 +1,106 @@
+淘宝IP地址库的查询接口为IP地址字串，使用示例如下。
+
+由于在MaxCompute中禁止使用HTTP请求，如何实现在MaxCompute中进行IP的查询？目前有三种方式：
+
+用SQL将数据查询到本地，再发起HTTP请求查询。
+说明 效率低下，且淘宝IP库查询频率需小于10QPS，否则拒绝请求。
+下载IP地址库到本地，进行查询。
+说明 同样效率低，且不利于数仓等分析使用。
+将IP地址库定期维护上传至MaxCompute，进行连接查询。
+说明 比较高效，但是IP地址库需自己定期维护。
+本文重点为您介绍第三种方式。
+
+下载IP地址库
+首先您需要获取地址库数据。地址库您可以自行获取，本文仅提供一个UTF8格式的不完整的地址库demo。
+下载UTF-8地址库数据到本地后，检查数据格式，举例如下。
+
+前四个数据是IP地址的起始地址与结束地址：前两个是十进制整数形式，后两个是点分形式。这里我们使用整数形式，以便计算IP是否属于这个网段。
+
+上传IP地址库数据
+创建表DDL，您可以使用MaxCompute客户端进行操作，也可以使用DataWorks进行图形化建表。
+试用
+DROP TABLE IF EXISTS ipresource ;
+
+CREATE TABLE IF NOT EXISTS ipresource
+(
+    start_ip BIGINT
+    ,end_ip BIGINT
+    ,start_ip_arg string
+    ,end_ip_arg string
+    ,country STRING
+    ,area STRING
+    ,city STRING
+    ,county STRING
+    ,isp STRING
+);
+使用Tunnel命令操作上传您的文件，本例中ipdata.txt.utf8文件存放在D盘。
+试用
+odps@ workshop_demo>tunnel upload D:/ipdata.txt.utf8 ipresource;
+可以通过SQL语句select count(*) from ipresource;查看到表中上传的数据条数（通常地址库由于有人更新维护，条目数会不断增长）。
+
+使用SQL语句select * from ipresource limit 10;查看ipresource表前10条的样本数据，举例如下。
+
+编写UDF函数
+通过编写Python UDF将点号分割的IP地址转化为int类型的IP，本例中利用DataWorks的PyODPS节点完成，详细说明如下。
+
+首先您需要在数据开发 > 业务流程 > 资源中右键新建Python类型资源。在弹框中输入新建的Python资源名称，勾选上传为ODPS资源，完成创建。
+
+在您新建的Python资源内编写Python资源代码，示例如下。
+试用
+from odps.udf import annotate
+@annotate("string->bigint")
+class ipint(object):
+	def evaluate(self, ip):
+		try:
+			return reduce(lambda x, y: (x << 8) + y, map(int, ip.split('.')))
+		except:
+			return 0
+点击提交并解锁。
+
+在数据开发 > 业务流程 > 函数中右键新建自定义函数。
+填写函数的类名，本例中为 ipint.ipint，资源列表填写刚刚我们提交的资源名称，提交并解锁。
+
+验证ipint函数是否生效并满足预期值，您可以在DataWorks上新建一个ODPS SQL类型节点运行SQL语句查询，示例如下。
+
+您也可以在本地创建 ipint.py文件，使用MaxCompute客户端上传资源。
+试用
+
+odps@ MaxCompute_DOC>add py D:/ipint.py;
+OK: Resource 'ipint.py' have been created.
+完成上传后，使用客户端直接注册函数。
+试用
+
+odps@ MaxCompute_DOC>create function ipint as ipint.ipint using ipint.py;
+Success: Function 'ipint' have been created.
+完成注册后，即可正常使用该函数，您可以在客户端运行 select ipint('1.2.24.2');进行测试。
+说明 如果同一主账号下其他项目需要使用这个UDF，您可以进行跨项目授权。
+创建名为ipint的package。
+试用
+odps@ MaxCompute_DOC>create package ipint;
+OK
+将已经创建好的UDF函数加入package。
+试用
+odps@ MaxCompute_DOC>add function ipint to package ipint;
+OK
+允许另外一个项目bigdata_DOC安装这个package。
+试用
+odps@ MaxCompute_DOC> allow project bigdata_DOC to install package ipint;
+OK
+切换到另一个需要使用UDF的项目bigdata_DOC，安装package。
+试用
+odps@ MaxCompute_DOC>use bigdata_DOC;
+odps@ bigdata_DOC>install package MaxCompute_DOC.ipint;
+OK
+现在您就可以使用这个UDF函数了， 如果项目空间bigdata_DOC的用户Bob需要访问这些资源，那么管理员可以通过ACL给Bob自主授权。
+试用
+odps@ bigdata_DOC>grant Read on package MaxCompute_DOC.ipint to user aliyun$bob@aliyun.com; --通过ACL授权Bob使用package
+在SQL中使用
+说明 本例中以一个随机的具体IP 1.2.24.2地址为例，您在正常使用时可以用具体表的字段来读入。
+测试使用的SQL代码如下，点击运行即可查看查询结果。
+试用
+select * from ipresource
+WHERE ipint('1.2.24.2') >= start_ip
+AND ipint('1.2.24.2') <= end_ip
+
+通过为保证数据准确性，您可以定期从淘宝IP库获取数据来维护ipresource表。
+
