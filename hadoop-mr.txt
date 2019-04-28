@@ -1,0 +1,1420 @@
+WordCount示例
+更新时间：2019-03-07 16:31:37
+
+编辑 ·
+· 我的收藏
+本页目录
+测试准备
+测试步骤
+预期结果
+代码示例
+本文向您介绍MapReduce WordCount示例程序。
+
+测试准备
+准备好测试程序的Jar包，假设名字为mapreduce-examples.jar，本地存放路径为data\resources。
+创建测试表。
+试用
+create table wc_in (key string, value string);
+create table wc_out(key string, cnt bigint);
+添加测试资源。
+试用
+add jar data\resources\mapreduce-examples.jar -f;
+准备好WordCount测试表和资源。
+使用tunnel导入数据。
+试用
+tunnel upload data wc_in;
+导入wc_in表的数据文件data的内容，如下所示：
+试用
+hello,odps
+测试步骤
+在odpscmd中执行WordCount，如下所示：
+试用
+jar -resources mapreduce-examples.jar -classpath data\resources\mapreduce-examples.jar
+com.aliyun.odps.mapred.open.example.WordCount wc_in wc_out
+预期结果
+作业成功结束后，输出表wc_out中的内容，如下所示：
+试用
++------------+------------+
+| key        | cnt        |
++------------+------------+
+| hello      | 1          |
+| odps       | 1          |
++------------+------------+
+代码示例
+试用
+package com.aliyun.odps.mapred.open.example;
+import java.io.IOException;
+import java.util.Iterator;
+import com.aliyun.odps.data.Record;
+import com.aliyun.odps.data.TableInfo;
+import com.aliyun.odps.mapred.JobClient;
+import com.aliyun.odps.mapred.MapperBase;
+import com.aliyun.odps.mapred.ReducerBase;
+import com.aliyun.odps.mapred.TaskContext;
+import com.aliyun.odps.mapred.conf.JobConf;
+import com.aliyun.odps.mapred.utils.InputUtils;
+import com.aliyun.odps.mapred.utils.OutputUtils;
+import com.aliyun.odps.mapred.utils.SchemaUtils;
+public class WordCount {
+public static class TokenizerMapper extends MapperBase {
+private Record word;
+private Record one;
+@Override
+public void setup(TaskContext context) throws IOException {
+word = context.createMapOutputKeyRecord();
+one = context.createMapOutputValueRecord();
+one.set(new Object[] { 1L });
+System.out.println("TaskID:" + context.getTaskID().toString());
+}
+@Override
+public void map(long recordNum, Record record, TaskContext context)
+throws IOException {
+for (int i = 0; i < record.getColumnCount(); i++) {
+word.set(new Object[] { record.get(i).toString() });
+context.write(word, one);
+}
+}
+}
+/**
+* A combiner class that combines map output by sum them.
+**/
+public static class SumCombiner extends ReducerBase {
+private Record count;
+@Override
+public void setup(TaskContext context) throws IOException {
+count = context.createMapOutputValueRecord();
+}
+//combiner实现的接口和reducer一样，可以立即为在mapper本地执行的一个reduce，作用是减少mapper的输出量
+@Override
+public void reduce(Record key, Iterator<Record> values, TaskContext context)
+throws IOException {
+long c = 0;
+while (values.hasNext()) {
+Record val = values.next();
+c += (Long) val.get(0);
+}
+count.set(0, c);
+context.write(key, count);
+}
+}
+/**
+* A reducer class that just emits the sum of the input values.
+**/
+public static class SumReducer extends ReducerBase {
+private Record result = null;
+@Override
+public void setup(TaskContext context) throws IOException {
+result = context.createOutputRecord();
+}
+@Override
+public void reduce(Record key, Iterator<Record> values, TaskContext context)
+throws IOException {
+long count = 0;
+while (values.hasNext()) {
+Record val = values.next();
+count += (Long) val.get(0);
+}
+result.set(0, key.get(0));
+result.set(1, count);
+context.write(result);
+}
+}
+public static void main(String[] args) throws Exception {
+if (args.length != 2) {
+System.err.println("Usage: WordCount <in_table> <out_table>");
+System.exit(2);
+}
+JobConf job = new JobConf();
+job.setMapperClass(TokenizerMapper.class);
+job.setCombinerClass(SumCombiner.class);
+job.setReducerClass(SumReducer.class);
+//设置mapper中间结果的key和value的schema, mapper的中间结果输出也是record的形式
+job.setMapOutputKeySchema(SchemaUtils.fromString("word:string"));
+job.setMapOutputValueSchema(SchemaUtils.fromString("count:bigint"));
+//设置输入和输出的表信息
+InputUtils.addTable(TableInfo.builder().tableName(args[0]).build(), job);
+OutputUtils.addTable(TableInfo.builder().tableName(args[1]).build(), job);
+JobClient.runJob(job);
+}
+}
+
+MapOnly示例
+更新时间：2018-12-12 10:52:47
+
+编辑 ·
+· 我的收藏
+本页目录
+测试准备
+测试步骤
+预期结果
+代码示例
+对于MapOnly的作业，Map直接将<Key,Value>信息输出到MaxCompute的表中，您只需要指定输出表即可，不需指定Map输出的Key/Value元信息。
+
+测试准备
+准备好测试程序的Jar包，假设名字为mapreduce-examples.jar，本地存放路径为data\resources。
+准备好MapOnly的测试表和资源。
+创建测试表。
+试用
+create table wc_in (key string, value string);
+create table wc_out(key string, cnt bigint);
+添加测试资源。
+试用
+add jar data\resources\mapreduce-examples.jar -f;
+使用tunnel导入数据。
+试用
+tunnel upload data wc_in;
+导入wc_in表的数据文件data的内容，如下所示：
+试用
+hello,odps
+hello,odps
+测试步骤
+在odpscmd中执行MapOnly，如下所示：
+试用
+jar -resources mapreduce-examples.jar -classpath data\resources\mapreduce-examples.jar
+com.aliyun.odps.mapred.open.example.MapOnly wc_in wc_out map
+预期结果
+作业成功结束后，输出表wc_out中的内容，如下所示：
+试用
++------------+------------+
+| key        | cnt        |
++------------+------------+
+| hello      | 1          |
+| hello      | 1          |
++------------+------------+
+代码示例
+试用
+package com.aliyun.odps.mapred.open.example;
+import java.io.IOException;
+import com.aliyun.odps.data.Record;
+import com.aliyun.odps.mapred.JobClient;
+import com.aliyun.odps.mapred.MapperBase;
+import com.aliyun.odps.mapred.conf.JobConf;
+import com.aliyun.odps.mapred.utils.SchemaUtils;
+import com.aliyun.odps.mapred.utils.InputUtils;
+import com.aliyun.odps.mapred.utils.OutputUtils;
+import com.aliyun.odps.data.TableInfo;
+public class MapOnly {
+public static class MapperClass extends MapperBase {
+@Override
+public void setup(TaskContext context) throws IOException {
+  boolean is = context.getJobConf().getBoolean("option.mapper.setup", false);
+  //Main函数在jobconf里设置了option.mapper.setup为true，才会执行下面的逻辑
+  if (is) {
+    Record result = context.createOutputRecord();
+    result.set(0, "setup");
+    result.set(1, 1L);
+    context.write(result);
+  }
+}
+@Override
+public void map(long key, Record record, TaskContext context) throws IOException {
+  boolean is = context.getJobConf().getBoolean("option.mapper.map", false);
+  //Main函数在jobconf里设置了option.mapper.map为true，才会执行下面的逻辑
+  if (is) {
+    Record result = context.createOutputRecord();
+    result.set(0, record.get(0));
+    result.set(1, 1L);
+    context.write(result);
+  }
+}
+@Override
+public void cleanup(TaskContext context) throws IOException {
+  boolean is = context.getJobConf().getBoolean("option.mapper.cleanup", false);
+  //Main函数在jobconf里设置了option.mapper.cleanup为true，才会执行下面的逻辑
+  if (is) {
+    Record result = context.createOutputRecord();
+    result.set(0, "cleanup");
+    result.set(1, 1L);
+    context.write(result);
+  }
+}
+}
+public static void main(String[] args) throws Exception {
+if (args.length != 2 && args.length != 3) {
+  System.err.println("Usage: OnlyMapper <in_table> <out_table> [setup|map|cleanup]");
+  System.exit(2);
+}
+JobConf job = new JobConf();
+job.setMapperClass(MapperClass.class);
+//对于MapOnly的作业，必须显式设置reducer的个数为0
+job.setNumReduceTasks(0);
+//设置输入输出的表信息
+InputUtils.addTable(TableInfo.builder().tableName(args[0]).build(), job);
+OutputUtils.addTable(TableInfo.builder().tableName(args[1]).build(), job);
+if (args.length == 3) {
+  String options = new String(args[2]);
+//jobconf中可以设置自定义的key,value值，在mapper中通过context的getJobConf可以获取到相关的设置
+  if (options.contains("setup")) {
+    job.setBoolean("option.mapper.setup", true);
+  }
+  if (options.contains("map")) {
+    job.setBoolean("option.mapper.map", true);
+  }
+  if (options.contains("cleanup")) {
+    job.setBoolean("option.mapper.cleanup", true);
+  }
+}
+JobClient.runJob(job);
+}
+}
+
+-----------------------
+多路输入输出示例
+
+本页目录
+测试准备
+测试步骤
+预期结果
+代码示例
+测试准备
+准备好测试程序的Jar包，假设名字为mapreduce-examples.jar，本地存放路径为data\resources。
+准备好多路输入输出的测试表和资源。
+创建测试表。
+试用
+create table wc_in1(key string, value string);
+create table wc_in2(key string, value string);
+create table mr_multiinout_out1 (key string, cnt bigint);
+create table mr_multiinout_out2 (key string, cnt bigint) partitioned by (a string, b string);
+alter table mr_multiinout_out2 add partition (a='1', b='1');
+alter table mr_multiinout_out2 add partition (a='2', b='2');
+添加测试资源。
+试用
+add jar data\resources\mapreduce-examples.jar -f;
+使用tunnel导入数据。
+试用
+tunnel upload data1 wc_in1;
+tunnel upload data2 wc_in2;
+导入wc_in1表的数据文件data的内容，如下所示：
+试用
+hello,odps
+导入wc_in2表的数据文件data的内容，如下所示：
+试用
+hello,world
+测试步骤
+在odpscmd中执行MultipleInOut，如下所示：
+试用
+jar -resources mapreduce-examples.jar -classpath data\resources\mapreduce-examples.jar
+com.aliyun.odps.mapred.open.example.MultipleInOut wc_in1,wc_in2 mr_multiinout_out1,mr_multiinout_out2|a=1/b=1|out1,mr_multiinout_out2|a=2/b=2|out2;
+预期结果
+作业成功结束后，mr_multiinout_out1中的内容，如下所示：
+试用
++------------+------------+
+| key        | cnt        |
++------------+------------+
+| default    | 1          |
++------------+------------+
+mr_multiinout_out2中内容，如下所示：
+试用
++--------+------------+---+---+
+| key    | cnt        | a | b |
++--------+------------+---+---+
+| odps   | 1          | 1 | 1 |
+| world  | 1          | 1 | 1 |
+| out1   | 1          | 1 | 1 |
+| hello  | 2          | 2 | 2 |
+| out2   | 1          | 2 | 2 |
++--------+------------+---+---+
+代码示例
+试用
+package com.aliyun.odps.mapred.open.example;
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import com.aliyun.odps.data.Record;
+import com.aliyun.odps.data.TableInfo;
+import com.aliyun.odps.mapred.JobClient;
+import com.aliyun.odps.mapred.MapperBase;
+import com.aliyun.odps.mapred.ReducerBase;
+import com.aliyun.odps.mapred.TaskContext;
+import com.aliyun.odps.mapred.conf.JobConf;
+import com.aliyun.odps.mapred.utils.InputUtils;
+import com.aliyun.odps.mapred.utils.OutputUtils;
+import com.aliyun.odps.mapred.utils.SchemaUtils;
+/**
+ * Multi input & output example.
+ **/
+public class MultipleInOut {
+  public static class TokenizerMapper extends MapperBase {
+    Record word;
+    Record one;
+    @Override
+    public void setup(TaskContext context) throws IOException {
+      word = context.createMapOutputKeyRecord();
+      one = context.createMapOutputValueRecord();
+      one.set(new Object[] { 1L });
+    }
+    @Override
+    public void map(long recordNum, Record record, TaskContext context)
+        throws IOException {
+      for (int i = 0; i < record.getColumnCount(); i++) {
+        word.set(new Object[] { record.get(i).toString() });
+        context.write(word, one);
+      }
+    }
+  }
+  public static class SumReducer extends ReducerBase {
+    private Record result;
+    private Record result1;
+    private Record result2;
+    @Override
+    public void setup(TaskContext context) throws IOException {
+      //对于不同的输出需要创建不同的record，通过label来区分
+      result = context.createOutputRecord();
+      result1 = context.createOutputRecord("out1");
+      result2 = context.createOutputRecord("out2");
+    }
+    @Override
+    public void reduce(Record key, Iterator<Record> values, TaskContext context)
+        throws IOException {
+      long count = 0;
+      while (values.hasNext()) {
+        Record val = values.next();
+        count += (Long) val.get(0);
+      }
+      long mod = count % 3;
+      if (mod == 0) {
+        result.set(0, key.get(0));
+        result.set(1, count);
+        //不指定label，输出的默认(default)输出
+        context.write(result);
+      } else if (mod == 1) {
+        result1.set(0, key.get(0));
+        result1.set(1, count);
+        context.write(result1, "out1");
+      } else {
+        result2.set(0, key.get(0));
+        result2.set(1, count);
+        context.write(result2, "out2");
+      }
+    }
+    @Override
+    public void cleanup(TaskContext context) throws IOException {
+      Record result = context.createOutputRecord();
+      result.set(0, "default");
+      result.set(1, 1L);
+      context.write(result);
+      Record result1 = context.createOutputRecord("out1");
+      result1.set(0, "out1");
+      result1.set(1, 1L);
+      context.write(result1, "out1");
+      Record result2 = context.createOutputRecord("out2");
+      result2.set(0, "out2");
+      result2.set(1, 1L);
+      context.write(result2, "out2");
+    }
+  }
+  //将分区字符串如"ds=1/pt=2"转为map的形式
+  public static LinkedHashMap<String, String> convertPartSpecToMap(
+      String partSpec) {
+    LinkedHashMap<String, String> map = new LinkedHashMap<String, String>();
+    if (partSpec != null && !partSpec.trim().isEmpty()) {
+      String[] parts = partSpec.split("/");
+      for (String part : parts) {
+        String[] ss = part.split("=");
+        if (ss.length != 2) {
+          throw new RuntimeException("ODPS-0730001: error part spec format: "
+              + partSpec);
+        }
+        map.put(ss[0], ss[1]);
+      }
+    }
+    return map;
+  }
+  public static void main(String[] args) throws Exception {
+    String[] inputs = null;
+    String[] outputs = null;
+    if (args.length == 2) {
+      inputs = args[0].split(",");
+      outputs = args[1].split(",");
+    } else {
+      System.err.println("MultipleInOut in... out...");
+      System.exit(1);
+    }
+    JobConf job = new JobConf();
+    job.setMapperClass(TokenizerMapper.class);
+    job.setReducerClass(SumReducer.class);
+    job.setMapOutputKeySchema(SchemaUtils.fromString("word:string"));
+    job.setMapOutputValueSchema(SchemaUtils.fromString("count:bigint"));
+    //解析用户的输入表字符串
+    for (String in : inputs) {
+      String[] ss = in.split("\\|");
+      if (ss.length == 1) {
+        InputUtils.addTable(TableInfo.builder().tableName(ss[0]).build(), job);
+      } else if (ss.length == 2) {
+        LinkedHashMap<String, String> map = convertPartSpecToMap(ss[1]);
+        InputUtils.addTable(TableInfo.builder().tableName(ss[0]).partSpec(map).build(), job);
+      } else {
+        System.err.println("Style of input: " + in + " is not right");
+        System.exit(1);
+      }
+    }
+    //解析用户的输出表字符串
+    for (String out : outputs) {
+      String[] ss = out.split("\\|");
+      if (ss.length == 1) {
+        OutputUtils.addTable(TableInfo.builder().tableName(ss[0]).build(), job);
+      } else if (ss.length == 2) {
+        LinkedHashMap<String, String> map = convertPartSpecToMap(ss[1]);
+        OutputUtils.addTable(TableInfo.builder().tableName(ss[0]).partSpec(map).build(), job);
+      } else if (ss.length == 3) {
+        if (ss[1].isEmpty()) {
+          LinkedHashMap<String, String> map = convertPartSpecToMap(ss[2]);
+          OutputUtils.addTable(TableInfo.builder().tableName(ss[0]).partSpec(map).build(), job);
+        } else {
+          LinkedHashMap<String, String> map = convertPartSpecToMap(ss[1]);
+          OutputUtils.addTable(TableInfo.builder().tableName(ss[0]).partSpec(map)
+              .label(ss[2]).build(), job);
+        }
+      } else {
+        System.err.println("Style of output: " + out + " is not right");
+        System.exit(1);
+      }
+    }
+    JobClient.runJob(job);
+  }
+}
+
+多任务示例
+更新时间：2018-12-12 10:54:39
+
+编辑 ·
+ · 我的收藏
+本页目录
+测试准备
+测试步骤
+预期结果
+代码示例
+测试准备
+准备好测试程序的Jar包，假设名字为mapreduce-examples.jar，本地存放路径为data\resources。
+准备好MultiJobs测试表和资源。
+创建测试表。
+试用
+create table mr_empty (key string, value string);
+create table mr_multijobs_out (value bigint);
+添加测试资源。
+试用
+add table mr_multijobs_out as multijobs_res_table -f;
+add jar data\resources\mapreduce-examples.jar -f;
+测试步骤
+在odpscmd中执行MultiJobs，如下所示：
+试用
+jar -resources mapreduce-examples.jar,multijobs_res_table -classpath data\resources\mapreduce-examples.jar
+ com.aliyun.odps.mapred.open.example.MultiJobs mr_multijobs_out;
+预期结果
+作业成功结束后，输出表mr_multijobs_out中的内容，如下所示：
+试用
++------------+
+| value      |
++------------+
+| 0          |
++------------+
+代码示例
+试用
+    package com.aliyun.odps.mapred.open.example;
+    import java.io.IOException;
+    import java.util.Iterator;
+    import com.aliyun.odps.data.Record;
+    import com.aliyun.odps.data.TableInfo;
+    import com.aliyun.odps.mapred.JobClient;
+    import com.aliyun.odps.mapred.MapperBase;
+    import com.aliyun.odps.mapred.RunningJob;
+    import com.aliyun.odps.mapred.TaskContext;
+    import com.aliyun.odps.mapred.conf.JobConf;
+    import com.aliyun.odps.mapred.utils.InputUtils;
+    import com.aliyun.odps.mapred.utils.OutputUtils;
+    import com.aliyun.odps.mapred.utils.SchemaUtils;
+    /**
+     * MultiJobs
+     *
+     * Running multiple job
+     *
+     **/
+    public class MultiJobs {
+      public static class InitMapper extends MapperBase {
+        @Override
+        public void setup(TaskContext context) throws IOException {
+          Record record = context.createOutputRecord();
+          long v = context.getJobConf().getLong("multijobs.value", 2);
+          record.set(0, v);
+          context.write(record);
+        }
+      }
+      public static class DecreaseMapper extends MapperBase {
+        @Override
+        public void cleanup(TaskContext context) throws IOException {
+          //从JobConf中获取main函数中定义的变量值
+          long expect = context.getJobConf().getLong("multijobs.expect.value", -1);
+          long v = -1;
+          int count = 0;
+          //读取资源表里面的数据，这个表是上一个job的输出表
+          Iterator<Record> iter = context.readResourceTable("multijobs_res_table");
+          while (iter.hasNext()) {
+            Record r = iter.next();
+            v = (Long) r.get(0);
+            if (expect != v) {
+              throw new IOException("expect: " + expect + ", but: " + v);
+            }
+            count++;
+          }
+          if (count != 1) {
+            throw new IOException("res_table should have 1 record, but: " + count);
+          }
+          Record record = context.createOutputRecord();
+          v--;
+          record.set(0, v);
+          context.write(record);
+          //设置counter，counter在作业成功结束后，可以在main函数中获取到
+          context.getCounter("multijobs", "value").setValue(v);
+        }
+      }
+      public static void main(String[] args) throws Exception {
+        if (args.length != 1) {
+          System.err.println("Usage: TestMultiJobs <table>");
+          System.exit(1);
+        }
+        String tbl = args[0];
+        long iterCount = 2;
+        System.err.println("Start to run init job.");
+        JobConf initJob = new JobConf();
+        initJob.setLong("multijobs.value", iterCount);
+        initJob.setMapperClass(InitMapper.class);
+        InputUtils.addTable(TableInfo.builder().tableName("mr_empty").build(), initJob);
+        OutputUtils.addTable(TableInfo.builder().tableName(tbl).build(), initJob);
+        initJob.setMapOutputKeySchema(SchemaUtils.fromString("key:string"));
+        initJob.setMapOutputValueSchema(SchemaUtils.fromString("value:string"));
+        //maponly作业需要显式设置reducer的数目为0
+        initJob.setNumReduceTasks(0);
+        JobClient.runJob(initJob);
+        while (true) {
+          System.err.println("Start to run iter job, count: " + iterCount);
+          JobConf decJob = new JobConf();
+          decJob.setLong("multijobs.expect.value", iterCount);
+          decJob.setMapperClass(DecreaseMapper.class);
+          InputUtils.addTable(TableInfo.builder().tableName("mr_empty").build(), decJob);
+          OutputUtils.addTable(TableInfo.builder().tableName(tbl).build(), decJob);
+          //maponly作业需要显式设置reducer的数目为0
+          decJob.setNumReduceTasks(0);
+          RunningJob rJob = JobClient.runJob(decJob);
+          iterCount--;
+          //如果迭代次数已经达到，则退出循环
+          if (rJob.getCounters().findCounter("multijobs", "value").getValue() == 0) {
+            break;
+          }
+        }
+        if (iterCount != 0) {
+          throw new IOException("Job failed.");
+        }
+      }
+    }
+
+    二次排序示例
+    更新时间：2018-12-12 10:55:21
+
+    编辑 ·
+     · 我的收藏
+    本页目录
+    测试准备
+    测试步骤
+    预期结果
+    代码示例
+    测试准备
+    准备好测试程序的Jar包，假设名字为mapreduce-examples.jar，本地存放路径为data\resources。
+    准备好SecondarySort的测试表和资源。
+    创建测试表。
+    试用
+    create table ss_in(key bigint, value bigint);
+    create table ss_out(key bigint, value bigint)
+    添加测试资源。
+    试用
+    add jar data\resources\mapreduce-examples.jar -f;
+    使用tunnel导入数据。
+    试用
+    tunnel upload data ss_in;
+    导入ss_in表的数据文件data的内容，如下所示：
+    试用
+    1,2
+    2,1
+    1,1
+    2,2
+    测试步骤
+    在odpscmd中执行SecondarySort，如下所示：
+    试用
+    jar -resources mapreduce-examples.jar -classpath data\resources\mapreduce-examples.jar
+    com.aliyun.odps.mapred.open.example.SecondarySort ss_in ss_out;
+    预期结果
+    作业成功结束后，输出表ss_out中的内容，如下所示：
+    试用
+    +------------+------------+
+    | key        | value      |
+    +------------+------------+
+    | 1          | 1          |
+    | 1          | 2          |
+    | 2          | 1          |
+    | 2          | 2          |
+    +------------+------------+
+    代码示例
+    试用
+        package com.aliyun.odps.mapred.open.example;
+        import java.io.IOException;
+        import java.util.Iterator;
+        import com.aliyun.odps.data.Record;
+        import com.aliyun.odps.mapred.JobClient;
+        import com.aliyun.odps.mapred.MapperBase;
+        import com.aliyun.odps.mapred.ReducerBase;
+        import com.aliyun.odps.mapred.TaskContext;
+        import com.aliyun.odps.mapred.conf.JobConf;
+        import com.aliyun.odps.mapred.utils.SchemaUtils;
+        import com.aliyun.odps.mapred.utils.InputUtils;
+        import com.aliyun.odps.mapred.utils.OutputUtils;
+        import com.aliyun.odps.data.TableInfo;
+        /**
+         *
+         * This is an example ODPS Map/Reduce application. It reads the input table that
+         * must contain two integers per record. The output is sorted by the first and
+         * second number and grouped on the first number.
+         *
+         **/
+        public class SecondarySort {
+          /**
+           * Read two integers from each line and generate a key, value pair as ((left,
+           * right), right).
+           **/
+          public static class MapClass extends MapperBase {
+            private Record key;
+            private Record value;
+            @Override
+            public void setup(TaskContext context) throws IOException {
+              key = context.createMapOutputKeyRecord();
+              value = context.createMapOutputValueRecord();
+            }
+            @Override
+            public void map(long recordNum, Record record, TaskContext context)
+                throws IOException {
+              long left = 0;
+              long right = 0;
+              if (record.getColumnCount() > 0) {
+                left = (Long) record.get(0);
+                if (record.getColumnCount() > 1) {
+                  right = (Long) record.get(1);
+                }
+                key.set(new Object[] { (Long) left, (Long) right });
+                value.set(new Object[] { (Long) right });
+                context.write(key, value);
+              }
+            }
+          }
+          /**
+           * A reducer class that just emits the sum of the input values.
+           **/
+          public static class ReduceClass extends ReducerBase {
+            private Record result = null;
+            @Override
+            public void setup(TaskContext context) throws IOException {
+              result = context.createOutputRecord();
+            }
+            @Override
+            public void reduce(Record key, Iterator<Record> values, TaskContext context)
+                throws IOException {
+              result.set(0, key.get(0));
+              while (values.hasNext()) {
+                Record value = values.next();
+                result.set(1, value.get(0));
+                context.write(result);
+              }
+            }
+          }
+          public static void main(String[] args) throws Exception {
+            if (args.length != 2) {
+              System.err.println("Usage: secondarysrot <in> <out>");
+              System.exit(2);
+            }
+            JobConf job = new JobConf();
+            job.setMapperClass(MapClass.class);
+            job.setReducerClass(ReduceClass.class);
+            //将多列设置为Key
+            //compare first and second parts of the pair
+            job.setOutputKeySortColumns(new String[] { "i1", "i2" });
+            //partition based on the first part of the pair
+            job.setPartitionColumns(new String[] { "i1" });
+            //grouping comparator based on the first part of the pair
+            job.setOutputGroupingColumns(new String[] { "i1" });
+            //the map output is LongPair, Long
+            job.setMapOutputKeySchema(SchemaUtils.fromString("i1:bigint,i2:bigint"));
+            job.setMapOutputValueSchema(SchemaUtils.fromString("i2x:bigint"));
+            InputUtils.addTable(TableInfo.builder().tableName(args[0]).build(), job);
+            OutputUtils.addTable(TableInfo.builder().tableName(args[1]).build(), job);
+            JobClient.runJob(job);
+            System.exit(0);
+          }
+        }
+
+
+
+        使用资源示例
+        更新时间：2018-12-12 10:56:02
+
+        编辑 ·
+         · 我的收藏
+        本页目录
+        测试准备
+        测试步骤
+        预期结果
+        代码示例
+        测试准备
+        准备好测试程序的Jar包，假设名字为mapreduce-examples.jar，本地存放路径为data\resources。
+        准备好测试表和资源。
+        创建测试表。
+        试用
+        create table mr_upload_src(key bigint, value string);
+        添加测试资源。
+        试用
+        add jar data\resources\mapreduce-examples.jar -f;
+        add file data\resources\import.txt -f;
+        import.txt的数据内容，如下所示：
+        试用
+        1000,odps
+        测试步骤
+        在odpscmd中执行Upload，如下所示：
+        试用
+        jar -resources mapreduce-examples.jar,import.txt -classpath data\resources\mapreduce-examples.jar
+        com.aliyun.odps.mapred.open.example.Upload import.txt mr_upload_src;
+        预期结果
+        作业成功结束后，输出表mr_upload_src中的内容，如下所示：
+        试用
+        +------------+------------+
+        | key        | value      |
+        +------------+------------+
+        | 1000       | odps       |
+        +------------+------------+
+        代码示例
+        试用
+            package com.aliyun.odps.mapred.open.example;
+            import java.io.BufferedInputStream;
+            import java.io.FileNotFoundException;
+            import java.io.IOException;
+            import com.aliyun.odps.data.Record;
+            import com.aliyun.odps.data.TableInfo;
+            import com.aliyun.odps.mapred.JobClient;
+            import com.aliyun.odps.mapred.MapperBase;
+            import com.aliyun.odps.mapred.TaskContext;
+            import com.aliyun.odps.mapred.conf.JobConf;
+            import com.aliyun.odps.mapred.utils.InputUtils;
+            import com.aliyun.odps.mapred.utils.OutputUtils;
+            import com.aliyun.odps.mapred.utils.SchemaUtils;
+            /**
+             * Upload
+             *
+             * Import data from text file into table
+             *
+             **/
+            public class Upload {
+              public static class UploadMapper extends MapperBase {
+                @Override
+                public void setup(TaskContext context) throws IOException {
+                  Record record = context.createOutputRecord();
+                  StringBuilder importdata = new StringBuilder();
+                  BufferedInputStream bufferedInput = null;
+                  try {
+                    byte[] buffer = new byte[1024];
+                    int bytesRead = 0;
+                    String filename = context.getJobConf().get("import.filename");
+                    bufferedInput = context.readResourceFileAsStream(filename);
+                    while ((bytesRead = bufferedInput.read(buffer)) != -1) {
+                      String chunk = new String(buffer, 0, bytesRead);
+                      importdata.append(chunk);
+                    }
+                    String lines[] = importdata.toString().split("\n");
+                    for (int i = 0; i < lines.length; i++) {
+                      String[] ss = lines[i].split(",");
+                      record.set(0, Long.parseLong(ss[0].trim()));
+                      record.set(1, ss[1].trim());
+                      context.write(record);
+                    }
+                  } catch (FileNotFoundException ex) {
+                    throw new IOException(ex);
+                  } catch (IOException ex) {
+                    throw new IOException(ex);
+                  } finally {
+                  }
+                }
+                @Override
+                public void map(long recordNum, Record record, TaskContext context)
+                    throws IOException {
+                }
+              }
+              public static void main(String[] args) throws Exception {
+                if (args.length != 2) {
+                  System.err.println("Usage: Upload <import_txt> <out_table>");
+                  System.exit(2);
+                }
+                JobConf job = new JobConf();
+                job.setMapperClass(UploadMapper.class);
+                //设置资源名字, 可以在map中通过jobconf获取到
+                job.set("import.filename", args[0]);
+                //maponly作业需要显式设置reducer的数目为0
+                job.setNumReduceTasks(0);
+                job.setMapOutputKeySchema(SchemaUtils.fromString("key:bigint"));
+                job.setMapOutputValueSchema(SchemaUtils.fromString("value:string"));
+                InputUtils.addTable(TableInfo.builder().tableName("mr_empty").build(), job);
+                OutputUtils.addTable(TableInfo.builder().tableName(args[1]).build(), job);
+                JobClient.runJob(job);
+              }
+            }
+        实际上，您可通过以下两种方式设置JobConf。
+
+        通过SDK中JobConf的接口设置，本示例即是通过此方法实现。
+        在Jar命令行中，通过–conf参数指定新的JobConf文件。
+
+        使用Counter示例
+        更新时间：2018-12-12 10:57:04
+
+        编辑 ·
+         · 我的收藏
+        本页目录
+        测试准备
+        测试步骤
+        预期结果
+        代码示例
+        测试准备
+        准备好测试程序的Jar包，假设名字为mapreduce-examples.jar，本地存放路径为data\resources。
+        准备好UserDefinedCounters测试表和资源。
+        创建测试表。
+        试用
+        create table wc_in (key string, value string);
+        create table wc_out(key string, cnt bigint);
+        添加测试资源。
+        试用
+        add jar data\resources\mapreduce-examples.jar -f;
+        使用tunnel导入数据。
+        试用
+        tunnel upload data wc_in;
+        导入wc_in表的数据文件data的内容，如下所示：
+        试用
+        hello,odps
+        测试步骤
+        在odpscmd中执行UserDefinedCounters，如下所示：
+        试用
+        jar -resources mapreduce-examples.jar -classpath data\resources\mapreduce-examples.jar
+        com.aliyun.odps.mapred.open.example.UserDefinedCounters wc_in wc_out
+        预期结果
+        作业成功结束后，可以看到Counters的输出，如下所示：
+        试用
+        Counters: 3
+        com.aliyun.odps.mapred.open.example.UserDefinedCounters$MyCounter
+        MAP_TASKS=1
+        REDUCE_TASKS=1
+        TOTAL_TASKS=2
+        输出表wc_out中的内容，如下所示：
+        试用
+        +------------+------------+
+        | key        | cnt        |
+        +------------+------------+
+        | hello      | 1          |
+        | odps       | 1          |
+        +------------+------------+
+        代码示例
+        试用
+            package com.aliyun.odps.mapred.open.example;
+            import java.io.IOException;
+            import java.util.Iterator;
+            import com.aliyun.odps.counter.Counter;
+            import com.aliyun.odps.counter.Counters;
+            import com.aliyun.odps.data.Record;
+            import com.aliyun.odps.mapred.JobClient;
+            import com.aliyun.odps.mapred.MapperBase;
+            import com.aliyun.odps.mapred.ReducerBase;
+            import com.aliyun.odps.mapred.RunningJob;
+            import com.aliyun.odps.mapred.conf.JobConf;
+            import com.aliyun.odps.mapred.utils.SchemaUtils;
+            import com.aliyun.odps.mapred.utils.InputUtils;
+            import com.aliyun.odps.mapred.utils.OutputUtils;
+            import com.aliyun.odps.data.TableInfo;
+            /**
+             *
+             * User Defined Counters
+             *
+             **/
+            public class UserDefinedCounters {
+              enum MyCounter {
+                TOTAL_TASKS, MAP_TASKS, REDUCE_TASKS
+              }
+              public static class TokenizerMapper extends MapperBase {
+                private Record word;
+                private Record one;
+                @Override
+                public void setup(TaskContext context) throws IOException {
+                  super.setup(context);
+                  Counter map_tasks = context.getCounter(MyCounter.MAP_TASKS);
+                  Counter total_tasks = context.getCounter(MyCounter.TOTAL_TASKS);
+                  map_tasks.increment(1);
+                  total_tasks.increment(1);
+                  word = context.createMapOutputKeyRecord();
+                  one = context.createMapOutputValueRecord();
+                  one.set(new Object[] { 1L });
+                }
+                @Override
+                public void map(long recordNum, Record record, TaskContext context)
+                    throws IOException {
+                  for (int i = 0; i < record.getColumnCount(); i++) {
+                    word.set(new Object[] { record.get(i).toString() });
+                    context.write(word, one);
+                  }
+                }
+              }
+              public static class SumReducer extends ReducerBase {
+                private Record result = null;
+                @Override
+                public void setup(TaskContext context) throws IOException {
+                  result = context.createOutputRecord();
+                  Counter reduce_tasks = context.getCounter(MyCounter.REDUCE_TASKS);
+                  Counter total_tasks = context.getCounter(MyCounter.TOTAL_TASKS);
+                  reduce_tasks.increment(1);
+                  total_tasks.increment(1);
+                }
+                @Override
+                public void reduce(Record key, Iterator<Record> values, TaskContext context)
+                    throws IOException {
+                  long count = 0;
+                  while (values.hasNext()) {
+                    Record val = values.next();
+                    count += (Long) val.get(0);
+                  }
+                  result.set(0, key.get(0));
+                  result.set(1, count);
+                  context.write(result);
+                }
+              }
+              public static void main(String[] args) throws Exception {
+                if (args.length != 2) {
+                  System.err
+                      .println("Usage: TestUserDefinedCounters <in_table> <out_table>");
+                  System.exit(2);
+                }
+                JobConf job = new JobConf();
+                job.setMapperClass(TokenizerMapper.class);
+                job.setReducerClass(SumReducer.class);
+                job.setMapOutputKeySchema(SchemaUtils.fromString("word:string"));
+                job.setMapOutputValueSchema(SchemaUtils.fromString("count:bigint"));
+                InputUtils.addTable(TableInfo.builder().tableName(args[0]).build(), job);
+                OutputUtils.addTable(TableInfo.builder().tableName(args[1]).build(), job);
+                RunningJob rJob = JobClient.runJob(job);
+                //在作业成功结束后，可以获取到job里面的自定义counter的值
+                Counters counters = rJob.getCounters();
+                long m = counters.findCounter(MyCounter.MAP_TASKS).getValue();
+                long r = counters.findCounter(MyCounter.REDUCE_TASKS).getValue();
+                long total = counters.findCounter(MyCounter.TOTAL_TASKS).getValue();
+                System.exit(0);
+              }
+            }
+
+
+            rep示例
+            更新时间：2018-12-12 15:41:37
+
+            编辑 ·
+             · 我的收藏
+            本页目录
+            测试准备
+            测试步骤
+            预期结果
+            代码示例
+            测试准备
+            准备好测试程序的Jar包，假设名字为mapreduce-examples.jar，本地存放路径为data\resources。
+            准备好Grep测试表和资源。
+            创建测试表。
+            试用
+            create table mr_src(key string, value string);
+            create table mr_grep_tmp (key string, cnt bigint);
+            create table mr_grep_out (key bigint, value string);
+            添加测试资源。
+            试用
+            add jar data\resources\mapreduce-examples.jar -f;
+            使用tunnel导入数据。
+            试用
+            tunnel upload data mr_src;
+            导入mr_src表的数据文件data的内容，如下所示：
+            试用
+             hello,odps
+             hello,world
+            测试步骤
+            在odpscmd中执行Grep，如下所示：
+            试用
+            jar -resources mapreduce-examples.jar -classpath data\resources\mapreduce-examples.jar
+            com.aliyun.odps.mapred.open.example.Grep mr_src mr_grep_tmp mr_grep_out hello;
+            预期结果
+            作业成功结束后，输出表mr_grep_out中的内容，如下所示：
+            试用
+            +------------+------------+
+            | key        | value      |
+            +------------+------------+
+            | 2          | hello      |
+            +------------+------------+
+            代码示例
+            试用
+                package com.aliyun.odps.mapred.open.example;
+                import java.io.IOException;
+                import java.util.Iterator;
+                import java.util.regex.Matcher;
+                import java.util.regex.Pattern;
+                import com.aliyun.odps.data.Record;
+                import com.aliyun.odps.data.TableInfo;
+                import com.aliyun.odps.mapred.JobClient;
+                import com.aliyun.odps.mapred.Mapper;
+                import com.aliyun.odps.mapred.MapperBase;
+                import com.aliyun.odps.mapred.ReducerBase;
+                import com.aliyun.odps.mapred.RunningJob;
+                import com.aliyun.odps.mapred.TaskContext;
+                import com.aliyun.odps.mapred.conf.JobConf;
+                import com.aliyun.odps.mapred.utils.InputUtils;
+                import com.aliyun.odps.mapred.utils.OutputUtils;
+                import com.aliyun.odps.mapred.utils.SchemaUtils;
+                /**
+                 *
+                 * Extracts matching regexs from input files and counts them.
+                 *
+                 **/
+                public class Grep {
+                  /**
+                   * RegexMapper
+                   **/
+                  public class RegexMapper extends MapperBase {
+                    private Pattern pattern;
+                    private int group;
+                    private Record word;
+                    private Record one;
+                    @Override
+                    public void setup(TaskContext context) throws IOException {
+                      JobConf job = (JobConf) context.getJobConf();
+                      pattern = Pattern.compile(job.get("mapred.mapper.regex"));
+                      group = job.getInt("mapred.mapper.regex.group", 0);
+                      word = context.createMapOutputKeyRecord();
+                      one = context.createMapOutputValueRecord();
+                      one.set(new Object[] { 1L });
+                    }
+                    @Override
+                    public void map(long recordNum, Record record, TaskContext context) throws IOException {
+                      for (int i = 0; i < record.getColumnCount(); ++i) {
+                        String text = record.get(i).toString();
+                        Matcher matcher = pattern.matcher(text);
+                        while (matcher.find()) {
+                          word.set(new Object[] { matcher.group(group) });
+                          context.write(word, one);
+                        }
+                      }
+                    }
+                  }
+                  /**
+                   * LongSumReducer
+                   **/
+                  public class LongSumReducer extends ReducerBase {
+                    private Record result = null;
+                    @Override
+                    public void setup(TaskContext context) throws IOException {
+                      result = context.createOutputRecord();
+                    }
+                    @Override
+                    public void reduce(Record key, Iterator<Record> values, TaskContext context) throws IOException {
+                      long count = 0;
+                      while (values.hasNext()) {
+                        Record val = values.next();
+                        count += (Long) val.get(0);
+                      }
+                      result.set(0, key.get(0));
+                      result.set(1, count);
+                      context.write(result);
+                    }
+                  }
+                  /**
+                   * A {@link Mapper} that swaps keys and values.
+                   **/
+                  public class InverseMapper extends MapperBase {
+                    private Record word;
+                    private Record count;
+                    @Override
+                    public void setup(TaskContext context) throws IOException {
+                      word = context.createMapOutputValueRecord();
+                      count = context.createMapOutputKeyRecord();
+                    }
+                    /**
+                     * The inverse function. Input keys and values are swapped.
+                     **/
+                    @Override
+                    public void map(long recordNum, Record record, TaskContext context) throws IOException {
+                      word.set(new Object[] { record.get(0).toString() });
+                      count.set(new Object[] { (Long) record.get(1) });
+                      context.write(count, word);
+                    }
+                  }
+                  /**
+                   * IdentityReducer
+                   **/
+                  public class IdentityReducer extends ReducerBase {
+                    private Record result = null;
+                    @Override
+                    public void setup(TaskContext context) throws IOException {
+                      result = context.createOutputRecord();
+                    }
+                    /** Writes all keys and values directly to output. **/
+                    @Override
+                    public void reduce(Record key, Iterator<Record> values, TaskContext context) throws IOException {
+                      result.set(0, key.get(0));
+                      while (values.hasNext()) {
+                        Record val = values.next();
+                        result.set(1, val.get(0));
+                        context.write(result);
+                      }
+                    }
+                  }
+                  public static void main(String[] args) throws Exception {
+                    if (args.length < 4) {
+                      System.err.println("Grep <inDir> <tmpDir> <outDir> <regex> [<group>]");
+                      System.exit(2);
+                    }
+                    JobConf grepJob = new JobConf();
+                    grepJob.setMapperClass(RegexMapper.class);
+                    grepJob.setReducerClass(LongSumReducer.class);
+                    grepJob.setMapOutputKeySchema(SchemaUtils.fromString("word:string"));
+                    grepJob.setMapOutputValueSchema(SchemaUtils.fromString("count:bigint"));
+                    InputUtils.addTable(TableInfo.builder().tableName(args[0]).build(), grepJob);
+                    OutputUtils.addTable(TableInfo.builder().tableName(args[1]).build(), grepJob);
+                    //设置grepJob的grep的正则表达式
+                    grepJob.set("mapred.mapper.regex", args[3]);
+                    if (args.length == 5) {
+                      grepJob.set("mapred.mapper.regex.group", args[4]);
+                    }
+                    @SuppressWarnings("unused")
+                    RunningJob rjGrep = JobClient.runJob(grepJob);
+                    //grepJob的输出作为sortJob的输入
+                    JobConf sortJob = new JobConf();
+                    sortJob.setMapperClass(InverseMapper.class);
+                    sortJob.setReducerClass(IdentityReducer.class);
+                    sortJob.setMapOutputKeySchema(SchemaUtils.fromString("count:bigint"));
+                    sortJob.setMapOutputValueSchema(SchemaUtils.fromString("word:string"));
+                    InputUtils.addTable(TableInfo.builder().tableName(args[1]).build(), sortJob);
+                    OutputUtils.addTable(TableInfo.builder().tableName(args[2]).build(), sortJob);
+                    sortJob.setNumReduceTasks(1); // write a single file
+                    sortJob.setOutputKeySortColumns(new String[] { "count" });
+                    @SuppressWarnings("unused")
+                    RunningJob rjSort = JobClient.runJob(sortJob);
+                  }
+                }
+
+
+
+
+          Join示例
+          更新时间：2018-12-12 10:58:20
+
+          编辑 ·
+           · 我的收藏
+          本页目录
+          测试准备
+          测试步骤
+          预期结果
+          代码示例
+          MaxCompute MapReduce框架自身并不支持Join逻辑，但您可以在自己的Map/Reduce函数中实现数据的Join，当然这需要您做一些额外的工作。
+
+          假设需要Join两张表mr_Join_src1(key bigint, value string) 和mr_Join_src2(key bigint, value string)，输出表是mr_Join_out(key bigint, value1 string, value2 string)，其中value1是mr_Join_src1的value值，value2是 mr_Join_src2的value 值。
+
+          测试准备
+          准备好测试程序的Jar包，假设名字为mapreduce-examples.jar，本地存放路径为data\resources。
+          准备好Join的测试表和资源。
+          创建测试表。
+          试用
+          create table mr_Join_src1(key bigint, value string);
+          create table mr_Join_src2(key bigint, value string);
+          create table mr_Join_out(key bigint, value1 string, value2 string);
+          添加测试资源。
+          试用
+          add jar data\resources\mapreduce-examples.jar -f;
+          使用tunnel导入数据。
+          试用
+          tunnel upload data1 mr_Join_src1;
+          tunnel upload data2 mr_Join_src2;
+          导入mr_Join_src1数据的内容，如下所示：
+          试用
+           1,hello
+           2,odps
+          导入mr_Join_src2数据的内容，如下所示：
+          试用
+          1,odps
+          3,hello
+          4,odps
+          测试步骤
+          在odpscmd中执行Join，如下所示：
+          试用
+          jar -resources mapreduce-examples.jar -classpath data\resources\mapreduce-examples.jar
+          com.aliyun.odps.mapred.open.example.Join mr_Join_src1 mr_Join_src2 mr_Join_out;
+          预期结果
+          作业成功结束后，输出表mr_Join_out中的内容，如下所示：
+          试用
+          +------------+------------+------------+
+          | key        | value1     | value2     |
+          +------------+------------+------------+
+          |  1         | hello      |  odps      |
+          +------------+------------+------------+
+          代码示例
+          试用
+              package com.aliyun.odps.mapred.open.example;
+              import java.io.IOException;
+              import java.util.ArrayList;
+              import java.util.Iterator;
+              import java.util.List;
+              import org.apache.commons.logging.Log;
+              import org.apache.commons.logging.LogFactory;
+              import com.aliyun.odps.data.Record;
+              import com.aliyun.odps.data.TableInfo;
+              import com.aliyun.odps.mapred.JobClient;
+              import com.aliyun.odps.mapred.MapperBase;
+              import com.aliyun.odps.mapred.ReducerBase;
+              import com.aliyun.odps.mapred.conf.JobConf;
+              import com.aliyun.odps.mapred.utils.InputUtils;
+              import com.aliyun.odps.mapred.utils.OutputUtils;
+              import com.aliyun.odps.mapred.utils.SchemaUtils;
+              /**
+               * Join, mr_Join_src1/mr_Join_src2(key bigint, value string), mr_Join_out(key
+               * bigint, value1 string, value2 string)
+               *
+               */
+              public class Join {
+                public static final Log LOG = LogFactory.getLog(Join.class);
+                public static class JoinMapper extends MapperBase {
+                  private Record mapkey;
+                  private Record mapvalue;
+                  private long tag;
+                  @Override
+                  public void setup(TaskContext context) throws IOException {
+                    mapkey = context.createMapOutputKeyRecord();
+                    mapvalue = context.createMapOutputValueRecord();
+                    tag = context.getInputTableInfo().getLabel().equals("left") ? 0 : 1;
+                  }
+                  @Override
+                  public void map(long key, Record record, TaskContext context)
+                      throws IOException {
+                    mapkey.set(0, record.get(0));
+                    mapkey.set(1, tag);
+                    for (int i = 1; i < record.getColumnCount(); i++) {
+                      mapvalue.set(i - 1, record.get(i));
+                    }
+                    context.write(mapkey, mapvalue);
+                  }
+                }
+                public static class JoinReducer extends ReducerBase {
+                  private Record result = null;
+                  @Override
+                  public void setup(TaskContext context) throws IOException {
+                    result = context.createOutputRecord();
+                  }
+                  //reduce函数每次的输入会是key相同的所有record
+                  @Override
+                  public void reduce(Record key, Iterator<Record> values, TaskContext context)
+                      throws IOException {
+                    long k = key.getBigint(0);
+                    List<Object[]> leftValues = new ArrayList<Object[]>();
+                    //由于设置了outputKeySortColumn是key + tag组合，这样可以保证reduce函数的输入record中，left表的record数据在前面
+                    while (values.hasNext()) {
+                      Record value = values.next();
+                      long tag = (Long) key.get(1);
+                      //左表的数据会先缓存到内存中
+                      if (tag == 0) {
+                        leftValues.add(value.toArray().clone());
+                      } else {
+                        //碰到右表的数据，会与所有左表的数据进行join输出，此时左表的数据已经全部在内存里了
+                   //这个实现只是一个功能展示，性能比较低，不建议用于实际生产
+                        for (Object[] leftValue : leftValues) {
+                          int index = 0;
+                          result.set(index++, k);
+                          for (int i = 0; i < leftValue.length; i++) {
+                            result.set(index++, leftValue[i]);
+                          }
+                          for (int i = 0; i < value.getColumnCount(); i++) {
+                            result.set(index++, value.get(i));
+                          }
+                          context.write(result);
+                        }
+                      }
+                    }
+                  }
+                }
+                public static void main(String[] args) throws Exception {
+                  if (args.length != 3) {
+                    System.err.println("Usage: Join <input table1> <input table2> <out>");
+                    System.exit(2);
+                  }
+                  JobConf job = new JobConf();
+                  job.setMapperClass(JoinMapper.class);
+                  job.setReducerClass(JoinReducer.class);
+                  job.setMapOutputKeySchema(SchemaUtils.fromString("key:bigint,tag:bigint"));
+                  job.setMapOutputValueSchema(SchemaUtils.fromString("value:string"));
+                  job.setPartitionColumns(new String[]{"key"});
+                  job.setOutputKeySortColumns(new String[]{"key", "tag"});
+                  job.setOutputGroupingColumns(new String[]{"key"});
+                  job.setNumReduceTasks(1);
+                  InputUtils.addTable(TableInfo.builder().tableName(args[0]).label("left").build(), job);
+                  InputUtils.addTable(TableInfo.builder().tableName(args[1]).label("right").build(), job);
+                  OutputUtils.addTable(TableInfo.builder().tableName(args[2]).build(), job);
+                  JobClient.runJob(job);
+                }
+              }
+
+Sleep示例
+更新时间：2018-12-12 10:59:08
+
+编辑 ·
+ · 我的收藏
+本页目录
+测试准备
+测试步骤
+预期结果
+代码示例
+测试准备
+准备好测试程序的Jar包，假设名字为mapreduce-examples.jar，本地存放路径为data\resources。
+准备好SleepJob的测试资源。
+试用
+add jar data\resources\mapreduce-examples.jar -f;
+测试步骤
+在odpscmd中执行Sleep，如下所示：
+试用
+  jar -resources mapreduce-examples.jar -classpath data\resources\mapreduce-examples.jar
+  com.aliyun.odps.mapred.open.example.Sleep 10;
+  jar -resources mapreduce-examples.jar -classpath data\resources\mapreduce-examples.jar
+  com.aliyun.odps.mapred.open.example.Sleep 100;
+预期结果
+作业成功结束后，对比不同Sleep时长的运行时间，可以看到效果。
+
+代码示例
+试用
+package com.aliyun.odps.mapred.open.example;
+import java.io.IOException;
+import com.aliyun.odps.mapred.JobClient;
+import com.aliyun.odps.mapred.MapperBase;
+import com.aliyun.odps.mapred.conf.JobConf;
+public class Sleep {
+  private static final String SLEEP_SECS = "sleep.secs";
+  public static class MapperClass extends MapperBase {
+    //由于没有输入数据，map函数不会被执行，相关逻辑只能写在setup中
+    @Override
+    public void setup(TaskContext context) throws IOException {
+      try {
+        //获取jobconf中设置的sleep秒数，进行sleep
+        Thread.sleep(context.getJobConf().getInt(SLEEP_SECS, 1) * 1000);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+  public static void main(String[] args) throws Exception {
+    if (args.length != 1) {
+      System.err.println("Usage: Sleep <sleep_secs>");
+      System.exit(-1);
+    }
+    JobConf job = new JobConf();
+    job.setMapperClass(MapperClass.class);
+    //这个实例也是一个MapOnly的，所以需要设置reducer个数为0
+    job.setNumReduceTasks(0);
+    //由于没有输入表，mapper的个数需要由用户明确进行指定
+    job.setNumMapTasks(1);
+    job.set(SLEEP_SECS, args[0]);
+    JobClient.runJob(job);
+  }
+}

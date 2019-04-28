@@ -1,0 +1,294 @@
+大胃王活动数据统计
+
+1、产品构成：
+（1）输入手机号码：新用户引导至领券页面，老用户开始以下流程
+（2）年度账单对比：用户年度消费金额总额，打败了XX%的网友。可截止至2015年12月31日
+                  “吃”订单和“非吃”订单的比例
+                  （如能整理最好，如不能整理放弃），
+（3）前台显示个人用户在平台上消费金额top10的SKU。显示单位为“个”“瓶”“盒”等
+（4）5个类目的占比分析：以饼图形式展现运营销售top5的类目：优选水果、乳制品、卤味熟食、休闲零食、饮料酒水、其他
+（5）提示领取优惠券的方式：采用定码功能，开通此项目全国通用的专属定码，如“猴年通吃”领优惠券
+4、需求：
+（1）需要数据部门提供以上涉及的数据支持
+（2）需要开放数据接口
+（3）需要产品及技术同事进行产品设计和开发
+（4）需要设计部同事配合进行设计
+     以上，如果各位觉得哪里有问题我们及时沟通、修正。
+5、所需工作时间：
+数据同学：28号
+设计同学：28号、29号
+预计2月5日可上线传播
+
+
+
+需求1：
+CREATE TABLE `t_cust_amt_rank` (
+  `cust_id` int(11) DEFAULT NULL COMMENT '客户ID',
+  `mobile` varchar(15) DEFAULT NULL COMMENT '手机号',
+  `payable_amt` decimal(32,2) DEFAULT NULL COMMENT '应付金额',
+  `real_amt` decimal(32,2) DEFAULT NULL COMMENT '实付金额',
+  `rank` bigint(21) DEFAULT NULL COMMENT '根据应付金额排名',
+  `beat_people_rate` decimal(31,10) DEFAULT NULL COMMENT '打败人数占比'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='用户金额排名(统计2015消费金额)'
+
+需求2：
+CREATE TABLE `t_cust_goods_amt_rank` (
+  `cust_id` int(11) DEFAULT NULL COMMENT '客户ID',
+  `mobile` varchar(15) DEFAULT NULL COMMENT '手机号',
+  `goods_id` int(11) NOT NULL COMMENT '商品ID',
+  `goods_name` varchar(64) NOT NULL COMMENT '商品名称',
+  `goods_sell_amt` decimal(39,2) DEFAULT NULL COMMENT '消费金额',
+  `rank` bigint(63) DEFAULT NULL COMMENT '排名'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='用户购买商品top10'
+
+需求3
+CREATE TABLE `t_cust_category_rate` (
+  `cust_id` int(11) DEFAULT NULL COMMENT '客户ID',
+  `mobile` varchar(15) DEFAULT NULL COMMENT '手机号',
+  `fruits_category` varchar(64) NOT NULL COMMENT '水果类别',
+  `fruits_rate` decimal(39,2) DEFAULT NULL COMMENT '水果类目占比',
+  `dairy_category` varchar(64) NOT NULL COMMENT '乳制品类目',
+  `dairy_rate` decimal(39,2) DEFAULT NULL COMMENT '乳制品类目占比',
+  `food_category` varchar(64) NOT NULL COMMENT '卤味熟食类目',
+  `food_rate` decimal(39,2) DEFAULT NULL COMMENT '卤味熟食类目占比',
+  `snack_category` varchar(64) NOT NULL COMMENT '休闲零食类目',
+  `snack_rate` decimal(39,2) DEFAULT NULL COMMENT '休闲零食类目占比',
+  `drink_category` varchar(64) NOT NULL COMMENT '饮料酒水类目',
+  `drink_rate` decimal(39,2) DEFAULT NULL COMMENT '饮料酒水类目占比',
+  `other_category` varchar(64) NOT NULL COMMENT '其他类目',
+  `other_rate` decimal(39,2) DEFAULT NULL COMMENT '其他类目占比',
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='用户购买商品分类占比';
+
+-------------------------
+
+2015购买总人数：3379535
+需求1
+SET @index=0;
+CREATE TABLE dw.tmp_cust_amt_rank AS
+SELECT t3.cust_id,t3.mobile,t3.payable_amount,t3.real_amount,@index:=(@index+1) AS rank  FROM (
+SELECT t1.cust_id,t2.mobile,t1.payable_amount,t1.real_amount
+FROM (
+SELECT cust_id,SUM(PAYABLE_AMOUNT) AS payable_amount,
+SUM(REAL_AMOUNT) AS real_amount
+FROM dw.`t_order` WHERE order_date >= '2015-01-01' AND  order_date<='2015-12-31'
+AND ORDER_STATUS=5 GROUP BY cust_id
+) t1 INNER JOIN (SELECT t.`CUST_ID`,t.`MOBILE` FROM dw.`t_customer` t WHERE t.`MOBILE` IS NOT NULL) t2
+ON t1.cust_id=t2.cust_id
+) t3 ORDER BY t3.payable_amount DESC;
+--产出表
+CREATE TABLE dw.t_cust_amt_rank AS
+SELECT cust_id,mobile,payable_amount AS payable_amt,real_amount AS real_amt,rank,
+ROUND((3379535-rank)/3379535,10) AS beat_people_rate FROM dw.tmp_cust_amt_rank;
+
+select * from dw.t_cust_amt_rank;
+----------------------------------------------------------------------------------------------------------
+需求2
+CREATE TABLE dw.tmp_cust_goods_amt
+SELECT t1.CUST_ID,t2.GOODS_ID,SUM(SELL_PRICE*SELL_NUM) AS goods_sell_amt FROM (
+SELECT * FROM dw.`t_order`
+WHERE
+ORDER_STATUS=5 AND
+order_date >= '2015-01-01' AND  order_date<='2015-12-31'
+) t1 INNER JOIN dw.`t_order_goods` t2 ON t1.`ORDER_ID`=t2.`ORDER_ID`
+AND t2.GOODS_STATUS<>1
+GROUP BY t1.`CUST_ID`,t2.`GOODS_ID`;
+
+CREATE TABLE dw.tmp_cust_goods_amt_rank
+SELECT
+cust_id,
+goods_id,
+goods_sell_amt,
+rank            #排名
+FROM
+(
+SELECT
+cust_id,
+goods_id,
+goods_sell_amt,
+IF (@cust_id = oe.cust_id  , @rank :=@rank + 1 ,@rank := 1) AS rank, #top
+@cust_id := oe.cust_id
+FROM
+(
+SELECT cust_id,goods_id,ROUND(goods_sell_amt,2) AS goods_sell_amt  FROM
+dw.tmp_cust_goods_amt ORDER BY cust_id,goods_sell_amt DESC
+)oe,
+(
+SELECT
+@cust_id := NULL ,
+@rank := 0
+) rk
+)m
+WHERE m.rank <= 10;
+--产出表
+CREATE TABLE dw.t_cust_goods_amt_rank AS
+SELECT t1.`cust_id`,t2.`mobile`,t1.`goods_id`,t3.`goods_name`,t1.`goods_sell_amt`,t1.`rank`
+FROM dw.tmp_cust_goods_amt_rank t1 INNER JOIN dw.`t_customer` t2 ON t1.`cust_id`=t2.`CUST_ID`
+AND t2.mobile IS NOT NULL
+INNER JOIN dw.`t_bs_goods` t3 ON t1.`goods_id`=t3.`GOODS_ID`;
+
+------------------------------------------------------------------------------------------
+需求3
+CREATE TABLE dw.tmp_cust_city_goods_amt
+SELECT t1.CUST_ID,t1.CITY_ID,t2.GOODS_ID,SUM(SELL_PRICE*SELL_NUM) AS goods_sell_amt FROM (
+SELECT * FROM dw.`t_order`
+WHERE
+ORDER_STATUS=5 AND
+order_date >= '2015-01-01' AND  order_date<='2015-12-31'
+) t1 INNER JOIN dw.`t_order_goods` t2 ON t1.`ORDER_ID`=t2.`ORDER_ID`
+AND t2.GOODS_STATUS<>1
+GROUP BY t1.`CUST_ID`,t1.CITY_ID,t2.`GOODS_ID`;
+
+
+CREATE TABLE dw.tmp_cust_category_amt AS
+SELECT t1.cust_id,category_name,SUM(goods_sell_amt) AS goods_sell_amt FROM dw.tmp_cust_city_goods_amt t1 INNER JOIN dw.`t_bs_city_goods` t2
+ON t1.city_id=t2.city_id
+AND t1.goods_id=t2.goods_id
+LEFT JOIN (
+SELECT tree_id AS city_id,category_id,category_name FROM dw.`v_goods_foreground_category`
+WHERE category_name IN ('优选水果','乳制品','卤味熟食','休闲零食','饮料酒水')
+ORDER BY category_name
+) v3 ON t1.city_id=v3.city_id
+AND t2.category_id=v3.category_id
+GROUP BY t1.cust_id,category_name;
+
+
+
+--产出表
+CREATE TABLE dw.t_cust_category_rate AS
+SELECT t1.cust_id,t2.mobile,
+'优选水果' AS fruits_category,
+ROUND(t1.fruits_category/goods_sell_amt_tot,2) AS fruits_rate,
+'乳制品' AS dairy_category,
+ROUND(t1.dairy_category/goods_sell_amt_tot,2) AS dairy_rate,
+'卤味熟食' AS food_category,
+ROUND(t1.food_category/goods_sell_amt_tot,2) AS food_rate,
+'休闲零食' AS snack_category,
+ROUND(t1.snack_category/goods_sell_amt_tot,2) AS snack_rate,
+'饮料酒水' AS drink_category,
+ROUND(t1.snack_category/goods_sell_amt_tot,2) AS drink_rate,
+'其他' AS other_category,
+ROUND(t1.other_category/goods_sell_amt_tot,2) AS other_rate
+ FROM (
+SELECT cust_id,
+MAX(CASE WHEN category_name='优选水果' THEN IFNULL(goods_sell_amt,0) END) AS fruits_category,
+MAX(CASE WHEN category_name='乳制品' THEN IFNULL(goods_sell_amt,0) END) AS dairy_category,
+MAX(CASE WHEN category_name='卤味熟食' THEN IFNULL(goods_sell_amt,0) END) AS food_category,
+MAX(CASE WHEN category_name='休闲零食' THEN IFNULL(goods_sell_amt,0) END) AS snack_category,
+MAX(CASE WHEN category_name='饮料酒水' THEN IFNULL(goods_sell_amt,0) END) AS drink_category,
+MAX(CASE WHEN category_name IS NULL THEN IFNULL(goods_sell_amt,0) END) AS other_category,
+SUM(goods_sell_amt) AS goods_sell_amt_tot
+FROM dw.tmp_cust_category_amt GROUP BY cust_id
+) t1 INNER JOIN dw.`t_customer` t2 ON t1.cust_id=t2.cust_id
+AND t2.mobile IS NOT NULL;
+
+-------------------------------------
+
+hive
+
+8.2.4统计各个渠道带来的用户，top10完成订单数
+
+#主要掌握求top 10 hql
+select source_no,mobile,order_cnt,rn from (
+select source_no,order_cnt,mobile,
+row_number() over(partition by source_no order by order_cnt desc) as rn
+from dw.dw_customer
+where dt=20151211 and source_no is not null and order_cnt is not null
+) t2 where rn <10;
+
+
+大胃王项目数据统计
+8.3.1 2015年消费账单，打败了多少人
+8.3.2 2015年购买商品的top 10
+
+---------
+
+分时段提取僵尸用户数据Hql分析
+     僵尸用户口径定义：注册后未下单及未成功下过订单的用户
+select count(1) from dw.dw_customer where last_order_time is null;
+
+
+----------
+
+select source_no,count(1) from dw.dw_customer
+where dt=20151211 and
+from_unixtime(unix_timestamp(register_time,'yyyy/MM/dd HH:mm'),'yyyyMMdd')>='20141201'
+and from_unixtime(unix_timestamp(register_time,'yyyy/MM/dd HH:mm'),'yyyyMMdd')<='20150131'
+and source_no is not null
+group by source_no;
+
+-------
+
+select count(1) from dw.dw_customer
+where dt='20151210' and
+from_unixtime(unix_timestamp(register_time,'yyyy/MM/dd HH:mm'),'yyyyMMdd')='20140610';
+
+求每个用户累计订单数，累计应付金额
+select nvl(t1.cust_id,t2.cust_id),
+nvl(t2.order_cnt,0)+nvl(t1.order_cnt,0) as order_cnt,
+nvl(t2.amount_sum,0)+nvl(t1.amount_sum,0) as amount_sum
+from dw.dw_customer t1
+full outer join (
+select cust_id,count(1) as order_cnt,sum(payable_amount) as amount_sum from
+dw.dw_order where dt='20151011' and order_status=5
+group by cust_id
+) t2 on t1.cust_id=t2.cust_id
+and t1.dt=20151210 limit 100;
+
+目前有一个合作资源，北京某度假酒店，价值几百到8000不等的酒店套房，一共100套，可以给到购买200元以上订单用户，用于抽奖奖品，比如设置的获奖条件：凡在9月,10月,11月的用户，下单200元以上的订单，即可获得北京某度假酒店。目的带动销量，刺激用户参与活动，同时给合作方导流。
+  合作方需要知道我们订单金额在200以上的每天平均的用户量是多少.
+#客户id是int类型 需注意用count
+SELECT
+SUM(CASE WHEN t.COMPLETION_DATE>='20151001' AND t.COMPLETION_DATE<='20151031' THEN 1 ELSE 0 END) AS cnt_ord_10_m
+,COUNT(DISTINCT CASE WHEN t.COMPLETION_DATE>='20151001' AND t.COMPLETION_DATE<='20151031' THEN CUST_ID END) AS cnt_cust_10_m
+FROM dw.dw_order t
+WHERE t.COMPLETION_DATE>='20151001'
+AND t.COMPLETION_DATE<='20151031'
+AND CITY_ID=2
+AND ORDER_TYPE <>6
+AND PAYABLE_AMOUNT>100
+AND t.ORDER_STATUS=5;
+
+
+需求列出的商品的7日,15日,30复购率，目的了解这几款商品的周期.
+计算口径:当日购买部分商品的用户数/7日重复购买此商品的用户数。
+每天查看每个城市每个商品当日购买用户数，7日15日30日复购率。
+
+SELECT t3.atdate AS cdate,t3.city_id,t3.goods_id,
+COUNT(DISTINCT CASE WHEN days=0 THEN t3.cust_id END) AS cnt_buy_cust_d,
+COUNT(DISTINCT CASE WHEN days>0 AND days<=7 THEN t3.cust_id END) AS cnt_buy_cust_7_d,
+COUNT(DISTINCT CASE WHEN days>0 AND days<=15 THEN t3.cust_id END) AS cnt_buy_cust_15_d,
+COUNT(DISTINCT CASE WHEN days>0 AND days<=30 THEN t3.cust_id END) AS cnt_buy_cust_30_d
+FROM (
+SELECT t1.atdate,t1.city_id,t1.cust_id,t1.goods_id,
+DATEDIFF(t2.atdate, t1.atdate) days
+FROM (
+SELECT o.order_date AS atdate,o.city_id,
+o.cust_id,og.goods_id
+FROM dw.dw_order o INNER JOIN dw.dw_order_goods og
+ON o.order_id=og.order_id
+AND o.ORDER_STATUS = 5
+AND og.source_id=1
+AND o.dt = '20151010'
+) t1 INNER JOIN (
+SELECT o.order_date AS atdate,o.city_id,
+o.cust_id,og.goods_id,
+og.goods_name
+FROM dw.dw_order o INNER JOIN dw.dw_order_goods og
+ON o.order_id=og.order_id
+AND o.ORDER_STATUS = 5
+AND og.source_id=1
+) t2 ON t1.cust_id=t2.cust_id AND t1.goods_id=t2.goods_id
+) t3 GROUP BY t3.atdate,t3.city_id,t3.goods_id;
+
+
+
+查看每个城市每天完成订单数，取消订单数，下单订单数，下单用户数。
+select city_id,sum(case when order_status=5 then 1 else 0 end) as cnt_ord_succ_d,
+ sum(case when order_status=3 then 1 else 0 end) as cnt_ord_cacel_d,
+ sum(1) as cnt_ord_d,
+ count(distinct CUST_ID) as cnt_ord_user
+ FROM dw.dw_order WHERE dt='${day_01}'
+ group by city_id;
+
+
+

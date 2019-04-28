@@ -1,0 +1,86 @@
+彩票志，java开源项目，旨在预测出下期双色球开奖号码。搭建了环境http://www.cpzhi.com/cpzhi，可以查看演示。
+10 Commits
+2 Branches
+0 Tags
+0 Releases
+2 Contributors
+
+aurae 最后提交于 1月前 . 更新 README.md
+.settings
+
+aurae v-1.0
+9月前
+WebContent
+
+hxm 修改双色球开奖结果的爬取网站，使用Jsoup解析网页。
+2月前
+res
+
+aurae 修改了readme
+9月前
+sql
+
+aurae v-1.0
+9月前
+src
+
+hxm 修改双色球开奖结果的爬取网站，使用Jsoup解析网页。
+2月前
+.classpath
+
+aurae v-1.0
+9月前
+.project
+
+aurae v-1.0
+9月前
+LICENSE
+
+aurae Initial commit
+9月前
+README.md
+
+aurae 更新 README.md
+1月前
+README.md 3.17 KB
+开源java代码，预测双色球开奖号码，纯属娱乐，祝您中大奖！
+技术栈
+  ● jdk-1.7
+  ● tomcat-7
+  ● jfinal-2.0
+  ● freemarker
+  ● mysql
+  ● bootstrap
+是eclipse项目，使用eclipse5.4.2 mars
+如何开始
+  ● git clone https://git.oschina.net/bigcash/cpzhi.git
+  ● 修改配置文件 /res/a_little_config.txt 里的数据库连接信息
+  ● 创建数据库 cpzhi
+  ● 解压sql目录中的zip文件，导入mysql数据库。
+  ● 将项目import进eclipse，配置好tomcat7后，将项目发布到tomcat，启动
+  ● 浏览器 http://localhost:8080/
+  ● 系统没有后台管理
+代码
+  ● 关键的代码都是有注释的
+  ● 有问题给我留言吧
+设计思路
+  ● 中心思想就是根据双色球近期的开奖情况，对下期每个红球、蓝球的每个号球进行打分，根据积分的多少将红球和蓝球分别排序，最终得到预测的结果，红球取前15个号球，蓝球取前6个作为推荐的号球。获得推荐的红色号球后，根据旋转矩阵进行缩水处理（首页中“组合预测”栏目中使用的是15选6保5的缩水矩阵），最终获得少量的开奖号码组合，与蓝球进行组合后，得到推荐的购买组合。
+  ● 红球的算法有30个
+  ● 蓝球的算法有26个
+更新最新的开奖结果
+程序将在每周一、周三、周五上午自动爬取网络上的开奖号码，并保存到数据库中。保存完成后，系统会自动执行下期开奖号码的预测。 注意：每次调用仅会更新比当前网站中记录的最新一期次的开奖号码。比如网站中的最新记录的开奖期次是2017012期，而推荐号球是2017013期，那么，执行调用这个链接，将会从互联网中自动更新2017013期的开奖结果，如果同步成功，将会返回true，而且也会自动计算下一期次的预测号码哦！
+##截图介绍
+  ● 这个是首页，主要展示下期开奖的预测号球。
+
+  ● 下图是往期预测结果展示页面，显示往期的预测情况，辅助分析预测的准确率。
+
+  ● 下图是介绍使用了哪些预测方法。
+
+##简单介绍
+您还可以参看我的博客：侯先生的技术笔记
+彩票志项目博客http://www.houxm.com/category/opensource/cpzhi/
+彩票志项目介绍页面链接：http://www.houxm.com/2017/08/31/%E5%BD%A9%E7%A5%A8%E5%BF%97www-cpzhi-com%EF%BC%9A%E5%8F%8C%E8%89%B2%E7%90%83%E9%A2%84%E6%B5%8B%E7%AE%97%E6%B3%95%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE/
+##彩票志官方网址
+http://www.cpzhi.com http://www.cpzhi.com/cpzhi
+License
+  ● Apache License 2.0

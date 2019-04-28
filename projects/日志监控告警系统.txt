@@ -1,0 +1,13 @@
+日志监控告警系统
+开发环境：Windows + JDK1.7 +Eclipse+linux+mysql
+软件架构：flume,kafka,Strom，redis,mysql,Zookeeper
+开发时间/开发周期：2015.1-2015.3
+	系统目标：
+监控系统日志中的内容，按照一定规则进行过滤。
+发现问题之后通过短信和邮件进行告警
+系统实现：
+主要架构为应用+flume+kafka+storm+mysql、redis+Java web。数据流程如下：
+应用程序使用log4j产生日志
+部署flume客户端监控应用程序产生的日志信息，并发送到kafka集群中
+storm spout拉去kafka的数据进行消费，逐条过滤每条日志的进行规则判断，对符合规则的日志进行邮件告警。
+最后将告警的信息保存到mysql数据库中，用来进行管理。

@@ -1,0 +1,291 @@
+实时推荐
+实时网站流量统计
+
+
+通过分析业务系统产生的网站访问日志数据，实时统计各种PV，每个URL单独的PV
+网站外链PV，搜索关键字PV
+
+========
+
+按地区实时销售额
+
+按地区实时计算销售额，并进行3D柱图实时展示结果，含周同比。
+图表的数据3s自动更新。
+
+
+HTTP长链接实现实时推送
+HTTP长链接方式
+不断推数据到Jsp中，推送的数据格式？ Json格式，HighCharts的要求格式
+
+数据如何赋值到HighCharts中 ？ jquery
+
+HighCharts图表开发二及jquery运用
+HTTP长链接方式
+不断推数据到Jsp中，推送的数据格式？ Json格式，HighCharts的要求格式
+
+数据如何赋值到HighCharts中 ？ jquery
+
+Web端完善和细节优化
+while 在长链接断了之后必须退出
+
+跨天处理
+
+同期对比的数据加载
+
+
+
+
+
+按地区实时计算销售额，并进行3D柱图实时展示结果，含周同比。
+图表的数据3s自动更新。
+
+
+方案设计：
+
+优点：1、前台、后台分离，重启维护互不影响；
+       2、Storm重启不会影响结果数据，不影响HighCharts图表展示；
+       3、Tomcat重启不会影响数据处理；
+       4、前台后台数据传输通过Hbase，Hbase稳定性远比MQ 强。虽然读写Hbase没有MQ实时，但能满足需求，5s刷新。
+
+
+       Spout融合Kafka Consumer及线程安全测试
+       Kafka 消费
+       采用KafkaSpout  ，还是手写Consumer ？
+
+       都可以，前者灵活性不如后者。
+
+       Bolt业务逻辑处理
+       Bolt处理
+       bolt1  多并发，局部汇总
+       	1、Fieldgrouping   area_id
+       	2、按task_id 进行局部汇总
+
+       blot2  单线程，全局汇总
+
+       优化Bolt支持重启及结果数据核查
+       Bolt处理
+
+       bolt1  多并发，局部汇总
+       	1、Fieldgrouping   area_id
+       	2、按task_id 进行局部汇总
+
+       blot2  单线程，全局汇总
+
+
+
+
+       优化Bolt
+       实际应用需要考虑各种因素，如作业重启，不能影响应用。
+
+       而Storm本身是内存级计算，作业重启势必会丢失内存里数据，怎么办？
+
+
+       方法：利用外部存储保持结果数据，采用HBase
+       跨天清空map
+
+       官网http://www.hcharts.cn/index.php
+       下载：http://code.highcharts.com/zips/Highcharts-4.0.3.zip
+
+       架构设计
+       Servlet 长链接 推送数据到Jsp
+       长链接：链接一旦打开，不间断
+
+        项目发布
+        打包
+        Maven：一jar多用，但maven工程维护成本大，打包速度快
+
+        Fatjar：一jar只能有一个Main Class，普通工程，打包速度很慢
+
+        日志查看
+        0.9.0版本开始Storm增加了一个很给力的特性logviewer。
+
+        启动进程：
+        storm logviewer
+
+
+
+
+
+
+
+
+完全Storm Trident 项目
+事务：运用IPartitionedTridentSpout
+DRPC：Web端通过DRPC获得结果数据
+topN：按销售额排行
+基于Hbase存储的Trident state：支持Topo重启时不丢数据，也可支撑Web端读数据
+
+
+
+=============
+
+非跳出UV实时走势
+
+非跳出UV实时走势图，点追加
+回顾下项目1、2中HighCharts图形数据加载，全量加载。
+而项目3中则是点追加，每次刷新时只是增加了一个点，而不是全量更新数据。
+Highcharts中每个点有横坐标xValue 和  纵坐标yValue 组成，即[xValue, yValue] ，
+而我们还需要加一个时间，这样每个点具有3个属性[time, xValue, yValue] ，这3个值也是点追加时需要的数据。
+Hbase数据如何存，将由Highchats图表的数据格式而定，复杂的图表均有这个特点。
+
+需求
+非跳出User Views 数计算
+跳出数：只有一个页面浏览的用户数，即PV=1的User数
+思考下如何计算？
+回顾下常用的解决方案：
+bolt1通过fieldGrouping 进行多线程局部汇总，下一级blot2进行单线程保存session_id和count数到Map且进行遍历，可以得到：
+Pv、UV、访问深度（每个session_id 的浏览数）
+
+按日期统计
+2014-05-01     UV数
+
+如何得出如：
+2014-05-01     非跳出UV数（PV>=2）
+
+iRichBolt  &  iBasicBlot 的acker
+IRichBolt，需要显性回调ack函数，要求spout emit中必须有tuple的messageid，当作追踪码；
+
+iBasicBolt 自动回调ack函数，要求spout emit中必须有tuple的messageid，当作追踪码；
+
+
+
+
+
+
+开发思路
+
+
+iRichBolt  &  iBasicBlot 的acker
+IRichBolt，需要显性回调ack函数，
+
+要求spout emit中必须有tuple的messageid，当作追踪码；
+
+iBasicBolt 自动回调ack函数，要求spout emit中必须有tuple的messageid，当作追踪码；
+
+
+
+
+Web端Servlet开发
+http长连接，隔5s读hbase库一次推送结果到jsp的Highcharts图表
+
+每次推送的是一个点，而不是项目1中的全量数据。
+
+
+UV实时走势图，点追加
+
+
+
+==========
+
+
+项目需求分析和分区Trident Spout开发
+
+
+
+项目需求分析和分区Trident Spout开发
+双Y轴图表
+事务：运用IPartitionedTridentSpout
+DRPC：Web端通过DRPC获得结果数据
+topN：按销售额排行
+基于Hbase存储的Trident state：支持Topo重启时不丢数据，也可支撑Web端读数据
+
+
+
+Trident Spout
+采用Storm-kafka  项目中提供的TransactionalTridentKafkaSpout
+1、完成订单数计算
+TopN ， stream.applyAssembly(new FirstN(5, “sum", true))
+2、DRPC数据验证
+3、后台程序发布，DRPC 服务，DRPC client开发
+
+
+内存State存在的问题？用Hbase state替代
+基于HBase存储的State运用
+1、完成订单数计算
+TopN ， stream.applyAssembly(new FirstN(5, “sum", true))
+2、DRPC数据验证
+3、后台程序发布，DRPC 服务，DRPC client开发
+
+
+内存State存在的问题？用Hbase state替代
+双纵轴HighCharts图表开发
+
+Top N展示优化和项目开发思路总结
+Top N展示优化：
+这里是按销售额的前5名省份，那么订单数也需要是这5个省份的（虽然订单数不一定是Top 5），保证横坐标一致
+
+
+
+
+======
+
+
+项目架构
+
+
+
+
+
+大体架构基本相同，如下图。
+
+开发思路
+1、业务逻辑处理，bolt中实现；
+2、数据落地格式可更加前台HighCharts的需要而定，有时需要特别为HighCharts的数据格式来存储落地数据，如项目三中就会这样。
+采用内存+磁盘方式避免断电、重启等会造成数据丢失的问题。
+
+3、必须前后台分离，有利于稳定性；
+4、Web端开发思路相对简单，就是长链接读数据，推数据到HighCharts
+5、HighCharts开发，很多实例及代码，可以现学现用。
+
+
+架构设计
+
+优点：1、前台、后台分离，重启维护互不影响；
+           2、Storm重启不会影响结果数据，不影响HighCharts图表展示；
+           3、Tomcat重启不会影响数据处理；
+           4、前台后台数据传输通过Hbase 或 DRPC，注意DRPC是通过服务访问，稳定性不如DB。
+
+
+
+注意事项：
+1、Hosts设置，在DRPC客户端的host需要配置到Storm机器上，记得本机IP变化时要修改此项；
+如：
+192.168.1.107 master
+192.168.1.108 slave1
+192.168.1.101 myWindowsHostName
+
+2、启动Storm drpc服务。没DB稳定
+客户端连接代码
+DRPCClient client = new DRPCClient(“192.168.112.112”, 3772);   具有单点问题
+
+
+========
+
+实时PV
+
+
+终端类型的PV
+搜索关键字的PV
+搜索引擎的PV
+url的PV
+IP的PV
+浏览器类型、版本的PV
+
+==========
+项目发布
+
+
+Fatjar 一个jar只能有一个Main Class 普通工程
+
+
+
+
+
+
+
+
+
+
+
+
+

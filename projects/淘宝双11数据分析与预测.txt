@@ -1,0 +1,1146 @@
+淘宝双11数据分析与预测课程案例-步骤零：实验环境准备
+
+ 阮榕城 2017年2月27日 5346
+大数据技术原理与应用
+《淘宝双11数据分析与预测课程案例—步骤零：实验环境准备》
+
+开发团队：厦门大学数据库实验室 联系人：林子雨老师 ziyulin@xmu.edu.cn
+
+版权声明：版权归厦门大学数据库实验室所有，请勿用于商业用途；未经授权，其他网站请勿转载
+
+本教程介绍大数据课程实验案例“淘宝双11数据分析与预测”的实验环境准备工作。
+
+需要注意的是，本网页介绍的所有软件安装，实际上，到了后面各个实验步骤中，还会再次提示并介绍如何安装这些软件。所以，本网页相当于是案例所需软件安装的一个汇总，读者可以根据本网页说明，先完成全部系统和软件的安装，再进入实验步骤一、二、三、四、五（这样，在后面步骤中就不需要重复安装这些软件），或者也可以忽略本网页内容，直接进入到后面的实验步骤一、二、三、四、五（但是，就需要到时候动手安装这些软件）。
+
+所需知识储备
+Windows操作系统、Linux操作系统、大数据处理架构Hadoop的关键技术及其基本原理、数据仓库概念与原理、关系型数据库概念与原理、
+
+训练技能
+双操作系统安装、虚拟机安装、Linux基本操作、Hadoop安装、Sqoop安装、Eclipse安装、ECharts安装、Spark安装。
+
+任务清单
+安装Linux系统
+安装Hadoop
+安装MySQL
+安装Hive
+安装Sqoop
+安装Eclipse
+安装ECharts
+安装Spark
+系统和软件环境要求
+本案例的所有实验都在Linux操作系统下完成，需要涉及到以下软件（版本号仅供参考，可以使用不同版本）：
+
+Linux: Ubuntu14.04
+MySQL: 5.7.16
+Hadoop: 2.7.1
+Hive: 1.2.1
+Sqoop: 1.4.6
+Spark: 2.1.0
+Eclipse: 3.8
+ECharts: 3.4.0
+系统和软件的安装
+Linux操作系统的安装
+本案例实验全部在Linux系统下开展，因此，必须要安装好Linux系统。关于需要什么样的电脑硬件配置，以及如何安装Linux系统，请参考厦大数据库实验室在线教程《Linux系统安装》。
+
+Hadoop的安装
+本案例实验需要以Hadoop平台作为基础，关于如何安装Hadoop，请参考厦大数据库实验室博客《Hadoop安装教程:单机/伪分布式配置》。
+
+MySQL的安装
+本案例实验需要把数据存入关系型数据库MySQL，需要MySQL为Hive提供元数据存储服务，也需要MySQL为前端ECharts提供数据。因此，需要安装MySQL数据库。关于如何在Linux系统下安装MySQL数据库，请参考厦大数据库实验室博客《在Ubuntu下安装MySQL及其常用操作》。
+
+Hive的安装
+本案例实验需要安装数据仓库Hive，请参考厦大数据库实验室博客《Hive安装指南》来完成Hive的安装，并且使用MySQL数据库保存Hive的元数据。本教程安装的是Hive2.1.0版本，安装目录是“/usr/local/hive”。
+
+Sqoop的安装
+本案例实验需要安装Sqoop，该工具支持在Hadoop和其他数据库之间进行数据互导操作。请参考厦大数据库实验室博客Ubuntu安装Sqoop，完成Sqoop的安装。本教程下载的是sqoop-1.4.6.bin__hadoop-2.0.4-alpha.tar.gz，安装目录是“/usr/local/sqoop”。虽然这个sqoop是为hadoop2.0.4版本开发的，本教程Hadoop版本是2.7.1，但是，依然可以顺利使用。
+
+Eclipse的安装
+本案例实验需要采用Eclipse开发Java程序，请参考厦大数据库实验室博客《分布式文件系统HDFS学习指南》，里面的“（三）、利用Java API与HDFS进行交互”中的“在Ubuntu中安装Eclipse”部分有详细介绍。
+
+Echarts的安装
+ECharts的安装将在实验步骤四“利用ECharts进行数据可视化分析”中再具体介绍。
+
+Spark安装
+本案例实验需要安装Spark,请参考厦大数据库实验室博客《大数据原理与应用 第十六章 Spark 学习指南》来完成Spark的安装。需要注意，这里我们Spark选择2.1.0的版本，而不是学习指南中的Spark 1.6.2版本, 因为只有Spark 2.0以后的版本才能支持Hadoop2.7。
+
+=====================
+
+淘宝双11数据分析与预测课程案例-步骤一：本地数据集上传到数据仓库Hive
+
+ 阮榕城 2017年2月27日 (updated: 2017年4月12日) 6824
+大数据技术原理与应用
+《淘宝双11数据分析与预测课程案例—步骤一:本地数据集上传到数据仓库Hive》
+
+开发团队：厦门大学数据库实验室 联系人：林子雨老师 ziyulin@xmu.edu.cn
+
+版权声明：版权归厦门大学数据库实验室所有，请勿用于商业用途；未经授权，其他网站请勿转载
+
+本教程介绍大数据课程实验案例“淘宝双11数据分析与预测”中将本地数据集上传到数据仓库Hive的工作。
+
+所需知识储备
+Linux系统基本命令、Hadoop项目结构、分布式文件系统HDFS概念及其基本原理、数据仓库概念及其基本原理、数据仓库Hive概念及其基本原理
+
+训练技能
+Hadoop的安装与基本操作、HDFS的基本操作、Linux的安装与基本操作、数据仓库Hive的安装与基本操作、基本的数据预处理方法
+
+任务清单
+安装Linux系统
+数据集下载与查看
+数据集预处理
+把数据集导入分布式文件系统HDFS中
+在数据仓库Hive上创建数据库
+Linux系统的安装
+本实验全部在Linux系统下开展，因此，必须要安装好Linux系统。关于需要什么样的电脑硬件配置，以及如何安装Linux系统，请参考厦大数据库实验室在线教程《Linux系统安装》。
+
+实验数据集的下载
+本案例采用的数据集压缩包为data_format.zip(点击这里下载data_format.zip数据集)，该数据集压缩包是淘宝2015年双11前6个月(包含双11)的交易数据(交易数据有偏移，但是不影响实验的结果)，里面包含3个文件，分别是用户行为日志文件user_log.csv 、回头客训练集train.csv 、回头客测试集test.csv. 下面列出这3个文件的数据格式定义：
+
+用户行为日志user_log.csv，日志中的字段定义如下：
+1. user_id | 买家id
+2. item_id | 商品id
+3. cat_id | 商品类别id
+4. merchant_id | 卖家id
+5. brand_id | 品牌id
+6. month | 交易时间:月
+7. day | 交易事件:日
+8. action | 行为,取值范围{0,1,2,3},0表示点击，1表示加入购物车，2表示购买，3表示关注商品
+9. age_range | 买家年龄分段：1表示年龄<18,2表示年龄在[18,24]，3表示年龄在[25,29]，4表示年龄在[30,34]，5表示年龄在[35,39]，6表示年龄在[40,49]，7和8表示年龄>=50,0和NULL则表示未知
+10. gender | 性别:0表示女性，1表示男性，2和NULL表示未知
+11. province| 收获地址省份
+
+回头客训练集train.csv和回头客测试集test.csv，训练集和测试集拥有相同的字段，字段定义如下：
+
+user_id | 买家id
+age_range | 买家年龄分段：1表示年龄<18,2表示年龄在[18,24]，3表示年龄在[25,29]，4表示年龄在[30,34]，5表示年龄在[35,39]，6表示年龄在[40,49]，7和8表示年龄>=50,0和NULL则表示未知
+gender | 性别:0表示女性，1表示男性，2和NULL表示未知
+merchant_id | 商家id
+label | 是否是回头客，0值表示不是回头客，1值表示回头客，-1值表示该用户已经超出我们所需要考虑的预测范围。NULL值只存在测试集，在测试集中表示需要预测的值。
+下面，请登录Linux系统（本教程统一采用hadoop用户登录），并在Linux系统中打开浏览器（一般都是火狐Firefox浏览器），然后，在Linux系统的浏览器中打开本网页，点击这里下载data_format.zip数据集。如果在下载的时候，你没有修改文件保存路径，火狐浏览器会默认把文件保存在你的当前用户的下载目录下，因为本教程是采用hadoop用户名登录了Linux系统，所以，下载后的文件会被浏览器默认保存到”/home/hadoop/下载/”这目录下面。
+现在，请在Linux系统中打开一个终端（可以使用快捷键Ctrl+Alt+T），执行下面命令：
+
+cd /home/hadoop/下载
+ls
+Shell 命令
+通过上面命令，就进入到了data_format.zip文件所在的目录，并且可以看到有个data_format.zip文件。注意，如果你把data_format.zip下载到了其他目录，这里请进入到你自己的存放data_format.zip的目录。
+下面需要把data_format.zip进行解压缩，我们需要首先建立一个用于运行本案例的目录dbtaobao，请执行以下命令：
+
+cd /usr/local
+ls
+sudo mkdir dbtaobao
+//这里会提示你输入当前用户（本教程是hadoop用户名）的密码
+//下面给hadoop用户赋予针对dbtaobao目录的各种操作权限
+sudo chown -R hadoop:hadoop ./dbtaobao
+cd dbtaobao
+//下面创建一个dataset目录，用于保存数据集
+mkdir dataset
+//下面就可以解压缩data_format.zip文件
+cd ~  //表示进入hadoop用户的目录
+cd 下载
+ls
+unzip data_format.zip -d /usr/local/dbtaobao/dataset
+cd /usr/local/dbtaobao/dataset
+ls
+Shell 命令
+现在你就可以看到在dataset目录下有三个文件：test.csv、train.csv、user_log.csv
+我们执行下面命令取出user_log.csv前面5条记录看一下
+执行如下命令:
+
+head -5 user_log.csv
+Shell 命令
+可以看到，前5行记录如下：
+
+user_id,item_id,cat_id,merchant_id,brand_id,month,day,action,age_range,gender,province
+328862,323294,833,2882,2661,08,29,0,0,1,内蒙古
+328862,844400,1271,2882,2661,08,29,0,1,1,山西
+328862,575153,1271,2882,2661,08,29,0,2,1,山西
+328862,996875,1271,2882,2661,08,29,0,1,1,内蒙古
+数据集的预处理
+1.删除文件第一行记录，即字段名称
+user_log.csv的第一行都是字段名称，我们在文件中的数据导入到数据仓库Hive中时，不需要第一行字段名称，因此，这里在做数据预处理时，删除第一行
+
+cd /usr/local/dbtaobao/dataset
+//下面删除user_log.csv中的第1行
+sed -i '1d' user_log.csv //1d表示删除第1行，同理，3d表示删除第3行，nd表示删除第n行
+//下面再用head命令去查看文件的前5行记录，就看不到字段名称这一行了
+head -5 user_log.csv
+Shell 命令
+2.获取数据集中双11的前100000条数据
+由于数据集中交易数据太大，这里只截取数据集中在双11的前10000条交易数据作为小数据集small_user_log.csv
+下面我们建立一个脚本文件完成上面截取任务，请把这个脚本文件放在dataset目录下和数据集user_log.csv:
+
+cd /usr/local/dbtaobao/dataset
+vim predeal.sh
+Shell 命令
+上面使用vim编辑器新建了一个predeal.sh脚本文件，请在这个脚本文件中加入下面代码：
+
+#!/bin/bash
+#下面设置输入文件，把用户执行predeal.sh命令时提供的第一个参数作为输入文件名称
+infile=$1
+#下面设置输出文件，把用户执行predeal.sh命令时提供的第二个参数作为输出文件名称
+outfile=$2
+#注意！！最后的$infile > $outfile必须跟在}’这两个字符的后面
+awk -F "," 'BEGIN{
+      id=0;
+    }
+    {
+        if($6==11 && $7==11){
+            id=id+1;
+            print $1","$2","$3","$4","$5","$6","$7","$8","$9","$10","$11
+            if(id==10000){
+                exit
+            }
+        }
+    }' $infile > $outfile
+下面就可以执行predeal.sh脚本文件，截取数据集中在双11的前10000条交易数据作为小数据集small_user_log.csv，命令如下：
+
+chmod +x ./predeal.sh
+./predeal.sh ./user_log.csv ./small_user_log.csv
+Shell 命令
+3.导入数据库
+下面要把small_user_log.csv中的数据最终导入到数据仓库Hive中。为了完成这个操作，我们会首先把这个文件上传到分布式文件系统HDFS中，然后，在Hive中创建两个个外部表，完成数据的导入。
+
+a.启动HDFS
+HDFS是Hadoop的核心组件，因此，需要使用HDFS，必须安装Hadoop。关于如何安装Hadoop，请参考厦大数据库实验室博客《Hadoop安装教程:单机/伪分布式配置》。这里假设你已经安装了Hadoop，本教程使用的是Hadoop2.7.1版本，安装目录是“/usr/local/hadoop”。
+
+下面，请登录Linux系统，打开一个终端，执行下面命令启动Hadoop：
+
+cd /usr/local/hadoop
+./sbin/start-dfs.sh
+Shell 命令
+然后，执行jps命令看一下当前运行的进程：
+
+jps
+Shell 命令
+如果出现下面这些进程，说明Hadoop启动成功了。
+
+3765 NodeManager
+3639 ResourceManager
+3800 Jps
+3261 DataNode
+3134 NameNode
+3471 SecondaryNameNode
+b.把user_log.csv上传到HDFS中
+现在，我们要把Linux本地文件系统中的user_log.csv上传到分布式文件系统HDFS中，存放在HDFS中的“/dbtaobao/dataset”目录下。
+首先，请执行下面命令，在HDFS的根目录下面创建一个新的目录dbtaobao，并在这个目录下创建一个子目录dataset，如下：
+
+cd /usr/local/hadoop
+./bin/hdfs dfs -mkdir -p /dbtaobao/dataset/user_log
+Shell 命令
+然后，把Linux本地文件系统中的small_user_log.csv上传到分布式文件系统HDFS的“/dbtaobao/dataset”目录下，命令如下：
+
+cd /usr/local/hadoop
+./bin/hdfs dfs -put /usr/local/dbtaobao/dataset/small_user_log.csv /dbtaobao/dataset/user_log
+Shell 命令
+下面可以查看一下HDFS中的small_user_log.csv的前10条记录，命令如下：
+
+cd /usr/local/hadoop
+./bin/hdfs dfs -cat /dbtaobao/dataset/user_log/small_user_log.csv | head -10
+Shell 命令
+c.在Hive上创建数据库
+关于什么是数据仓库Hive？Hive的运行基本原理是什么？如何开展Hive简单编程实践？这些问题可以参考厦大数据库实验室制作的在线课程（含视频、讲义PPT和电子书）《基于Hadoop的数据仓库Hive》。
+本案例教程需要安装数据仓库Hive，请参考厦大数据库实验室博客《Hive安装指南》来完成Hive的安装。这里假设你已经完成了Hive的安装，并且使用MySQL数据库保存Hive的元数据。本教程安装的是Hive2.1.0版本，安装目录是“/usr/local/hive”。
+下面，请在Linux系统中，再新建一个终端（可以在刚才已经建好的终端界面的左上角，点击“终端”菜单，在弹出的子菜单中选择“新建终端”）。因为需要借助于MySQL保存Hive的元数据，所以，请首先启动MySQL数据库：
+
+service mysql start  #可以在Linux的任何目录下执行该命令
+Shell 命令
+由于Hive是基于Hadoop的数据仓库，使用HiveQL语言撰写的查询语句，最终都会被Hive自动解析成MapReduce任务由Hadoop去具体执行，因此，需要启动Hadoop，然后再启动Hive。由于前面我们已经启动了Hadoop，所以，这里不需要再次启动Hadoop。下面，在这个新的终端中执行下面命令进入Hive：
+
+cd /usr/local/hive
+./bin/hive   # 启动Hive
+Shell 命令
+启动成功以后，就进入了“hive>”命令提示符状态，可以输入类似SQL语句的HiveQL语句。
+下面，我们要在Hive中创建一个数据库dbtaobao，命令如下：
+
+hive>  create database dbtaobao;
+hive>  use dbtaobao;
+hive
+d.创建外部表
+关于数据仓库Hive的内部表和外部表的区别，请访问网络文章《Hive内部表与外部表的区别》。本教程采用外部表方式。
+这里我们要分别在数据库dbtaobao中创建一个外部表user_log，它包含字段（user_id,item_id,cat_id,merchant_id,brand_id,month,day,action,age_range,gender,province）,请在hive命令提示符下输入如下命令：
+
+hive>  CREATE EXTERNAL TABLE dbtaobao.user_log(user_id INT,item_id INT,cat_id INT,merchant_id INT,brand_id INT,month STRING,day STRING,action INT,age_range INT,gender INT,province STRING) COMMENT 'Welcome to xmu dblab,Now create dbtaobao.user_log!' ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' STORED AS TEXTFILE LOCATION '/dbtaobao/dataset/user_log';
+hive
+e.查询数据
+上面已经成功把HDFS中的“/dbtaobao/dataset/user_log”目录下的small_user_log.csv数据加载到了数据仓库Hive中，我们现在可以使用下面命令查询一下：
+
+hive>  select * from user_log limit 10;
+
+=============================================
+
+ 搜索
+淘宝双11数据分析与预测课程案例-步骤二:Hive数据分析
+
+ 阮榕城 2017年2月27日 3940
+大数据技术原理与应用
+《淘宝双11数据分析与预测课程案例—步骤二：Hive数据分析》
+
+开发团队：厦门大学数据库实验室 联系人：林子雨老师 ziyulin@xmu.edu.cn
+
+版权声明：版权归厦门大学数据库实验室所有，请勿用于商业用途；未经授权，其他网站请勿转载
+
+本文介绍大数据课程实验案例“淘宝双11数据分析与预测”的第二个步骤，Hive数据分析。在实践本步骤之前，请先完成该实验案例的第一个步骤大数据案例——本地数据集上传到数据仓库Hive。这里假设你已经完成了前面的第一个步骤。
+
+所需知识储备
+数据仓库Hive概念及其基本原理、SQL语句、数据库查询分析
+
+训练技能
+数据仓库Hive基本操作、创建数据库和表、使用SQL语句进行查询分析
+
+任务清单
+1.启动Hadoop和Hive
+2.创建数据库和表
+3.简单查询分析
+4.查询条数统计分析
+5.关键字条件查询分析
+6.根据用户行为分析
+7.用户实时查询分析
+
+一、操作Hive
+请登录Linux系统（本教程统一采用hadoop用户名登录系统），然后，打开一个终端（可以按快捷键Ctrl+Alt+T）。
+本教程中，Hadoop的安装目录是“/usr/local/hadoop”，Hive的安装目录是“/usr/local/hive”。
+因为需要借助于MySQL保存Hive的元数据，所以，请首先启动MySQL数据库，请在终端中输入下面命令：
+
+service mysql start  # 可以在Linux的任何目录下执行该命令
+Shell 命令
+由于Hive是基于Hadoop的数据仓库，使用HiveQL语言撰写的查询语句，最终都会被Hive自动解析成MapReduce任务由Hadoop去具体执行，因此，需要启动Hadoop，然后再启动Hive。
+
+请执行下面命令启动Hadoop（如果你已经启动了Hadoop就不用再次启动了）：
+
+cd /usr/local/hadoop
+./sbin/start-dfs.sh
+Shell 命令
+然后，执行jps命令看一下当前运行的进程：
+
+jps
+Shell 命令
+如果出现下面这些进程，说明Hadoop启动成功了。
+
+3765 NodeManager
+3639 ResourceManager
+3800 Jps
+3261 DataNode
+3134 NameNode
+3471 SecondaryNameNode
+下面，继续执行下面命令启动进入Hive：
+
+cd /usr/local/hive
+./bin/hive   //启动Hive
+Shell 命令
+通过上述过程，我们就完成了MySQL、Hadoop和Hive三者的启动。
+启动成功以后，就进入了“hive>”命令提示符状态，可以输入类似SQL语句的HiveQL语句。
+
+然后，在“hive>”命令提示符状态下执行下面命令：
+
+hive> use dbtaobao; -- 使用dbtaobao数据库
+hive> show tables; -- 显示数据库中所有表。
+hive> show create table user_log; -- 查看user_log表的各种属性；
+hive
+执行结果如下：
+
+OK
+CREATE EXTERNAL TABLE `user_log`(
+  `user_id` int,
+  `item_id` int,
+  `cat_id` int,
+  `merchant_id` int,
+  `brand_id` int,
+  `month` string,
+  `day` string,
+  `action` int,
+  `age_range` int,
+  `gender` int,
+  `province` string)
+COMMENT 'Welcome to xmu dblab,Now create dbtaobao.user_log!'
+ROW FORMAT SERDE
+  'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe'
+WITH SERDEPROPERTIES (
+  'field.delim'=',',
+  'serialization.format'=',')
+STORED AS INPUTFORMAT
+  'org.apache.hadoop.mapred.TextInputFormat'
+OUTPUTFORMAT
+  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+LOCATION
+  'hdfs://localhost:9000/dbtaobao/dataset/user_log'
+TBLPROPERTIES (
+  'numFiles'='1',
+  'totalSize'='4729522',
+  'transient_lastDdlTime'='1487902650')
+Time taken: 0.084 seconds, Fetched: 28 row(s)
+可以执行下面命令查看表的简单结构：
+
+hive> desc user_log;
+hive
+执行结果如下：
+
+OK
+user_id                 int
+item_id                 int
+cat_id                  int
+merchant_id             int
+brand_id                int
+month                   string
+day                     string
+action                  int
+age_range               int
+gender                  int
+province                string
+Time taken: 0.029 seconds, Fetched: 11 row(s)
+二、简单查询分析
+先测试一下简单的指令：
+
+hive> select brand_id from user_log limit 10; -- 查看日志前10个交易日志的商品品牌
+hive
+执行结果如下：
+
+OK
+5476
+5476
+6109
+5476
+5476
+5476
+5476
+5476
+5476
+6300
+如果要查出每位用户购买商品时的多种信息，输出语句格式为 select 列1，列2，….，列n from 表名；
+比如我们现在查询前20个交易日志中购买商品时的时间和商品的种类
+
+hive> select month,day,cat_id from user_log limit 20;
+hive
+执行结果如下：
+
+OK
+11  11  1280
+11  11  1280
+11  11  1181
+11  11  1280
+11  11  1280
+11  11  1280
+11  11  1280
+11  11  1280
+11  11  1280
+11  11  962
+11  11  81
+11  11  1432
+11  11  389
+11  11  1208
+11  11  1611
+11  11  420
+11  11  1611
+11  11  1432
+11  11  389
+11  11  1432
+
+有时我们在表中查询可以利用嵌套语句，如果列名太复杂可以设置该列的别名，以简化我们操作的难度，以下我们可以举个例子：
+
+hive> select ul.at, ul.ci  from (select action as at, cat_id as ci from user_log) as ul limit 20;
+hive
+执行结果如下：
+
+OK
+0   1280
+0   1280
+0   1181
+2   1280
+0   1280
+0   1280
+0   1280
+0   1280
+0   1280
+0   962
+2   81
+2   1432
+0   389
+2   1208
+0   1611
+0   420
+0   1611
+0   1432
+0   389
+0   1432
+这里简单的做个讲解，action as at ,cat_id as ci就是把action 设置别名 at ,cat_id 设置别名 ci，FROM的括号里的内容我们也设置了别名ul，这样调用时用ul.at,ul.ci,可以简化代码。
+
+三、查询条数统计分析
+经过简单的查询后我们同样也可以在select后加入更多的条件对表进行查询,下面可以用函数来查找我们想要的内容。
+(1)用聚合函数count()计算出表内有多少条行数据
+
+hive> select count(*) from user_log; -- 用聚合函数count()计算出表内有多少条行数据
+hive
+执行结果如下：
+
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hadoop_20170224103108_d6361e99-e76a-43e6-94b5-3fb0397e3ca6
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks determined at compile time: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Job running in-process (local Hadoop)
+2017-02-24 10:31:10,085 Stage-1 map = 100%,  reduce = 100%
+Ended Job = job_local792612260_0001
+MapReduce Jobs Launched:
+Stage-Stage-1:  HDFS Read: 954982 HDFS Write: 0 SUCCESS
+Total MapReduce CPU Time Spent: 0 msec
+OK
+10000
+Time taken: 1.585 seconds, Fetched: 1 row(s)
+Shell 命令
+我们可以看到，得出的结果为OK下的那个数字54925330（
+(2)在函数内部加上distinct，查出uid不重复的数据有多少条
+下面继续执行操作：
+
+hive> select count(distinct user_id) from user_log; -- 在函数内部加上distinct，查出user_id不重复的数据有多少条
+hive
+执行结果如下：
+
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hadoop_20170224103141_47682fd4-132b-4401-813a-0ed88f0fb01f
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks determined at compile time: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Job running in-process (local Hadoop)
+2017-02-24 10:31:42,501 Stage-1 map = 100%,  reduce = 100%
+Ended Job = job_local1198900757_0002
+MapReduce Jobs Launched:
+Stage-Stage-1:  HDFS Read: 1901772 HDFS Write: 0 SUCCESS
+Total MapReduce CPU Time Spent: 0 msec
+OK
+358
+Time taken: 1.283 seconds, Fetched: 1 row(s)
+(3)查询不重复的数据有多少条(为了排除客户刷单情况) **
+
+hive> select count(*) from (select user_id,item_id,cat_id,merchant_id,brand_id,month,day,action from user_log group by user_id,item_id,cat_id,merchant_id,brand_id,month,day,action having count(*)=1)a;
+hive
+执行结果如下：
+
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hadoop_20170224103334_3391e361-c710-4162-b022-2658f41fc228
+Total jobs = 2
+Launching Job 1 out of 2
+Number of reduce tasks not specified. Estimated from input data size: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Job running in-process (local Hadoop)
+2017-02-24 10:33:35,890 Stage-1 map = 100%,  reduce = 100%
+Ended Job = job_local1670662918_0003
+Launching Job 2 out of 2
+Number of reduce tasks determined at compile time: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Job running in-process (local Hadoop)
+2017-02-24 10:33:37,026 Stage-2 map = 100%,  reduce = 100%
+Ended Job = job_local2041177199_0004
+MapReduce Jobs Launched:
+Stage-Stage-1:  HDFS Read: 2848562 HDFS Write: 0 SUCCESS
+Stage-Stage-2:  HDFS Read: 2848562 HDFS Write: 0 SUCCESS
+Total MapReduce CPU Time Spent: 0 msec
+OK
+4754
+Time taken: 2.478 seconds, Fetched: 1 row(s)
+可以看出，排除掉重复信息以后，只有4754条记录。
+注意：嵌套语句最好取别名，就是上面的a，否则很容易出现如下错误.
+
+
+四．关键字条件查询分析
+1.以关键字的存在区间为条件的查询
+使用where可以缩小查询分析的范围和精确度，下面用实例来测试一下。
+(1)查询双11那天有多少人购买了商品
+
+hive> select count(distinct user_id) from user_log where action='2';
+hive
+执行结果如下：
+
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hadoop_20170224103500_44e669ed-af51-4856-8963-002d85112f32
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks determined at compile time: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Job running in-process (local Hadoop)
+2017-02-24 10:35:01,940 Stage-1 map = 100%,  reduce = 100%
+Ended Job = job_local1951453719_0005
+MapReduce Jobs Launched:
+Stage-Stage-1:  HDFS Read: 3795352 HDFS Write: 0 SUCCESS
+Total MapReduce CPU Time Spent: 0 msec
+OK
+358
+Time taken: 1.231 seconds, Fetched: 1 row(s)
+2.关键字赋予给定值为条件，对其他数据进行分析
+取给定时间和给定品牌，求当天购买的此品牌商品的数量
+
+hive> select count(*) from user_log where action='2' and brand_id=2661;
+hive
+执行结果如下：
+
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hadoop_20170224103541_4640ca81-1d25-48f8-8d9d-6027f2befdb9
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks determined at compile time: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Job running in-process (local Hadoop)
+2017-02-24 10:35:42,457 Stage-1 map = 100%,  reduce = 100%
+Ended Job = job_local1749705881_0006
+MapReduce Jobs Launched:
+Stage-Stage-1:  HDFS Read: 4742142 HDFS Write: 0 SUCCESS
+Total MapReduce CPU Time Spent: 0 msec
+OK
+3
+Time taken: 1.258 seconds, Fetched: 1 row(s)
+五．根据用户行为分析
+从现在开始，我们只给出查询语句，将不再给出执行结果。
+1．查询一件商品在某天的购买比例或浏览比例
+
+hive> select count(distinct user_id) from user_log where action='2'; -- 查询有多少用户在双11购买了商品
+hive
+hive> select count(distinct user_id) from user_log; -- 查询有多少用户在双11点击了该店
+hive
+根据上面语句得到购买数量和点击数量，两个数相除即可得出当天该商品的购买率。
+2.查询双11那天，男女买家购买商品的比例
+
+hive> select count(*) from user_log where gender=0; --查询双11那天女性购买商品的数量
+hive> select count(*) from user_log where gender=1; --查询双11那天男性购买商品的数量
+hive
+上面两条语句的结果相除，就得到了要要求的比例。
+3.给定购买商品的数量范围，查询某一天在该网站的购买该数量商品的用户id
+
+hive> select user_id from user_log where action='2' group by user_id having count(action='2')>5; -- 查询某一天在该网站购买商品超过5次的用户id
+hive
+六.用户实时查询分析
+不同的品牌的浏览次数
+
+hive> create table scan(brand_id INT,scan INT) COMMENT 'This is the search of bigdatataobao' ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' STORED AS TEXTFILE; -- 创建新的数据表进行存储
+hive> insert overwrite table scan select brand_id,count(action) from user_log where action='2' group by brand_id; --导入数据
+hive> select * from scan; -- 显示结果
+
+==============================
+淘宝双11数据分析与预测课程案例-步骤三:将数据从Hive导入到MySQL
+
+ 阮榕城 2017年2月27日 (updated: 2017年3月6日) 3853
+大数据技术原理与应用
+《淘宝双11数据分析与预测课程案例—步骤三：将数据从Hive导入到MySQL》
+
+开发团队：厦门大学数据库实验室 联系人：林子雨老师 ziyulin@xmu.edu.cn
+
+版权声明：版权归厦门大学数据库实验室所有，请勿用于商业用途；未经授权，其他网站请勿转载
+
+本教程介绍大数据课程实验案例“淘宝双11数据分析与预测”的第三个步骤，将数据从Hive导入到MySQL。从数据导入到MySQL是为了后续数据可视化，服务端读取MySQL中的数据，渲染到前端ECharts页面。在实践本步骤之前，请先完成该实验案例的第一个步骤——本地数据集上传到数据仓库Hive，和第二个步骤——Hive数据分析。这里假设你已经完成了前面的这两个步骤。
+
+所需知识储备
+数据仓库Hive概念与基本原理、关系数据库概念与基本原理、SQL语句
+
+训练技能
+数据仓库Hive的基本操作、关系数据库MySQL的基本操作、Sqoop工具的使用方法
+
+任务清单
+Hive预操作
+使用Sqoop将数据从Hive导入MySQL
+一、准备工作
+本教程需要安装Hive、MySQL和Sqoop。在前面的第一个步骤中，我们在安装Hive的时候就已经一起安装了MySQL（因为我们采用MySQL来存储Hive的元数据），所以，现在你只需要再安装Sqoop。
+（1）请参考厦大数据库实验室博客Ubuntu安装Sqoop，完成Sqoop的安装。本教程下载的是sqoop-1.4.6.bin__hadoop-2.0.4-alpha.tar.gz，安装目录是“/usr/local/sqoop”。虽然这个sqoop是为hadoop2.0.4版本开发的，本教程Hadoop版本是2.7.1，但是，依然可以顺利使用。
+
+二、Hive预操作
+如果你还没有启动Hive，请首先启动Hive。
+请登录Linux系统（本教程统一采用hadoop用户名登录系统），然后，打开一个终端（可以按快捷键Ctrl+Alt+T）。
+本教程中，Hadoop的安装目录是“/usr/local/hadoop”，Hive的安装目录是“/usr/local/hive”。
+因为需要借助于MySQL保存Hive的元数据，所以，请首先启动MySQL数据库，请在终端中输入下面命令：
+
+service mysql start  # 可以在Linux的任何目录下执行该命令
+Shell 命令
+由于Hive是基于Hadoop的数据仓库，使用HiveQL语言撰写的查询语句，最终都会被Hive自动解析成MapReduce任务由Hadoop去具体执行，因此，需要启动Hadoop，然后再启动Hive。
+
+请执行下面命令启动Hadoop（如果你已经启动了Hadoop就不用再次启动了）：
+
+cd /usr/local/hadoop
+./sbin/start-all.sh
+Shell 命令
+然后，执行jps命令看一下当前运行的进程：
+
+jps
+Shell 命令
+如果出现下面这些进程，说明Hadoop启动成功了。
+
+3765 NodeManager
+3639 ResourceManager
+3800 Jps
+3261 DataNode
+3134 NameNode
+3471 SecondaryNameNode
+下面，继续执行下面命令启动进入Hive：
+
+cd /usr/local/hive
+./bin/hive   #启动Hive
+Shell 命令
+通过上述过程，我们就完成了MySQL、Hadoop和Hive三者的启动。
+启动成功以后，就进入了“hive>”命令提示符状态，可以输入类似SQL语句的HiveQL语句。
+
+然后，在“hive>”命令提示符状态下执行下面命令：
+
+1、创建临时表inner_user_log和inner_user_info
+
+hive> create table dbtaobao.inner_user_log(user_id INT,item_id INT,cat_id INT,merchant_id INT,brand_id INT,month STRING,day STRING,action INT,age_range INT,gender INT,province STRING) COMMENT 'Welcome to XMU dblab! Now create inner table inner_user_log ' ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' STORED AS TEXTFILE;
+hive
+这个命令执行完以后，Hive会自动在HDFS文件系统中创建对应的数据文件“/user/hive/warehouse/dbtaobao.db/inner_user_log”。
+
+2、将user_log表中的数据插入到inner_user_log,
+在[大数据案例-步骤一:本地数据集上传到数据仓库Hive(待续)]中，我们已经在Hive中的dbtaobao数据库中创建了一个外部表user_log。下面把dbtaobao.user_log数据插入到dbtaobao.inner_user_log表中，命令如下：
+
+hive> INSERT OVERWRITE TABLE dbtaobao.inner_user_log select * from dbtaobao.user_log;
+hive
+请执行下面命令查询上面的插入命令是否成功执行：
+
+hive> select * from inner_user_log limit 10;
+hive
+三、使用Sqoop将数据从Hive导入MySQL
+1、启动Hadoop集群、MySQL服务
+前面我们已经启动了Hadoop集群和MySQL服务。这里请确认已经按照前面操作启动成功。
+
+2、将前面生成的临时表数据从Hive导入到 MySQL 中，包含如下四个步骤。
+(1)登录 MySQL
+请在Linux系统中新建一个终端，执行下面命令：
+
+mysql –u root –p
+Shell 命令
+为了简化操作，本教程直接使用root用户登录MySQL数据库，但是，在实际应用中，建议在MySQL中再另外创建一个用户。
+执行上面命令以后，就进入了“mysql>”命令提示符状态。
+(2)创建数据库
+
+mysql> show databases; #显示所有数据库
+mysql> create database dbtaobao; #创建dbtaobao数据库
+mysql> use dbtaobao; #使用数据库
+mysql
+注意：请使用下面命令查看数据库的编码：
+
+mysql> show variables like "char%";
+mysql
+会显示类似下面的结果：
+
++--------------------------+----------------------------+
+| Variable_name            | Value                      |
++--------------------------+----------------------------+
+| character_set_client     | utf8                       |
+| character_set_connection | utf8                       |
+| character_set_database   | latin1                     |
+| character_set_filesystem | binary                     |
+| character_set_results    | utf8                       |
+| character_set_server     | latin1                     |
+| character_set_system     | utf8                       |
+| character_sets_dir       | /usr/share/mysql/charsets/ |
++--------------------------+----------------------------+
+8 rows in set (0.00 sec)
+请确认当前编码为utf8，否则无法导入中文，请参考Ubuntu安装MySQL及常用操作修改编码。
+下面是笔者电脑上修改了编码格式后的结果：
+
++--------------------------+----------------------------+
+| Variable_name            | Value                      |
++--------------------------+----------------------------+
+| character_set_client     | utf8                       |
+| character_set_connection | utf8                       |
+| character_set_database   | utf8                       |
+| character_set_filesystem | binary                     |
+| character_set_results    | utf8                       |
+| character_set_server     | utf8                       |
+| character_set_system     | utf8                       |
+| character_sets_dir       | /usr/share/mysql/charsets/ |
++--------------------------+----------------------------+
+8 rows in set (0.00 sec)
+(3)创建表
+下面在MySQL的数据库dbtaobao中创建一个新表user_log，并设置其编码为utf-8：
+
+mysql> CREATE TABLE `dbtaobao`.`user_log` (`user_id` varchar(20),`item_id` varchar(20),`cat_id` varchar(20),`merchant_id` varchar(20),`brand_id` varchar(20), `month` varchar(6),`day` varchar(6),`action` varchar(6),`age_range` varchar(6),`gender` varchar(6),`province` varchar(10)) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+mysql
+提示：语句中的引号是反引号`，不是单引号’。需要注意的是，sqoop抓数据的时候会把类型转为string类型，所以mysql设计字段的时候，设置为varchar。
+创建成功后，输入下面命令退出MySQL：
+
+mysql> exit;
+mysql
+(4)导入数据(执行时间：20秒左右)
+注意，刚才已经退出MySQL，回到了Shell命令提示符状态。下面就可以执行数据导入操作，
+
+cd /usr/local/sqoop
+bin/sqoop export --connect jdbc:mysql://localhost:3306/dbtaobao --username root --password root --table user_log --export-dir '/user/hive/warehouse/dbtaobao.db/inner_user_log' --fields-terminated-by ',';
+Shell 命令
+字段解释：
+
+./bin/sqoop export ##表示数据从 hive 复制到 mysql 中
+–connect jdbc:mysql://localhost:3306/dbtaobao
+–username root #mysql登陆用户名
+–password root #登录密码
+–table user_log #mysql 中的表，即将被导入的表名称
+–export-dir ‘/user/hive/warehouse/dbtaobao.db/user_log ‘ #hive 中被导出的文件
+–fields-terminated-by ‘,’ #Hive 中被导出的文件字段的分隔符
+
+3、查看MySQL中user_log或user_info表中的数据
+下面需要再次启动MySQL，进入“mysql>”命令提示符状态：
+
+mysql -u root -p
+mysql
+会提示你输入MySQL的root用户的密码，本教程中安装的MySQL数据库的root用户的密码是hadoop。
+然后执行下面命令查询user_action表中的数据：
+
+mysql> use dbtaobao;
+mysql> select * from user_log limit 10;
+mysql
+会得到类似下面的查询结果：
+
++---------+---------+--------+-------------+----------+-------+------+--------+-----------+--------+-----------+
+| user_id | item_id | cat_id | merchant_id | brand_id | month | day  | action | age_range | gender | province  |
++---------+---------+--------+-------------+----------+-------+------+--------+-----------+--------+-----------+
+| 414196  | 1109106 | 1188   | 3518        | 4805     | 11    | 11   | 0      | 4         | 0      | 宁夏      |
+| 414196  | 380046  | 4      | 231         | 6065     | 11    | 11   | 0      | 5         | 2      | 陕西      |
+| 414196  | 1109106 | 1188   | 3518        | 4805     | 11    | 11   | 0      | 7         | 0      | 山西      |
+| 414196  | 1109106 | 1188   | 3518        | 4805     | 11    | 11   | 0      | 6         | 0      | 河南      |
+| 414196  | 1109106 | 1188   | 3518        | 763      | 11    | 11   | 2      | 2         | 0      | 四川      |
+| 414196  | 944554  | 1432   | 323         | 320      | 11    | 11   | 2      | 7         | 2      | 青海      |
+| 414196  | 1110009 | 1188   | 298         | 7907     | 11    | 11   | 2      | 3         | 1      | 澳门      |
+| 414196  | 146482  | 513    | 2157        | 6539     | 11    | 11   | 0      | 1         | 0      | 上海市    |
+| 414196  | 944554  | 1432   | 323         | 320      | 11    | 11   | 0      | 2         | 1      | 宁夏      |
+| 414196  | 1109106 | 1188   | 3518        | 4805     | 11    | 11   | 0      | 7         | 0      | 新疆      |
++---------+---------+--------+-------------+----------+-------+------+--------+-----------+--------+-----------+
+10 rows in set (0.03 sec)
+从Hive导入数据到MySQL中，成功！
+
+=======
+
+淘宝双11数据分析与预测课程案例—步骤五:利用ECharts进行数据可视化分析
+
+ 阮榕城 2017年2月27日 (updated: 2018年1月11日) 5759
+大数据技术原理与应用
+《淘宝双11数据分析与预测课程案例—步骤五:利用ECharts进行数据可视化分析》
+
+开发团队：厦门大学数据库实验室 联系人：林子雨老师ziyulin@xmu.edu.cn
+
+版权声明：版权归厦门大学数据库实验室所有，请勿用于商业用途；未经授权，其他网站请勿转载
+
+本教程介绍大数据课程实验案例“淘宝双11数据分析与预测”的第四个步骤，利用ECharts进行数据可视化分析。在实践本步骤之前，请先完成该实验案例的第一个步骤——本地数据集上传到数据仓库Hive，第二个步骤——Hive数据分析，第三个步骤：将数据从Hive导入到MySQL和第四个步骤：利用Spark预测回头客行为。这里假设你已经完成了前面的这四个步骤。
+
+ECharts是一个纯 Javascript 的图表库，可以流畅的运行在 PC 和移动设备上，兼容当前绝大部分浏览器（IE8/9/10/11，Chrome，Firefox，Safari等），提供直观，生动，可交互，可高度个性化定制的数据可视化图表。下面将通过Web网页浏览器可视化分析淘宝双11数据。
+
+工具
+由于ECharts是运行在网页前端，我们选用JSP作为服务端语言，读取MySQL中的数据，然后渲染到前端页面。
+本步骤需要涉及以下工具：
+操作系统:Linux系统（比如Ubuntu16.04）
+可视化：ECharts（安装在Linux系统下）
+数据库：MySQL（安装在Linux系统下）
+Web应用服务器：tomcat
+IDE:Eclipse
+
+搭建tomcat+mysql+JSP开发环境
+下载tomcat
+Tomcat 服务器是一个免费的开放源代码的Web 应用服务器，属于轻量级应用服务器，在中小型系统和并发访问用户不是很多的场合下被普遍使用，是开发和调试JSP 程序的首选。
+查看Linux系统的Java版本,执行如下命令：
+
+java -version
+Shell 命令
+结果如下：
+
+openjdk version "1.8.0_121"
+OpenJDK Runtime Environment (build 1.8.0_121-8u121-b13-0ubuntu1.16.04.2-b13)
+OpenJDK 64-Bit Server VM (build 25.121-b13, mixed mode)
+可以看出Linux系统中的Java版本是1.8版本，那么下载的tomcat也要对应Java的版本。这里下载apache-tomcat-8.0.41.zip，点击tomcat下载地址，如下图：
+，默认会下载到“~/下载/”目录
+解压apache-tomcat-8.0.41.zip到用户目录～下,执行如下命令：
+
+cd ~/下载/
+unzip apache-tomcat-8.0.41.zip -d ~
+Shell 命令
+启动mysql
+执行如下命令，启动mysql
+
+service mysql start
+Shell 命令
+利用Eclipse 新建可视化Web应用
+1.打开Eclipse，点击“File”菜单，或者通过工具栏的“New”创建Dynamic Web Project，弹出向导对话框
+填入Project name后，并点击”New Runtime”,如下图所示：
+
+2.出现New Server Runtime Environment向导对话框,选择“Apache Tomcat v8.0”,点击next按钮,如下图：
+
+3.选择Tomcat安装文件夹，如下图：
+
+
+4.返回New Server Runtime Environment向导对话框，点击finish即可。如下图：
+
+5.返回Dynamic Web Project向导对话框，点击finish即可。如下图：
+
+6.这样新建一个Dynamic Web Project就完成了。在Eclipse中展开新建的MyWebApp项目，初始整个项目框架如下：
+
+src文件夹用来存放Java服务端的代码，例如:读取数据库MySQL中的数据
+WebContent文件夹则用来存放前端页面文件，例如：前端页面资源css、img、js，前端JSP页面
+7.下载mysql-connector-java-5.1.40.zip
+mysql-connector-java-*.zip是Java连接MySQL的驱动包,默认会下载到”~/下载/”目录
+执行如下命令：
+
+cd ~/下载/
+unzip unzip mysql-connector-java-5.1.40.zip -d ~
+cd ~/mysql-connector-java-5.1.40/
+mv ./mysql-connector-java-5.1.40-bin.jar ~/workspace/MyWebApp/WebContent/WEB-INF/lib/mysql-connector-java-5.1.40-bin.jar
+Shell 命令
+上述操作完成后，即可开发可视化应用了。
+
+利用Eclipse 开发Dynamic Web Project应用
+整个项目开发完毕的项目结构，如下：
+
+src目录用来存放服务端Java代码，WebContent用来存放前端页面的文件资源与代码。其中css目录用来存放外部样式表文件、font目录用来存放字体文件、img目录存放图片资源文件、js目录存放JavaScript文件，lib目录存放Java与mysql的连接库。
+这里没有列出如何创建文件的图例，请读者自己去创建。
+点击MyWebApp源码,查看每个文件的代码。
+创建完所有的文件后，运行MyWebApp，查看我的应用。
+首次运行MyWebApp,请按照如下操作，才能启动项目:
+双击打开index.jsp文件，然后顶部Run菜单选择：Run As–>Run on Server
+
+出现如下对话框，直接点击finish即可。
+
+此时通过外部浏览器，例如火狐浏览器，打开MyWebApp地址,也能查看到该项目应用。
+以后如果要再次运行MyWebApp,只需要直接启动Tomcat服务器即可，关闭服务器也可以通过如下图关闭。
+
+
+重要代码解析
+服务端代码解析
+整个项目，Java后端从数据库中查询的代码都集中在项目文件夹下/Java Resources/src/dbtaobao/connDb.java
+代码如下：
+
+package dbtaobao;
+import java.sql.*;
+import java.util.ArrayList;
+
+public class connDb {
+    private static Connection con = null;
+    private static Statement stmt = null;
+    private static ResultSet rs = null;
+
+    //连接数据库方法
+    public static void startConn(){
+        try{
+            Class.forName("com.mysql.jdbc.Driver");
+            //连接数据库中间件
+            try{
+                con = DriverManager.getConnection("jdbc:MySQL://localhost:3306/dbtaobao","root","root");
+            }catch(SQLException e){
+                e.printStackTrace();
+            }
+        }catch(ClassNotFoundException e){
+            e.printStackTrace();
+        }
+    }
+
+    //关闭连接数据库方法
+    public static void endConn() throws SQLException{
+        if(con != null){
+            con.close();
+            con = null;
+        }
+        if(rs != null){
+            rs.close();
+            rs = null;
+        }
+        if(stmt != null){
+            stmt.close();
+            stmt = null;
+        }
+    }
+    //数据库双11 所有买家消费行为比例
+    public static ArrayList index() throws SQLException{
+        ArrayList<String[]> list = new ArrayList();
+        startConn();
+        stmt = con.createStatement();
+        rs = stmt.executeQuery("select action,count(*) num from user_log group by action desc");
+        while(rs.next()){
+            String[] temp={rs.getString("action"),rs.getString("num")};
+            list.add(temp);
+        }
+            endConn();
+        return list;
+    }
+    //男女买家交易对比
+        public static ArrayList index_1() throws SQLException{
+            ArrayList<String[]> list = new ArrayList();
+            startConn();
+            stmt = con.createStatement();
+            rs = stmt.executeQuery("select gender,count(*) num from user_log group by gender desc");
+            while(rs.next()){
+                String[] temp={rs.getString("gender"),rs.getString("num")};
+                list.add(temp);
+            }
+            endConn();
+            return list;
+        }
+        //男女买家各个年龄段交易对比
+        public static ArrayList index_2() throws SQLException{
+            ArrayList<String[]> list = new ArrayList();
+            startConn();
+            stmt = con.createStatement();
+            rs = stmt.executeQuery("select gender,age_range,count(*) num from user_log group by gender,age_range desc");
+            while(rs.next()){
+                String[] temp={rs.getString("gender"),rs.getString("age_range"),rs.getString("num")};
+                list.add(temp);
+            }
+            endConn();
+            return list;
+        }
+        //获取销量前五的商品类别
+        public static ArrayList index_3() throws SQLException{
+            ArrayList<String[]> list = new ArrayList();
+            startConn();
+            stmt = con.createStatement();
+            rs = stmt.executeQuery("select cat_id,count(*) num from user_log group by cat_id order by count(*) desc limit 5");
+            while(rs.next()){
+                String[] temp={rs.getString("cat_id"),rs.getString("num")};
+                list.add(temp);
+            }
+            endConn();
+            return list;
+        }
+    //各个省份的总成交量对比
+    public static ArrayList index_4() throws SQLException{
+        ArrayList<String[]> list = new ArrayList();
+        startConn();
+        stmt = con.createStatement();
+        rs = stmt.executeQuery("select province,count(*) num from user_log group by province order by count(*) desc");
+        while(rs.next()){
+            String[] temp={rs.getString("province"),rs.getString("num")};
+            list.add(temp);
+        }
+        endConn();
+        return list;
+    }
+}
+Java
+前端代码解析
+前端页面想要获取服务端的数据，还需要导入相关的包，例如：/WebContent/index.jsp部分代码如下：
+
+<%@ page language="java" import="dbtaobao.connDb,java.util.*" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%
+ArrayList<String[]> list = connDb.index();
+%>
+jsp
+前端JSP页面使用ECharts来展现可视化。每个JSP页面都需要导入相关ECharts.js文件，如需要中国地图的可视化，还需要另外导入china.js文件。
+那么如何使用ECharts的可视化逻辑代码，我们在每个jsp的底部编写可视化逻辑代码。这里展示index.jsp中可视化逻辑代码:
+
+<script>
+// 基于准备好的dom，初始化echarts实例
+var myChart = echarts.init(document.getElementById('main'));
+ // 指定图表的配置项和数据
+option = {
+            backgroundColor: '#2c343c',
+
+            title: {
+                text: '所有买家消费行为比例图',
+                left: 'center',
+                top: 20,
+                textStyle: {
+                    color: '#ccc'
+                }
+            },
+
+            tooltip : {
+                trigger: 'item',
+                formatter: "{a} <br/>{b} : {c} ({d}%)"
+            },
+
+            visualMap: {
+                show: false,
+                min: 80,
+                max: 600,
+                inRange: {
+                    colorLightness: [0, 1]
+                }
+            },
+            series : [
+                {
+                    name:'消费行为',
+                    type:'pie',
+                    radius : '55%',
+                    center: ['50%', '50%'],
+                    data:[
+                        {value:<%=list.get(0)[1]%>, name:'特别关注'},
+                        {value:<%=list.get(1)[1]%>, name:'购买'},
+                        {value:<%=list.get(2)[1]%>, name:'添加购物车'},
+                        {value:<%=list.get(3)[1]%>, name:'点击'},
+                    ].sort(function (a, b) { return a.value - b.value}),
+                    roseType: 'angle',
+                    label: {
+                        normal: {
+                            textStyle: {
+                                color: 'rgba(255, 255, 255, 0.3)'
+                            }
+                        }
+                    },
+                    labelLine: {
+                        normal: {
+                            lineStyle: {
+                                color: 'rgba(255, 255, 255, 0.3)'
+                            },
+                            smooth: 0.2,
+                            length: 10,
+                            length2: 20
+                        }
+                    },
+                    itemStyle: {
+                        normal: {
+                            color: '#c23531',
+                            shadowBlur: 200,
+                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        }
+                    },
+
+                    animationType: 'scale',
+                    animationEasing: 'elasticOut',
+                    animationDelay: function (idx) {
+                        return Math.random() * 200;
+                    }
+                }
+            ]
+        };
+
+ // 使用刚指定的配置项和数据显示图表。
+ myChart.setOption(option);
+</script>
+JavaScript
+ECharts包含各种各样的可视化图形，每种图形的逻辑代码，请参考ECharts官方示例代码,请读者自己参考index.jsp中的代码，再根据ECharts官方示例代码，自行完成其他可视化比较。
+
+注意：由于ECharts更新，提供下载的中国矢量地图数据来自第三方，由于部分数据不符合国家《测绘法》规定，目前暂时停止下载服务。
+
+
+页面效果
+最终，我自己使用饼图，散点图，柱状图，地图等完成了如下效果，读者如果觉得有更适合的可视化图形，也可以自己另行修改。
+最后展示所有页面的效果图：
+
+
+
+
+
+
+
+
+
+到这里，第五个步骤的实验内容结束，整个淘宝双11数据分析与预测课程案例到这里顺利完结！
