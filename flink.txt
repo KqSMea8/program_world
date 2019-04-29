@@ -794,20 +794,1489 @@ Piracy
 Questions
 
 
+     Flink SQL概述
+     更新时间：2019-01-21 11:14:56
+
+     编辑 ·
+      · 我的收藏
+     Flink SQL是阿里云实时计算为简化计算模型，降低用户使用实时计算门槛而设计的一套符合标准 SQL语义的开发语言。
+
+     本章节通过以下方面，为您介绍实时计算Flink SQL的使用方法。
+
+     基本概念
+     关键字
+     数据类型
+     DDL语句
+     DML语句
+     QUERY语句
+     数据视图
+     窗口函数
+     逻辑函数
+     内置函数
+     自定义函数
 
 
 
 
 
 
+阿里云实时计算(Alibaba Cloud Realtime Compute)是一套基于Apache Flink构建的一站式、高性能实时大数据处理平台，广泛适用于流式数据处理、离线数据处理、DataLake计算等多种场景。阿里云实时计算产品彻底规避繁重的底层流式处理逻辑开发工作，助力中国企业向实时化、智能化大数据计算升级转型。
+
+阿里实时计算开发平台为实时计算产品Flink SQL作业提供了一站式的存储管理、作业开发、作业调试、运维管理和监控报警的功能。
+
+Flink SQL开发指南主要包含以下内容：
+
+数据存储
+提供了实时计算主流的上下游存储（RDS、DataHub、OTS等）的管理界面，通过存储注册方式引入的上下存储，可以实现数据预览、数据抽样以及自动生成DDL的功能，请参见数据存储概述。
+若共享模式集群需访问阿里云VPC网络下的存储资源，请参见VPC访问授权。
+若实时计算访问的上下游存储存在白名单机制，请参见如何配置数据存储白名单。
+作业开发
+介绍Flink SQL作业开发、上线到启动的整个流程。
+
+作业调试
+介绍Flink SQL作业调试功能，包括本地调试和线上调试。
+
+数据运维
+介绍作业状态、数据曲线、Failover等数据运维相关内容。
+
+监控报警
+介绍如何创建和启动报警规则。
+
+配置调优
+介绍Flink SQL作业的调优功能，主要包括SQL调优、autoconf自动调优、autoscale自动调优和手动配置调优。
+
+Flink SQL介绍
+Flink SQL语法，具体请参见Flink SQL概述
+
+数据存储概述
+更新时间：2019-04-15 16:34:15
+
+编辑 ·
+ · 我的收藏
+本页目录
+明文方式
+存储注册方式
+阿里云实时计算提供包括RDS、DataHub、OTS等各类数据存储系统的管理界面，为您提供一站式云上数据存储管理。
+
+数据存储有两层含义，一方面代表的是实时计算产品上下游生态对应的数据存储系统/数据库表（以下简称存储资源，具体见产品生态），另一方面代表实时计算产品对上下游存储资源的管理功能（以下简称数据存储功能）。实时计算产品使用上下游存储资源有两种方式，第一种我们称之为明文方式，第二种我们称之为存储注册方式，下面我们分别做介绍。
+说明 实时计算使用存储资源前需要提前授权，即需要您授权实时计算访问存储资源的权限。是否已授权及授权方法请您参看角色授权。
+明文方式
+您通过在作业的DDL语句的with参数中直接使用AccessId/AccessKey来引用上下游存储资源。具体方法见Flink SQL-DDL语句。明文方式不仅仅支持同账号（包括主子账号）授权，同时还支持跨账号授权。如当前实时计算的A用户(包括A下所属的子账户)，若需要使用用户B的存储资源，则可以通过如下明文方式定义DDL：
+
+试用
+CREATE TABLE in_stream(
+  a varchar,
+  b varchar,
+  c timestamp
+)with(
+type='datahub',
+  endPoint='http://dh-cn-hangzhou.aliyuncs.com',
+  project='dataHubProjectName',
+  topic='dataHubTopicName',
+  accessId='accessIdOfUserB',
+  accessKey='accessKeyOfUserB');
+存储注册方式
+为了方便用户管理上下游存储资源，实时计算产品提供了数据存储管理功能，通过提前将上下游存储资源注册到实时计算开发平台，您能够享受到数据预览、数据抽样、自动生成DDL等功能，让您一站式管理您的云上存储资源。
+
+说明 实时计算数据存储功能当前仅支持同账号属主下的存储资源，即当前使用实时计算的A用户(包括A用户的子账户)所注册的存储资源，必须是A购买的存储资源。不支持跨账号授权，对于跨账号授权使用存储资源，请使用明文方式。
+注册数据存储
+点击开发界面左侧的数据存储，选择右上角的注册与网络，即可进入注册数据存储界面。
 
 
+目前实时计算产品仅支持注册如下五种存储资源，具体方法请点击以下产品链接：
+
+注册Datahub
+注册分析型数据库（AnalyticDB）
+注册表格存储（TableStore）
+注册云数据库（RDS）
+注册日志服务（Log Service）
+数据预览
+对于已经注册的存储资源，实时计算提供数据预览功能，点击数据存储，选择某个数据存储类型，即可预览数据。
 
 
+数据抽样
+对于已经注册的存储资源，实时计算提供数据抽样功能，点击数据存储，选择某个数据存储类型，点击数据抽样即可进入数据抽样界面。对于抽样的数据结果，可点击右上方的下载数据进行下载。
 
 
+自动生成DDL
+对于已经注册的存储资源，实时计算提供自动生成DDL的功能，在作业编辑界面，点击数据存储，选择某个数据存储类型，点击作为输入表引用（或作为结果表引用、作为维表引用）即可自动生成DDL。
 
 
+自动生成的DDL仅包含基本的with参数保证实时计算与存储资源的连通性，您可在此基础上增加其他with参数。
+
+网络探测
+实时计算的数据存储功能还提供网络探测功能，用于探测实时计算产品与被探测的存储资源的网络连通性。点击数据存储 > 注册与网络，并打开网络探测模式开关即可使用网络探测功能。
+
+注册大数据总线（DataHub）
+更新时间：2019-03-15 09:22:29
+
+编辑 ·
+本页目录
+注册
+常见问题
+本文为您介绍如何注册实时计算大数据总线（DataHub）数据存储，以及注册存储过程中的常见问题。
+
+注册
+DataHub作为一个流式数据总线，为阿里云数加平台提供了大数据的入口服务。结合阿里云众多云产品，可以构建一站式的数据处理平台。实时计算通常使用DataHub作为流式数据存储头和输出目的端。
+
+说明 DataHub在公有云使用需要用户授予实时计算代为用户访问DataHub权限，具体请参见共享模式角色授权。否则可能出现报错 No Permission。
+22
+说明 如何进入注册数据存储界面请参见注册数据存储。
+Endpoint
+填写Datahub的Endpoint。需要注意，不同地域下DataHub有不同的Endpoint，具体请参见
+
+Datahub访问控制。
+说明 http://dh-cn-hangzhou.aliyun-inc.com不要使用 /结尾。
+共享模式：使用经典网络ECS Endpoint。如华东1（杭州）使用http://dh-cn-hangzhou.aliyun-inc.com。共享模式大集群所在的区域与Datahub所在区域不要求一致，但不一致可能额外增加网络延时。
+独享模式：使用VPC ECS Endpoint。如华东1（杭州）使用http://dh-cn-hangzhou.aliyun-inc.com。独享模式小集群所在的区域与Datahub所在区域要求一致。
+有关专有云的Endpoint填写，请联系您的专有云系统管理员，咨询有关DataHub Endpoint地址。
+Project
+填写DataHub的Project。
+
+说明 跨属主的数据存储不能注册。例如A用户拥有DataHub的ProjectA，但B用户希望在实时计算使用ProjectA，目前实时计算暂不支持这类使用场景下注册，若需使用可使用明文方式，具体参考数据存储概述-明文方式明文方式。
+常见问题
+Q: 为什么我注册失败，失败原因提示XXX？
+
+A: 实时计算的数据存储页面能够协助您完成数据管理，其本身就是使用相关存储SDK代为访问各类存储。因此很多情况下可能是您注册过程出现问题导致，请排查如下原因。
+
+请确认是否已经开通并拥有DataHub的Project。请登录DataHub控制台，公有云客户可以访问DataHub控制台看您是否有权限访问您的Project。
+请确认您是DataHub Project的属主。跨属主的数据存储不能注册。
+请确认您填写的DataHub的Endpoint和Project完全正确。DataHub Endpoint必须以http开头，且不能以(/)结尾。例如，http://dh-cn-hangzhou-internal.aliyuncs.com是正确的，但http://dh-cn-hangzhou-internal.aliyuncs.com/是错误的。
+请确认您填写的DataHub Endpoint是经典网络地址，而非VPC地址。目前实时计算暂不支持VPC内部地址。
+请不要重复注册，实时计算提供注册检测机制，避免您重复注册。
+Q: 为什么数据抽样仅仅针对时间抽样，不支持其他字段抽样？
+
+A: DataHub定位是流数据存储，对外提供的接口也只有时间参数。因此，实时计算也只能提供基于时间的抽样。
 
 
+注册分析型数据库（AnalyticDB）
+更新时间：2019-03-21 14:46:00
+
+编辑 ·
+本页目录
+注册
+本文为您介绍如何使用存储注册的方式连接分析型数据库（AnalyticDB）数据存储。
+
+注册
+
+信息填写如下
+URL：AnalyticDB控制台链接信息串。
+共享模式：请使用AnalyticDB的经典网络的连接点
+独享模式：请使用AnalyticDB的VPC网络的连接点。
+Database：AnalyticDB数据库名称，即ADS实例名称。
+AccessId：阿里云账号安全信息页面的AccessID。
+AccessKey：阿里云账号安全信息页面的AccessKey。
+说明
+URL​地址查询
+登录AnalyticDB 控制台。
+点击对应的实例名称，进入基本信息页面。
+在连接信息 > 连接地址中查看相应的连接地址。
+AccessId、AccessKey信息查询参见如何查看AccessID、AccessKey信息。
+
+注册日志服务（Log Service）
+更新时间：2019-04-01 16:04:09
+
+编辑 ·
+本页目录
+注册
+常见问题
+本文为您介绍实时计算如何使用存储注册的方式连接日志服务（Log Service），以及存储注册过程中的常见问题。
+
+注册
+日志服务（Log Service）简称LOG，原称SLS。是针对日志场景的一站式解决方案。提供海量日志数据采集、订阅、转储与查询功能。日志服务是阿里云的日志管理平台。在您使用日志服务完成了对ECS日志的管理的前提下，实时计算可以直接对接日志服务的LogHub存储，无需对数据进行迁移。
+
+说明 日志服务在公有云使用时，需要您授予实时计算代为您访问日志服务的权限（具体请参看角色授权），否则可能出现报错 No Permission。
+4
+Endpoint
+填写日志服务的Endpoint。不同的地域下日志服务有不同的Endpoint，请参见日志服务服务入口服务入口。
+说明
+Endpoint需增加http://开头，且不能使用/结尾，如http://cn-hangzhou-intranet.log.aliyuncs.com。
+实时计算和日志服务同处于阿里云内网，建议您填写经典网络或VPC网络服务入口。为了避免消耗大量外网带宽和导致可能的性能问题，不建议填写公网服务入口。
+有关专有云日志服务的Endpoint填写，请咨询专有云系统管理员。
+Project
+填写日志服务的Project。
+
+说明 跨属主的数据存储不能注册。例如A用户拥有日志服务的Project A，但B用户希望在实时计算使用Project A。目前，实时计算暂不支持这类场景下的数据存储注册方式，您可以使用明文方式，具体参见明文方式。
+常见问题
+Q: 为什么我注册失败，失败原因提示XXX？
+
+A: 实时计算的数据存储页面能够协助您完成数据管理，其本身就是使用相关存储SDK代为访问各类存储。因此很多情况下可能是您注册过程出现问题导致。请排查如下原因。
+
+请确认是否已经开通并拥有日志服务的Project。请登录日志服务控制台，公有云用户可以访问日志服务控制台看您是否有权限访问您的Project。
+请确认您是日志服务Project的属主。跨属主的数据存储不能注册。
+请确认您填写的日志服务的Endpoint和Project完全正确。特别注意的是日志服务 Endpoint必须以http开头，且不能以/结尾，例如http://cn-hangzhou.log.aliyuncs.com是正确的，但http://cn-hangzhou.log.aliyuncs.com/是错误的。
+请不要重复注册。实时计算提供注册检测机制，避免您重复注册。
+Q: 为什么数据抽样仅仅针对时间抽样，不支持其他字段抽样？
+
+A: 日志服务定位是流数据存储，对外提供的接口也只有时间参数。因此，实时计算也只能提供基于时间的抽样。如果希望使用日志服务的检索功能，请登录并确认是否已经开通并拥有日志服务的Project。请登录日志服务控制台使用检索。
+
+注册云数据库（RDS）
+更新时间：2019-01-22 17:30:38
+
+编辑 ·
+本页目录
+注册
+常见问题
+本文为您介绍如何使用存储注册的方式连接云数据库（RDS）数据存储，以及连接过程中的常见问题。
+
+云数据库RDS（ApsaraDB for RDS，简称RDS）是一种稳定可靠、可弹性伸缩的在线数据库服务。目前实时计算支持包括MySQL在内的RDS引擎。
+
+说明
+RDS在公有云使用需要您授予实时计算访问RDS的权限，具体请参看角色授权。否则可能出现报错No Permission的情况。
+在实时计算中，下游数据库使用MySQL等关系数据库（对应的CONNECTOR为TDDL和RDS），当实时计算频繁写某个表或者资源时，存在死锁风险。高QPS/TPS或高并发写入情况场景，一般不建议使用TDDL或者RDS作为实时计算作业的结果表，建议使用表格存储（TableStore）作为结果表，可以避免死锁的问题。
+注册
+说明 存储注册过程中系统会为RDS自动配置IP白名单。
+74
+信息填写：
+Region
+选择RDS的地域，请您选择RDS所在地域。
+
+Instance
+填写RDS实例ID。
+说明 请填写实例ID，不是实例名称。
+DBName
+填写RDS下DataBase的名称。
+说明 DataBase是RDS的数据库名称，不是Instance的名称。
+Username
+数据库登录名称。
+
+Password
+数据库登录密码。
+
+白名单授权
+目前RDS使用白名单进行安全保证，实时计算存储注册方式为RDS自动添加IP白名单。
+
+常见问题
+Q：存储注册过程中出现报错操作错误：未在VPC中授权？
+
+66
+A：引起该报错的原因是，您在创建RDS实例时选择的不是经典网络，而是专有网络（VPC模式）。对于这种实例应该进行VPC访问授权。请参看VPC访问授权。
+
+注册表格存储（TableStore）
+更新时间：2019-01-22 17:32:03
+
+编辑 ·
+本页目录
+注册
+本文为您介绍实时计算如何用存储注册的方式连接表格存储（TableStore）。
+
+注册
+表格存储（Table Store）是构建在阿里云飞天分布式系统之上的NoSQL数据存储服务。能够提供海量结构化数据的存储服务和实时访问服务。实时计算对于请求访问时延要求较高，同时对于关系型代数需求又较低。因此，实时计算非常适合使用TableStore作为数据维表和结果表。
+说明 若您在使用Table Store时，出现 No Permission类似错误，请参见角色授权授予实时计算访问TableStore的权限。
+65
+Endpoint
+填写TableStore的Endpoint。请在OTS控制台查看TableStore的Endpoint信息，填写TableStore私网地址。具体步骤请参见表格存储（TableStore）Endpoint。
+
+TableStore访问网络类型设置为允许任意网络访问。登录OTS控制台选择实例详情 > 实例网络类型 > 更改 > 允许任意网络访问。如下图:
+实例名称
+填写TableStore的实例名称。
+
+开发
+更新时间：2019-04-10 16:58:05
+
+编辑 ·
+ · 我的收藏
+本页目录
+开发流程
+语法检查
+作业参数
+SQL辅助
+SQL版本管理
+本文为您介绍阿里实时计算平台作业开发流程以及在作业开发过程中涉及到的其他功能如：语法检查、SQL辅助、SQL版本管理和引擎版本切换功能。
+
+实时计算用户主要使用Flink SQL进行作业开发，Flink SQL开发手册参见Flink SQL。
+
+开发流程
+在开发界面点击新建作业。
+进入作业编辑界面，编写SQL代码。
+说明
+可以在作业右侧代码结构查看SQL代码结构。
+建议使用左侧数据存储管理上下游存储，具体参见数据存储概述。
+语法检查
+点击作业开发页面顶部的 语法检查可检测SQL语句并显示出错误SQL语句的错误信息。
+说明
+对作业进行保存操作也可以触发SQL语法检查功能。
+请编写完整的SQL逻辑后再进行语法检查，否则语法检查不生效。
+作业参数
+您可在开发界面右侧作业参数页面配置作业所需参数。
+
+SQL辅助
+Flink SQL语法检查
+您在修改IDE文本后即可进行自动保存。保存操作可以触发SQL语法检查功能。语法校验出错误后，将在IDE界面提示出错行数、列数以及错误原因。
+
+Flink SQL智能提示
+您在输入Flink SQL过程中，IDE提供包括关键字、内置函数、表、字段智能记忆等提示功能。
+
+Flink SQL语法高亮
+针对Flink SQL关键字，提供不同颜色的语法高亮功能，以区分Flink SQL不同结构。
+
+SQL版本管理
+数据开发为您提供代码版本管理功能。您每次提交即可生成一个代码版本。代码版本用于版本追踪、版本修改以及后期版本回滚。
+
+点击 版本信息页面 操作字段下的 更多，选择相应的版本管理功能：
+对比：查看最新代码和指定版本的差异
+回滚：使用回滚功能回滚到指定版本。
+删除：实时计算公共云默认版本数上限是20。如果生成的版本超过最大值，系统将不允许该作业的提交请求，并提示您删除部分旧版本作业。
+说明 版本数低于或等于版本上限数后可再次提交作业。
+锁定：锁定当前作业版本，解锁前无法提交新版本。
+
+上线
+更新时间：2019-03-22 15:21:34
+
+编辑 ·
+ · 我的收藏
+本页目录
+上线步骤
+本文为您介绍实时计算作业的上线步骤。
+
+您完成开发、调试，经验证Flink SQL正确无误之后，点击上线，即可将数据发布到生产系统。
+
+上线步骤
+资源配置
+选择对应的资源配置方式。第一次启动建议使用系统默认配置。
+说明 阿里实时计算平台提供手动资源配置和自动资源配置2方式
+手动资源配置参见
+自动资源配置参见
+
+autoconf自动配置，支持blink 1.x和2.x版本。
+autoscale自动配置，支持blink 3.x版本。
+数据检查
+数据检查通过后，点击下一步 。
+
+上线作业
+点击上线 。作业上线后只是将作业提交至集群，并没有启动作业。启动作业请参见
+
+启动
+更新时间：2019-03-22 15:24:17
+
+编辑 ·
+ · 我的收藏
+作业开发、上线后即可在运维界面启动作业。
+
+点击运维进入运维界面。
+选择对应的作业，点击启动，如下图。
+上线启动
+指定读取数据时间（启动位点），点击确定，完成作业启动。如下图。作业启动完成后即可进入作业运维阶段。
+说明 启动位点表示从source表中读取数据的时间点，若选择当前时间则表示从当前时间开始读取数据；若选择过去的某个时间点，则表示从过去时间点开始读取数据，一般用于回追历史数据。
+
+本地调试
+更新时间：2019-04-18 20:00:13
+
+编辑 ·
+ · 我的收藏
+本页目录
+作业调试
+Flink SQL在调试环境中的特点
+本文为您介绍实时计算本地调试流程及本地调试环境的特点。
+
+阿里实时计算开发平台提供了一套模拟的运行环境，您可以在调试环境中自定义上传数据，模拟运行，检查输出结果从而验证业务逻辑的正确性。
+
+作业调试
+作业调试步骤如下。
+
+进入调试页面。
+调试页面
+准备数据。提供两种准备数据的方式。
+本地上传方式
+下载模板
+根据模板，准备数据。
+数据上传 。完成后可在数据预览界面查看已上传数据。
+说明 默认数据分隔符为逗号，如果需要自定义分隔符请参见调试数据分隔符。
+线上抽样方式
+点击随机抽样线上数据或顺序抽样线上数据。
+抽样成功后可在数据预览界面查看抽样数据。
+点击确定，启动调试，查看调试输出结果。
+调试输出
+Flink SQL在调试环境中的特点
+与生产环境完全隔离
+调试环境下，所有的Flink SQL将在独立的调试容器运行，且所有的输出将被直接改写到调试结果屏幕。不会对线上的生产流、实时计算作业和线上生产的数据存储系统造成任何影响。 数据调试结果实际上不会真正写入到外部数据存储，而是被实时计算拦截输出到屏幕。因此，在实时计算调试完成的代码是在调试容器中完成。
+说明 线上运行过程中可能由于对目标数据存储写入格式的不同导致运行失败。这类错误在调试阶段无法完全规避，在线上运行时才能发现。例如，您将结果数据输出到RDS系统。其中某些字段输出字符串数据长度大于RDS建表最大值，在Debug环境下我们无法测试出该类问题。但实际生产运行过程中会有引发异常。后续，实时计算将提供针对本地调试运行，支持写出到真实数据存储的功能，有效辅助您缩短调试和生产的差距，有助于在调试阶段解决问题。
+83
+调试数据分隔符
+默认情况下，调试文件使用逗号作为分隔符。例如，您构造了如下的测试数据。
+
+试用
+id,name,age
+1,alicloud,13
+2,stream,1
+在不指定调试分隔符情况下，默认使用了逗号进行分隔。假设您需要使用JSON文件作为字段内容，字段内容已经包含了逗号。此时您需要指定其他字符作为分隔符。
+
+说明 实时计算仅支持指定单个英文字符（如下图中的 |）为分隔符。不允许字符串，例如 aaa作为分隔符。
+试用
+id|name|age
+1|alicloud|13
+2|stream|1
+此时您需要设置如下参数（以分隔符|为例）。
+
+试用
+debug.input.delimiter = |
+2134
+
+线上调试
+更新时间：2019-03-25 17:30:16
+
+编辑 ·
+ · 我的收藏
+本页目录
+线上调试Connector
+线上调试结果查询
+本文为您介绍实时计算线上调试功能以及线上调试结果查询方法。
+
+线上调试Connector
+为了方便您进行线上调试，阿里实时计算平台提供了两种特殊的Connector。
+random源表：用于周期性生成对应类型的随机数据。
+print结果表：用于输出计算结果。
+Random表参数
+参数	说明
+type	必选，取值唯一且为random
+interval	可选，产生数据的时间间隔（单位：ms），默认值为500ms
+Print表参数
+参数	说明
+type	必选，取值唯一且为print
+ignoreWrite	可选，如果您想用print来当成一个空结果表而不输出日志，可以配上参数ignoreWrite='true' （默认值为false）
+示例
+测试语句
+试用
+CREATE TABLE random_source (
+  instr               VARCHAR
+) WITH (
+  type = 'random'
+);
+
+CREATE TABLE print_sink(
+  instr VARCHAR,
+  substr VARCHAR,
+  num INT
+)with(
+  type = 'print'
+);
+
+INSERT INTO print_sink
+SELECT
+  instr,
+  SUBSTRING(instr,0,5) AS substr,
+  CHAR_LENGTH(instr) AS num
+FROM random_sourceceROM random_source
+测试结果
+线上调试测试结果如下图。
+
+线上调试结果查询
+说明
+查询线上调试结果前，请先确保作业上线和启动。
+线上调试会消耗一定的CU。
+线上调试结果查询查看步骤如下。
+
+点击顶部导航栏的运维，进入运维页面。
+点击作业名称下对应的作业，进入作业运维页面。
+在Vertex拓扑区域，点击相应结果表节点。
+点击SubTask List > 查看日志，进入日志查看窗口。
+查看相应的日志。
+Print结果表输出
+点击taskmanager.out右侧的查看日志。
+
+UDX日志输出
+如果您使用UDX，在Java代码中有两种调试方法：system out/err和SLF4J的Logger。
+
+system out/err方法
+点击taskmanager.out或taskmanager.err右侧的查看日志。
+
+SLF4J的Logger方法
+点击taskmanager.log右侧的查看日志。
+
+
+据在缓冲区的交换，减少了延迟的同时提高整体的吞吐量。 operator代表的是每个计算逻辑的算子，而task代表是多个operator的集合。
+
+视图模式
+为了方便您理解，阿里实时计算平台把底层计算逻辑抽象成为如下视图。
+13
+Task的详细的信息如下。您也可以将鼠标移动到Task显示详情的信息。
+
+名称	信息描述
+ID	表示在运行拓扑图的编码。
+PARALLEL	表示的并发量。
+TPS	表示每秒读取上游数据的BLOCK数。
+LATENCY	表示Task节点的计算耗时。
+DELAY	表示Task节点的业务延时。
+IN_Q	表示Task节点的输入队列的百分比。
+OUT_Q	表示Task节点的输出队列的百分比。
+点击Task节点，可以进入详情页面查看Task的里线程的列表。
+1324
+阿里实时计算平台提供每个Task的曲线指标图。点击Task节点进入曲线图。
+234
+列表模式
+实时计算不仅提供视图模式，同样也提供每个Task的列表模式。
+13
+点击Task节点，可以进入详情页面查看Task的里线程的列表。
+1324
+名称	信息描述
+ID	表示在运行拓扑图的编码。
+Name	表示每个Task的详情信息。
+Status	表示每个Task的运行的状态。
+InQ max	表示Task节点的输入队列，单位是百分比。
+OutQ max	表示Task节点的输出队列，单位是百分比。
+RecvCnt sum	表示Task节点接收到的数据量。
+SendCnt sum	表示Task节点的发送的数据量。
+TPS sum	表示每秒读取上游的信息量。
+Delay max	表示Task节点的业务延时。
+StartTime	表示Task节点的启动时间。
+Duration(s)	表示Task节点的运行时间。
+Task	表示每个Task节点的并发的运行状态。
+
+
+数据曲线
+更新时间：2019-04-26 13:54:45
+
+编辑 ·
+ · 我的收藏
+本页目录
+概述
+Advanced View
+WaterMark
+Delay
+Throughput
+Queue
+Tracing
+Process
+JVM
+阿里云实时计算提供了当前作业的核心指标概览页面。您可以通过数据曲线对作业的运行情况的进行一键式的诊断。未来实时计算还会提供更多基于作业现状的深度智能分析算法，以辅助您进行智能化和自动化诊断。
+
+目前的作业诊断图如下。
+
+说明
+上述所有指标在实时计算作业运行状态下才提供显示，暂停以及停止状态均不提供显示。
+作业指标是实时计算系统异步后台采集，有一定延迟。作业启动1分钟后，各项指标才能逐步采集并显示到数据曲线。
+概述
+Failover Rate
+Failover Rate指的是当前Job的出现Failover（错误或者异常）的频率。计算方法：当前Failover时间点的前1分钟内出现Failover的累计次数除以60。（例如 ，最近1分钟Failover了一次，1/60=0.01667。）
+
+Delay
+实时计算提供了三种延时指标用于衡量当前实时计算全链路的一个时效情况，用于评估当前实时计算作业是否存在反压等性能问题。
+
+
+业务延时（delay）：delay = 当前系统时间 – 当前系统处理的最后一条数据的事件时间（event time）。如果后续没有数据再进入上游存储，由于当前系统时间在不断往前推进，业务延时也会随之逐渐增大。
+数据滞留时间（fetched_delay）：fetched_delay = 数据进入实时计算的时间 - 数据事件时间（event time）。即使后续没有数据再进入上游存储，数据滞留时间也不会随之逐渐增大。一般用数据滞留时间来评估当前实时计算作业是否存在反压。
+数据间隔时间（no_data_delay）：no_data_delay = delay – fetched_delay。在实时计算没有反压（即fetched_delay较小且平稳）时，数据间隔时间可以反映数据源数据间的稀疏程度，在实时计算存在反压（即fetched_delay较大或不平稳）时，此参数没有实质性参考意义。
+说明
+实时计算是分布式计算框架，以上3类延时指标的Metric首先是针对Source的单个分区（Shard/Partition等）进行计算，然后汇报所有分区中的最大值呈现到前端页面上，因此前端页面上显示的汇聚后的no_data_delay并不精确等于delay – fetched_delay。
+如果Source中的某个分区没有新的数据，将会导致delay逐渐增大。
+目前底层算法实现时，当no_data_delay小于10秒时，会将no_data_delay设置为0，进行上报。
+各Source的TPS数据输入
+
+数据输入功能对实时计算作业所有的流式数据输入进行统计，记录每秒读取数据源表的Block的数，让您直观的了解数据存储TPS（Transactions Per Second）的情况。与RPS（Record Per Second）不同，RPS是读取数据源TPS的Block数解析后的数据，单位是条/秒。（例如，日志服务，1秒读取5个LogGroup，那么TPS=5，如果每个LogGroup解析出来8个日志记录，那么一共解析出40个日志记录，RPS=40。）
+各Sink的数据输出
+
+数据输出功能对实时计算作业所有的数据输出（并非是流式数据存储，而是全部数据存储）做出进行统计，让您直观的了解数据存储RPS（Record Per Second）的情况。通常，在系统运维过程中，如果出现没有数据输出的情况，除了检查上游是否存在数据输入，同样要检查下游是否真的存在数据输出。
+各Source的RPS数据输入
+
+数据输入对实时计算作业所有的流式数据输入进行统计，让您直观的了解数据存储RPS（Record Per Second）情况。通常，我们在系统运维过程中，如果出现没有数据输出的情况，就需要查看该值是否从源头数据输入就已经没有数据了。
+各Source的数据流量输入
+
+流量输入对实时计算作业所有的流式数据输入进行统计，记录每秒读取输入源表的流量的统计，让您直观的了解数据流量BPS（Byte Per Second）情况。
+各Source的脏数据
+
+为您显示实时计算Source各时间段脏数据条数。
+Advanced View
+阿里云实时计算提供可以恢复数据流应用到一致状态的容错机制。容错机制的核心就是持续创建分布式数据流及其状态的一致快照。这些快照在系统遇到故障时，充当可以回退的一致性检查点（checkpoint）。
+
+分布式快照的核心概念之一就是数据栅栏（barrier）。这些barrier被插入到数据流中，作为数据流的一部分和数据一起向下流动。barrier不会干扰正常数据，数据流严格有序。一个barrier把数据流分割成两部分：一部分进入到当前快照，另一部分进入下一个快照。每一个barrier都带有快照 ID，并且barrier之前的数据都进入了此快照。barrier不会干扰数据流处理，所以非常轻量。多个不同快照的多个barrier会在流中同时出现，即多个快照可能同时创建。
+
+barrier在数据源端插入，当snapshot n的barrier插入后，系统会记录当前snapshot位置值 n （用Sn表示）。然后barrier继续往下流动，当一个operator从其输入流接收到所有标识snapshot n的 barrier时，它会向其所有输出流插入一个标识snapshot n的barrier。当sink operator （DAG 流的终点）从其输入流接收到所有barrier n时，operator向检查点协调器确认snapshot n 已完成。当所有sink都确认了这个快照，快照就被标识为完成。
+
+以下就是记录Checkpoint的各种参数配置。
+Checkpoint Duration
+
+表示每次做Checkpoint保存状态所花费的时间，单位是MS。
+CheckpointSize
+
+表示每次做Checkpoint所消耗的内存大小。
+CheckpointAlignmentTime
+
+checkpointAlignmentTime表示当前节点做checkpoint的时候等待上游所有节点到达当前节点的时间， 也就是当sink operator（DAG 流的终点）从其输入流接收到所有barrier n时，它向the checkpoint coordinator确认snapshot n已完成。当所有sink都确认了这个快照，快照就被标识为完成。这个等待的时间就是checkpointAlignmentTime。
+CheckpointCount
+
+表示一定时间内Checkpoint的数量。
+Get
+
+在一定时间内每个SubTask Get操作ROCKSDB所花费的时间（最大值）。
+Put
+
+表示在一定时间内每个SubTask Put操作ROCKSDB所花费的时间（最大值）。
+Seek
+
+表示在一定时间内每个SubTask Seek操作ROCKSDB所花费的时间（最大值）。
+State Size
+
+表示在一定时间内Job内部state存储大小（如果增量过快JOB是异常的）。
+CMS GC Time
+
+表示在一定时间内Job底层container进行GC花费的时间。
+CMS GC Rate
+
+表示在一定时间内Job底层container进行GC的频率。
+WaterMark
+WaterMark Delay
+
+表示WaterMark 距离系统时间的差值。
+数据迟到丢弃TPS
+
+表示当某个数据的时间晚于watermark到达window，那么这个数据会被丢弃，该指标统计的是每秒迟到丢弃数。
+数据迟到累计丢弃数
+
+表示当某个数据的时间晚于Watermark到达window，那么这个数据会被丢弃，该指标统计的是累计迟到丢弃数。
+
+Delay
+Source SubTask 最大延迟 Top 15
+
+表示每个Source的并发的业务延时的时间。
+Throughput
+Task Input TPS
+
+表示作业级别所有的Task的数据的输入。
+Task Output TPS
+
+表示作业级别所有的Task的数据的输出。
+Queue
+Input Queue Usage
+
+表示作业级别所有的Task的数据的输入队列。
+Output Queue Usage
+
+表示作业级别所有的Task的数据的输出队列。
+Tracing
+以下为进阶参数：
+Time Used In Processing Per Second
+
+表示task级别的每秒处理所花费的时间。
+Time Used In Waiting Output Per Second
+
+表示task级别的每秒等待输出的时间。
+TaskLatency Histogram Mean
+
+表示作业级别的每个task的计算延时的曲线。
+WaitOutput Histogram Mean
+
+表示task级别的等待输出的曲线。
+WaitInput Histogram Mean
+
+表示Task级别的等待输入的曲线
+PartitionLatency Mean
+
+表示Partition里每个并发的延时曲线。
+Process
+Process MEM Rss
+
+表示进程级别的每个进程内存的使用曲线。
+CPU Usage
+
+表示进程级别的每个进程CPU的使用曲线。
+JVM
+Memory Heap Used
+
+表示整个Job使用的JVM heap存储量。
+Memory NonHeap Used
+
+表示整个Job使用的JVM 非heap存储量。
+Threads Count
+
+表示整个Job的线程数。
+GC（CMS）
+
+表示整个Job GC的次数。
+
+FailOver
+更新时间：2018-12-27 18:43:28
+
+
+本页目录
+Latest FailOver
+Failover History
+阿里云实时计算提供了当前作业的FailOver页面，您可以在FailOver页面了解当前运行作业的运行情况。
+
+作业正常运行图
+作业正常
+作业异常图
+作业异常
+Latest FailOver
+Latest FailOver表示的是当前的报错信息。
+
+Failover History
+Failover History表示的是作业的历史报错信息。
+
+CheckPoints
+更新时间：2018-12-27 18:43:45
+
+
+本页目录
+Completed Checkpoints
+Task Latest Completed Checkpoint
+阿里云实时计算提供可以恢复数据流并和应用保持一致状态的容错机制。容错机制的核心就是持续创建分布式数据流及其状态的快照。这些快照在系统遇到故障时，充当可以回退的一致性检查点（Checkpoint）。
+
+456
+Completed Checkpoints
+Completed Checkpoints表示的是已经完成的CheckPoints的信息。
+
+名称	详情描述
+ID	CheckPoint的ID编号
+StartTime	开始的时间
+Durations(ms)	花费的时间
+Task Latest Completed Checkpoint
+Task Latest Completed Checkpoint表示的最新一次Checkpoint的详细信息。
+
+名称	详情描述
+SubTask ID	SubTask的ID编号
+State Size	CheckPoint的大小
+Durations(ms)	花费的时间
+
+JobManager
+更新时间：2018-12-27 18:44:03
+
+
+本页目录
+JobManager的用途
+JobManager的参数信息
+本文为您介绍JobManager的用途以及在实时计算集群启动流程中的作用。
+
+JobManager是实时计算集群的启动过程不可或缺的一部分。实时计算集群的启动流程如下。
+
+实时计算集群启动一个JobManger和一个或多个的TaskManager。
+Client提交任务给JobManager。
+JobManager调度任务给各个TaskManager。
+TaskManager将心跳和统计信息汇报给JobManager。
+JobManager的用途
+JobManager主要负责调度Job并协调Task做Checkpoint，职责上很像Storm的Nimbus。从Client处接收到Job和JAR包等资源后，会生成优化后的执行计划，并以Task为单元调度到各个TaskManager去执行。
+JobManager的参数信息
+213
+ 上一篇：CheckPoints
+下一篇：TaskExecutor
+
+TaskExecutor
+更新时间：2019-04-18 20:01:10
+
+编辑 ·
+ · 我的收藏
+本页目录
+背景
+TaskExecutor界面
+本文为您介绍TaskExecutor在实时计算集群启动过程中的作用以及TaskExecutor的界面。
+
+背景
+当实时计算集群启动后，首先会启动一个JobManger和一个或多个的TaskManager。由Client提交任务给JobManager，JobManager再调度任务到各个TaskManager去执行，然后TaskManager将心跳和统计信息汇报给JobManager。TaskManager之间以流的形式进行数据的传输。
+
+TaskManager在启动的时候就设置好了槽位数（Slot），每个Slot能启动一个Task线程。从JobManager处接收需要部署的Task，部署启动后，与上游建立Netty连接，接收数据并处理。
+
+TaskExecutor界面
+TaskExecutor界面为您提供Task列表以及Task详情的接口。
+
+123
+ 上一篇：JobManager
+
+
+血缘关系
+更新时间：2018-12-27 18:44:49
+
+
+本页目录
+数据抽样
+实时计算作业的血缘关系集中反映了一个实时计算作业上下游数据的依赖关系。对于作业较为复杂的上下游业务依赖，血缘关系中的数据拓扑图能够清晰地反映出上下游依赖信息。
+
+214
+数据抽样
+血缘关系为作业上下游提供了数据抽样功能，该功能和数据开发页面保持一致，方便您在数据运维页面进行随时数据探测，定位问题。
+
+开启数据抽样方法
+
+在作业上下游中点击表名。
+数据抽样
+点击页面下方的数据抽样也可打开数据抽样功能，如下图。
+xieyuan
+
+
+属性参数
+更新时间：2019-04-18 20:01:39
+
+编辑 ·
+ · 我的收藏
+本页目录
+作业代码
+资源配置
+作业属性
+运行参数
+历史记录
+作业参数
+属性参数提供了当前作业的详情信息，包括当前运行信息以及历史运行记录。
+
+属性参数页面如下图。
+4356
+作业代码
+可以预览整个SQL作业。可点击编辑作业跳转到开发页面。
+
+资源配置
+资源配置提供了Job运行的的所有资源的配置，如CPU、MEM、并发数等。
+
+作业属性
+运行属性提供了所有Job的最基本的运行信息。
+
+序号	详细描述
+1	作业名称
+2	作业ID
+3	引用资源
+4	运行引擎
+5	最近操作人
+6	操作动作
+7	创建人员
+8	创建时间
+9	最近修改人
+10	最近修改时间
+运行参数
+包含了底层checkpoint、启动时间、作业运行参数等。
+
+历史记录
+记录了作业操作的所有版本信息，包括操作人、启动时间、停止时间等。
+
+作业参数
+额外的作业参数，比如调试用的分割符。
+
+监控报警
+更新时间：2019-03-18 13:39:53
+
+编辑 ·
+ · 我的收藏
+本页目录
+监控报警背景
+监控报警操作
+创建报警规则
+启动报警规则
+本文为您介绍实时计算监控报警的操作以及流程报警规则的创建和启动。
+
+监控报警背景
+实时计算对接了云监控平台，帮助您实时监控Job的健康度。云监控服务可用于收集获取阿里云资源的监控指标或您自定义的监控指标，探测服务可用性，以及针对指标设置警报。让您全面了解阿里云上的资源使用情况、业务的运行状况和健康度，并及时收到异常报警做出反应，保证应用程序顺畅运行。
+
+实时计算现支持以下5种类型报警：
+
+业务延时
+读入RPS
+写出RPS
+FailoverRate
+数据滞留时间
+监控报警操作
+登录云监控
+登录阿里云官网，进入阿里云云监控，进入管理控制台。
+监控1
+点击实时计算运维页面的监控也可以跳转到云监控页面。
+12455
+查看实时计算监控报警
+选择需要监控的Job，点击查看。
+监控2
+在云服务监控页面点击监控图表查看监控图表。
+说明 如果没有设置报警规则，可以通过以下方法进入报警规则创建页面。
+选中需要设置报警的Job名称,点击批量设置报警。
+监控3
+点击报警规则窗口的这里或者创建报警规则。
+监控4
+创建报警规则
+创建报警规则分为以下三个步骤：
+
+关联资源选择实时计算产品、Project、Job，点击Job下拉框进行单个或者批量选择。
+监控5
+设置报警规则
+报警规则分为以下类型。
+
+规则	单位
+业务延时	秒
+读入RPS	条
+写出RPS	条
+FailoverRate	秒/次
+说明
+FailoverRate表示过去平均每秒Failover的次数。例如，最近1分钟Failover了1次，FailoverRate为1/60=0.01667=1.667%。
+参数的配置界面FailoverRate的阈值需转化为百分比后进行填写。
+数据滞留时间	秒
+建议配置为以下参数，示例如下图。
+监控6
+通知方式
+通知对象
+您可在通知对象页面快速创建联系人组，还可以将其他人添加到已经存在的联系人通知组。
+
+添加新的报警联系人步骤
+通知方式页面快速创建联系人组。
+建
+在新建联系人组页面点击新建联系人。
+建1
+填写报警联系人信息。
+建3
+通知方式
+手机+邮箱+旺旺+钉钉机器人
+邮箱+旺旺+钉钉机器人
+报警回调
+您可以通过自己的实际业务来选择配置。
+建4
+启动报警规则
+选中规则名称点击启动。
+Q2
+启动后的报警状态如下图。
+Q2
+
+
+===================================
+
+高性能Flink SQL优化技巧
+更新时间：2019-04-18 20:02:07
+
+编辑 ·
+ · 我的收藏
+本页目录
+Group Aggregate优化技巧
+TopN优化技巧
+高效去重方案
+高效的内置函数
+网络传输的优化
+推荐的优化配置方案
+本文为您介绍提升性能的Flink SQL推荐写法、推荐配置、推荐函数。
+
+Group Aggregate优化技巧
+开启MicroBatch/MiniBatch （提升吞吐）
+MicroBatch和MiniBatch都是微批处理，只是微批的触发机制上略有不同。原理上都是缓存一定的数据后再触发处理，以减少对state的访问从而提升吞吐和减少数据的输出量。
+
+MiniBatch主要依靠在每个task上注册的timer线程来触发微批，需要消耗一定的线程调度性能。MicroBatch是MiniBatch的升级版，主要基于事件消息来触发微批，事件消息会按您指定的时间间隔在源头插入。MicroBatch在攒批效率、反压表现、吞吐和延迟性能上都要优于胜于MiniBatch。
+
+适用场景
+微批处理是增加延迟来换取高吞吐的策略，如果您有超低延迟的要求的话，不建议开启微批处理。一般对于聚合的场景，微批处理可以显著的提升系统性能，建议开启。
+说明 MicroBatch模式也能解决之前一直困扰您的两级Agg数据抖动问题。
+开启方式
+MicroBatch/MiniBatch默认关闭，开启方式：
+试用
+# 攒批的间隔时间，使用microbatch策略时需要加上该配置，且建议和blink.miniBatch.allowLatencyMs保持一致
+blink.microBatch.allowLatencyMs=5000
+# 使用microbatch时需要保留以下两个minibatch 配置
+blink.miniBatch.allowLatencyMs=5000
+# 防止OOM设置每个批次最多缓存数据的条数
+blink.miniBatch.size=20000
+开启LocalGlobal（解决常见数据热点问题）
+LocalGlobal优化即将原先的Aggregate分成Local+Global 两阶段聚合，也就是在MapReduce模型中熟知的Combine+Reduce 处理模式。第一阶段在上游节点本地攒一批数据进行聚合（localAgg），并输出这次微批的增量值（Accumulator），第二阶段再将收到的Accumulator merge起来，得到最终的结果（globalAgg）。
+
+LocalGlobal本质上能够靠localAgg的聚合筛除部分倾斜数据，从而降低globalAgg的热点，从而提升性能。LocalGlobal如何解决数据倾斜问题可以结合下图理解。
+
+适用场景
+
+LocalGlobal适用于提升如sum、count、max、min和avg等普通agg上的性能，以及解决这些场景下的数据热点问题。
+说明 开启LocalGlobal需要UDAF实现merge方法。
+开启方式
+
+在 实时计算2.0版本开始，LocalGlobal是默认开启的，参数是： blink.localAgg.enabled=true，但是需要在microbatch/minibatch开启的前提下才能生效。
+如何判断是否生效
+
+观察最终生成的拓扑图的节点名字中是否包含GlobalGroupAggregate或LocalGroupAggregate
+开启PartialFinal（解决count_distinct热点）
+上述的LocalGlobal优化能针对常见普通agg有较好的效果（如sum、count、max、min和avg）。但是对于count distinct收效不明显，原因是count distinct在local聚合时，对于distinct key的去重率不高，导致在global节点仍然存在热点。
+
+在旧版本用户为了解决count distinct的热点问题时，一般会手动改写成两层聚合（增加按distinct key 取模的打散层），自2.2.0版本开始，实时计算提供了count distinct自动打散，我们称之为PartialFinal优化，您无需自己改写成两层聚合。PartialFinal和LocalGlobal的原理对比请参见下图。
+
+适用场景
+
+使用count distinct且aggregate节点性能无法满足时。
+说明
+PartialFinal优化方法不能在包含UDAF的Flink SQL中使用。
+数据量不大的情况下不建议使用PartialFinal优化方法。PartialFinal优化会自动打散成两层聚合，引入额外的网络shuffle，在数据量不大的情况下，可能反而会浪费资源。
+开启方式
+
+默认不开启，使用参数显式开启blink.partialAgg.enabled=true
+如何判断是否生效
+
+观察最终生成的拓扑图的节点名中是否包含Expand节点，或者原来一层的aggregate变成了两层的aggregate。
+改写成 agg with filter 语法（提升大量count distinct场景性能）
+说明 仅支持实时计算 2.2.2 及以上版本。
+统计作业需要计算各种维度的UV，比如全网UV、来自手淘的UV、来自PC的UV等等。建议使用更标准的agg with filter语法来代替case when实现多维度统计的功能。实时计算目前的SQL优化器能分析出filter 参数，从而同一个字段上计算不同条件下的count distinct能共享state，减少对state的读写操作。性能测试中，使用agg with filter语法来代替case when能够能够使性能提高1倍。
+适用场景
+
+我建议用户将agg with case when的语法都替换成agg with filter的语法，尤其是对同一个字段上计算不同条件下的count distinct结果时有极大的性能提升。
+原始写法
+试用
+COUNT(distinct visitor_id)as UV1,COUNT(distinctcasewhen is_wireless='y'then visitor_id elsenullend)as UV2
+优化写法
+试用
+COUNT(distinct visitor_id)as UV1,COUNT(distinct visitor_id) filter (where is_wireless='y')as UV2
+TopN优化技巧
+TopN算法
+当TopN的输入是非更新流（如source），TopN 只有一种算法AppendRank。当TopN的输入是更新流时（如经过了Agg/Join计算），TopN有3种算法，性能从高到低分别是：UpdateFastRank >> UnaryUpdateRank >> RetractRank。算法名字会显示在拓扑图的节点名字上。其中：
+UpdateFastRank ：最优算法，需要具备2个条件：1.输入流有PK信息。2.排序字段的更新是单调的，且单调方向与排序方向相反。如order by count/count_distinct/sum（正数） desc。
+说明 order by sum（正数）desc时，要加上正数的过滤条件。且已知sum的参数不可能有负数，那么需要加上过滤条件从而告诉优化器这个信息，才能优化出UpdateFastRank算法（仅支持实时计算 2.2.2及以上版本），如下所示。
+试用
+SELECT cate_id, seller_id, stat_date, pay_ord_amt  # 不输出 rownum 字段，能减小对结果表的输出量
+FROM(SELECT*
+      ROW_NUMBER ()OVER(PARTITIONBY cate_id, stat_date   # 注意要有时间字段，否则state过期会导致数据错乱
+ORDERBY pay_ord_amt DESC## 根据上游 sum 结果排序)AS rownum
+  FROM(SELECT cate_id, seller_id, stat_date,# 重点。声明sum的参数都是正数，所以sum的结果是单调递增的，所以TopN能用优化算法
+sum(total_fee) filter (where total_fee >=0)as pay_ord_amt
+    FROMWHERE total_fee >=0GROUPBY cate_name, seller_id, stat_date)WHERE rownum <=100))
+UnaryUpdateRank：仅次于UpdateFastRank的算法。需要具备1个条件：输入流存在PK信息。如order by avg。
+RetractRank：普通算法，性能最差，不建议在生产环境使用该算法。请检查输入流是否存在PK信息，如果存在可进行UnaryUpdateRank或UpdateFastRank优化。
+TopN优化方法
+无排名优化
+
+TopN的输出不要带上rownum，最终前端显式时做1次排序，这样能极大地减少输入结果表的数据量。 无排名优化方法详情请参见TopN语句。
+增加TopN的cache大小
+
+TopN为了提升性能有一个state cache层，cache层能提升对state的访问效率。TopN的cache命中率的计算公式为：
+试用
+
+cache_hit = cache_size*parallelism/top_n/partition_key_num
+例如，Top100配置缓存10000条，并发50，当您的patitionBy的key维度较大时，如10万级别时，cache命中率只有10000*50/100/100000=5%，命中率会很低，导致大量的请求都会击中state（磁盘），性能会大幅下降。因此当partitionKey维度特别大时，可以适当加大TopN的cache size，相对应的也建议适当加大TopN节点的heap memory（参见手动配置调优）。
+试用
+默认10000条，调整TopN cahce到20万，那么理论命中率能达 200000*50/100/100000 = 100%
+blink.topn.cache.size=200000
+partitionBy的字段中要有时间类字段
+
+比如每天的排名，要带上day字段。否则TopN的结果到最后会由于state ttl有错乱。
+高效去重方案
+使用FirstRow语法替换 first_value 函数
+
+说明 仅支持实时计算 2.2.2及以上版本。
+FirstRow的作用是去重，且只保留该主键下第一条出现的数据，之后出现的数据会被丢弃掉。因为其state中只存储了key数据，所以替换first_value函数后一般能有一倍的性能提升。
+说明 FirstRow和first_value的区别：FirstRow 是作用在一整行上的，是取该key下收到的第一行数据，无论行中的字段是否为null。first_value 是作用在字段上的，是取该key下该字段第一个非null的数据。
+原始写法（使用first_value去重）：
+试用
+select biz_order_id, first_value(seller_id), first_value(buyer_id), first_value(total_fee)from tt_source
+groupby biz_order_id;
+优化写法（使用FirstRow语法）： 需要给源表增加PRIMARY KEY属性，并加上fetchFirstRow='true'的配置。
+试用
+CREATETABLE tt_source (
+biz_order_id varchar,
+seller_id varchar,
+buyer_id varchar,
+total_fee doublePRIMARYKEY(biz_order_id # 1. 声明主键，可以是联合主键，即根据什么主键去重
+)WITH(
+type='tt',fetchFirstRow='true' # 2. 声明成只保留首行，默认为false，即保留末行...)
+使用LastRow语法替换last_value函数
+
+LastRow的作用是也是去重，且只保留该主键下最后一条出现的数据。其性能略胜于使用 last_value 函数。
+说明 LastRow 和last_value的区别：LastRow 是作用在一整行上的，是取该key下收到的最后一行数据，无论行中的字段是否为null。last_value 是作用在字段上的，是取该key下该字段最后一个非null的数据。
+原始写法（使用last_value去重）：
+试用
+select biz_order_id,
+ last_value(seller_id),
+ last_value(buyer_id),
+ last_value(total_fee)
+from tt_source
+group by biz_order_id;
+优化写法（使用LastRow语法）： 需要给源表增加primary key属性，并加上 fetchFirstRow='false' 的配置。
+试用
+CREATE TABLE tt_source (
+biz_order_id varchar,
+seller_id varchar,
+buyer_id varchar,
+total_fee doublePRIMARYKEY(biz_order_id)# 1. 声明主键，可以是联合主键，即根据什么主键去重
+)WITH(type='tt',
+fetchFirstRow='false',# 2. 声明成保留末行，默认为 false，即保留末行...)
+高效的内置函数
+使用内置函数替换自定义函数
+
+请尽量使用内置函数。在老版本时，由于内置函数不齐全，很多用户都用的三方包的自定义函数。在实时计算2.x 中，我们对内置函数做了很多的优化（主要是节省了序列化/反序列化、以及直接对 bytes 进行操作），但是自定义函数无法享受到这些优化。
+KEY VALUE 函数使用单字符的分隔符
+
+KEY VALUE 的签名是：KEYVALUE(content, keyValueSplit, keySplit, keyName)，当keyValueSplit和KeySplit是单字符时，如:、,会使用优化的算法，会在二进制数据上直接寻找所需的keyName 的值，而不会将整个content做切分。性能约有30%提升。
+多KEYVALUE场景使用MULTI_KEYVALUE
+说明 仅支持实时计算- 2.2.2及以上版本
+如果在query中有对同一个content 做大量KEYVALUE 的操作，比如content中包含10个key-value对，希望把10个value 的值都取出来作为字段。用户经常会写10个KEY VALUE函数，那么就会对content 做10次解析。在这种场景建议使用 MULTI_KEYVALUE，这是一个表值函数。使用该函数可以只对content 做一次 split 解析。性能约有 50%~100%的性能提升。
+LIKE 操作注意事项
+如果想做startWith的操作，用LIKE 'xxx%'。
+如果想做endWith的操作，用LIKE '%xxx'。
+如果想做contains的操作，用LIKE '%xxx%'。
+如果是做equals操作，用LIKE 'xxx'，其实和str = 'xxx'等价。
+如果想匹配 _ 字符，请注意要做转义 LIKE '%seller/id%' ESCAPE '/'。因为 _ 在 SQL 中是个单字符的通配符，能匹配上任何字符，如果声明成 LIKE '%seller_id%'，那么 不单单会匹配 seller_id 还会匹配seller#id, sellerxid, seller1id 等等，可能会导致结果不是预期的，而且在运行时会使用正则来匹配，效率就会特别慢。
+慎用正则函数（REGEXP）
+
+正则表达式是非常耗时的操作，对比加减乘除通常有百倍的性能开销，而且正则表达式在某些极端情况下可能会进入无限循环，导致作业卡住。建议使用LIKE。正则函数包括：REGEXP, REGEXP_EXTRACT, REGEXP_REPLACE。
+网络传输的优化
+目前常见的Partitioner 策略包括：
+KeyGroup/Hash：根据指定的key分配。
+Rebalance：轮询分配给各个channel。
+Dynamic-Rebalance：根据下游负载情况动态选择分配给负载较低的channel。
+Forward：未chain一起时，同Rebalance。chain一起时是一对一分配。
+Rescale：上游与下游一对多或多对一。
+使用Dynamic-Rebalance替代Rebalance
+
+Dynamic Rebalance，它可以根据当前各subpartition中堆积的buffer的数量，选择负载较轻的subpartition进行写入，从而实现动态的负载均衡。相比于静态的rebalance策略，在下游各任务计算能力不均衡时，可以使各任务相对负载更加均衡，从而提高整个作业的性能。例如，在使用rebalance时，发现下游各个并发负载不均衡时，可以考虑使用 Dynamic-Rebalance。参数：task.dynamic.rebalance.enabled=true， 默认关闭。
+使用Rescale替代Rebalance
+
+说明 仅支持实时计算 2.2.2及以上版本。
+例如上游是5个并发，下游是10个并发。当使用Rebalance时，上游每个并发会轮询发给下游10个并发。当使用Rescale时，上游每个并发只需轮询发给下游2个并发。因为 channel个数变少了，subpartition的buffer填充速度能变快，能提高网络效率。当上游的数据比较均匀时，且上下游的并发数成比例时，可以使用Rescale替换Rebalance。参数：enable.rescale.shuffling=true，默认关闭。
+推荐的优化配置方案
+综上所述，作业建议使用如下的推荐配置：
+试用
+# excatly-once语义
+blink.checkpoint.mode=EXACTLY_ONCE
+# checkpoint间隔时间，单位毫秒
+blink.checkpoint.interval.ms=180000
+blink.checkpoint.timeout.ms=600000
+# 2.x使用niagara作为statebackend，以及设定state数据生命周期，单位毫秒
+state.backend.type=niagara
+state.backend.niagara.ttl.ms=129600000
+# 2.x开启5秒的microbatch（使用窗口函数不能设置该参数）
+blink.microBatch.allowLatencyMs=5000
+# 表示整个job允许的延迟
+blink.miniBatch.allowLatencyMs=5000
+# 单个batch的size
+blink.miniBatch.size=20000
+# local 优化，2.x默认已经开启，1.6.4需手动开启
+blink.localAgg.enabled=true
+# 2.x开启partial优化，解决count distinct热点
+blink.partialAgg.enabled=true
+# union all 优化
+blink.forbid.unionall.as.breakpoint.in.subsection.optimization=true
+# object reuse 优化，默认已开启
+#blink.object.reuse=true
+# GC 优化（SLS做源表不能设置该参数）
+blink.job.option=-yD heartbeat.timeout=180000 -yD env.java.opts='-verbose:gc -XX:NewRatio=3 -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:ParallelGCThreads=4'
+# 时区设置
+blink.job.timeZone=Asia/Shanghai
+
+============
+AutoConf自动配置调优
+更新时间：2019-04-03 10:35:58
+
+编辑 ·
+ · 我的收藏
+本页目录
+背景及功能范围
+操作
+常见问题
+调优建议
+如何判断自动配置调优功能生效或出现问题？
+异常信息问题
+为了增加用户的体验度，实时计算团队开发了自动配置调优（AutoConf）功能。
+
+说明 AutoConf自动配置调优功能支持blink1.x和2.x版本。
+背景及功能范围
+在您作业的各个算子和流作业上下游性能达标和稳定的前提下，自动配置调优功能可以帮助您更合理的分配各算子的资源和并发度等配置。 全局优化您的作业，调节作业吞吐量不足、作业全链路的反压等性能调优的问题。
+
+出现下列情况时，自动配置调优功能可以作出优化，但无法彻底解决流作业的性能瓶颈，需要您自行解决或联系实时计算产品支持团队解决性能瓶颈。
+
+流作业上下游有性能问题。
+流作业上游的数据Source存在性能问题。例如，DataHub分区不足、MQ吞吐不够等需要您扩大相应Source的分区。
+流作业下游的数据Sink存在性能问题。例如，RDS死锁等。
+流作业的自定义函数 （UDF、UDAF和UDTF） 有性能问题。
+操作
+新作业
+上线作业
+完成SQL开发，通过语法检查后，点击上线，即可出现如下上线新版本界面。
+上线新版本
+点击智能CU配置。第一次不需要指定CU数直接使用系统默认配置。
+智能配置：指定使用CU AutoConf算法会基于系统默认配置，生成CU数，进行优化资源配置。如果是第一次运行，算法会根据经验值生成一份初始配置。建议作业运行了5-10分钟以上，确认Source RPS等Metrics稳定2-3分钟后，再使用智能配置，重复3到5次才能调优出最佳的配置。
+使用上次资源配置：即使用最近一次保存的资源配置。如果上一次是智能配置的，就使用上一次智能配置的结果。如果上一次是手工配置的，就使用上次手工配置的结果。
+使用默认配置启动作业
+使用默认配置启动作业，出现如下的界面。
+上线
+启动作业。
+启动作业
+示例如下。第一次默认配置生成的资源配置为71个CU。
+说明 请您确保作业已经运行10分钟以上，并且Source RPS等数据曲线稳定2-3分钟后，再使用智能CU配置。
+CU
+使用智能配置启动作业
+资源调优
+例如，您手动配置40CU，使用智能模式启动。40的CU数是您自行指定调整的，您可以根据具体的作业情况适当的增加或者是减小CU数，来达到资源调优的目的。
+
+CU的最小配置
+CU的最小配置建议不小于默认配置总数的50%，CU数不能小于1CU。假设智能配置默认CU数为71，则建议最小CU数为36CU。 71*50% = 35.5CU。
+
+CU增加数量
+假如无法满足作业理想的吞吐量就需要增加适量的CU数。每次增加的CU数，建议是上一次CU总数的30%以上。例如，上一次配置是10CU，下次就需要增加到13CU。
+
+可多次调优
+如果第一次调优不满足您的需求，可以调优多次。可以根据每次调优后Job的状态来增加或减少资源数。
+
+多次调优
+调优后的结果如下图。
+调优后的结果
+说明 如果是新任务，请不要选择 使用上次资源配置，否则会报错。
+上次资源配置
+已存在作业
+调优流程示意图
+调优流程示意图
+说明
+已存在的作业在进行调优前，您一定要检查是否是有状态的计算。因为在调优的过程中可能会清除之前作业保存的状态，请您谨慎操作。
+当您的作业有改动时（例如，您对作业的SQL有修改，或更改了实时计算版本），自动配置调优功能不保证能按照之前的运行信息进行调优。原因是这些改动会导致拓扑信息变化，造成数据曲线无法对应和状态无法复用等问题。自动配置调优功能无法根据运行历史信息作出调优判断。此时再使用自动配置调优会报异常。这时您需要将改动后的任务当做新任务，重新进行操作。
+调优流程
+暂停任务。
+312567
+重复新作业的调优步骤，使用最新的配置启动作业。
+按最新配置恢复
+常见问题
+以下几点可能会影响自动调优的准确性：
+
+任务运行的时间较短，会造成采样得到的有用信息较少，会影响AutoConf算法的效果。建议延长运行时间，确认source rps等数据曲线稳定2-3分钟后即可。
+任务运行有异常（failover），会影响结果的准确性。建议用户检查和修复failover的问题。
+任务的数据量比较少，会影响结果的准确性。建议回追足够多的历史数据。
+影响的因素有很多，自动调优AutoConf不能保证下一次生成的配置一定比上一次的好。如果还不能满足需求，用户参考手动配置调优，进行手动调优。
+调优建议
+每次触发智能配置前任务稳定运行超过10分钟。这样有利于AutoConf准确搜集的任务运行时的指标信息。
+AutoConf可能需要3-5次迭代才能见效。
+使用AutoConf时，您可以设置让任务回追数据甚至造成反压。这样会更有利于快速体现调优成功。
+如何判断自动配置调优功能生效或出现问题？
+自动配置调优功能通过JSON配置文件与实时计算交互。您在调优后，可以通过查看JSON配置文件了解自动配置调优功能的运行情况。
+
+查看JSON配置文件的两种方式
+通过作业编辑界面，如下图。
+编辑界面
+通过作业运维界面，如下图。
+2
+JSON配置解释
+试用
+"autoconfig" : {
+    "goal": {  // AutoConf 目标
+        "maxResourceUnits": 10000.0,  // 单个Blink作业最大可用CU数，不能修改，查看时可忽略
+        "targetResoureUnits": 20.0  // 用户指定CU数。用户指定20CU，这里就是20.0
+    }，
+    "result" : {  // AutoConf 结果。这里很重要
+      "scalingAction" : "ScaleToTargetResource",  // AutoConf 的运行行动 *
+      "allocatedResourceUnits" : 18.5, // AutoConf 分配的总资源
+      "allocatedCpuCores" : 18.5,      // AutoConf 分配的总CPU
+      "allocatedMemoryInMB" : 40960    // AutoConf 分配的总内存
+      "messages" : "xxxx"  // 很重要。 *
+    }
+}
+scalingAction：InitialScale代表初次运行， ScaleToTargetResource代表非初次运行。
+如果没有messages，代表运行正常。如果有messages，代表需要分析：messages有两种，如下所示：
+warning 提示：表示正常运行情况但有潜在问题，需要用户注意，如source的分区不足等。
+error或者exception提示，常伴有Previous job statistics and configuration will be used，代表AutoConf失败。失败也有两种原因：
+用户作业或blink版本有修改，AutoConf无法复用以前的信息。
+有exception代表AutoConf遇到问题，需要跟据信息、日志等综合分析。如没有足够的信息，请提交工单。
+异常信息问题
+IllegalStateException异常
+出现如下的异常说明内部状态state无法复用，需要停止任务清除状态后重追数据。
+
+如果无法切到备链路，担心对线上业务有影响，可以在开发界面右侧的作业属性里面选择上个版本进行回滚，等到业务低峰期的时候再重追数据。
+
+试用
+java.lang.IllegalStateException: Could not initialize keyed state backend.
+	at org.apache.flink.streaming.api.operators.AbstractStreamOperator.initKeyedState(AbstractStreamOperator.java:687)
+	at org.apache.flink.streaming.api.operators.AbstractStreamOperator.initializeState(AbstractStreamOperator.java:275)
+	at org.apache.flink.streaming.runtime.tasks.StreamTask.initializeOperators(StreamTask.java:870)
+	at org.apache.flink.streaming.runtime.tasks.StreamTask.initializeState(StreamTask.java:856)
+	at org.apache.flink.streaming.runtime.tasks.StreamTask.invoke(StreamTask.java:292)
+	at org.apache.flink.runtime.taskmanager.Task.run(Task.java:762)
+	at java.lang.Thread.run(Thread.java:834)
+Caused by: org.apache.flink.api.common.typeutils.SerializationException: Cannot serialize/deserialize the object.
+	at com.alibaba.blink.contrib.streaming.state.AbstractRocksDBRawSecondaryState.deserializeStateEntry(AbstractRocksDBRawSecondaryState.java:167)
+	at com.alibaba.blink.contrib.streaming.state.RocksDBIncrementalRestoreOperation.restoreRawStateData(RocksDBIncrementalRestoreOperation.java:425)
+	at com.alibaba.blink.contrib.streaming.state.RocksDBIncrementalRestoreOperation.restore(RocksDBIncrementalRestoreOperation.java:119)
+	at com.alibaba.blink.contrib.streaming.state.RocksDBKeyedStateBackend.restore(RocksDBKeyedStateBackend.java:216)
+	at org.apache.flink.streaming.api.operators.AbstractStreamOperator.createKeyedStateBackend(AbstractStreamOperator.java:986)
+	at org.apache.flink.streaming.api.operators.AbstractStreamOperator.initKeyedState(AbstractStreamOperator.java:675)
+	... 6 more
+Caused by: java.io.EOFException
+	at java.io.DataInputStream.readUnsignedByte(DataInputStream.java:290)
+	at org.apache.flink.types.StringValue.readString(StringValue.java:770)
+	at org.apache.flink.api.common.typeutils.base.StringSerializer.deserialize(StringSerializer.java:69)
+	at org.apache.flink.api.common.typeutils.base.StringSerializer.deserialize(StringSerializer.java:28)
+	at org.apache.flink.api.java.typeutils.runtime.RowSerializer.deserialize(RowSerializer.java:169)
+	at org.apache.flink.api.java.typeutils.runtime.RowSerializer.deserialize(RowSerializer.java:38)
+	at com.alibaba.blink.contrib.streaming.state.AbstractRocksDBRawSecondaryState.deserializeStateEntry(AbstractRocksDBRawSecondaryState.java:162)
+	... 11 more
+
+
+	AutoScale自动配置调试
+    更新时间：2019-04-03 10:36:18
+
+    编辑 ·
+     · 我的收藏
+    本页目录
+    资源配置方法
+    查看自动配置调优数据曲线
+    FAQ
+    为了解决客户使用autoconf自动配置调优功能时需频繁的启停作业的问题，在blink3.x版本提供了AutoScale自动配置调优功能。作业启动后，系统会根据资源配置规则，自动进行作业的调优，直到满足设定的调优目标，全程无需人工介入。
+
+    说明 AutoScale自动配置调优功能仅支持blink3.x及以上版本。
+    资源配置方法
+    在作业上线时 资源配置方式选择 作业自动调优即进入AutoScale自动配置调试设置， 如下图。
+    最大CU数
+    设置作业允许使用的最大CU数，最大CU数需小于项目可用CU数。
+
+    调优策略
+    系统会根据选择的策略和期望值对作业自动调优以达到期望值（目前策略只支持数据滞留时间）。
+
+    期望值
+    预期选定的策略下作业需要达到的策略值。
+
+    初始资源
+    系统分配
+    初次上线作业使用系统默认配置，已上线作业使用最后一次调优后的配置，更多自定义资源需求可在手动配置资源中设置
+
+    手动资源配置
+    手动获取并修改作业启动的资源配置，需要您已经在作业属性中的手动资源配置页面配置完成
+
+    例如：调优策略设置数据滞留时间的期望值：5（秒）。假如，此时作业的数据滞留时间大于5秒，系统会不断进行自动调优，直至数据滞留时间降至小于5秒。
+
+    查看自动配置调优数据曲线
+    完成资源配置，进行作业上线、启动后，即可通过以下曲线，查看自动配置调优的状态。
+    AutoScale的成功和失败数
+    记录整个Job进行AutoScale调优成功和失败的次数。 作业按系统计算出的所需资源启动定义为成功，未按照系统计算出的所需资源启动定义为失败。
+
+
+    AutoScale使用的CPU
+    记录Job进行AutoScale调优时，所申请的CPU总量。
+
+    AutoScale使用的MEM
+    记录Job进行AutoScale调优时，所申请的MEM总量。
+
+    FAQ
+    Q：作业运行中怎么开启或关闭AutoScale？开启或关闭需要重启作业吗？
+
+    A：通过 运维界面左侧的 作业列表找到对应作业，作业中有动态开关（您可自行根据需求选择开启或关闭）。开启或关闭不需要重启作业 。
+
+    Q：AutoScale失败对作业有什么影响，会一直失败吗？
+
+    A：AutoScale失败作业会报出Failover，不会一直失败，只会是一段时间失败。AutoScale会根据上次调优失败的配置再次进行调优。
+
+     上一篇：AutoConf自动配置调优
+
+     手动配置调优
+     更新时间：2019-01-27 16:25:49
+
+     编辑 ·
+      · 我的收藏
+     本页目录
+     手动配置调优
+     作业参数调优
+     资源调优
+     上下游参数调优
+     重新启用新的配置
+     本文档涉及到的相关名词解释
+     本文为您介绍实时计算作业手动配置调优。
+
+     手动配置调优
+     手动配置调优的内容主要有3种类型：
+
+     作业参数调优：主要对作业中的miniBatch等参数进行调优；
+     资源调优：主要对作业中的Operator的并发数（arallelism）、CPU（Core）、堆内存（heap_memory）等参数进行调优；
+     上下游参数调优：主要对作业中的上下游存储参数进行调优。
+     下面通过3个章节对以上3类调优进行介绍，参数调优后将生成新的配置，JPb需重新上线启动/恢复才能使用新的配置，本文最后章节将讲述如何重新启用新的配置。
+
+     作业参数调优
+     miniBatch设置：该设置只能优化group by。Flink SQL纯流模式下，每来一条数据都会去操作state，io消耗较大，设置miniBatch后，同一个key的一批数据只访问一次state，且只输出最新的一条数据，即减少了state访问也减少了向下游的数据更新。miniBatch设置如下：如果是新增加的作业参数建议用户停止重启，如果是改变作业参数大小暂停恢复即可。
+
+     试用
+     # excatly-once语义
+     blink.checkpoint.mode=EXACTLY_ONCE
+     # checkpoint间隔时间，单位毫秒
+     blink.checkpoint.interval.ms=180000
+     blink.checkpoint.timeout.ms=600000
+     # 2.x使用niagara作为statebackend，以及设定state数据生命周期，单位毫秒
+     state.backend.type=niagara
+     state.backend.niagara.ttl.ms=129600000
+     # 2.x开启5秒的microbatch（窗口函数不要设置这个参数。）
+     blink.microBatch.allowLatencyMs=5000
+     # 表示整个job允许的延迟
+     blink.miniBatch.allowLatencyMs=5000
+     # 单个batch的size
+     blink.miniBatch.size=20000
+     # local 优化，2.x默认已经开启，1.6.4需手动开启
+     blink.localAgg.enabled=true
+     # 2.x开启partial优化，解决count distinct热点
+     blink.partialAgg.enabled=true
+     # union all 优化
+     blink.forbid.unionall.as.breakpoint.in.subsection.optimization=true
+     # GC 优化（SLS做源表不能设置。）
+     blink.job.option=-yD heartbeat.timeout=180000 -yD env.java.opts='-verbose:gc -XX:NewRatio=3 -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:ParallelGCThreads=4'
+     # 时区设置
+     blink.job.timeZone=Asia/Shanghai
+     资源调优
+     分析问题
+     通过job的拓扑图查看到2号的TASK节点的输入队列已达到100%造成数据堆积反压到它的上游1号的TASK节点，输出队列造成数据堆积。
+
+     单击2号的TASK节点，找到队列已达到100%的TaskExecutor。
+
+
+     查看TaskExecutor的CPU和内存的使用量，根据使用量来调大相应的CPU和MEM。
+     性能调优
+     进入调优窗口
+     打开可视化编辑
+
+     找到2号task对应的Group（若有）或Operator，可以按Group批量修改或对单个Operator进行参数修改。
+     按Group批量修改：
+
+     单个Operator修改：
+
+
+     找到对应的Operator进行修改：
+
+
+     配置参数后点击右上角的应用当前配置并关闭窗口，即可保存当前配置。
+     说明
+     如果在调优的过程中发现虽然调大了某个Group的资源配置但是并没有太大的效果，首先需要确认该节点是否有数据倾斜现象，如果有数据倾斜，首要解决数据倾斜；其次如果没有数据倾斜需要把其中复杂运算的Operator节点（如：group by、window、join等）拆开，来判断到底是哪个子节点有异常。如果找到了该子节点只需调优该节点就好。将Operator子节点拆开的方法：点击需要修改的Operator，将其参数chainingStrategy修改为HEAD，若其已为HEAD，需要将其后面的第一个Operator修改为HEAD。 chainingStrategy三个参数的解释如下：
+
+     ALWAYS：代表把单个的节点合并成一个大的GROUP里面。
+     NEVER：保持不变
+     HEAD ：表示把在合并成一个GROUP里面单个节点查分出来。
+     资源参数的配置原则和建议
+     可调参数
+     parallelism
+     source
+     说明 source的并发不能大于source的shard数。
+     资源根据上游Partition数来。
+     例如SOURCE的个数是16，那么source的并发可以配置为16、8或4等，不要超过16。
+     中间的处理节点
+     根据预估的QPS计算。
+     对于小任务来说，和source一样的并发度就够了。
+     QPS高的任务，可以配大点，例如 64，128 或者 256。
+     sink节点
+     并发度和下游存储的Partition数相关，一般是下游Partition个数的2~3倍。
+     如果配置太大会导致写超时或失败。例如下游SINK的个数是16，那么建议sink的并发最大可以配置48。
+     CORE
+     CPU，默认 0.1，根据实际CPU使用配置（但最好能被1整除），一般建议0.25
+
+     heap_memory
+     堆内存，默认 256MB，根据实际内存使用配置 点击GROUP就可以编辑以上参数。
+
+     存在GROUP BY的TASK节点可配置参数
+     state_size：state大小，默认0。如果operator有用state，需要把state_size配成1，表示该operator会用state，job在申请资源的时候会额外为该operator申请内存，供state访问使用；如果不配成1，job可能被yarn kill。（state_size需要配成1的operator有：group by、 join、over和window）虽然有这么多配置项，对普通用户来说，只需要关心：core，parallelism和heap_memory。整个job 建议core:mem=1:4，即一个核对应4G内存。
+
+     说明
+     调parallelism和memory，有什么规则吗？
+
+     一个operator的总CU=并发*core 一个operator的总mem=并发*heap_mem 一个group中的core取最大值，mem取各个operator的sum，CPU和MEM的关系是1：4的关系；比如您的core给的是1CU，mem给的是3G，那么最终分配的是1CU+4G。您的core给的是1CU，mem给的是5G，那么最终分配的是1.25CU+5G。
+
+     上下游参数调优
+     由于实时计算的特性，每条数据均会触发上下游存储的读写，会对上下游存储形成性能压力，可以通过设置batchsize，批量的读写上下游存储数据来降低对上下游存储的压力，支持batchsize参数的上下游存储如下：
+
+     名称	参数	详情	设置参数值
+     DATAHUB源表	batchReadSize	单次读取条数	可选，默认为10
+     DATAHUB结果表	batchSize	单次写入条数	可选，默认为300。
+     日志服务（Log Service）源表	batchGetSize	单次读取logGroup条数	可选，默认为10。
+     分析型数据库（AnalyticDB）结果表	batchSize	每次写的批次大小	可选，默认为1000。
+     云数据库（RDS）结果表	batchSize	每次写的批次大小	可选，默认为50。
+     云数据库HybridDB for MySQL（petaData）结果表	batchSize	每次写的批次大小	可选，默认值1000 ，表示每次写多少条，经验建议最大设置4096。
+     bufferSize	去重的buffer大小，需要指定主键才生效。	可选。设置batchSize必须设置bufferSize，经验建议最大设置4096。
+     示例：
+
+     重新启用新的配置
+     通过1-3章节完成配置后，需要重新启动/恢复作业才能使新配置生效。
+
+     上线作业，配置方式必须选择使用上次资源配置 。
+
+     暂停原作业。
+
+     恢复原作业。
+
+     选择按最新配置恢复，否则新配置无法生效。
+
+     重新恢复后，可通过运维 > 运行信息 > Vertex拓扑查看新的配置是否生效。
+     说明
+     一般情况下我们不建议采用先停止job再启动的方式使新配置生效，因为job停止后status状态会消除，可能会导致计算结果不一致。
+
+     本文档涉及到的相关名词解释
+     global
+     isChainingEnabled ：表示是否启用chain策略，默认为 true，不需要修改。
+     nodes
+     id：节点id号，自动生成，唯一，不需要修改。
+     uid： 节点uid号，用于计算operator id，如果不设置，会使用id。
+     pact：节点类型，例如Data Source，Operator，Data Sink等等，不需要修改。
+     name：节点名字，用户可以自定义。
+     slotSharingGroup：default，不需要修改。
+     chainingStrategy：chain的策略，有 HEAD、ALWAYS和NEVER，根据需要修改。
+     parallelism：并发度，默认为1，可以根据实际数据量改大点。
+     core：CPU，默认0.1，根据实际CPU使用配置（但最好能被1整除），一般建议0.25。
+     heap_memory：堆内存，默认256MB，根据实际内存使用配置。
+     direct_memory：jvm堆外内存，默认0，建议不要修改。
+     native_memory：jvm堆外内存，jni使用，默认0，建议用10MB。
+     chain
+     Flink SQL任务是一个DAG图，会有很多个节点（Operator），有些上下游的节点在运行时是可以合成一个点的，这称之为chain。对于chain之后的点，CPU取最大的最大值，内存取总和。例如Node1如果operator有用state，Node2{128MB，0.5core}，Node3{128MB，0.25core}，那么这三个点chain后的CPU是 0.5core，内存是 512MB。chain的规则简单来说就是：并发度需要一样。但是，有些节点之间是不能合在一起的，比如groupBy。一般来说，尽可能的让节点都chain在一起，减少网络传输。
 

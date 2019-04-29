@@ -3176,3 +3176,361 @@ CLASS：导出模式对象	1034
 第16章 Oracle高可用环境监控构架设计
 附录A 常见专有名称解释
 附录B 公共代码
+
+
+
+========
+
+
+1.SQL语句执行过程
+1.1 SQL语句的执行步骤
+  1）语法分析，分析语句的语法是否符合规范，衡量语句中各表达式的意义。
+
+  2）语义分析，检查语句中涉及的所有数据库对象是否存在，且用户有相应的权限。
+  3）视图转换，将涉及视图的查询语句转换为相应的对基表查询语句。
+  4）表达式转换， 将复杂的 SQL 表达式转换为较简单的等效连接表达式。
+  5）选择优化器，不同的优化器一般产生不同的“执行计划”
+
+  6）选择连接方式， Oracle 主要有三种连接方式，对多表连接ORACLE会选择适当的连接方式。
+  7）选择连接顺序， 对多表连接 ORACLE 选择哪一对表先连接，选择这两表中哪张表做为基础数据表。
+  8）选择数据的搜索路径，根据以上条件选择合适的数据搜索路径，比如，是选用全表搜索还是利用索引或是其他的方式。
+  9）运行“执行计划”
+我们可以通过如下语句来查询缓存中的执行计划：
+
+
+
+
+
+SELECT t1.*,
+
+         't2-->',
+         t2.*
+
+    FROM v$sql_plan t1
+
+    JOIN v$sql t2
+
+      ON t1.address = t2.address
+
+     AND t1.hash_value = t2.hash_value
+
+     AND t1.child_number = t2.child_number;--缓存中的执行计划。
+1.2 典型SELECT语句完整的执行顺序
+  1）from子句组装来自不同数据源的数据；
+  2）where子句基于指定的条件对记录行进行筛选；
+  3）group by子句将数据划分为多个分组；
+  4）使用聚集函数进行计算；
+  5）使用having子句筛选分组；
+  6）计算所有的表达式；
+  7）计算select的字段；
+  8）使用order by对结果集进行排序。
+1.3 SQL语句执行过程
+如下图所示：
+
+说明：
+*这是一张SQL语句执行过程图
+*执行计划是SQL语句执行过程中必然用到的
+*执行计划是优化器（Optimizer）的产物
+*两种不同的方式：CBO和RBO
+查看优化器设置：
+方法一：
+SELECT VALUE FROM v$parameter t WHERE t.name = 'optimizer_mode';
+方法二(SQLPLUS下执行)：
+showparameter optimizer_mode
+*CBO用到了字典中的Statistics,而RBO没有
+分析统计信息相关SQL：
+analyze table tablename compute statistics;
+analyze table tablename compute statistics for all indexes
+analyze table tablename delete statistics
+2.优化器及执行计划
+2.1 SQL优化方法论
+*ORACLE10g以后的版本，SQL优化的本质是基于对CBO和执行计划的深刻理解，进入CBO时代，一定要理解执行计划。
+
+
+*查看执行计划有好多方式，比如使用PL/SQL Developer工具，选中select语句，按F5键就可以显示其执行计划，不过显示的不完全
+
+*最好使用在Oracle官方的sqlplus工具，性能最好，方便直观，下面介绍两种查看执行计划方式（也是最简单的两种方式）
+
+关于执行计划的一些知识：
+
+* Full Table Scans 全表扫描
+
+* Rowid Scans  rowid扫描
+
+* Index Scans 索引扫描
+
+* Index Unique Scans
+
+* Index Range Scans
+
+* Index Range Scans Descending
+
+* Index Skip Scans
+
+* Full Scans
+
+* Fast Full Index Scans（CBO）
+
+* Index Joins
+
+* Bitmap Joins
+
+* Cluster Scans  簇扫描
+
+* Hash Scans   散列扫描
+
+* Sample Table Scans  表取样扫描
+
+
+²在RBO时代，关于access path，很简单，有index就用，而对于join方法，编程人员一般会通过调整关联表之间的先后顺序来获得比较好的运行结果。有什么缺点呢？
+²有了CBO，简单就是两个字-----CBO走的是包办婚姻：你的事交给我办。
+ORACLE默认情况下，周一到周五每天晚上10点到第二天早上6点以及整个周末期间会自动收集统计信息
+可以查看参数：
+show parameter STATISTICS_LEVEL
+
+²问题：CBO执行计划依赖的statistic不准确（缺失或者太旧），导致在计算执行成本时就会出现偏差，很可能会产生错误的执行计划，怎么办呢？
+
+第一步：重新收集统计信息！
+
+第二部：第一部解决不了的情况下，使用Hints
+
+3.合理应用Hints
+
+3.1Hints
+慎用hint，可能会产生严重的后果，比如append会产生锁块，导致并发资源等待等
+Hints的分类：
+*Hints forOptimization Approaches and Goals(4)
+
+    /*+ ALL_ROWS */
+
+    /*+ FIRST_ROWS ( n )*/
+    /*+ CHOOSE */
+    /*+ RULE */
+
+*Hints for AccessPaths(12)
+    /*+ FULL ( table ) */
+    /*+ INDEX ( tableindex) */
+    /*+ INDEX_ASC ( tableindex) */
+    /*+ INDEX_COMBINE (table index) */
+    /*+ INDEX_JOIN (table index) */
+    /*+ INDEX_DESC (table index) */
+    /*+ INDEX_FFS ( tableindex) */
+    /*+ NO_INDEX ( tableindex) */
+    /*+ AND_EQUAL ( tableindex index) */
+
+*Hints for QueryTransformations(10)
+*Hints for JoinOrders(2)
+*Hints for JoinOperations(11)
+    /*+ USE_NL ( table )*/
+    /*+ USE_MERGE ( table) */
+    /*+ USE_HASH ( table) */
+    /*+ LEADING ( table )*/
+
+*Hints for ParallelExecution(5)
+*Additional Hints(13)
+
+以下为使用Hints的例子
+
+create table t_1(owner varchar2(30),table_name varchar2(30));
+
+create table t_2(owner varchar2(30),table_name varchar2(30));
+
+insert into t_1 SELECT owner,table_name FROM dba_tables;
+
+insert into t_2 SELECT owner,view_name  FROM dba_views t;
+
+create index idx_t_1 on t_1(table_name);
+
+create index idx_t_2 on t_2(table_name);
+
+analyze table t_1  compute statistics;
+
+analyze table t_2  compute statistics;
+
+
+SELECT *
+
+  FROM (SELECT * FROM t_1
+
+        UNION ALL
+
+        SELECT * FROM t_2) aa
+
+ WHERE aa.table_name LIKE 'Z%';                 ---- Full Table Scans
+
+
+SELECT /*+ index(AA.t_1 idx_t_1) index(AA.t_2 idx_t_2)*/ *
+
+  FROM (SELECT * FROM t_1
+
+        UNION ALL
+
+        SELECT * FROM t_2) AA
+
+ WHERE AA.table_name LIKE 'Z%';               ---- Index Scans
+
+4.索引及应用实例
+4.1什么是索引
+*Oracle的索引是一种自平衡的B*Tree存储结构，其基本存储单位为数据块，称之为节点，共有三种类型的节点：根（root）节点，分枝（Branch）节点，叶（leaf）节点。
+*分枝节点存储{索引值，键值对应下一级节点块地址，lmc指针}
+*叶节点存储{索引值及其rowid，当前节点的前后节点的数据块地址}
+所有叶节点上的两个指针形成一个双向链表，在这个双向链表上的所有索引值，从小到大排列，而对于倒序desc索引，则是从大到小排列
+
+B*TREE索引图：
+
+4.2索引分类
+逻辑上：
+Single column 单列索引
+Concatenated 多列索引
+Unique 唯一索引
+Non-Unique 非唯一索引
+Function-based函数索引
+Domain 域索引
+物理上：
+Partitioned 分区索引
+Non-Partitioned 非分区索引
+B*tree：
+  Normal 正常型B树
+  ReverseKey 反转型B树
+  Bitmap 位图索引
+4.3什么时候使用索引
+*如果要检索全表，不必要建索引，因为索引会带来额外的IO操作。
+*如果检索的记录数占全部表记录的10%以下可以考虑建索引(大表)。
+*表之间的关联字段可以考虑建索引，特别是一张大表和一张小表的关联。
+*B*Tree索引适合于大量的增、删、改（OLTP）；
+     不适合用包含OR操作符的查询；一般不适用NULL判断；
+
+     适合高基数的列（重复值少）
+*Bitmap索引适合于决策支持系统OLAP；
+    做UPDATE代价比较高；会锁块；
+    非常适合OR操作符的查询；
+
+    适合低基数的列（比如，只有Y和N两种值） ；
+*Reverse索引反转了b*tree索引码中的字节，是索引条目分配更均匀，多用于并行服务器环境下，用于减少索引叶的竞争。
+    索引是’双刃剑’，在查询与DML之间寻求平衡
+4.4改写SQL使用索引
+*普通索引列 a is not null 按逻辑改为a>0或a>''
+*like操作改写
+*能用union all绝不用union，除非要去重
+*in操作虽然简单易懂，但oracle内部会转换为表连接查询，使用in会多一步转换操作，所以建议使用表关联查询
+*not in 强烈建议使用not exists或（外连接+判断为空）
+*<>（不等于）操作不走索引，推荐a<>0改为(a>0 ora<0)    a<>’’改为a>’’
+*提防隐式类型转换， oracle内部处理a=0与a=‘0’是完全不同的，甚至会导致不走索引，这个深有体会，最近一个项目就是这个隐式类型转换出了问题，导致速度
+很慢
+
+4.5索引应用
+例1.用合适的索引来避免不必要的全表扫
+    如果要在索引列查询is not null条件，建议列加上is not null约束，默认值约束，
+    然而确实由于某种原因索引列设计为null，还想通过is null条件走索引，该如何是好呢？请看
+
+
+
+drop table t_tab1;
+
+create table t_tab1 as
+
+    SELECT t.owner,
+       t.object_name,
+       t.object_type,
+       t.created,
+       t.last_ddl_time
+
+    FROM dba_objects t;
+
+analyze table t_tab1  compute statistics;
+
+create index idx01_t_tab1 on t_tab1(last_ddl_time);--普通索引
+
+set autotrace trace;
+
+SELECT * FROM t_tab1 t where t.last_ddl_time is null;
+
+执行计划如下图：
+
+如上情况调整为复合索引
+
+
+
+
+
+drop index idx01_t_tab1;
+
+create index idx01_t_tab1 on t_tab1(last_ddl_time,1);--加了个常量
+
+set autotrace trace;
+
+SELECT * FROM t_tab1 t where t.last_ddl_time is null;
+
+执行计划如下图：
+
+
+ 例2：用合适的函数索引来避免看似无法避免的全表扫描
+
+
+
+
+
+drop table t_tab1 purge;
+
+create table t_tab1 as
+
+        SELECT t.owner,
+            t.object_name,
+        t.object_type,
+        t.OBJECT_ID,
+        t.created,
+        t.last_ddl_time
+
+    FROM dba_objects t;
+
+CREATE INDEX IDX01_T_TAB1 ON T_TAB1(object_name);
+
+analyze table t_tab1  compute statistics;
+
+set autot trace
+
+SELECT * FROM t_tab1 t where t.object_name like '%20121231';
+
+执行计划如下：
+
+改进索引，此处使用反转函数索引，此外经常用到的函数索引还有，instr(),substr()等
+
+drop index IDX01_T_TAB1;
+
+CREATE INDEX IDX02_T_TAB1 ON T_TAB1(reverse(object_name));
+
+analyze table t_tab1  compute statistics;
+
+SELECT * FROM t_tab1 t where reverse(t.object_name) like reverse('%20121231');
+执行计划如下：
+
+
+5.其他优化技术及应用
+5.1其他优化技术及思路
+并行技术，并行执行目标SQL语句，这实际上是以额外的资源消耗来换取执行时间的缩短，很多情况下使用并行是针对某些SQL的唯一优化手段。
+使用shell调度或其他调度工具。
+      SQL语句级别的并行：/*+parallel*/
+       /*+ parallel(table_name 4)*/
+表压缩技术
+  compress
+NOLOGGING
+  减少日志
+Partition技术
+  分而治之
+中间表/临时表事务分解思路
+  ‘大事化小’
+求平衡
+    CPU，Memory很强大，IO存在瓶颈（最普遍的情况）
+使用新特性
+     insertall 啦       使用listagg()比wm_concat()快大概50倍、row_number()等分析函数
+软硬件资源合理搭配
+
+5.2 SQL优化总结
+*如果是统计信息不准或是因为CBO计算某些SQL的执行路径（Access Path）的成本所用公式的先天不足而导致的SQL性能问题，
+ 我们可以通过重新收集统计信息或者手工修改统计信息或者使用Hint来加以解决；
+*如果是SQL语句的写法问题，我们可以通过在不更改业务逻辑的情况下改写SQL来加以解决；
+*如果是不必要的全表扫描/排序而导致了目标SQL的性能问题，我们可以通过建立合适的索引（包括函数索引、位图索引等）来加以解决；
+*如果是表或者索引的不良设计导致的目标SQL的性能问题，我们可以通过重新设计表/索引，重新组织表里的数据来加以解决；
+*如果上述调整措施都失效，我们可以考虑用并行来缩短目标SQL的执行时间；
+*如果上述调整措施、包括并行都失效，我们还可以在联系实际业务的基础上更改目标SQL的执行逻辑，甚至不执行目标SQL，这是最彻底的优化:)
+
