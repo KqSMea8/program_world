@@ -1,0 +1,342 @@
+分箱
+
+数据转换模块
+
+评分卡训练
+
+评分卡预测
+
+线性回归
+
+PSI
+
+分箱
+以等频或者等宽的方式进行分箱。
+
+PAI 命令
+PAI -name binning
+    -project algo_public
+    -DinputTableName=input
+    -DoutputTableName=output
+参数说明
+参数名称	参数描述	参数值可选项	默认值
+inputTableName	必选，输入表	表名	不涉及
+outputTableName	必选，输出表	表名	不涉及
+selectedColNames	可选，输入表选择分箱的列	列名	默认除label外的其他列，无label则选择全部
+labelColumn	可选，label所在的列	列名	默认无label
+validTableName	可选，表示binningMethod为auto时输入的验证表名，是auto模式下，这个参数为必选	表名	默认为空
+validTablePartitions	可选，验证表选择的分区	分区名	默认选择全表
+inputTablePartitions	可选，输入表选择的分区	分区名	默认选择全表
+inputBinTableName	可选，输入的分箱表	表名	默认无分箱表
+selectedBinColNames	可选，分箱表选择的列	列名	默认为空
+positiveLabel	可选，输出的正样本的分类	不涉及	默认为1
+nDivide	可选，分箱的个数	正整数	默认为10
+colsNDivide	可选，自定义列的分箱个数，例如：col0:3,col2:5。这里有个规则是在colsNDivide中选中的列不在selectedColNames中时，多出来的列也会进行计算。例如：selectedColNames为col0,col1，colsNDivide为col0:3,col2:5，nDivide为10时，那么按照col0:3,col1:10,col2:5进行计算	-	默认为空
+isLeftOpen	可选，选择区间为左开右闭或左闭右开	true/false	默认为true
+stringThreshold	可选，离散值为其他分箱的阈值	不涉及	默认为无其他分箱
+colsStringThreshold	可选，自定义列的阈值，同colsNDivide	不涉及	默认为空
+binningMethod	可选，分箱类型，quantile为等频，bucket为等宽，auto为quantile模式下自动选择单调性的分箱	可以为quantile，bucket或者auto	默认为quantile
+lifecycle	可选，输出表的生命周期	正整数	默认不设置
+coreNum	可选，核心数	正整数	默认自动计算
+memSizePerCore	可选，内存数	正整数	默认自动计算
+数据转换模块
+参数说明
+参数名	含义
+inputFeatureTableName	输入特征数据表（必选）
+inputBinTableName	输入分箱结果表（必选）
+inputFeatureTablePartitions	输入特征表选择的分区（可选，默认选择全表）
+outputTableName	输出表（必选）
+featureColNames	输入表选择的特征列（可选，默认选择全部）
+metaColNames	不进行转换的数据列，选中的列会原样输出（可选，默认无meta列，可在此列中指定label、sample_id等）
+transformType	数据转换的类型，支持normalize、dummy、woe，分别对应归一化、离散化、转换为WOE值（可选，默认为dummy）
+itemDelimiter	特征分隔符（可选，默认是半角逗号，目前仅对离散化有效）
+kvDelimiter	KV分隔符（可选，默认是半角冒号，目前仅对离散化有效）
+lifecycle	输出表的生命周期（可选，默认无生命周期）
+coreNum	使用的CPU Core的个数（可选，默认会自动计算合适的CPU Core个数）
+memSizePerCore	每个CPU Core所使用的内存大小，单位为MB（可选，默认会自动计算合适的内存大小）
+实例
+PAI 命令
+PAI -name data_transform
+-project algo_public
+-DinputFeatureTableName=feature_table
+-DinputBinTableName=bin_table
+-DoutputTableName=output_table
+-DmetaColNames=label
+-DfeatureColNames=feaname1,feaname2
+归一化算法
+归一化根据输入的分箱信息，将变量值转换为0～1之间，缺失值填充为0，使用如下算法：
+
+if feature_raw_value == null or feature_raw_value == 0 then
+    feature_norm_value = 0.0
+else
+    bin_index = FindBin(bin_table, feature_raw_value)
+    bin_width = round(1.0 / bin_count * 1000) / 1000.0
+    feature_norm_value = 1.0 - (bin_count - bin_index - 1) * bin_width
+输出格式
+进行“归一化”和“WOE转换”时输出为普通表。
+
+进行“离散化”转换成dummy变量时，输出为kv格式的表，生成的变量格式为[${feaname}]\_bin\_${bin_id}。以“sns”变量为例：
+
+若“sns”落入第2个桶中，则生成的变量为[sns]_bin_2。
+若“sns”为空，则落入空桶，生成的变量为[sns]_bin_null。
+若“sns”不为空，且不落入任何一个已定义的桶中，则落入else桶，生成的变量为[sns]_bin_else。
+评分卡训练
+评分卡是在信用风险评估领域常用的建模工具，本实现的原理是通过分箱输入将原始变量离散化后再使用线性模型（逻辑回归，线性回归等）进行模型训练，其中包含特征选择功能，分数转换功能等等，同时也支持训练过程中的给变量添加约束条件。
+
+注：若未指定分箱输入，则评分卡训练过程完全等价于一般的逻辑回归/线性回归。
+
+特征工程
+评分卡区别于普通的线性模型的最大的地方在于，评分卡在使用线性模型进行训练之前会对数据进行一定的特征工程处理，本评分卡中提供了两种特征工程方法，都是需要先经过分箱将特征离散化，一种方法是将每个变量根据分箱结果进行One-Hot编码分别生成N个dummy变量(N为变量的分箱的个数)，另一种方法是WOE转换，即将变量的原始值使用变量落入的分箱所对应的WOE值进行替换。
+
+注：使用dummy变量变换时，每个原始变量的dummy变量之间可以设置相关的约束，具体参见后续章节。
+
+分数转换
+评分卡的信用评分等场景中，需要通过线性变换将预测得到的样本的odds转换成分数，通常通过如下的线性变换来进行：
+
+log(odds) = \sum(wx) = a scaled_score + b
+
+用户通过如下三个参数来指定这个线性变换关系：
+
+scaledValue 给出一个分数的基准点
+odds 在给定的分数基准点处的odds值
+pdo(Point Double Odds) 分数增长多分odds值加倍
+如scaledValue=800, odds=50, pdo=25, 则表示指定了上述直线中的两个点：
+
+log(40) = a * 800 + b
+
+log(80) = a * 825 + b
+
+解出a和b，对模型中的分数做线性变换即可得到转换后的变量分。
+
+scaling信息由参数-Dscale指定，格式为json，如下：
+
+{"scaledValue":800,"odds":50,"pdo":25}
+当该参数不为空时，上述三个参数的值需同时被设置。
+
+训练过程支持约束
+评分卡训练过程支持对变量添加约束，如可指定某个bin所对应的分数为固定值，或两个bin的分数满足一定的比例，再或者bin之间的分数有大小的限制，如设置bin的分数按bin的woe值排序等等，约束的实现依赖于底层的带约束的优化算法，约束可以在分箱的UI中进行设置，设置完成后分箱会生一个json格式的约束条件，并自动传递给后面连接的训练组件，下面是一个分箱组件操作的演示：
+
+scorecard_binning
+
+目前支持如下几种json约束：>
+
+“<”：变量的权重按顺序满足升序的约束
+“>”：变量的权重按顺序满足降序的约束
+“=”：变量的权重等于固定值
+“%”：变量之间的权重符定一定的比例关系
+“UP”：变量的权重约束上限
+“LO”：变量的权重约束下限
+json约束以字符串的形式存储在表中，表为单行单列（字符串类型）的表，存储如下的Json字符串：
+
+{
+    "name": "feature0",
+    "<": [
+        [0,1,2,3]
+    ],
+    ">": [
+        [4,5,6]
+    ],
+    "=": [
+        "3:0","4:0.25"
+    ],
+    "%": [
+        ["6:1.0","7:1.0"]
+    ]
+}
+内置约束
+每个原始变量会有一个隐含的约束，不需要用户指定，即单个变量的人群的分数平均值为0，通过增加这个约束，模型截距项的scaled_weight即为整个人群的平均分。
+
+优化算法
+在高级选项中可以选择训练过程中使用的优化算法，目前支持下面四种优化算法:
+
+L-BFGS
+Newton’s Method
+Barrier Method
+SQP
+其中L-BFGS是一阶的优化算法支持较大规模的特征数据级，牛顿法是经典的二阶算法，收敛速度快，准确度高，但由于要计算二阶的Hessian Matrix，因此不适用于较大特征规模的问题，这两种算法均为无约束的优化算法，当选择这两种优化算法时会自动忽略约束条件。
+
+当训练过程中有约束条件时，可以选择Barrier Method和SQP，这两种算法都是二阶的优化算法，在没有约束条件的情况下完全等价于牛顿法，这两种算法的计算性能和准确性差别不大，我们默认建议选择SQP。
+
+如果用户对优化算法不太了解，建议默认选择”自动选择“，会自动根据用户任务的数据规模和约束情况来选择最合适的优化算法。
+
+特征选择
+训练模块支持stepwise特征选择功能，stepwise是一种前向选择和后向选择的融合，在每进行一次前向特征选择选出一个新变量进入模型后，需要对已进入模型中的变量再进行一次后向选择，移除显著性不满足需求的变量。由于同时支持多种目标函数，也支持多种特征变换方法，因此stepwise特征选择过程也支持不同的选择标准，目前有如下三种选择标准：
+
+边缘贡献(Marginal Contribution)，对于所有的目标函数和特征工程方法均适用。
+评分检验(Score Test)，仅支持WOE转换或无特征工程的逻辑回归选择。
+F检验(F Test)，仅支持WOE转换或无特征工程的线性回归选择。
+边缘贡献
+边缘贡献度的定义为是训练两个模型，模型A中不包含变量X，模型B在包含所有A的变量的基础上还包含变量X，两个模型最终收敛时所对应的目标函数的差值，即为变量X在模型B中所有变量之间的边缘贡献度。而在特征工程为dummy变换的场景中，原始变量的X的边缘贡献度定义为两个模型分别包含和不包含该变量的所有dummy变量的目标函数的差值，因此使用边缘贡献度的方法进行特征选择支持所有的特征工程方法。
+
+该方法的优点是比较灵活，不局限于某一种模型，直接选择使目标函数更优的变量进入模型。缺点是边缘贡献度不同于统计显著性，统计显著性一般会选择0.05为阈值，而边缘贡献度新用户没有一个绝对的概念阈值选在在多少比较合适，我们给出的建议是可以先设置为10E-5。
+
+评分检验
+评分检验仅适应于逻辑回归的特征选择；在前向选择的过程中，首先训练一个仅有截距项的模型，在接下来每一步迭代中，分别对未进入模型的变量计算其评分卡方统计量(Score Chi-Square)，将评分卡方统计量最大的变量选入模型，同时根据卡方分布计算该统计量所对应的显著性P Value，若评分卡方统计量最大的变量的P Value大于用户指定的进入模型的最大显著性阈值(slentry)，则不会将该变量纳入模型，并停止选择过程。
+
+在完成一轮前向选择之后，会对已选中进入模型的变量进行一轮后向选择，后向选择过程中，对于已经进入模型中的变量分别计算其对应的沃尔德卡方统计量(Wald Chi-Square)，对计算其对应的显著性P Value，若P Value大于用户指定的移除模型的最大显著性阈值(slstay)，则将变量从模型中移除，继续下一轮迭代选择过程。
+
+F检验
+F检验仅适应于线性回归的特征选择；在前向选择的过程中，首先训练一个仅有截距项的变量，在接下来的每一步迭代中，分别对未进入模型的变量计算其F Value，F Value的计算与边缘贡献度的计算有些类似，同样需要训练两个模型以计算一个变量的F Value，F Value符合F分布，可根据其F分布的概率密度函数求得其对应的显著性P Value，若P Value大于用户指定的进入模型的最大显著性阈值(slentry)，则不会将变量纳入模型，并停止选择过程。
+
+后向选择过程同样是使用F Value来计算显著性，过程与评分检验类似。
+
+强制选中的变量
+在进行特征选择之前可以设置强制进入模型的变量，被选中的变量不论其显著性为多少，默认都会直接进入模型中，不会参与前向和后向的特征选择过程。
+
+迭代次数和显著性阈值由用户在命令行中通过-Dselected参数指定，格式为json，如下：
+
+{"max_step":2, "slentry": 0.0001, "slstay": 0.0001}
+该参数为空或max_step为0表示正常的训练流程，不进行特征选择。
+
+我们推荐用户使用PAI web来使用评分卡，下面是一个简单的评分卡STEPWISE特征选择和特征WOE变换＋逻辑回归STEPWISE特征选择的对比演示：
+
+scorecard_stepwise
+
+模型报告
+评分卡模型的输出为一个Model Report，其中包含了变量的分箱信息，分箱的约束信息，及WOE, Marginal Contribution等一些基本的统计指标，PAI web端展示的评分卡模型评估报告
+
+相关列的描述如下：
+
+列名	列类型	列描述
+feaname	string	特征名
+binid	bigint	分箱ID
+bin	string	分箱描述，用于表明该分箱的值域
+constraint	string	训练时增加到该分箱上面的约束条件
+weight	double	训练完成后所对应的分箱变量权重，或未指定分箱输入的非评分卡模型，该项直接对应到模型变量权重
+scaled_weight	double	评分卡模型训练过程中指定分数转换信息后，将分箱变量权重经过线性变换后得到的分数值
+woe	double	统计指标：训练集上该分箱的woe值
+contribution	double	统计指标：训练集上该分箱的marginal contribution值
+total	bigint	统计指标：训练集上该分箱的总的样本数
+positive	bigint	统计指标：训练集上该分箱的正样本数
+negative	bigint	统计指标：训练集上该分箱的负样本数
+percentage_pos	double	统计指标：训练集上该分箱的正样本数点总正样本的比例
+percentage_neg	double	统计指标：训练集上该分箱的负样本数点总负样本的比例
+test_woe	double	统计指标：测试集上该分箱的woe值
+test_contribution	double	统计指标：测试集上该分箱的marginal contribution值
+test_total	bigint	统计指标：测试集上该分箱的总的样本数
+test_positive	bigint	统计指标：测试集上该分箱的正样本数
+test_negative	bigint	统计指标：测试集上该分箱的负样本数
+test_percentage_pos	double	统计指标：测试集上该分箱的正样本数点总正样本的比例
+test_percentage_neg	double	统计指标：测试集上该分箱的负样本数点总负样本的比例
+使用演示
+下面是一个简单的评分卡训练和特征WOE变换＋逻辑回归的对比演示：
+
+scorecard_vs_lr
+
+当输入训练组件中连接测试集时，在输出的模型报告中会同时输出模型在测试集上的一些统计指标，如WOE,MC等，下面是一个简单的带测试集的训练演示：
+
+scorecard_testset
+
+PAI命令
+pai -name=linear_model -project=algo_public
+    -DinputTableName=input_data_table
+    -DinputBinTableName=input_bin_table
+    -DinputConstraintTableName=input_constraint_table
+    -DoutputTableName=output_model_table
+    -DlabelColName=label
+    -DfeatureColNames=feaname1,feaname2
+    -Doptimization=barrier_method
+    -Dloss=logistic_regression
+    -Dlifecycle=8
+算法参数
+参数名称	参数描述	参数值可选项	默认值
+inputTableName	必选，输入特征数据表	-	-
+inputTablePartitions	可选，输入特征表选择的分区	-	默认选择全表
+inputBinTableName	可选，输入分箱结果表，若该表指定，则自动根据该表的分箱规则对原始特征进行离散化后再进行训练	-	-
+featureColNames	可选，输入表选择的特征列	-	默认选择全部，自动排除label列
+labelColName	必选，目标列	-	-
+outputTableName	必选，输出模型表	-	-
+inputConstraintTableName	可选，输入的json格式约束条件，存储在表的一个单元中	-	-
+optimization	可选，优化类型	支持lbfgs,newton,barrier_method,sqp,auto，目前仅sqp,barrier_method支持约束，auto即为根据用户数据和相关参数自动选择合适的优化算法，我们建议用户对上述几种优化算法不太了解的情况下选择使用auto	默认为auto
+loss	可选，loss类型	支持logistic_regression和least_square	默认为logistic_regression
+iterations	可选，优化的最大迭代次数	-	默认为100
+l1Weight	可选，L1正则的参数权重，目前仅lbfgs支持l1weight	-	默认为0
+l2Weight	可选，L2正则的参数权重	-	默认为0
+m	可选，lbfgs优化过程中的历史长度，仅对lbfgs有效	-	默认为10
+scale	可选，评分卡对weight进行scale的信息	-	默认为空
+selected	可选，评分卡特征选择功能	-	默认为空
+convergenceTolerance	可选，收敛条件	-	默认为1e-6
+positiveLabel	可选，正样本的分类	-	默认为”1”
+lifecycle	可选，输出表的生命周期	-	默认不设置
+coreNum	可选，核心数	-	默认自动计算
+memSizePerCore	可选，内存数	-	默认自动计算
+评分卡预测
+评分卡预测组件对原始数据根据训练组件产出的模型结果进行预测打分，支持的训练组件包括：评分卡训练，逻辑回归二分类(金融版块)，线性回归(金融版块)。
+
+输入参数
+预测组件支持如下参数：
+
+特征列：选择用于预测的原始特征列，默认选择全部。
+原样填加到结果表：选择不进行任何处理，直接附加到预测结果表中的列，如常用的ID列，目标列等等。
+输出变量分：是否输出每个特征变量所对应的分数，最终的预测总得分为截距项的得分加所有的变量分。
+输出打分表
+输出打分表的示例如下：
+
+_E5_B1_8F_E5_B9_95_E5_BF_AB_E7_85_A7_2016-11-17__E4_B8_8B_E5_8D_881.45.24
+
+其中第一列churn为用户选择的原样添加到结果表中的列，与预测结果无关，其它三列为预测结果列，其意义分别如下：
+
+列名	列类型	列描述
+prediction_score	double	预测分数列，线性模型中特征值和模型权重值直接相乘相加的结果，对应到评分卡模型中，若模型进行了分数转换，则该分数输出的是转换后的得分
+prediction_prob	double	二分类的场景中预测得到的正例的概率值，原始得分(未经分数转换)经过sigmoid变换后所得
+prediction_detail	string	用json格式描述的各类别概率值，其中0代表负类，1代表正类，如：{“0”:0.1813110520,”1”:0.8186889480}
+PAI 命令
+pai -name=lm_predict
+    -project=algo_public
+    -DinputFeatureTableName=input_data_table
+    -DinputModelTableName=input_model_table
+    -DmetaColNames=sample_key,label
+    -DfeatureColNames=fea1,fea2
+    -DoutputTableName=output_score_table
+算法参数
+参数名称	参数描述	参数值可选项	默认值
+inputFeatureTableName	必选，输入特征数据表	-	-
+inputFeatureTablePartitions	可选，输入特征表选择的分区	-	默认选择全表
+inputModelTableName	必选，输入的模型表	-	-
+featureColNames	可选，输入表选择的特征列	-	默认选择全部
+metaColNames	可选，不进行转换的数据列，选中的列会原样输出	-	默认无meta列，可在此列中指定label,sample_id等
+outputFeatureScore	可选，预测结果中是否输出变量分	true/false	默认值为false
+outputTableName	必选，输出预测结果表	-	-
+lifecycle	可选，输出表的生命周期	-	默认不设置
+coreNum	可选，核心数	-	默认自动计算
+memSizePerCore	可选，内存数	-	默认自动计算
+PSI
+样本稳定指数是衡量样本变化所产生的偏移量的一种重要指标，通常用来衡量样本的稳定程度，比如样本在两个月份之间的变化是否稳定。通常变量的PSI值在0.1以下表示变化不太显著，在0.1到0.25之间表示有比较显著的变化，大于0.25表示变量变化比较剧烈，需要特殊关注。
+
+衡量样本在不是时刻的稳定性时，可以使用画图的方法，即将要比较的变量离散化成N个分箱，然后计算样本分别在各个分箱中的数量及比例，并以柱状图的形式表示出来，如下图:
+
+PSI-Chart__1_
+
+这种方法可以比较直观地看出某个变量在两批样本上是否有剧烈的变化，但该方法的缺点是无法量化，无法实现对样本稳定性的自动监控，因此PSI就显得尤为重要，在使用PSI之前也需要对特征数据进行分箱，因此需要一个分箱组件，PSI的计算公式如下：
+
+latex
+
+使用示例
+下图是一个使用的示例，PSI组件分别连接待比较的两个样本数据集，再连接一个分箱组件，只有一个参数可供选择，即选择要进行PSI计算的特征。
+
+_E5_B1_8F_E5_B9_95_E5_BF_AB_E7_85_A7_2016-11-17__E4_B8_8B_E5_8D_884.50.32
+
+结果示例
+_E5_B1_8F_E5_B9_95_E5_BF_AB_E7_85_A7_2016-11-17__E4_B8_8B_E5_8D_884.52.57
+
+PAI命令
+PAI -name psi
+-project algo_public
+-DinputBaseTableName=psi_base_table
+-DinputTestTableName=psi_test_table
+-DoutputTableName=psi_bin_table
+-DinputBinTableName=pai_index_table
+-DfeatureColNames=fea1,fea2,fea3
+-Dlifecycle=7
+算法参数
+参数名称	参数描述	参数值可选项	默认值
+inputBaseTableName	必选，输入基础表表名，计算测试表在基础表的基础上产生的偏移量	-	-
+inputBaseTablePartitions	可选，输入基础表分区	-	默认选择全表
+inputTestTableName	必选，输入测试表表名，计算测试表在基础表的基础上产生的偏移量	-	-
+inputTestTablePartitions	可选，输入测试表分区	-	默认选择全表
+inputBinTableName	必选，输入分箱结果表表名	-
+featureColNames	可选，要计算PSI指标的特征	-	默认选择所有特征
+outputTableName	必选，输出的指标表	-	-
+lifecycle	可选，输出表的生命周期	-	默认不设置
+coreNum	可选，核心数	-	默认自动计算
+memSizePerCore	可选，内存数	-	默认自动计算

@@ -1,0 +1,101 @@
+心脏病是人类健康的头号杀手。全世界1/3的人口死亡是心脏病引起的。而我国，每年有几十万人死于心脏病。如果可以通过提取人体相关的体测指标，通过数据挖掘方式来分析不同特征对于心脏病的影响，将对预防心脏病起到至关重要的作用。本文提供真实的数据，并通过阿里云机器学习平台搭建心脏病预测案例。
+
+数据集介绍
+数据源为UCI开源数据集heart_disease。包含了303条美国某区域的心脏病检查患者的体测数据。具体字段如下表。
+
+字段名	含义	类型	描述
+age	年龄	string	对象的年龄，数字表示
+sex	性别	string	对象的性别，female和male
+cp	胸部疼痛类型	string	痛感由重到无typical、atypical、non-anginal、asymptomatic
+trestbps	血压	string	血压数值
+chol	胆固醇	string	胆固醇数值
+fbs	空腹血糖	string	血糖含量大于120mg/dl为true，否则为false
+restecg	心电图结果	string	是否有T波，由轻到重为norm、hyp
+thalach	最大心跳数	string	最大心跳数
+exang	运动时是否心绞痛	string	是否有心绞痛，true为是，false为否
+oldpeak	运动相对于休息的ST depression	string	st段压数值
+slop	心电图ST segment的倾斜度	string	ST segment的slope，程度分为down、flat、up
+ca	透视检查看到的血管数	string	透视检查看到的血管数
+thal	缺陷种类	string	并发种类，由轻到重norm、fix、rev
+status	是否患病	string	是否患病，buff是健康、sick是患病
+数据探索流程
+数据挖掘流程如下：
+
+
+
+整体实验流程：
+
+
+
+1. 数据预处理
+数据预处理也叫作数据清洗，主要在数据进入算法流程前对数据进行去噪、缺失值填充、类型变换等操作。本次实验的输入数据包括14个特征列和1个目标列。需要解决的问题是根据用户的体检指标预测是否会患有心脏病，每个样本只有患病或不患病两种情况，是分类问题。
+本次分类实验选用的是线性模型逻辑回归，要求输入的特征都是double类型的数据，如下图所示。
+
+
+上图中很多数据都是文字描述的，在数据预处理的过程中需要根据每个字段的含义将字符转为数值。
+
+二值类的数据
+比如sex字段有female和male两种形式，可以将female表示成0，male表示成1。
+
+多值类的数据
+比如cp字段，表示胸部的疼痛感，可以将疼痛感由轻到重映射成0～3的数值。
+
+数据预处理通过sql脚本来实现，具体请参考SQL脚本组件。
+
+select age,
+(case sex when 'male' then 1 else 0 end) as sex,
+(case cp when 'angina' then 0  when 'notang' then 1 else 2 end) as cp,
+trestbps,
+chol,
+(case fbs when 'true' then 1 else 0 end) as fbs,
+(case restecg when 'norm' then 0  when 'abn' then 1 else 2 end) as restecg,
+thalach,
+(case exang when 'true' then 1 else 0 end) as exang,
+oldpeak,
+(case slop when 'up' then 0  when 'flat' then 1 else 2 end) as slop,
+ca,
+(case thal when 'norm' then 0  when 'fix' then 1 else 2 end) as thal,
+(case status  when 'sick' then 1 else 0 end) as ifHealth
+from  ${t1};
+2. 特征工程
+特征工程主要包括特征的衍生、尺度变化等功能。本案例中有两个组件负责特征工程部分。
+
+过滤式特征选择
+判断每个特征对于结果的影响，通过信息熵和基尼系数来表示。右键单击组件，选择查看评估报告显示最终结果，如下图所示。
+
+
+归一化
+将每个特征的数值范围变为0到1之间，可以去除量纲对结果的影响，公式为result=(val-min)/(max-min)。本次实验通过逻辑回归二分类来进行模型训练，需要每个特征去除量纲的影响。归一化结果如下图所示。
+
+
+3. 模型训练和预测
+监督学习就是已知结果来训练模型。因为已经知道每个样本是否患有心脏病，因此本次实验是监督学习。解决的问题是预测一组用户是否患有心脏病。
+
+拆分
+通过拆分组件将数据分为两部分，本次实验按照训练集和预测集7：3的比例拆分。训练集数据流入逻辑回归二分类组件用来训练模型，预测集数据进入预测组件。
+
+逻辑回归二分类
+逻辑回归是一个线性模型，通过计算结果的阈值实现分类（具体的算法详情请自行查阅资料）。逻辑回归训练好的模型可以在模型页签中查看。
+
+
+预测
+预测组件的两个输入桩分别是模型和预测集。预测结果展示的是预测数据、真实数据、每组数据不同结果的概率。
+
+4. 评估
+通过混淆矩阵组件可以查看模型的准确率等参数。
+
+
+
+通过此组件可以方便地根据预测的准确性来评估模型。
+
+总结
+通过以上数据探索流程可以得到以下结论。
+
+模型权重
+
+通过每个模型对应特征的权重，可以大体分析出特征对结果的影响大小。如果模型权重如下图
+
+thalach（心跳数）对于是否发生心脏病影响最大。
+性别对于是否发生心脏病没有影响。
+模型效果
+通过本文档提供的14个特征，心脏病预测准确率可以达到百分之八十以上。模型可以用来做预测，辅助医生预防和治疗心脏病。

@@ -1,0 +1,936 @@
+网络分析
+更新时间：2018-07-26 16:11:50
+
+
+本页目录
+目录
+k-Core
+单源最短路径
+PageRank
+标签传播聚类
+标签传播分类
+Modularity
+最大联通子图
+点聚类系数
+边聚类系数
+计数三角形
+树深度
+目录
+k-Core
+
+单源最短路径
+
+PageRank
+
+标签传播聚类
+
+标签传播分类
+
+Modularity
+
+最大联通子图
+
+点聚类系数
+
+边聚类系数
+
+计数三角形
+
+树深度
+
+网络分析模块提供的都是基于Graph数据结构的分析算法，下图是使用网络分析的算法组件搭建的一个分析流程实验。
+
+ds
+
+网络分析的算法组件都需要设置运行参数，参数说明如下：
+
+进程数：参数名为 workerNum，用于设置作业并行执行的节点数。数字越大并行度越高，但框架通讯开销会增大。
+进程内存：参数名为 workerMem，用于设置单个 worker 可使用的最大内存量，默认每个 worker 分配 4096 MB 内存，实际使用内存超过该值，会抛出OutOfMemory异常。
+k-Core
+功能介绍
+一个图的 KCore 是指反复去除度小于或等于k的节点后，所剩余的子图。若一个节点存在于 KCore，而在 (K+1)Core 中被移去，那么此节点的核数（coreness）为k。因此所有度为1的节点的核数必然为0，节点核数的最大值被称为图的核数。
+
+参数设置
+k：核数的值，必填，默认为3
+
+PAI 命令
+PAI -name KCore
+    -project algo_public
+    -DinputEdgeTableName=KCore_func_test_edge
+    -DfromVertexCol=flow_out_id
+    -DtoVertexCol=flow_in_id
+    -DoutputTableName=KCore_func_test_result
+    -Dk=2;
+算法参数
+参数名称	参数描述	必/选填	默认值
+inputEdgeTableName	输入边表名	必填	不涉及
+inputEdgeTablePartitions	输入边表的分区	选填	全表读入
+fromVertexCol	边表中起点所在列	必填	不涉及
+toVertexCol	边表中终点所在列	必填	不涉及
+outputTableName	输出表名	必填	不涉及
+outputTablePartitions	输出表的分区	选填	不涉及
+lifecycle	输出表申明周期	选填	不涉及
+workerNum	进程数量	选填	未设置
+workerMem	进程内存	选填	4096
+splitSize	数据切分大小	选填	64
+k	核数	必填	3
+实例
+测试数据
+
+新建数据的SQL语句：
+
+drop table if exists KCore_func_test_edge;
+create table KCore_func_test_edge as
+select * from
+(
+  select '1' as flow_out_id,'2' as flow_in_id from dual
+  union all
+  select '1' as flow_out_id,'3' as flow_in_id from dual
+  union all
+  select '1' as flow_out_id,'4' as flow_in_id from dual
+  union all
+  select '2' as flow_out_id,'3' as flow_in_id from dual
+  union all
+  select '2' as flow_out_id,'4' as flow_in_id from dual
+  union all
+  select '3' as flow_out_id,'4' as flow_in_id from dual
+  union all
+  select '3' as flow_out_id,'5' as flow_in_id from dual
+  union all
+  select '3' as flow_out_id,'6' as flow_in_id from dual
+  union all
+  select '5' as flow_out_id,'6' as flow_in_id from dual
+)tmp;
+对应的图结构如下图所示。
+
+graph
+
+运行结果
+
+设定 k=2，运行结果如下：
+
++-------+-------+
+| node1 | node2 |
++-------+-------+
+| 1     | 2     |
+| 1     | 3     |
+| 1     | 4     |
+| 2     | 1     |
+| 2     | 3     |
+| 2     | 4     |
+| 3     | 1     |
+| 3     | 2     |
+| 3     | 4     |
+| 4     | 1     |
+| 4     | 2     |
+| 4     | 3     |
++-------+-------+
+单源最短路径
+功能介绍
+单源最短路径参考Dijkstra算法。本算法中给定起点，输出该点和其他所有节点的最短路径。
+
+参数设置
+起始节点id：用于计算最短路径的起始节点，必填
+
+PAI 命令
+PAI -name SSSP
+    -project algo_public
+    -DinputEdgeTableName=SSSP_func_test_edge
+    -DfromVertexCol=flow_out_id
+    -DtoVertexCol=flow_in_id
+    -DoutputTableName=SSSP_func_test_result
+    -DhasEdgeWeight=true
+    -DedgeWeightCol=edge_weight
+    -DstartVertex=a;
+算法参数
+参数名称	参数描述	必/选填	默认值
+inputEdgeTableName	输入边表名	必填	不涉及
+inputEdgeTablePartitions	输入边表的分区	选填	全表读入
+fromVertexCol	输入边表的起点所在列	必填	不涉及
+toVertexCol	输入边表的终点所在列	必填	不涉及
+outputTableName	输出表名	必填	不涉及
+outputTablePartitions	输出表的分区	选填	不涉及
+lifecycle	输出表申明周期	选填	不涉及
+workerNum	进程数量	选填	未设置
+workerMem	进程内存	选填	4096
+splitSize	数据切分大小	选填	64
+startVertex	起始节点ID	必填	不涉及
+hasEdgeWeight	输入边表的边是否有权重	选填	false
+edgeWeightCol	输入边表边的权重所在列	选填	不涉及
+实例
+测试数据
+
+新建数据的SQL语句：
+
+drop table if exists SSSP_func_test_edge;
+create table SSSP_func_test_edge as
+select
+    flow_out_id,flow_in_id,edge_weight
+from
+(
+    select "a" as flow_out_id,"b" as flow_in_id,1.0 as edge_weight from dual
+    union all
+    select "b" as flow_out_id,"c" as flow_in_id,2.0 as edge_weight from dual
+    union all
+    select "c" as flow_out_id,"d" as flow_in_id,1.0 as edge_weight from dual
+    union all
+    select "b" as flow_out_id,"e" as flow_in_id,2.0 as edge_weight from dual
+    union all
+    select "e" as flow_out_id,"d" as flow_in_id,1.0 as edge_weight from dual
+    union all
+    select "c" as flow_out_id,"e" as flow_in_id,1.0 as edge_weight from dual
+    union all
+    select "f" as flow_out_id,"g" as flow_in_id,3.0 as edge_weight from dual
+    union all
+    select "a" as flow_out_id,"d" as flow_in_id,4.0 as edge_weight from dual
+) tmp
+;
+对应的图结构如下图所示。
+
+images
+
+运行结果
+
++------------+------------+------------+--------------+
+| start_node | dest_node  | distance   | distance_cnt |
++------------+------------+------------+--------------+
+| a          | b          | 1.0        | 1            |
+| a          | c          | 3.0        | 1            |
+| a          | d          | 4.0        | 3            |
+| a          | a          | 0.0        | 0            |
+| a          | e          | 3.0        | 1            |
++------------+------------+------------+--------------+
+PageRank
+功能介绍
+PageRank起源于网页的搜索排序，google利用网页的链接结构计算每个网页的等级排名，其基本思路是：
+如果一个网页被其他多个网页指向，这说明该网页比较重要或者质量较高。
+除考虑网页的链接数量，还考虑网页本身的权重级别，以及该网页有多少条出链到其它网页。
+对于用户构成的人际网络，除了用户本身的影响力之外，边的权重也是重要因素之一。
+例如新浪微博的某个用户，会更容易影响粉丝中关系比较亲密的家人、同学、同事等，而对陌生的弱关系粉丝影响较小。在人际网络中，边的权重等价为用户与用户之间的关系强弱指数。
+带连接权重的PageRank公式为：
+gongshi
+
+W(i)：节点i的权重。
+C(Ai)：链接权重。
+d：阻尼系数。
+W(A)：算法迭代稳定后的节点权重，即每个用户的影响力指数。
+参数设置
+最大迭代次数：算法自身会收敛并停止迭代，选填，默认为30
+
+PAI 命令
+PAI -name PageRankWithWeight
+    -project algo_public
+    -DinputEdgeTableName=PageRankWithWeight_func_test_edge
+    -DfromVertexCol=flow_out_id
+    -DtoVertexCol=flow_in_id
+    -DoutputTableName=PageRankWithWeight_func_test_result
+    -DhasEdgeWeight=true
+    -DedgeWeightCol=weight
+    -DmaxIter 100;
+算法参数
+参数key名称	参数描述	必/选填	默认值
+inputEdgeTableName	输入边表名	必填	不涉及
+inputEdgeTablePartitions	输入边表的分区	选填	全表读入
+fromVertexCol	输入边表的起点所在列	必填	不涉及
+toVertexCol	输入边表的终点所在列	必填	不涉及
+outputTableName	输出表名	必填	不涉及
+outputTablePartitions	输出表的分区	选填	不涉及
+lifecycle	输出表申明周期	选填	不涉及
+workerNum	进程数量	选填	未设置
+workerMem	进程内存	选填	4096
+splitSize	数据切分大小	选填	64
+hasEdgeWeight	输入边表的边是否有权重	选填	false
+edgeWeightCol	输入边表边的权重所在列	选填	不涉及
+maxIter	最大迭代次数	选填	30
+实例
+测试数据
+
+新建数据的SQL语句：
+
+drop table if exists PageRankWithWeight_func_test_edge;
+create table PageRankWithWeight_func_test_edge as
+select * from
+(
+    select 'a' as flow_out_id,'b' as flow_in_id,1.0 as weight from dual
+    union all
+    select 'a' as flow_out_id,'c' as flow_in_id,1.0 as weight from dual
+    union all
+    select 'b' as flow_out_id,'c' as flow_in_id,1.0 as weight from dual
+    union all
+    select 'b' as flow_out_id,'d' as flow_in_id,1.0 as weight from dual
+    union all
+    select 'c' as flow_out_id,'d' as flow_in_id,1.0 as weight from dual
+)tmp
+;
+对应的图结构如下图所示。
+
+pagerank
+
+运行结果
+
++------+------------+
+| node | weight     |
++------+------------+
+| a    | 0.0375     |
+| b    | 0.06938    |
+| c    | 0.12834    |
+| d    | 0.20556    |
++------+------------+
+标签传播聚类
+功能介绍
+图聚类是根据图的拓扑结构，进行子图的划分，使得子图内部节点的连接较多，子图之间的连接较少。标签传播算法（Label Propagation Algorithm，LPA）是基于图的半监督学习方法，其基本思路是节点的标签（community）依赖其相邻节点的标签信息，影响程度由节点相似度决定，并通过传播迭代更新达到稳定。
+
+参数介绍
+最大迭代次数：选填，默认为30
+
+PAI 命令
+pai -name LabelPropagationClustering
+    -project algo_public
+    -DinputEdgeTableName=LabelPropagationClustering_func_test_edge
+    -DfromVertexCol=flow_out_id
+    -DtoVertexCol=flow_in_id
+    -DinputVertexTableName=LabelPropagationClustering_func_test_node
+    -DvertexCol=node
+    -DoutputTableName=LabelPropagationClustering_func_test_result
+    -DhasEdgeWeight=true
+    -DedgeWeightCol=edge_weight
+    -DhasVertexWeight=true
+    -DvertexWeightCol=node_weight
+    -DrandSelect=true
+    -DmaxIter=100;
+算法参数
+参数key名称	参数描述	必/选填	默认值
+inputEdgeTableName	输入边表名	必填	不涉及
+inputEdgeTablePartitions	输入边表的分区	选填	全表读入
+fromVertexCol	输入边表的起点所在列	必填	不涉及
+toVertexCol	输入边表的终点所在列	必填	不涉及
+inputVertexTableName	输入点表名称	必填	不涉及
+inputVertexTablePartitions	输入点表的分区	选填	全表读入
+vertexCol	输入点表的点所在列	必填	不涉及
+outputTableName	输出表名	必填	不涉及
+outputTablePartitions	输出表的分区	选填	不涉及
+lifecycle	输出表申明周期	选填	不涉及
+workerNum	进程数量	选填	未设置
+workerMem	进程内存	选填	4096
+splitSize	数据切分大小	选填	64
+hasEdgeWeight	输入边表的边是否有权重	选填	false
+edgeWeightCol	输入边表边的权重所在列	选填	不涉及
+hasVertexWeight	输入点表的点是否有权重	选填	false
+vertexWeightCol	输入点表的点的权重所在列	选填	不涉及
+randSelect	是否随机选择最大标签	选填	false
+maxIter	最大迭代次数	选填	30
+实例
+测试数据
+
+数据生成的SQL语句：
+
+drop table if exists LabelPropagationClustering_func_test_edge;
+create table LabelPropagationClustering_func_test_edge as
+select * from
+(
+    select '1' as flow_out_id,'2' as flow_in_id,0.7 as edge_weight from dual
+    union all
+    select '1' as flow_out_id,'3' as flow_in_id,0.7 as edge_weight from dual
+    union all
+    select '1' as flow_out_id,'4' as flow_in_id,0.6 as edge_weight from dual
+    union all
+    select '2' as flow_out_id,'3' as flow_in_id,0.7 as edge_weight from dual
+    union all
+    select '2' as flow_out_id,'4' as flow_in_id,0.6 as edge_weight from dual
+    union all
+    select '3' as flow_out_id,'4' as flow_in_id,0.6 as edge_weight from dual
+    union all
+    select '4' as flow_out_id,'6' as flow_in_id,0.3 as edge_weight from dual
+    union all
+    select '5' as flow_out_id,'6' as flow_in_id,0.6 as edge_weight from dual
+    union all
+    select '5' as flow_out_id,'7' as flow_in_id,0.7 as edge_weight from dual
+    union all
+    select '5' as flow_out_id,'8' as flow_in_id,0.7 as edge_weight from dual
+    union all
+    select '6' as flow_out_id,'7' as flow_in_id,0.6 as edge_weight from dual
+    union all
+    select '6' as flow_out_id,'8' as flow_in_id,0.6 as edge_weight from dual
+    union all
+    select '7' as flow_out_id,'8' as flow_in_id,0.7 as edge_weight from dual
+)tmp
+;
+drop table if exists LabelPropagationClustering_func_test_node;
+create table LabelPropagationClustering_func_test_node as
+select * from
+(
+    select '1' as node,0.7 as node_weight from dual
+    union all
+    select '2' as node,0.7 as node_weight from dual
+    union all
+    select '3' as node,0.7 as node_weight from dual
+    union all
+    select '4' as node,0.5 as node_weight from dual
+    union all
+    select '5' as node,0.7 as node_weight from dual
+    union all
+    select '6' as node,0.5 as node_weight from dual
+    union all
+    select '7' as node,0.7 as node_weight from dual
+    union all
+    select '8' as node,0.7 as node_weight from dual
+)tmp
+;
+对应的图结构如下图所示。
+
+ddd
+
+运行结果
+
++------+------------+
+| node | group_id   |
++------+------------+
+| 1    | 1          |
+| 2    | 1          |
+| 3    | 1          |
+| 4    | 1          |
+| 5    | 5          |
+| 6    | 5          |
+| 7    | 5          |
+| 8    | 5          |
++------+------------+
+标签传播分类
+功能介绍
+该算法为半监督的分类算法，原理为用已标记节点的标签信息去预测未标记节点的标签信息。
+
+在算法执行过程中，每个节点的标签按相似度传播给相邻节点，在节点传播的每一步，每个节点根据相邻节点的标签来更新自己的标签。与该节点相似度越大，其相邻节点对其标注的影响权值越大，相似节点的标签越趋于一致，其标签就越容易传播。在标签传播过程中，保持已标注数据的标签不变，使其像一个源头把标签传向未标注数据。
+
+最终，当迭代过程结束时，相似节点的概率分布也趋于相似，可以划分到同一个类别中，从而完成标签传播过程。
+
+参数设置
+阻尼系数：默认0.8
+收敛系数：默认0.000001
+PAI 命令
+PAI -name LabelPropagationClassification
+    -project algo_public
+    -DinputEdgeTableName=LabelPropagationClassification_func_test_edge
+    -DfromVertexCol=flow_out_id
+    -DtoVertexCol=flow_in_id
+    -DinputVertexTableName=LabelPropagationClassification_func_test_node
+    -DvertexCol=node
+    -DvertexLabelCol=label
+    -DoutputTableName=LabelPropagationClassification_func_test_result
+    -DhasEdgeWeight=true
+    -DedgeWeightCol=edge_weight
+    -DhasVertexWeight=true
+    -DvertexWeightCol=label_weight
+    -Dalpha=0.8
+    -Depsilon=0.000001;
+算法参数
+参数名称	参数描述	必/选填	默认值
+inputEdgeTableName	输入边表名	必填	不涉及
+inputEdgeTablePartitions	输入边表的分区	选填	全表读入
+fromVertexCol	输入边表的起点所在列	必填	不涉及
+toVertexCol	输入边表的终点所在列	必填	不涉及
+inputVertexTableName	输入点表名称	必填	不涉及
+inputVertexTablePartitions	输入点表的分区	选填	全表读入
+vertexCol	输入点表的点所在列	必填	不涉及
+vertexLabelCol	输入点表的点的标签	必填	不涉及
+outputTableName	输出表名	必填	不涉及
+outputTablePartitions	输出表的分区	选填	不涉及
+lifecycle	输出表申明周期	选填	不涉及
+workerNum	进程数量	选填	未设置
+workerMem	进程内存	选填	4096
+splitSize	数据切分大小	选填	64
+hasEdgeWeight	输入边表的边是否有权重	选填	false
+edgeWeightCol	输入边表边的权重所在列	选填	不涉及
+hasVertexWeight	输入点表的点是否有权重	选填	false
+vertexWeightCol	输入点表的点的权重所在列	选填	不涉及
+alpha	阻尼系数	选填	0.8
+epsilon	收敛系数	选填	0.000001
+maxIter	最大迭代次数	选填	30
+实例
+测试数据
+
+生成数据的SQL语句:
+
+drop table if exists LabelPropagationClassification_func_test_edge;
+create table LabelPropagationClassification_func_test_edge as
+select * from
+(
+    select 'a' as flow_out_id, 'b' as flow_in_id, 0.2 as edge_weight from dual
+    union all
+    select 'a' as flow_out_id, 'c' as flow_in_id, 0.8 as edge_weight from dual
+    union all
+    select 'b' as flow_out_id, 'c' as flow_in_id, 1.0 as edge_weight from dual
+    union all
+    select 'd' as flow_out_id, 'b' as flow_in_id, 1.0 as edge_weight from dual
+)tmp
+;
+drop table if exists LabelPropagationClassification_func_test_node;
+create table LabelPropagationClassification_func_test_node as
+select * from
+(
+    select 'a' as node,'X' as label, 1.0 as label_weight from dual
+    union all
+    select 'd' as node,'Y' as label, 1.0 as label_weight from dual
+)tmp
+;
+对应的图结构如下图所示。
+
+ddd
+
+运行结果
+
++------+-----+------------+
+| node | tag | weight     |
++------+-----+------------+
+| a    | X   | 1.0        |
+| b    | X   | 0.16667    |
+| b    | Y   | 0.83333    |
+| c    | X   | 0.53704    |
+| c    | Y   | 0.46296    |
+| d    | Y   | 1.0        |
++------+-----+------------+
+Modularity
+功能介绍
+Modularity 是一种评估社区网络结构的指标，来评估网络结构中划分出来社区的紧密程度，往往0.3以上是比较明显的社区结构。
+
+PAI 命令
+PAI -name Modularity
+    -project algo_public
+    -DinputEdgeTableName=Modularity_func_test_edge
+    -DfromVertexCol=flow_out_id
+    -DfromGroupCol=group_out_id
+    -DtoVertexCol=flow_in_id
+    -DtoGroupCol=group_in_id
+    -DoutputTableName=Modularity_func_test_result;
+算法参数
+参数key名称	参数描述	必/选填	默认值
+inputEdgeTableName	输入边表名	必填	不涉及
+inputEdgeTablePartitions	输入边表的分区	选填	全表读入
+fromVertexCol	输入边表的起点所在列	必填	不涉及
+fromGroupCol	输入边表起点的群组	必填	不涉及
+toVertexCol	输入边表的终点所在列	必填	不涉及
+toGroupCol	输入边表终点的群组	必填	不涉及
+outputTableName	输出表名	必填	不涉及
+outputTablePartitions	输出表的分区	选填	不涉及
+lifecycle	输出表申明周期	选填	不涉及
+workerNum	进程数量	选填	未设置
+workerMem	进程内存	选填	4096
+splitSize	数据切分大小	选填	64
+实例
+测试数据
+
+与标签传播聚类算法的数据相同。
+
+运行结果
+
++--------------+
+| val          |
++--------------+
+| 0.4230769    |
++--------------+
+最大联通子图
+功能介绍
+在无向图G中，若从顶点A到顶点B有路径相连，则称A和B是连通的。在图G种存在若干子图，如果其中每个子图中所有顶点之间都是连通的，但在不同子图间不存在顶点连通，那么称图G的这些子图为最大连通子图。
+
+参数设置
+无
+
+PAI 命令
+PAI -name MaximalConnectedComponent
+    -project algo_public
+    -DinputEdgeTableName=MaximalConnectedComponent_func_test_edge
+    -DfromVertexCol=flow_out_id
+    -DtoVertexCol=flow_in_id
+    -DoutputTableName=MaximalConnectedComponent_func_test_result;
+算法参数
+参数名称	参数描述	必/选填	默认值
+inputEdgeTableName	输入边表名	必填	不涉及
+inputEdgeTablePartitions	输入边表的分区	选填	全表读入
+fromVertexCol	输入边表的起点所在列	必填	不涉及
+toVertexCol	输入边表的终点所在列	必填	不涉及
+outputTableName	输出表名	必填	不涉及
+outputTablePartitions	输出表的分区	选填	不涉及
+lifecycle	输出表申明周期	选填	不涉及
+workerNum	进程数量	选填	未设置
+workerMem	进程内存	选填	4096
+splitSize	数据切分大小	选填	64
+实例
+测试数据
+
+生成数据的SQL语句:
+
+drop table if exists MaximalConnectedComponent_func_test_edge;
+create table MaximalConnectedComponent_func_test_edge as
+select * from
+(
+  select '1' as flow_out_id,'2' as flow_in_id from dual
+  union all
+  select '2' as flow_out_id,'3' as flow_in_id from dual
+  union all
+  select '3' as flow_out_id,'4' as flow_in_id from dual
+  union all
+  select '1' as flow_out_id,'4' as flow_in_id from dual
+  union all
+  select 'a' as flow_out_id,'b' as flow_in_id from dual
+  union all
+  select 'b' as flow_out_id,'c' as flow_in_id from dual
+)tmp;
+drop table if exists MaximalConnectedComponent_func_test_result;
+create table MaximalConnectedComponent_func_test_result
+(
+  node string,
+  grp_id string
+);
+对应的图结构如下图所示。
+
+Snip20160228_11
+
+运行结果
+
++-------+-------+
+| node  | grp_id|
++-------+-------+
+| 1     | 4     |
+| 2     | 4     |
+| 3     | 4     |
+| 4     | 4     |
+| a     | c     |
+| b     | c     |
+| c     | c     |
++-------+-------+
+点聚类系数
+功能介绍
+在无向图G中，计算每一个节点周围的稠密度，星状网络稠密度为0，全联通网络稠密度为1。
+
+参数设置
+maxEdgeCnt：若节点度大于该值，则进行抽样，默认为500，选填
+
+PAI 命令
+PAI -name NodeDensity
+    -project algo_public
+    -DinputEdgeTableName=NodeDensity_func_test_edge
+    -DfromVertexCol=flow_out_id
+    -DtoVertexCol=flow_in_id
+    -DoutputTableName=NodeDensity_func_test_result
+    -DmaxEdgeCnt=500;
+算法参数
+参数key名称	参数描述	必/选填	默认值
+inputEdgeTableName	输入边表名	必填	不涉及
+inputEdgeTablePartitions	输入边表的分区	选填	全表读入
+fromVertexCol	输入边表的起点所在列	必填	不涉及
+toVertexCol	输入边表的终点所在列	必填	不涉及
+outputTableName	输出表名	必填	不涉及
+outputTablePartitions	输出表的分区	选填	不涉及
+lifecycle	输出表申明周期	选填	不涉及
+maxEdgeCnt	若节点度大于该值，则进行抽样	选填	500
+workerNum	进程数量	选填	未设置
+workerMem	进程内存	选填	4096
+splitSize	数据切分大小	选填	64
+实例
+测试数据
+
+生成数据的SQL语句：
+
+drop table if exists NodeDensity_func_test_edge;
+create table NodeDensity_func_test_edge as
+select * from
+(
+  select '1' as flow_out_id, '2' as flow_in_id from dual
+  union all
+  select '1' as flow_out_id, '3' as flow_in_id from dual
+  union all
+  select '1' as flow_out_id, '4' as flow_in_id from dual
+  union all
+  select '1' as flow_out_id, '5' as flow_in_id from dual
+  union all
+  select '1' as flow_out_id, '6' as flow_in_id from dual
+  union all
+  select '2' as flow_out_id, '3' as flow_in_id from dual
+  union all
+  select '3' as flow_out_id, '4' as flow_in_id from dual
+  union all
+  select '4' as flow_out_id, '5' as flow_in_id from dual
+  union all
+  select '5' as flow_out_id, '6' as flow_in_id from dual
+  union all
+  select '5' as flow_out_id, '7' as flow_in_id from dual
+  union all
+  select '6' as flow_out_id, '7' as flow_in_id from dual
+)tmp;
+drop table if exists NodeDensity_func_test_result;
+create table NodeDensity_func_test_result
+(
+  node string,
+  node_cnt bigint,
+  edge_cnt bigint,
+  density double,
+  log_density double
+);
+对应的图结构如下图所示。
+
+Snip20160228_12
+
+运行结果
+
+1,5,4,0.4,1.45657
+2,2,1,1.0,1.24696
+3,3,2,0.66667,1.35204
+4,3,2,0.66667,1.35204
+5,4,3,0.5,1.41189
+6,3,2,0.66667,1.35204
+7,2,1,1.0,1.24696
+边聚类系数
+功能介绍
+在无向图G中，计算每一条边周围的稠密度。
+
+参数设置
+无
+
+PAI 命令
+PAI -name EdgeDensity
+    -project algo_public
+    -DinputEdgeTableName=EdgeDensity_func_test_edge
+    -DfromVertexCol=flow_out_id
+    -DtoVertexCol=flow_in_id
+    -DoutputTableName=EdgeDensity_func_test_result;
+算法参数
+参数key名称	参数描述	必/选填	默认值
+inputEdgeTableName	输入边表名	必填	不涉及
+inputEdgeTablePartitions	输入边表的分区	选填	全表读入
+fromVertexCol	输入边表的起点所在列	必填	不涉及
+toVertexCol	输入边表的终点所在列	必填	不涉及
+outputTableName	输出表名	必填	不涉及
+outputTablePartitions	输出表的分区	选填	不涉及
+lifecycle	输出表申明周期	选填	不涉及
+workerNum	进程数量	选填	未设置
+workerMem	进程内存	选填	4096
+splitSize	数据切分大小	选填	64
+实例
+测试数据
+
+生成数据的SQL语句:
+
+drop table if exists EdgeDensity_func_test_edge;
+create table EdgeDensity_func_test_edge as
+select * from
+(
+  select '1' as flow_out_id,'2' as flow_in_id from dual
+  union all
+  select '1' as flow_out_id,'3' as flow_in_id from dual
+  union all
+  select '1' as flow_out_id,'5' as flow_in_id from dual
+  union all
+  select '1' as flow_out_id,'7' as flow_in_id from dual
+  union all
+  select '2' as flow_out_id,'5' as flow_in_id from dual
+  union all
+  select '2' as flow_out_id,'4' as flow_in_id from dual
+  union all
+  select '2' as flow_out_id,'3' as flow_in_id from dual
+  union all
+  select '3' as flow_out_id,'5' as flow_in_id from dual
+  union all
+  select '3' as flow_out_id,'4' as flow_in_id from dual
+  union all
+  select '4' as flow_out_id,'5' as flow_in_id from dual
+  union all
+  select '4' as flow_out_id,'8' as flow_in_id from dual
+  union all
+  select '5' as flow_out_id,'6' as flow_in_id from dual
+  union all
+  select '5' as flow_out_id,'7' as flow_in_id from dual
+  union all
+  select '5' as flow_out_id,'8' as flow_in_id from dual
+  union all
+  select '7' as flow_out_id,'6' as flow_in_id from dual
+  union all
+  select '6' as flow_out_id,'8' as flow_in_id from dual
+)tmp;
+drop table if exists EdgeDensity_func_test_result;
+create table EdgeDensity_func_test_result
+(
+  node1 string,
+  node2 string,
+  node1_edge_cnt bigint,
+  node2_edge_cnt bigint,
+  triangle_cnt bigint,
+  density double
+);
+对应的图结构如下图所示。
+
+Snip20160228_13
+
+运行结果
+
+1,2,4,4,2,0.5
+2,3,4,4,3,0.75
+2,5,4,7,3,0.75
+3,1,4,4,2,0.5
+3,4,4,4,2,0.5
+4,2,4,4,2,0.5
+4,5,4,7,3,0.75
+5,1,7,4,3,0.75
+5,3,7,4,3,0.75
+5,6,7,3,2,0.66667
+5,8,7,3,2,0.66667
+6,7,3,3,1,0.33333
+7,1,3,4,1,0.33333
+7,5,3,7,2,0.66667
+8,4,3,4,1,0.33333
+8,6,3,3,1,0.33333
+计数三角形
+功能介绍
+在无向图G中，输出所有三角形。
+
+参数设置
+maxEdgeCnt：若节点度大于该值，则进行抽样，默认为500，选填
+
+PAI 命令
+PAI -name TriangleCount
+    -project algo_public
+    -DinputEdgeTableName=TriangleCount_func_test_edge
+    -DfromVertexCol=flow_out_id
+    -DtoVertexCol=flow_in_id
+    -DoutputTableName=TriangleCount_func_test_result;
+算法参数
+参数名称	参数描述	必/选填	默认值
+inputEdgeTableName	输入边表名	必填	不涉及
+inputEdgeTablePartitions	输入边表的分区	选填	全表读入
+fromVertexCol	输入边表的起点所在列	必填	不涉及
+toVertexCol	输入边表的终点所在列	必填	不涉及
+outputTableName	输出表名	必填	不涉及
+outputTablePartitions	输出表的分区	选填	不涉及
+lifecycle	输出表申明周期	选填	不涉及
+maxEdgeCnt	若节点度大于该值，则进行抽样	选填	500
+workerNum	进程数量	选填	未设置
+workerMem	进程内存	选填	4096
+splitSize	数据切分大小	选填	64
+实例
+测试数据
+
+生成数据的SQL语句：
+
+drop table if exists TriangleCount_func_test_edge;
+create table TriangleCount_func_test_edge as
+select * from
+(
+  select '1' as flow_out_id,'2' as flow_in_id from dual
+  union all
+  select '1' as flow_out_id,'3' as flow_in_id from dual
+  union all
+  select '1' as flow_out_id,'4' as flow_in_id from dual
+  union all
+  select '1' as flow_out_id,'5' as flow_in_id from dual
+  union all
+  select '1' as flow_out_id,'6' as flow_in_id from dual
+  union all
+  select '2' as flow_out_id,'3' as flow_in_id from dual
+  union all
+  select '3' as flow_out_id,'4' as flow_in_id from dual
+  union all
+  select '4' as flow_out_id,'5' as flow_in_id from dual
+  union all
+  select '5' as flow_out_id,'6' as flow_in_id from dual
+  union all
+  select '5' as flow_out_id,'7' as flow_in_id from dual
+  union all
+  select '6' as flow_out_id,'7' as flow_in_id from dual
+)tmp;
+drop table if exists TriangleCount_func_test_result;
+create table TriangleCount_func_test_result
+(
+  node1 string,
+  node2 string,
+  node3 string
+);
+对应的图结构如下图所示。
+
+Snip20160228_12
+
+运行结果
+
+1,2,3
+1,3,4
+1,4,5
+1,5,6
+5,6,7
+树深度
+功能介绍
+对于众多树状网络，输出每个节点的所处深度和树ID。
+
+参数设置
+无
+
+PAI 命令
+PAI -name TreeDepth
+    -project algo_public
+    -DinputEdgeTableName=TreeDepth_func_test_edge
+    -DfromVertexCol=flow_out_id
+    -DtoVertexCol=flow_in_id
+    -DoutputTableName=TreeDepth_func_test_result;
+算法参数
+参数名称	参数描述	必/选填	默认值
+inputEdgeTableName	输入边表名	必填	不涉及
+inputEdgeTablePartitions	输入边表的分区	选填	全表读入
+fromVertexCol	输入边表的起点所在列	必填	不涉及
+toVertexCol	输入边表的终点所在列	必填	不涉及
+outputTableName	输出表名	必填	不涉及
+outputTablePartitions	输出表的分区	选填	不涉及
+lifecycle	输出表申明周期	选填	不涉及
+workerNum	进程数量	选填	未设置
+workerMem	进程内存	选填	4096
+splitSize	数据切分大小	选填	64
+实例
+测试数据
+
+生成数据的SQL语句：
+
+drop table if exists TreeDepth_func_test_edge;
+create table TreeDepth_func_test_edge as
+select * from
+(
+    select '0' as flow_out_id, '1' as flow_in_id from dual
+    union all
+    select '0' as flow_out_id, '2' as flow_in_id from dual
+    union all
+    select '1' as flow_out_id, '3' as flow_in_id from dual
+    union all
+    select '1' as flow_out_id, '4' as flow_in_id from dual
+    union all
+    select '2' as flow_out_id, '4' as flow_in_id from dual
+    union all
+    select '2' as flow_out_id, '5' as flow_in_id from dual
+    union all
+    select '4' as flow_out_id, '6' as flow_in_id from dual
+    union all
+    select 'a' as flow_out_id, 'b' as flow_in_id from dual
+    union all
+    select 'a' as flow_out_id, 'c' as flow_in_id from dual
+    union all
+    select 'c' as flow_out_id, 'd' as flow_in_id from dual
+    union all
+    select 'c' as flow_out_id, 'e' as flow_in_id from dual
+)tmp;
+drop table if exists TreeDepth_func_test_result;
+create table TreeDepth_func_test_result
+(
+  node string,
+  root string,
+  depth bigint
+);
+对应的图结构如下图所示。
+
+image
+
+运行结果
+
+0,0,0
+1,0,1
+2,0,1
+3,0,2
+4,0,2
+5,0,2
+6,0,3
+a,a,0
+b,a,1
+c,a,1
+d,a,2
+e,a,2
