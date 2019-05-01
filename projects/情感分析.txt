@@ -1,0 +1,49 @@
+情感分析
+更新时间：2019-04-29 17:18:15
+
+
+本页目录
+请求说明
+返回结果
+针对带有主观描述的自然语言文本，可自动判断该文本的情感正负倾向并给出相应的结果。
+
+本页面主要介绍情感分析API对应的接口和返回结果中的关键字段的含义。
+
+说明：您可以登录至控制台，进行本API的调试。
+
+请求说明
+请求方法
+POST
+
+请求URL
+[http|https]://nlp.cn-shanghai.aliyuncs.com/nlp/api/sentiment/{Domain}
+
+URL参数
+
+参数名	描述
+Domain	领域参数，目前支持ecommerce（电商领域）
+Header
+Content-Type application/json
+
+body请求体
+{
+    "text": "虽然有点贵，不是很修身，但颜色很亮，布料摸起来挺舒服的，图案也好看，挺喜欢的。"
+  }
+参数说明
+
+参数名	参数值
+text	要处理的文本，必要字段
+长度限制
+body请求体最大1k(1024)字节。
+
+返回结果
+{
+"data": {
+    "text_polarity": "0"
+}
+}
+结果参数说明
+
+参数名	参数值
+data	结果集
+data.text_polarity	文本情感极性(正面：1,中性：0,负面：-1，text字段输入非法：-100)

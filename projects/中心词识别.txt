@@ -1,0 +1,47 @@
+使用电商标题中心词以及类目进行训练，通过给每个词计算一个相关性分数来衡量每个词与句子的相关性程度，进而识别并提取出句子的中心词。
+
+适用于提取电商搜索query、标题及其他类似短文本（一般小于25个词）的中心词，目前仅提供电商领域中文中心词提取。
+
+说明：您可以登录至控制台，进行本API的调试。
+
+请求说明
+HTTP方法
+POST
+
+请求URL
+https://nlp.cn-shanghai.aliyuncs.com/nlp/api/kwe/{Domain}
+
+URL参数
+
+参数名	参数值
+Domain	领域，当前支持ecommerce（电商领域）
+Header
+Content-Type application/json
+
+body请求体
+  {
+    "lang":"ZH",
+    "text":"新鲜桔子"
+  }
+参数说明
+
+参数名	参数值
+lang	要处理的语言，ZH(中文)可选，默认ZH
+text	要处理的文本
+长度限制
+
+body请求体最大1k(1024)字节。
+
+返回结果
+{
+"data": [
+    {
+        "桔子"
+    }
+]
+}
+结果参数说明
+
+参数名	参数值
+data	分词结果集
+中心词	“桔子”

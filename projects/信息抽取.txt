@@ -1,0 +1,58 @@
+信息抽取
+更新时间：2019-04-29 17:18:15
+
+
+本页目录
+请求说明
+通过信息抽取API，可以从连续的自然语言文本中，抽取出结构化的关键字段信息。当前API仅提供针对合同领域的通用核心字段抽取。
+
+本页面主要介绍信息抽取API对应的接口和返回结果中的关键字段的含义。
+
+说明：您可以登录至控制台，进行本API的调试。
+
+请求说明
+请求方法
+POST
+
+请求URL
+
+https://nlp.cn-shanghai.aliyuncs.com/nlp/api/ie/{Domain}
+
+URL参数
+
+参数名	描述
+Domain	信息抽取领域（目前支持contract，合同信息抽取）
+Header
+Content-Type application/json
+
+Body请求体
+{
+    "lang": "ZH",
+    "content": "合同内容字符串",
+}
+参数说明
+
+参数名	参数值
+lang	语言，目前限“ZH”中文，无lang默认为ZH
+content	待抽取文本，目前为合同文本
+返回结果
+{
+    "extracted_fields": {
+        "contract_name": 合同名称,
+        "company1": 甲方公司名称,
+        "company2": 乙方公司名称,
+        "account_name": 收款账户名,
+        "account_no": 收款账号,
+        "bank_branch": 收款开户行
+    }
+}
+结果参数说明
+
+参数名	参数值
+extracted_fields	抽取结果
+contract_name	合同名称
+company1	甲方公司名称
+company2	乙方公司名称
+account_name	收款账户名
+account_no	收款账号
+bank_branch	收款开户行

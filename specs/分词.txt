@@ -1,0 +1,55 @@
+多语言分词
+
+通过自然语言处理组件的分词API，可以将连续的自然语言文本，切分成具有语义合理性和完整性的词汇序列。
+
+本页面主要介绍分词API对应的接口和返回结果中的关键字段的含义。
+
+说明：您可以登录至控制台，进行本API的调试。
+
+请求说明
+请求方法
+POST
+
+请求URL
+https://nlp.cn-shanghai.aliyuncs.com/nlp/api/wordsegment/{Domain}
+
+URL参数
+
+参数名	描述
+Domain	领域参数，目前支持general（通用领域）
+Header
+Content-Type application/json
+
+body请求体
+{
+    "lang":"ZH",
+    "text":"Iphone专用数据线"
+  }
+参数说明
+
+参数名	参数值
+lang	要处理的语言，ZH(中文)，EN(英文)，TH（泰语）,可选，为空时默认ZH
+text	要处理的文本
+返回结果
+{
+"data": [
+    {
+        "id": 0,
+        "word": "Iphone"
+    },
+    {
+        "id": 1,
+        "word": "专用"
+    },
+    {
+        "id": 2,
+        "word": "数据线"
+    }
+]
+}
+结果参数说明
+
+参数名	参数值
+data	分词结果集
+data.id	分词编号
+data.word	词
