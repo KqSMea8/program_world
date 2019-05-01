@@ -1403,3 +1403,1531 @@ HBCK概述
 附录C YCSB编译安装
 
 
+https://help.aliyun.com/document_detail/95995.html?spm=a2c4g.11186623.6.585.55e64f68Qdktia
+
+规格容量评估
+更新时间：2019-03-20 10:50:10
+
+编辑 ·
+ · 我的收藏
+本页目录
+适用磁盘类型
+磁盘容量评估
+集群规格评估
+shard评估
+在使用阿里云ES之前，需要优先评估阿里云ES资源容量。我们根据实际测试结果和用户使用经验，提供了相对通用的评估方法，可以作为参考。
+
+适用磁盘类型
+本文档主要适用于购买存储类型为SSD云盘的阿里云ES实例进行参考。
+
+磁盘容量评估
+阿里云ES集群磁盘空间大小影响因素：
+
+副本数量，至少1个副本。
+索引开销，通常比源数据大10%（_all 等未计算）。
+操作系统预留，默认操作系统会保留5%的文件系统供用户处理关键流程，系统恢复，磁盘碎片等。
+ES内部开销，段合并，日志等内部操作，预留20%。
+安全阈值，通常至少预留15%的安全阈值。
+最小磁盘总大小 = 源数据 * 3.4
+
+磁盘总大小 = 源数据 * (1 + 副本数量) * (1 + 索引开销) / (1 - Linux预留空间) / (1 - ES开销) / (1 - 安全阈值)
+= 源数据 * (1 + 副本数量) * 1.7
+= 源数据 * 3.4
+对于 _all 这项参数，如果在业务使用上没有必要，我们通常的建议是禁止或者有选择性的添加。
+
+对于需要开启这个参数的索引，其开销也会随之增大。根据我们的测试结果和使用经验，建议在上述评估的基础上额外增加一半的空间：
+
+磁盘总大小 = 源数据 * (1 + 副本数) * 1.7 * (1 + 0.5)
+= 源数据 * 5.1
+集群规格评估
+阿里云ES的单机规格在一定程度上是限制了集群能力的，这里我们根据测试结果和使用经验给出如下建议。
+
+集群最大节点数 = 单节点CPU * 5
+使用场景不同，单节点最大承载数据量也会不同，具体如下：
+
+数据加速、查询聚合等场景
+
+单节点最大数据量 = 单节点Mem(G) * 10
+日志写入、离线分析等场景
+
+单节点最大数据量 = 单节点Mem(G) * 50
+通常情况
+
+单节点最大数据量 = 单节点Mem(G) * 30
+参考列表
+规格	最大节点数	单节点最大磁盘（查询）	单节点最大磁盘（日志）	单节点最大磁盘（通常）
+2C 4G	10	40 GB	200 GB	100 GB
+2C 8G	10	80 GB	400 GB	200 GB
+4C 16G	20	160 GB	800 GB	512 GB
+8C 32G	40	320 GB	1.5 TB	1 TB
+16C 64G	50	640 GB	2 TB	2 TB
+shard评估
+shard大小和个数是影响ES集群稳定性和性能的重要因素之一。ES集群中任何一个索引都需要有一个合理的shard规划，很多情况下都会有一个更好的策略来替换ES默认的5个shard。
+
+建议在小规格节点下单shard大小不要超过30GB。更高规格的节点单shard大小不要超过50GB。
+对于日志分析场景或者超大索引，建议单shard大小不要超过100GB。
+shard的个数（包括副本）要尽可能匹配节点数，等于节点数，或者是节点数的整数倍。
+通常我们建议单节点上同一索引的shard个数不要超5个。
+说明
+由于不同用户在数据结构，查询复杂度，数据量大小，性能要求，数据的变化等等诸多方面是不同的，所以本文的评估绝不是每一个用户的最佳建议。
+
+在条件允许的情况下，还是希望您可以通过实际的数据和使用场景测试出适合自己的最佳实践。得益于阿里云elasticsearch提供的弹性扩容功能，您可以参考本文的内容做初始规划。在实际使用时根据情况随时增加磁盘大小、扩容节点个数、升级节点规格。
+
+压缩算法
+目前阿里云平台支持压缩算法有： LZO ZSTD GZ LZ4 SNAPPY NONE，其中NONE就代表不开启压缩
+
+不同压缩算法在不同场景的压缩比，及解压速度对比如下，都是来自线上真实场景：
+
+业务类型	无压缩表大小	LZO（压缩率/解压速度MB/s）	ZSTD（压缩率/解压速度MB/s）	LZ4（压缩率/解压速度MB/s）
+监控类	419.75T	5.82/372	13.09/256	5.19/463.8
+日志类	77.26T	4.11/333	6.0/287	4.16/496.1
+风控类	147.83T	4.29/297.7	5.93/270	4.19/441.38
+消费记录	108.04T	5.93/316.8	10.51/288.3	5.55/520.3
+我们建议在：
+
+对rt要求极高，建议使用 lz4 压缩算法
+对rt要求不高，特别是 监控、物联网等场景，建议使用 zstd 压缩算法
+编码
+hbase很早就支持了DataBlockEncoding，也就是是通过减少hbase keyvalue中重复的部分来压缩数据。我们推荐DATA_BLOCK_ENCODING使用diff
+
+操作
+修改压缩编码的步骤：
+1、修改表的属性，此为压缩编码
+alter 'test', {NAME => 'f', COMPRESSION => 'lz4', DATA_BLOCK_ENCODING =>'DIFF'}
+2、压缩编码并不会立即生效，需要major_compact，此会耗时较长，注意在业务低峰期进行
+major_compact 'test'
+
+
+
+
+
+看我72变，阿里HBase数据压缩编码探索
+国际顶级盛会HBaseCon Asia 2018将于8月在北京举行，目前正免费开放申请中，更多详情参考https://yq.aliyun.com/promotion/631
+如果你对大数据存储、分布式数据库、HBase等感兴趣，欢迎加入我们，一起做最好的大数据在线存储，职位参考及联系方式
+前言
+你可曾遇到这种需求，只有几百qps的冷数据缓存，却因为存储水位要浪费几十台服务器？你可曾遇到这种需求，几百G的表，必须纯cache命中，性能才能满足业务需求？你可曾遇到，几十M的小表，由于qps过高，必须不停的split，balance，利用多台服务器来抗热点？
+面对繁杂的场景，Ali-HBase团队一直致力于为业务提供更多的选择和更低的成本。本文主要介绍了hbase目前两种提高压缩率的主要方法：压缩和DataBlockEncoding。
+
+无损压缩:更小，更快，更省资源
+通用压缩是数据库减少存储的重要手段，在hbase中也存在广泛应用。通常数据库都存在数据块的概念，针对每个块做压缩和解压。块越大，压缩率越高，scan throughput增加；块越小，latency越小。作为一种Tradeoff，线上hbase通常采用64K块大小，在cache中不做压缩，仅在落盘和读盘时做压缩和解压操作。
+
+开源hbase通常使用的LZO压缩或者Snappy压缩。这两种压缩的共同特点是都追求较高的压缩解压速度，并实现合理的压缩率。然而，随着业务的快速增涨，越来越多的业务因为因为存储水位问题而扩容。hbase针对这一情况，采用了基于跨集群分区恢复技术的副本数优化、机型升级等优化手段，但依然无法满足存储量的快速膨胀，我们一直致力于寻找压缩更高的压缩方式。
+
+新压缩（zstd、lz4）上线
+Zstandard（缩写为Zstd）是一种新的无损压缩算法，旨在提供快速压缩，并实现高压缩比。它既不像LZMA和ZPAQ那样追求尽可能高的压缩比，也不像LZ4那样追求极致的压缩速度。这种算法的压缩速度超过200MB/s, 解压速度超过400MB/s，基本可以满足目前hbase对吞吐量的需求。经验证，Zstd的数据压缩率相对于Lzo基本可以提高25%-30%，对于存储型业务，这就意味着三分之一到四分之一的的成本减少。
+
+而在另一种情况下，部分表存储量较小，但qps大，对rt要求极高。针对这种场景，我们引入了lz4压缩，其解压速度在部分场景下可以达到lzo的两倍以上。一旦读操作落盘需要解压缩，lz4解压的rt和cpu开销都明显小于lzo压缩。
+
+我们通过一张图片直观的展示各种压缩算法的性能:
+ZSTD.png | center | 704x419
+解压缩.png | center | 704x422
+
+以线上几种典型数据场景为例，看看几种压缩的实际压缩率和单核解压速度（以下数据均来自于线上）
+
+业务类型	无压缩表大小	LZO（压缩率/解压速度MB/s）	ZSTD（压缩率/解压速度MB/s）	LZ4（压缩率/解压速度MB/s）
+监控类	419.75T	5.82/372	13.09/256	5.19/463.8
+日志类	77.26T	4.11/333	6.0/287	4.16/ 496.1
+风控类	147.83T	4.29/297.7	5.93/270	4.19/441.38
+消费记录	108.04T	5.93/316.8	10.51/288.3	5.55/520.3
+目前，2017年双11，ZSTD已经在线上全面铺开，已累计优化存储超过2.5PB，预计全面推开后，节约存储空间超过15PB。LZ4也已经在部分读要求较高业务上线。
+下图为某监控类应用zstd压缩算法后，集群整体存储量的下降情况。数据量由100+T减少到75T。
+
+监控.png | center | 704x307
+
+编码技术：针对结构化数据的即查即解压
+hbase作为一种schema free的数据库，相当于传统的关系型数据库更加灵活，用户无需设计好表的结构，也可以在同一张表内写入不同schema的数据。然而，由于缺少数据结构的支持，hbase需要很多额外的数据结构来标注长度信息，且无法针对不同的数据类型采用不同的压缩方式。针对这一问题，hbase提出了编码功能，用来降低存储开销。由于编码对cpu开销较小，而效果较好，通常cache中也会开启编码功能。
+
+旧DIFF Encoding介绍
+hbase很早就支持了DataBlockEncoding，也就是是通过减少hbase keyvalue中重复的部分来压缩数据。 以线上最常见的DIFF算法为例，某kv压缩之后的结果：
+
+一个字节的flag（这个flag的作用后面解释）
+如果和上个KV的键长不一样，则写入1~5个字节的长度
+如果和上个KV的值长不一样，则写入1~5个字节的长度
+记录和上个KV键相同的前缀长度，1~5个字节
+非前缀部分的row key
+如果是第一条KV,写入列族名
+非前缀部分的的列名
+写入1~8字节的timestamp或者与上个KV的timestamp的差(是原值还是写与上个KV的差，取决于哪个字节更小)
+如果和上个KV的type不一样，则写入1字节的type（Put，Delete）
+Value内容
+那么在解压缩时，怎么判断和上个KV的键长是否一样，值长是否一样，写入的时间戳究竟是是原值还是差值呢？这些都是通过最早写入的1个字节的flag来实现的，
+这个字节中的8位bit，含义是：
+
+第0位，如果为1，键长与上个kv相等
+第1位，如果为1，值长与上个kv相等
+第2位，如果为1，type与上个kv一样
+第3位，如果为1，则写入的timestamp是差值，否则为原值
+第456位，这3位组合起来的值（能表示0~7），表示写入的时间戳的长度
+第7位，如果为1，表示写入的timestamp差值为负数，取了绝对值。
+小凡1 (2).png | center | 704x327
+DIFF 编码之后，对某个文件的seek包含以下两步：
+
+通过index key找到对应的datablock
+从第一个完整KV开始，顺序查找，不断decode下一个kv，直到找到目标kv为止。
+通过线上数据验证，DIFF encoding可以减少2-5倍的数据量。
+
+新Indexable Delta Encoding上线
+从性能角度考虑，hbase通常需要将Meta信息装载进block cache。如果将block大小较小，Meta信息较多，会出现Meta无法完全装入Cache的情况, 性能下降。如果block大小较大，DIFF Encoding顺序查询的性能会成为随机读的性能瓶颈。针对这一情况，我们开发了Indexable Delta Encoding，在block内部也可以通过索引进行快速查询，seek性能有了较大提高。Indexable Delta Encoding原理如图所示：
+小凡2 (1).png | center | 704x320
+在通过BlockIndex找到对应的数据块后，我们从数据块末尾找到每个完整KV的offset，并利用二分查找快速定位到符合查询条件的完整kv，再顺序decode每一个Diff kv，直到找到目标kv位置。
+
+通过Indexable Delta Encoding， HFile的随机seek性能相对于使用之前翻了一倍，以64K block为例，随机seek性能基本与不做encoding相近.在全cache命中的随机Get场景下，相对于Diff encoding rt下降50%，但存储开销仅仅提高3-5%。Indexable Delta Encoding目前已在线上多个场景应用，经受了双十一的考验。以风控集群为例，双集群双十一高峰期访问量接近，但已经上线Indexable Delta Encoding的集群在访问量稍多的情况下，平均读rt减少10%-15%。
+
+gtj.png | center | 704x299
+
+
+未开启集群
+em14.png | center | 704x299
+
+
+开启集群
+未来
+性能优化和用户体验，一直是阿里hbase的团队不懈的追求。我们一直在不断丰富自己的武器库，努力做最好的海量数据在线存储产品。欢迎对hbase实现，使用有任何问题的同学联系我们.
+
+本文为云栖社区原创内容，未经允许不得转载，如需转载请发送邮件至yqeditor@list.alibaba-inc.com；如果您发现本社区中有涉嫌抄袭的内容，欢迎发送邮件至：yqgroup@service.aliyun.com 进行举报，并提供相关证据，一经查实，本社区将立刻删除涉嫌侵权内容。
+
+
+
+
+read读取优化
+更新时间：2018-03-29 19:39:23
+
+
+其实HBase还是比较灵活的，关键看你是否使用得当，以下主要列举一些读的优化。HBase在生产中往往会遇到Full GC、进程OOM、RIT问题、读取延迟较大等一些问题，使用更好的硬件往往可以解决一部分问题，但是还是需要使用的方式。
+
+我们把优化分为：
+
+客户端优化、服务端优化、平台优化(ApsaraDB for HBase平台完成)
+
+客户端优化
+get请求是否可以使用批量请求
+这样可以成倍减小客户端与服务端的rpc次数，显著提高吞吐量
+
+ Result[] re= table.get(List<Get> gets)
+大scan缓存是否设置合理
+scan一次性需求从服务端返回大量的数据，客户端发起一次请求，客户端会分多批次返回客户端，这样的设计是避免一次性传输较多的数据给服务端及客户端有较大的压力。目前 数据会加载到本地的缓存中，默认100条数据大小。 一些大scan需要获取大量的数据，传输数百次甚至数万的rpc请求。 我们建议可以 适当放开 缓存的大小。
+
+scan.setCaching(int caching) //大scan可以设置为1000
+请求指定列族或者列名
+HBase是列族数据库，同一个列族的数据存储在一块，不同列族是分开的，为了减小IO，建议指定列族或者列名
+
+离线计算访问Hbase建议禁止缓存
+当离线访问HBase时，往往就是一次性的读取，此时读取的数据没有必要存放在blockcache中，建议在读取时禁止缓存
+
+scan.setBlockCache(false)
+可干预服务端优化
+请求是否均衡
+读取的压力是否都在一台或者几台之中，在业务高峰期间可以查看下，可以到 HBase管控平台查看HBase的ui。如果有明显的热点，一劳永逸是重新设计rowkey，短期是 把热点region尝试拆分
+
+BlockCache是否合理
+BlockCache作为读缓存，对于读的性能比较重要，如果读比较多，建议内存使用1:4的机器，比如：8cpu32g或者16pu64g的机器。当前可以调高 BlockCache 的数值，降低 Memstore 的数值。
+
+在ApsaraDB for HBase控制台可以完成：hfile.block.cache.size 改为0.5 ； hbase.regionserver.global.memstore.size 改为0.3；再重启
+
+读取优化
+
+HFile文件数目
+因为读取需要频繁打开HFile，如果文件越多，IO次数就越多，读取的延迟就越高此 需要主要定时做 major compaction，如果晚上的业务压力不大，可以在晚上做major compaction
+
+Compaction是否消耗较多的系统资源
+compaction主要是将HFile的小文件合并成大文件，提高后续业务的读性能，但是也会带来较大的资源消耗。Minor Compaction一般情况下不会带来大量的系统资源消耗，除非因为配置不合理。 切勿在高峰期间做 major compaction。 建议在业务低峰期做major compaction。
+
+Bloomfilter设置是否合理
+Bloomfilter主要用来在查询时，过滤HFile的，避免不需要的IO操作。Bloomfilter能提高读取的性能，一般情况下创建表，都会默认设置为：BLOOMFILTER => ‘ROW’
+
+平台端优化
+数据本地率是否太低?（平台已经优化）
+Hbase 的HFile，在本地是否有文件，如果有文件可以走Short-Circuit Local Read目前平台在重启、磁盘扩容时，都会自动拉回移动出去的region，不降低数据本地率；另外 定期做major compaction也有益于提高本地化率
+
+Short-Circuit Local Read （已经默认开启）
+当前HDFS读取数据需要经过DataNode，开启Short-Circuit Local Read后，客户端可以直接读取本地数据
+
+Hedged Read （已经默认开启）
+优先会通过Short-Circuit Local Read功能尝试本地读。但是在某些特殊情况下，有可能会出现因为磁盘问题或者网络问题引起的短时间本地读取失败，为了应对这类问题，开发出了Hedged Read。该机制基本工作原理为：客户端发起一个本地读，一旦一段时间之后还没有返回，客户端将会向其他DataNode发送相同数据的请求。哪一个请求先返回，另一个就会被丢弃
+
+关闭swap区（已经默认关闭）
+swap是当物理内存不足时，拿出部分的硬盘空间当做swap使用，解决内存不足的情况。但是会有较大的延迟的问题，所以我们HBase平台默认关闭。 但是关闭swap导致anon-rss很高，page reclaim没办法reclaim足够的page，可能导致内核挂住，平台已经采取相关隔离措施避免此情况
+
+
+write写入优化
+更新时间：2018-03-29 19:39:23
+
+
+HBase基于LSM模式，写是写HLOG及Memory的，也就是基本没有随机的IO，所以在写链路上性能高校还比较平稳。很多时候，写都是用可靠性来换取性能。
+
+
+
+=======================
+
+客户端优化
+批量写
+也是为了减少rpc的次数
+
+HTable.put(List<Put>)
+Auto Flush
+autoflush=false可以提升几倍的写性能，但是还是要注意，直到数据超过2M(hbase.client.write.buffer决定)或用户执行了hbase.flushcommits()时才向regionserver提交请求。需要注意并不是写到了远端。
+
+HTable.setWriteBufferSize(writeBufferSize) 可以设置buffer的大小
+
+服务端优化
+WAL Flag
+不写WAL可以成倍提升性能，因为不需要写HLog，减少3次IO，写MemStore是内存操作
+
+是以数据可靠性为代价的，在数据导入时，可以关闭WAL
+
+增大memstore的内存
+当前可以调高Memstore 的数值，降低 BlockCache 的数，跟读优化的思路正好相反
+
+大量的HFile产生
+如果写很快，很容易带来大量的HFile，因为此时HFile合并的速度还没有写入的速度快
+
+需要在业务低峰期做majorcompaction，充分利用系统资源；如果HFile降低不下来，则需要添加节点
+
+================
+读写分离
+更新时间：2018-06-05 17:26:13
+
+
+HBase有三个典型的API : read(get、scan)、write ，我们有时候希望这三个访问尽可能的互相不影响，可以参考如下配置：（线上默认没有配置读写分离）
+
+场景
+写请求与读请求都比较高，业务往往接受：写请求慢点可以，读请求越快越好，最好有单独的资源保障
+scan与get都比较多，业务希望scan不影响get（因为scan比较消耗资源）
+相关配置：
+hbase.ipc.server.callqueue.read.ratio
+hbase.ipc.server.callqueue.scan.ratio
+具体含义：
+hbase.ipc.server.callqueue.read.ratio 设置为0.5，代表有50%的线程数处理读请求
+如果再设置hbase.ipc.server.callqueue.scan.ratio 设置为0.5，则代表在50%的读线程之中，再有50%的线程处理scan，也就是全部线程的25%
+操作步骤
+打开HBase控制台，找到实例，点击进去，找到 - 参数设置
+修改配置，按照业务读写情况
+不重启不会生效，请在业务低峰期重启集群，重启不会中断业务，可能会有一些抖动
+修改配置
+
+请根据实际的业务配置以上数值，默认情况下是没有配置的，也就是读写都共享。
+
+ 上一篇：write写入优化
+
+===============
+预分区
+更新时间：2018-05-05 17:19:51
+
+
+初次接触HBase的客户，在创建HBase表的时候，不指分区的数目，另外就是rowkey设计不合理，导致热点。
+
+最为常见的建表语句为：
+
+create ‘t3’,’f1’, { NUMREGIONS => 50, SPLITALGO => ‘HexStringSplit’ , COMPRESSION => ‘snappy’}
+
+其中 NUMREGIONS 为 region的个数，一般取10-500左右，集群规模大，可以取大一些，
+SPLITALGO 为 rowkey分割的算法：Hbase自带了两种pre-split的算法，分别是 HexStringSplit 和 UniformSplit，HexStringSplit 如果我们的row key是十六进制的字符串作为前缀的，就比较适合用HexStringSplit，关于rowkey的设计可以参考：RowKey设计
+COMPRESSION压缩算法，参考：数据压缩与编码
+ 上一篇：读写分离
+下一篇：Rowkey设计
+相关文档
+Rowkey设计
+读写分离
+write写入优化
+数据压缩与编码
+read读取优化
+schema设计原则
+相关产品
+云数据库 HBase 版
+云数据库 HBase 版（ApsaraDB for HBase）是基于 Hadoop 的一个分布式数据库，支持海量的PB级的大数据存储，适用于高吞吐的随机读写的场景。目前在阿里内部有数百个集群，10000台左右规模的集群，服务数百个业务线，在订单存储、消息存储、物联网、轨迹、wifi、安全风控、搜索等领域有较多的在线应用。 阿里云特别提供HBase产品化方案服务广大的中小型客户。
+E-MapReduce
+阿里云 Elastic MapReduce（E-MapReduce） 是一种大数据处理的系统解决方案。构建于阿里云云服务器 ECS 上，基于开源的 Apache Hadoop 和 Apache Spark，让用户可以方便地使用Hadoop和Spark生态系统中的其他周边系统（如 Apache Hive、Apache Pig、HBase 等）来分析和处理自己的数据。用户还可以通过E-MapReduce将数据非常方便的导入和导出到阿里云其他的云数据存储系统和数据库系统中，如阿里云 OSS、阿里云 RDS 等。
+表格存储
+表格存储（Table
+Rowkey设计
+更新时间：2018-04-10 07:42:24
+
+
+HBase的rowkey设计可以说是使用HBase最为重要的事情，直接影响到HBase的性能，常见的RowKey的设计问题及对应访问为：
+
+Hotspotting
+
+的行由行键按字典顺序排序，这样的设计优化了扫描，允许存储相关的行或者那些将被一起读的邻近的行。然而，设计不好的行键是导致 hotspotting 的常见原因。当大量的客户端流量（ traffic ）被定向在集群上的一个或几个节点时，就会发生 hotspotting。这些流量可能代表着读、写或其他操作。流量超过了承载该region的单个机器所能负荷的量，这就会导致性能下降并有可能造成region的不可用。在同一 RegionServer 上的其他region也可能会受到其不良影响，因为主机无法提供服务所请求的负载。设计使集群能被充分均匀地使用的数据访问模式是至关重要的。
+
+
+为了防止在写操作时出现 hotspotting ，设计行键时应该使得数据尽量同时往多个region上写，而避免只向一个region写，除非那些行真的有必要写在一个region里。
+
+
+下面介绍了集中常用的避免 hotspotting 的技巧，它们各有优劣：
+
+Salting
+Salting 从某种程度上看与加密无关，它指的是将随机数放在行键的起始处。进一步说，salting给每一行键随机指定了一个前缀来让它与其他行键有着不同的排序。所有可能前缀的数量对应于要分散数据的region的数量。如果有几个“hot”的行键模式，而这些模式在其他更均匀分布的行里反复出现，salting就能到帮助。下面的例子说明了salting能在多个RegionServer间分散负载，同时也说明了它在读操作时候的负面影响。
+
+假设行键的列表如下，表按照每个字母对应一个region来分割。前缀‘a’是一个region，‘b’就是另一个region。在这张表中，所有以‘f’开头的行都属于同一个region。这个例子关注的行和键如下：
+
+foo0001
+foo0002
+foo0003
+foo0004
+现在，假设想将它们分散到不同的region上，就需要用到四种不同的 salts ：a，b，c，d。在这种情况下，每种字母前缀都对应着不同的一个region。用上这些salts后，便有了下面这样的行键。由于现在想把它们分到四个独立的区域，理论上吞吐量会是之前写到同一region的情况的吞吐量的四倍。
+
+a-foo0003
+b-foo0001
+c-foo0004
+d-foo0002
+如果想新增一行，新增的一行会被随机指定四个可能的salt值中的一个，并放在某条已存在的行的旁边。
+
+a-foo0003
+b-foo0001
+c-foo0003
+c-foo0004
+d-foo0002
+由于前缀的指派是随机的，因而如果想要按照字典顺序找到这些行，则需要做更多的工作。从这个角度上看，salting增加了写操作的吞吐量，却也增大了读操作的开销。
+
+Hashing
+可用一个单向的 hash 散列来取代随机指派前缀。这样能使一个给定的行在“salted”时有相同的前缀，从某种程度上说，这在分散了RegionServer间的负载的同时，也允许在读操作时能够预测。确定性hash（ deterministic hash ）能让客户端重建完整的行键，以及像正常的一样用Get操作重新获得想要的行。
+
+考虑和上述salting一样的情景，现在可以用单向hash来得到行键foo0003，并可预测得‘a’这个前缀。然后为了重新获得这一行，需要先知道它的键。可以进一步优化这一方法，如使得将特定的键对总是在相同的region。
+
+
+Reversing the Key(反转键)
+第三种预防hotspotting的方法是反转一段固定长度或者可数的键，来让最常改变的部分（最低显著位， the least significant digit ）在第一位，这样有效地打乱了行键，但是却牺牲了行排序的属性
+
+
+
+单调递增行键/时序数据
+在一个集群中，一个导入数据的进程锁住不动，所有的client都在等待一个region(因而也就是一个单个节点)，过了一会后，变成了下一个region… 如果使用了单调递增或者时序的key便会造成这样的问题。使用了顺序的key会将本没有顺序的数据变得有顺序，把负载压在一台机器上。所以要尽量避免时间戳或者序列(e.g. 1, 2, 3)这样的行键。
+
+如果需要导入时间顺序的文件(如log)到HBase中，可以学习OpenTSDB的做法。它有一个页面来描述它的HBase模式。OpenTSDB的Key的格式是[metric_type][event_timestamp]，乍一看，这似乎违背了不能将timestamp做key的建议，但是它并没有将timestamp作为key的一个关键位置，有成百上千的metric_type就足够将压力分散到各个region了。因此，尽管有着连续的数据输入流，Put操作依旧能被分散在表中的各个region中
+
+简化行和列
+在HBase中，值是作为一个单元(Cell)保存在系统的中的，要定位一个单元，需要行，列名和时间戳。通常情况下，如果行和列的名字要是太大(甚至比value的大小还要大)的话，可能会遇到一些有趣的情况。在HBase的存储文件（ storefiles ）中，有一个索引用来方便值的随机访问，但是访问一个单元的坐标要是太大的话，会占用很大的内存，这个索引会被用尽。要想解决这个问题，可以设置一个更大的块大小，也可以使用更小的行和列名 。压缩也能得到更大指数。
+
+大部分时候，细微的低效不会影响很大。但不幸的是，在这里却不能忽略。无论是列族、属性和行键都会在数据中重复上亿次。
+
+列族
+尽量使列族名小，最好一个字符。（如：f 表示）
+
+属性
+详细属性名 (如:”myVeryImportantAttribute”) 易读，最好还是用短属性名 (e.g., “via”) 保存到HBase.
+
+行键长度
+让行键短到可读即可，这样对获取数据有帮助(e.g., Get vs. Scan)。短键对访问数据无用，并不比长键对get/scan更好。设计行键需要权衡
+
+字节模式
+long类型有8字节。8字节内可以保存无符号数字到18,446,744,073,709,551,615。 如果用字符串保存——假设一个字节一个字符——需要将近3倍的字节数。
+
+
+下面是示例代码，可以自己运行一下:
+
+// long
+//
+long l = 1234567890L;
+byte[] lb = Bytes.toBytes(l);
+System.out.println("long bytes length: " + lb.length);   // returns 8
+String s = String.valueOf(l);
+byte[] sb = Bytes.toBytes(s);
+System.out.println("long as string length: " + sb.length);    // returns 10
+// hash
+//
+MessageDigest md = MessageDigest.getInstance("MD5");
+byte[] digest = md.digest(Bytes.toBytes(s));
+System.out.println("md5 digest bytes length: " + digest.length);    // returns 16
+String sDigest = new String(digest);
+byte[] sbDigest = Bytes.toBytes(sDigest);
+System.out.println("md5 digest as string length: " + sbDigest.length);    // returns 26
+不幸的是，用二进制表示会使数据在代码之外难以阅读。下例便是当需要增加一个值时会看到的shell：
+
+hbase(main):001:0> incr 't', 'r', 'f:q', 1
+COUNTER VALUE = 1
+hbase(main):002:0> get 't', 'r'
+COLUMN                                        CELL
+ f:q                                          timestamp=1369163040570, value=\x00\x00\x00\x00\x00\x00\x00\x01
+1 row(s) in 0.0310 seconds
+这个shell尽力在打印一个字符串，但在这种情况下，它决定只将进制打印出来。当在region名内行键会发生相同的情况。如果知道储存的是什么，那自是没问题，但当任意数据都可能被放到相同单元的时候，这将会变得难以阅读。这是最需要权衡之处。
+
+倒序时间戳
+一个数据库处理的通常问题是找到最近版本的值。采用倒序时间戳作为键的一部分可以对此特定情况有很大帮助。该技术包含追加( Long.MAX_VALUE - timestamp ) 到key的后面，如 [key][reverse_timestamp] 。
+
+表内[key]的最近的值可以用[key]进行Scan，找到并获取第一个记录。由于HBase行键是排序的，该键排在任何比它老的行键的前面，所以是第一个。
+
+该技术可以用于代替版本数，其目的是保存所有版本到“永远”(或一段很长时间) 。同时，采用同样的Scan技术，可以很快获取其他版本。
+
+行键和列族
+行键在列族范围内。所以同样的行键可以在同一个表的每个列族中存在而不会冲突。
+
+行键不可改
+行键不能改变。唯一可以“改变”的方式是删除然后再插入。这是一个常问问题，所以要注意开始就要让行键正确(且/或在插入很多数据之前)。
+
+行键和region split的关系
+如果已经 pre-split （预裂）了表，接下来关键要了解行键是如何在region边界分布的。为了说明为什么这很重要，可考虑用可显示的16位字符作为键的关键位置（e.g., “0000000000000000” to “ffffffffffffffff”）这个例子。通过 Bytes.split来分割键的范围（这是当用 Admin.createTable(byte[] startKey, byte[] endKey, numRegions) 创建region时的一种拆分手段），这样会分得10个region。
+
+48 48 48 48 48 48 48 48 48 48 48 48 48 48 48 48                                // 0
+54 -10 -10 -10 -10 -10 -10 -10 -10 -10 -10 -10 -10 -10 -10 -10                 // 6
+61 -67 -67 -67 -67 -67 -67 -67 -67 -67 -67 -67 -67 -67 -67 -68                 // =
+68 -124 -124 -124 -124 -124 -124 -124 -124 -124 -124 -124 -124 -124 -124 -126  // D
+75 75 75 75 75 75 75 75 75 75 75 75 75 75 75 72                                // K
+82 18 18 18 18 18 18 18 18 18 18 18 18 18 18 14                                // R
+88 -40 -40 -40 -40 -40 -40 -40 -40 -40 -40 -40 -40 -40 -40 -44                 // X
+95 -97 -97 -97 -97 -97 -97 -97 -97 -97 -97 -97 -97 -97 -97 -102                // _
+102 102 102 102 102 102 102 102 102 102 102 102 102 102 102 102                // f
+
+
+但问题在于，数据将会堆放在前两个region以及最后一个region，这样就会导致某几个region由于数据分布不均匀而特别忙。为了理解其中缘由，需要考虑ASCII Table的结构。根据ASCII表，“0”是第48号，“f”是102号；但58到96号是个巨大的间隙，考虑到在这里仅[0-9]和[a-f]这些值是有意义的，因而这个区间里的值不会出现在键空间（ keyspace ），进而中间区域的region将永远不会用到。为了pre-split这个例子中的键空间，需要自定义拆分。
+
+教程1:预裂表（ pre-splitting tables ） 是个很好的实践，但pre-split时要注意使得所有的region都能在键空间中找到对应。尽管例子中解决的问题是关于16位键的键空间，但其他任何空间也是同样的道理。
+
+教程2:16位键（通常用到可显示的数据中）尽管通常不可取，但只要所有的region都能在键空间找到对应，它依旧能和预裂表配合使用。
+
+一下case说明了如何16位键预分区
+
+public static boolean createTable(Admin admin, HTableDescriptor table, byte[][] splits)
+throws IOException {
+  try {
+    admin.createTable( table, splits );
+    return true;
+  } catch (TableExistsException e) {
+    logger.info("table " + table.getNameAsString() + " already exists");
+    // the table already exists...
+    return false;
+  }
+}
+public static byte[][] getHexSplits(String startKey, String endKey, int numRegions) {
+  byte[][] splits = new byte[numRegions-1][];
+  BigInteger lowestKey = new BigInteger(startKey, 16);
+  BigInteger highestKey = new BigInteger(endKey, 16);
+  BigInteger range = highestKey.subtract(lowestKey);
+  BigInteger regionIncrement = range.divide(BigInteger.valueOf(numRegions));
+  lowestKey = lowestKey.add(regionIncrement);
+  for(int i=0; i < numRegions-1;i++) {
+    BigInteger key = lowestKey.add(regionIncrement.multiply(BigInteger.valueOf(i)));
+    byte[] b = String.format("%016x", key).getBytes();
+    splits[i] = b;
+  }
+  return splits;
+}
+
+
+
+阿里云hbase客户端
+更新时间：2019-03-07 17:01:16
+
+
+说明
+阿里云HBase的服务端是定制的代码，客户端是完全兼容社区的。但是我们会根据阿里云产品特点提供专属的HBase 客户端并开源，且maven jar同步到maven中央仓库，这就意味着，任何地方都能下载并使用。我们不会改变任何语法，主要是提供一些特性、运维的便利等。
+
+tar包：
+
+wget http://public-hbase.oss-cn-hangzhou.aliyuncs.com/installpackage/alihbase-1.1.3-bin.tar.gz
+maven可以引用
+
+<dependency>
+  <groupId>com.aliyun.hbase</groupId>
+  <artifactId>alihbase-client</artifactId>
+  <version>{version}</version>
+</dependency>
+{version}可以参考如下：（高版本包括低版本的功能）
+
+1.1.1
+使用1.8编译
+支持混合访问的需求，比如：公网访问、经典网络访问VPC内的环境。需要配置阿里云HBase提供的域名
+1.1.2
+
+使用1.7编译
+hbase-clinet可以同时支持guava12.0.1、guava22.0的包，目前hbase-client默认依赖是guava12.0.1，可以采取以下方式去掉依赖，后再指定guava依赖
+
+<dependency>
+  <groupId>com.aliyun.hbase</groupId>
+  <artifactId>alihbase-client</artifactId>
+  <version>1.1.2</version>
+  <exclusions>
+      <exclusion>
+          <artifactId>com.google.guava</artifactId>
+          <groupId>guava</groupId>
+      </exclusion>
+  </exclusions>
+</dependency>
+<dependency>
+  <artifactId>com.google.guava</artifactId>
+  <groupId>guava</groupId>
+  <version>22.0</version>
+</dependency>
+1.1.3
+使用1.7编译
+优化了公网访问功能，支持单进程公网访问多集群，如copytable对两个公网hbase集群
+直接互相导数据。修改了phoenix接口依赖兼容问题。
+1.1.3.2
+使用1.7编译
+基于最新非安全的1.1.3版本之上，增加支持了HBase for Solr客户端功能模块
+注意此版本只支持 wget tar包下载，用于HBase for solr的命令行操作，其他HBase api操作依然使用依赖1.1.3版本的jar即可
+1.1.4
+使用1.7编译
+增加了数据导出到OSS的支持
+注意此版本只支持 wget tar包下载
+1.1.5
+使用1.7编译
+支持HAS安全功能，因为HAS安全只支持jdk8，使用安全时应该使用jdk8运行环境
+注意此版本只支持 wget tar包下载
+1.1.6
+使用1.7编译
+添加了HBase for Solr索引管理模块
+注意此版本目前也只能wget tar包下载
+2.0.0
+使用1.8编译
+同样支持云HBase2.0.0的公网访问
+2.0.1
+使用1.8编译
+支持HAS安全功能
+注意此版本只支持 wget tar包下载
+2.0.2
+使用1.8编译
+不再支持HAS安全功能
+针对冷热分离场景做了特殊处理，使得自动同步的过程对应用透明
+
+
+
+多语言支持(thrift)
+更新时间：2018-11-28 11:04:07
+
+
+1、 产品支持
+Thrift 提供多语言访问HBase的能力，支持的语言包从Thrift官网看括: C++, Java, Python, PHP, Ruby, Erlang, Perl, Haskell, C#, Cocoa, JavaScript, Node.js, Smalltalk, OCaml , Delphi 以及别的语言。主要流程是用户thrift Client 通过Thrift协议访问HBase的thriftserver,thriftserver请求转发给HBase的存储服务.大概架构图如下：
+
+​  架构图
+
+开通HBase thriftserver服务：
+​ 管控页面点击 开通thriftserver服务化（高可用版本thriftserver） ，会得到一个 host:port的访问入口;
+
+thriftserver
+
+2、使用说明
+2.1 用户Thrift client访问：
+一般客户常见的访问方式是python及php ，这里给出php的访问方式；
+
+2.1.1 以php走thrift访问HBase：
+我们云HBase的thrift环境是0.9.0，所以建议客户客户端的版本也为 0.9.0，可以从这里下载thrift的0.9.0 版本，下载的源码包我们后面会用到，这里需要先安装thrift编译环境，对于源码安装可以参考thrift官网；
+
+通过如下命令可以看出安装thrift的版本信息；
+
+thrift --version
+2.1.2. 生成thrift访问client的访问文件；
+​ 我们从这里下载云HBase的Hbase.thrift文件，云HBase使用的是thrift1协议
+
+​ 编译命令如下：
+
+ thrift --gen <language> Hbase.thrift
+​ 上述 language 是语言的缩写，常见的有如下：
+
+thrift --gen php Hbase.thrift
+thrift --gen cpp Hbase.thrift
+thrift --gen py Hbase.thrift
+​ 执行thrift —gen php Hbase.thrift ，在目录下得到gen-php ，这个是需要的函数包文件；
+
+thrift git:(last_dev) ✗ ll
+total 56
+-rw-r--r--  1 xuanling.gc  staff    24K  3  5 15:06 Hbase.thrift
+drwxr-xr-x  3 xuanling.gc  staff    96B  8  1 16:03 gen-php
+​ 将下载到的Thrift源码文件夹下的/lib/php/lib下面的Thrift文件夹以及gen-php一起放在我们的业务逻辑代码一个src目录下面，加上我们自己的client.php的代码，目录结果如下所示：
+
+[root@xxxxxxxxxxx thrift_client]# ll
+total 12
+-rw-r--r--  1 zookeeper games 2743 Aug  2 11:16 client.php
+drwxr-xr-x  3 zookeeper games 4096 Aug  2 01:22 gen-php
+drwxr-xr-x 12 zookeeper games 4096 Aug  2 01:22 Thrift
+php访问代码编写；
+​ 上述的Thrift文件夹以及gen-php文件夹，可以随自己项目以及个人风格命名，这里方便大家搞清目录结构，就保留原来风格；下面贴出php的代码，下面的程序是在HBase 建了一张表”new”：
+
+<?php
+ini_set('display_errors', E_ALL);
+$GLOBALS['THRIFT_ROOT'] = "/root/thrift_client";
+/* Dependencies. In the proper order. */
+require_once $GLOBALS['THRIFT_ROOT'] . '/Thrift/Transport/TTransport.php';
+require_once $GLOBALS['THRIFT_ROOT'] . '/Thrift/Transport/TSocket.php';
+require_once $GLOBALS['THRIFT_ROOT'] . '/Thrift/Protocol/TProtocol.php';
+require_once $GLOBALS['THRIFT_ROOT'] . '/Thrift/Protocol/TBinaryProtocol.php';
+require_once $GLOBALS['THRIFT_ROOT'] . '/Thrift/Protocol/TBinaryProtocolAccelerated.php';
+require_once $GLOBALS['THRIFT_ROOT'] . '/Thrift/Transport/TBufferedTransport.php';
+require_once $GLOBALS['THRIFT_ROOT'] . '/Thrift/Type/TMessageType.php';
+require_once $GLOBALS['THRIFT_ROOT'] . '/Thrift/Factory/TStringFuncFactory.php';
+require_once $GLOBALS['THRIFT_ROOT'] . '/Thrift/StringFunc/TStringFunc.php';
+require_once $GLOBALS['THRIFT_ROOT'] . '/Thrift/StringFunc/Core.php';
+require_once $GLOBALS['THRIFT_ROOT'] . '/Thrift/Type/TType.php';
+require_once $GLOBALS['THRIFT_ROOT'] . '/Thrift/Exception/TException.php';
+require_once $GLOBALS['THRIFT_ROOT'] . '/Thrift/Exception/TTransportException.php';
+require_once $GLOBALS['THRIFT_ROOT'] . '/Thrift/Exception/TProtocolException.php';
+require_once $GLOBALS['THRIFT_ROOT'] . '/gen-php/Hbase/Types.php';
+require_once $GLOBALS['THRIFT_ROOT'] . '/gen-php/Hbase/Hbase.php';
+use Thrift\Protocol\TBinaryProtocol;
+use Thrift\Transport\TBufferedTransport;
+use Thrift\Transport\TSocket;
+use Hbase\HbaseClient;
+use Hbase\ColumnDescriptor;
+use Hbase\Mutation;
+$host='hb-bp12pt6alr1788y35-001.hbase.rds.aliyuncs.com';
+$port=9099;
+$socket = new TSocket($host, $port);
+$socket->setSendTimeout(10000); // 发送超时，单位毫秒
+$socket->setRecvTimeout(20000); // 接收超时，单位毫秒
+$transport = new TBufferedTransport($socket);
+$protocol = new TBinaryProtocol($transport);
+$client = new HbaseClient($protocol);
+$transport->open();
+####列出表####
+echo "----list tables----\n";
+$tables = $client->getTableNames();
+foreach ($tables as $name) {
+    var_dump($tables);
+}
+$tablename='new';
+####写数据####
+echo "----write data----\n";
+$row = 'key';
+$value = 'value';
+$atrribute = array();
+$mutations = array(
+    new Mutation(array(
+        'column' => 'info:cn1',
+        'value' => $value
+    )),
+);
+try {
+    $client->mutateRow($tablename, $row, $mutations, $atrribute);
+} catch (Exception $e) {
+    var_dump($e);//这里自己打log
+}
+###读数据####
+echo "---read data---\n";
+$result = $client->getRow($tablename, $row, $atrribute);
+var_dump($result);
+###删数据####
+echo "---delete data---\n";
+$client->deleteAllRow($tablename, $row, $atrribute);
+echo "---get data---\n";
+$result = $client->getRow($tablename, $row, $atrribute);
+var_dump($result);
+?>
+​ 代码执行结果如下：
+
+[root@xxxxxxxxxxx thrift_client]# php client.php
+----list tables----
+array(1) {
+  [0]=>
+  string(3) "new"
+}
+----write data----
+---read data---
+array(1) {
+  [0]=>
+  object(Hbase\TRowResult)#8 (3) {
+    ["row"]=>
+    string(3) "key"
+    ["columns"]=>
+    array(1) {
+      ["info:cn1"]=>
+      object(Hbase\TCell)#10 (2) {
+        ["value"]=>
+        string(5) "value"
+        ["timestamp"]=>
+        int(1533179795969)
+      }
+    }
+    ["sortedColumns"]=>
+    NULL
+  }
+}
+---delete data---
+---get data---
+array(0) {
+}
+2.2.python访问流程；
+​ 此外还有常见的python的客户，对于python的话，有happybase这种python的第三方包含thrift的库，我们见过一些客户使用Happybase进行访问HBase thrift，参见文章；此外，python 有丰富的库，我们通过pip可以安装thrift，以及访问HBase的thrift库；执行流程如下,假设用户已经安装python以及pip：
+
+pip install thrift //安装thrift默认最新版本
+pip install hbase-thrift //安装hbase thrift接口库
+​ 上面2步执行完成以后，既可以编写访问HBase的代码：
+
+import sys
+import time
+import os
+from thrift import Thrift
+from thrift.transport import TSocket, TTransport
+from thrift.protocol import TBinaryProtocol
+from thrift.protocol.TBinaryProtocol import TBinaryProtocolAccelerated
+from hbase import ttypes
+from hbase.Hbase import Client, ColumnDescriptor, Mutation
+def printRow(entry):
+  print "row: " + entry.row + ", cols:",
+  for k in sorted(entry.columns):
+    print k + " => " + entry.columns[k].value,
+  print
+transport = TSocket.TSocket('hb-bp12pt6alr1788y35-001.hbase.rds.aliyuncs.com', 9099)
+transport = TTransport.TBufferedTransport(transport)
+protocol = TBinaryProtocol.TBinaryProtocolAccelerated(transport)
+client = Client(protocol)
+transport.open()
+print "---list table--"
+print client.getTableNames()
+table="new"
+row="key"
+print "---write data---"
+mutations = [Mutation(column="info:cn1", value="value")]
+client.mutateRow(table, row, mutations)
+print "---get data----"
+printRow(client.getRow(table, row)[0])
+print "---delete data---"
+client.deleteAllRow(table, row)
+print "---end----"
+transport.close()
+​ 对应上述的程序执行的结果如下：
+
+[root@Test ~]# python Hbase_client.py
+---list table--
+['new']
+---write data---
+---get data----
+row: key, cols: info:cn1 => value
+---delete data---
+---end----
+Go语言访问HBase
+下载优化后的thrift访问压缩包（也可以从https://github.com/sdming/goh 下载原始版本），解压后放到$GOPATH/src下
+
+wget http://public-hbase.oss-cn-hangzhou.aliyuncs.com/thrift/goh.tar.gz
+tar -xvzf goh.tar.gz
+mv github.com $GOPATH/src
+示例代码请参考 $GOPATH/src/github.com/sdming/goh/demo/client.go 包含了DDL以及数据读写的代码示例
+
+访问HBase HDFS
+更新时间：2018-03-21 12:12:59
+
+
+在一些场景下，比如需要bulkload导入数据，需要打开HBase集群的HDFS端口。
+
+注意：hdfs端口打开后，因误操作hdfs导致的数据丢失等问题客户自身承担，客户需要对hdfs的操作比较了解
+开通HDFS端口
+首先联系云HBase答疑(钉钉号)，开通HDFS（ 由于hdfs的开放可能造成用户的恶意攻击，引起集群不稳定甚至造成破坏。因此此功能暂时不直接开放给用户，当用户特别需要的情况下，我们通过云HBase答疑后台开通，随后客户使用完成，再关闭）
+验证
+检查端口是否可以正常使用通过一个hdfs client访问云hbase上的hdfs（目标集群）
+创建一个hadoop客户端配置目录conf(如果使用客户端已存在这个目录则不需要另行创建)
+添加以下两个hdfs配置到hadoop客户端conf目录({hbase-header-1-host}和{hbase-header-1-host}可以咨询 云HBase答疑
+
+core-site.xml
+<configuration>
+<property>
+<name>fs.defaultFS</name>
+<value>hdfs://hbase-cluster</value>
+</property>
+</configuration>
+hdfs-site.xml
+<configuration>
+<property>
+    <name>dfs.nameservices</name>
+    <value>hbase-cluster</value>
+</property>
+<property>
+<name>dfs.client.failover.proxy.provider.hbase-cluster</name>
+<value>org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider</value>
+</property>
+<property>
+<name>dfs.ha.automatic-failover.enabled.hbase-cluster</name>
+<value>true</value>
+</property>
+<property>
+<name>dfs.namenode.http-address.hbase-cluster.nn1</name>
+<value>{hbase-header-1-host}:50070</value>
+</property>
+<property>
+<name>dfs.namenode.http-address.hbase-cluster.nn2</name>
+<value>{hbase-header-2-host}:50070</value>
+</property>
+<property>
+    <name>dfs.ha.namenodes.hbase-cluster</name>
+    <value>nn1,nn2</value>
+</property>
+<property>
+    <name>dfs.namenode.rpc-address.hbase-cluster.nn1</name>
+    <value>{hbase-header-1-host}:8020</value>
+</property>
+<property>
+    <name>dfs.namenode.rpc-address.hbase-cluster.nn2</name>
+    <value>{hbase-header-2-host}:8020</value>
+</property>
+</configuration>
+添加conf到hadoop 客户端classpath中
+
+读写验证hdfs端口能否正常访问
+echo "hdfs port test"  >/tmp/test
+hadoop dfs -put /tmp/test  /
+hadoop dfs -cat /test
+
+Hive 读写 HBase 指南
+更新时间：2019-02-26 11:10:57
+
+
+本页目录
+环境准备
+修改配置
+在Hive中读写HBase表
+云 HBase 支持使用 Hive 读写里面的数据，配置起来也很简单。
+
+环境准备
+将 Hive 所在的 Hadoop 集群所有的节点的IP加入到云HBase白名单；
+获取云HBase的zookeeper访问地址，可在云HBase控制台查看。
+修改配置
+进入hive配置目录 /etc/ecm/hive-conf/
+修改 hbase-site.xml，将 hbase.zookeeper.quorum 修改为云HBase的zookeeper访问连接，如下：
+<property>
+  <name>hbase.zookeeper.quorum</name>
+  <value>hb-xxx-001.hbase.rds.aliyuncs.com,hb-xxx-002.hbase.rds.aliyuncs.com,hb-xxx-003.hbase.rds.aliyuncs.com</value>
+</property>
+在Hive中读写HBase表
+如果HBase表不存在，可在Hive中直接创建云HBase关联表
+
+进入hive cli命令行Hive CLI
+创建HBase表
+CREATE TABLE hive_hbase_table(key int, value string)
+STORED BY 'org.apache.hadoop.hive.hbase.HBaseStorageHandler'
+WITH SERDEPROPERTIES ("hbase.columns.mapping" = ":key,cf1:val")
+TBLPROPERTIES ("hbase.table.name" = "hive_hbase_table", "hbase.mapred.output.outputtable" = "hive_hbase_table");
+Hive中向hbase插入数据
+insert into hive_hbase_table values(212,'bab');
+hive
+查看云HBase表,hbase表已创建，数据也已写入hivehive
+在HBase中写入数据，并在Hive中查看hive
+
+在Hive中查看：
+
+hive
+
+Hive删除表，HBase表也删除
+
+hive
+
+查看hbase表，报错不存在表hive
+
+如果HBase表已存在，可在Hive中HBase外表进行关联，外部表在删除时不影响HBase已创建表
+
+云hbase中创建hbase表，并put测试数据hive
+Hive中创建HBase外部关联表，并查看数据hive
+删除Hive表不影响HBase已存在表
+
+hive
+
+hive
+
+Hive更多操作HBase步骤，可参考https://cwiki.apache.org/confluence/display/Hive/HBaseIntegration
+
+如果使用ECS自建mr集群的 Hive时，操作步骤跟EMR操作类似，需要注意的是自建Hive的hbase-site.xml部分配置项可能与云HBase不一致，简单来说网络和端口开放后，只保留hbase.zookeeper.quorum即可与云Hbase进行关联。
+
+
+HBase版本选择
+更新时间：2019-04-12 12:00:10
+
+
+本页目录
+当前云HBase提供的版本
+HBase1.1版本
+HBase2.0版本
+1.1与2.0版本对比
+当前云HBase提供的版本
+目前云HBase提供1.1版本和2.0版本供用户选择。相比开源产品的优势，可以参照这篇文章。
+
+HBase1.1版本
+1.1版本基于HBase社区1.1.2版本开发，在此基础上做了大量的改进，包括性能优化，稳定性优化和运维能力增强。该版本是阿里内部使用的主力版本，拥有1w+节点部署规模，多次成功支撑阿里双十一高并发和海量数据存储。在此基础上，1.1版本又集成了Phoenix(介绍与使用说明)与冷存储功能(介绍与使用说明)，满足不同业务的需求。云HBase1.1版本100%兼容社区HBase协议。
+
+HBase2.0版本
+2.0版本是基于社区2018年发布的HBase2.0.0版本开发的全新版本。同样，在此基础上，做了大量的改进和优化，吸收了众多阿里内部成功经验，比社区HBase版本具有更好的稳定性和性能，同时具备了HBase2.0提供的全新能力。HBase2.0提供的新功能介绍可以参照这篇文章。我们建议有以下需求的业务，可以直接选用HBase2.0版本。
+
+对毛刺敏感，延迟要求高的业务，可以直接选用云HBase2.0版本，HBase2.0版本具有全链路offheap功能，能够大大地降低GC停顿，减少毛刺，具体的测试数据可以参见这篇文章《消灭毛刺！HBase2.0全链路offheap效果拔群》
+使用HBase存储小对象的用户，如音视频文件，文档，二进制数据，典型大小在100KB~10MB左右。云HBase2.0中对这类小对象存储有专门的优化，能够减少写放大，优化性能。
+需要用到一些只有在云HBase2.0上才有的功能，如全异步客户端
+1.1与2.0版本对比
+功能	HBase1.1	HBase2.0
+HBase基本接口	支持	支持
+企业级安全认证	支持	支持
+主备同步，双活	即将上线	支持
+Phoenix与二级索引	支持	支持
+冷存储	支持	即将上线
+RegionServer Group	支持	支持
+Region Replica	不支持	支持
+读写链路offheap	不支持	支持
+小对象存储MOB	不支持	支持
+In memory Compaction	不支持	支持
+异步客户端	不支持	支持
+
+
+
+使用 Shell 访问
+更新时间：2018-09-28 21:40:26
+
+
+使用 HBase Shell 访问
+准备访问用ECS
+
+因为云HBase只提供了内网的访问，所以如果要访问HBase，需要在相同的Region内准备一台ECS。如果已经有ECS了那么请继续下一步。如果还没有，您可以在ECS的购买页面上购买一台按量的ECS进行测试。
+
+设置请参考这里
+
+下载HBase Shell
+
+参考：阿里云开源HBase客户端，下载对应最新HBase包，如果购买的为1.x版本的HBase集群，可以下载1.1.x系列的HBase包，如：
+
+ wget http://public-hbase.oss-cn-hangzhou.aliyuncs.com/installpackage/alihbase-1.1.4-bin.tar.gz .
+如果购买的是2.x版本的HBase集群，可以下载2.0.x系列的HBase包,如：
+
+ wget http://public-hbase.oss-cn-hangzhou.aliyuncs.com/installpackage/alihbase-2.0.0-bin.tar.gz .
+下载完成以后，解压缩（以1.x版本为例）
+
+ tar -zxf alihbase-1.1.4-bin.tar.gz
+配置 ZK 地址 解压后，修改 conf/hbase-site.xml 文件，添加集群的 ZK 地址，如下所示：
+
+<configuration>
+     <property>
+         <name>hbase.zookeeper.quorum</name>
+         <value>$ZK_IP1,$ZK_IP2,$ZK_IP3</value>
+     </property>
+</configuration>
+其中的$ZK_IP1,$ZK_IP2,$ZK_IP3请参考上一节中的获取集群的 ZK 连接地址
+
+访问集群
+
+通过如下命令就可以访问集群了。
+
+ bin/hbase shell
+
+
+
+
+
+HBase Shell 入门
+更新时间：2017-06-07 13:26:11
+
+
+HBase Shell 入门
+本篇会介绍最基本的HBase Shell的使用命令。
+
+连接到HBase
+
+请参考HBase Shell的配置来进行基本环境的配置。
+
+运行HBase目录下bin下的如下命令进入HBase shell
+
+ $ ./bin/hbase shell
+成功后会进入到如下的界面，这个时候我们就可以输入各种命令来执行了
+
+hbase(main):001:0>
+
+展示HBase Shell的帮助信息
+
+help命令提供了很多基本的命令和对应的使用方法，当你忘记一些基本用法的时候，记得输入help来查看。
+
+ hbase(main):001:0>help
+创建表
+
+使用create命令来创建一张新的表，在创建的时候你必须输入表的名称和ColumnFamily的名称
+
+ hbase(main):001:0> create 'test', 'cf'
+ 0 row(s) in 0.4170 seconds
+ => Hbase::Table - test
+查询表信息
+
+使用list命令来查询表
+
+ hbase(main):002:0> list 'test'
+ TABLE
+ test
+ 1 row(s) in 0.0180 seconds
+ => ["test"]
+往表里面插入记录
+
+在hbase中，往表里面写一行记录的命令叫做put
+
+ hbase(main):003:0> put 'test', 'row1', 'cf:a', 'value1'
+ 0 row(s) in 0.0850 seconds
+ hbase(main):004:0> put 'test', 'row2', 'cf:b', 'value2'
+ 0 row(s) in 0.0110 seconds
+ hbase(main):005:0> put 'test', 'row3', 'cf:c', 'value3'
+ 0 row(s) in 0.0100 seconds
+这里我们写入了三条数据，前面的rowx，代表写入的表的rowkey，也就是主键。后面的cf:x，是我们的自定义列，可以有无数多个，这里写了3个。我们叫这个a，b，c为qualifier，也就是列名。
+
+查询表中的所有数据
+
+scan是一种访问HBase数据的方式，它非常的灵活，你可以用它来扫描全表，也可以用它查询固定范围。相应的它的速度会比查询单条的get略慢一些，这里因为我们的demo数据库数据并不多，所以我们全部取出来。
+
+ hbase(main):006:0> scan 'test'
+ ROW                                      COLUMN+CELL
+  row1                                    column=cf:a, timestamp=1421762485768, value=value1
+  row2                                    column=cf:b, timestamp=1421762491785, value=value2
+  row3                                    column=cf:c, timestamp=1421762496210, value=value3
+ 3 row(s) in 0.0230 seconds
+查询单条记录
+
+使用get来查询单条记录
+
+ hbase(main):007:0> get 'test', 'row1'
+ COLUMN                                   CELL
+  cf:a                                    timestamp=1421762485768, value=value1
+ 1 row(s) in 0.0350 seconds
+禁用一张表
+
+如果你想要删除一张表，或者改变一张表的设置，或者其他类似的场景。你需要先禁用这张表，使用disable命令能够禁用一张表，使用enable命令能够取消禁用，恢复禁用的表。
+
+ hbase(main):008:0> disable 'test'
+ 0 row(s) in 1.1820 seconds
+ hbase(main):009:0> enable 'test'
+ 0 row(s) in 0.1770 seconds
+删除一张表
+
+要删除一张表，使用drop命令，这是一个危险的操作，使用的时候请务必小心。
+
+ hbase(main):011:0> drop 'test'
+ 0 row(s) in 0.1370 seconds
+退出HBase Shell
+
+输入quit命令就可以离开HBase Shell环境了。
+
+As told in HBase introduction, HBase provides Extensible jruby-based (JIRB) shell as a feature to execute some commands(each command represents one functionality).
+
+HBase shell commands are mainly categorized into 6 parts
+
+1) General  HBase shell commands
+
+status	Show cluster status. Can be ‘summary’, ‘simple’, or ‘detailed’. The
+default is ‘summary’.
+hbase> status
+hbase> status ‘simple’
+hbase> status ‘summary’
+hbase> status ‘detailed’
+
+version	Output this HBase versionUsage:
+hbase> version
+
+whoami	Show the current hbase user.Usage:
+hbase> whoami
+
+2) Tables Management commands
+
+alter	Alter column family schema; pass table name and a dictionary
+specifying new column family schema. Dictionaries are described
+on the main help command output. Dictionary must include name
+of column family to alter.For example, to change or add the ‘f1’ column family in table ‘t1’ from
+current value to keep a maximum of 5 cell VERSIONS, do:
+hbase> alter ‘t1’, NAME => ‘f1’, VERSIONS => 5
+
+You can operate on several column families:
+
+hbase> alter ‘t1’, ‘f1’, {NAME => ‘f2’, IN_MEMORY => true}, {NAME => ‘f3’, VERSIONS => 5}
+
+To delete the ‘f1’ column family in table ‘t1’, use one of:hbase> alter ‘t1’, NAME => ‘f1’, METHOD => ‘delete’
+hbase> alter ‘t1’, ‘delete’ => ‘f1’
+
+You can also change table-scope attributes like MAX_FILESIZE, READONLY,
+MEMSTORE_FLUSHSIZE, DEFERRED_LOG_FLUSH, etc. These can be put at the end;
+for example, to change the max size of a region to 128MB, do:
+
+hbase> alter ‘t1’, MAX_FILESIZE => ‘134217728’
+
+You can add a table coprocessor by setting a table coprocessor attribute:
+
+hbase> alter ‘t1’,
+‘coprocessor’=>’hdfs:///foo.jar|com.foo.FooRegionObserver|1001|arg1=1,arg2=2’
+
+Since you can have multiple coprocessors configured for a table, a
+sequence number will be automatically appended to the attribute name
+to uniquely identify it.
+
+The coprocessor attribute must match the pattern below in order for
+the framework to understand how to load the coprocessor classes:
+
+[coprocessor jar file location] | class name | [priority] | [arguments]
+
+You can also set configuration settings specific to this table or column family:
+
+hbase> alter ‘t1’, CONFIGURATION => {‘hbase.hregion.scan.loadColumnFamiliesOnDemand’ => ‘true’}
+hbase> alter ‘t1’, {NAME => ‘f2’, CONFIGURATION => {‘hbase.hstore.blockingStoreFiles’ => ’10’}}
+
+You can also remove a table-scope attribute:
+
+hbase> alter ‘t1’, METHOD => ‘table_att_unset’, NAME => ‘MAX_FILESIZE’
+
+hbase> alter ‘t1’, METHOD => ‘table_att_unset’, NAME => ‘coprocessor$1’
+
+There could be more than one alteration in one command:
+
+hbase> alter ‘t1’, { NAME => ‘f1’, VERSIONS => 3 },
+{ MAX_FILESIZE => ‘134217728’ }, { METHOD => ‘delete’, NAME => ‘f2’ },
+OWNER => ‘johndoe’, METADATA => { ‘mykey’ => ‘myvalue’ }
+
+create	Create table; pass table name, a dictionary of specifications per
+column family, and optionally a dictionary of table configuration.
+hbase> create ‘t1’, {NAME => ‘f1’, VERSIONS => 5}
+hbase> create ‘t1’, {NAME => ‘f1’}, {NAME => ‘f2’}, {NAME => ‘f3’}
+hbase> # The above in shorthand would be the following:
+hbase> create ‘t1’, ‘f1’, ‘f2’, ‘f3’
+hbase> create ‘t1’, {NAME => ‘f1’, VERSIONS => 1, TTL => 2592000, BLOCKCACHE => true}
+hbase> create ‘t1’, {NAME => ‘f1’, CONFIGURATION => {‘hbase.hstore.blockingStoreFiles’ => ’10’}}
+
+Table configuration options can be put at the end.
+
+describe	Describe the named table.
+hbase> describe ‘t1’
+
+disable	Start disable of named table
+hbase> disable ‘t1’
+
+disable_all	Disable all of tables matching the given regex
+hbase> disable_all ‘t.*’
+
+is_disabled	verifies Is named table disabled
+hbase> is_disabled ‘t1’
+
+drop 	Drop the named table. Table must first be disabled
+hbase> drop ‘t1’
+
+drop_all	Drop all of the tables matching the given regex
+hbase> drop_all ‘t.*’
+
+enable	Start enable of named table
+hbase> enable ‘t1’
+
+enable_all	Enable all of the tables matching the given regex
+hbase> enable_all ‘t.*’
+
+is_enabled	verifies Is named table enabled
+hbase> is_enabled ‘t1’
+
+exists	Does the named table exist
+hbase> exists ‘t1’
+
+list	List all tables in hbase. Optional regular expression parameter could
+be used to filter the output
+hbase> list
+hbase> list ‘abc.*’
+
+show_filters	Show all the filters in hbase.
+hbase> show_filters
+
+alter_status	Get the status of the alter command. Indicates the number of regions of the table that have received the updated schema Pass table name.
+hbase> alter_status ‘t1’
+
+alter_async	Alter column family schema, does not wait for all regions to receive the
+schema changes. Pass table name and a dictionary specifying new column
+family schema. Dictionaries are described on the main help command output.
+Dictionary must include name of column family to alter.
+To change or add the ‘f1’ column family in table ‘t1’ from defaults
+to instead keep a maximum of 5 cell VERSIONS, do:hbase> alter_async ‘t1’, NAME => ‘f1’, VERSIONS => 5To delete the ‘f1’ column family in table ‘t1’, do:
+
+hbase> alter_async ‘t1’, NAME => ‘f1’, METHOD => ‘delete’or a shorter version:hbase> alter_async ‘t1’, ‘delete’ => ‘f1’
+
+You can also change table-scope attributes like MAX_FILESIZE
+MEMSTORE_FLUSHSIZE, READONLY, and DEFERRED_LOG_FLUSH.
+
+For example, to change the max size of a family to 128MB, do:
+
+hbase> alter ‘t1’, METHOD => ‘table_att’, MAX_FILESIZE => ‘134217728’
+
+There could be more than one alteration in one command:
+
+hbase> alter ‘t1’, {NAME => ‘f1’}, {NAME => ‘f2’, METHOD => ‘delete’}
+
+To check if all the regions have been updated, use alter_status <table_name>
+
+3) Data Manipulation commands
+
+count	Count the number of rows in a table. Return value is the number of rows.
+This operation may take a LONG time (Run ‘$HADOOP_HOME/bin/hadoop jar
+hbase.jar rowcount’ to run a counting mapreduce job). Current count is shown
+every 1000 rows by default. Count interval may be optionally specified. Scan
+caching is enabled on count scans by default. Default cache size is 10 rows.
+If your rows are small in size, you may want to increase this
+parameter. Examples:hbase> count ‘t1’
+hbase> count ‘t1’, INTERVAL => 100000
+hbase> count ‘t1’, CACHE => 1000
+hbase> count ‘t1’, INTERVAL => 10, CACHE => 1000
+The same commands also can be run on a table reference. Suppose you had a reference
+t to table ‘t1’, the corresponding commands would be:hbase> t.count
+hbase> t.count INTERVAL => 100000
+hbase> t.count CACHE => 1000
+hbase> t.count INTERVAL => 10, CACHE => 1000
+
+delete	Put a delete cell value at specified table/row/column and optionally
+timestamp coordinates. Deletes must match the deleted cell’s
+coordinates exactly. When scanning, a delete cell suppresses older
+versions. To delete a cell from ‘t1’ at row ‘r1’ under column ‘c1’
+marked with the time ‘ts1’, do:
+hbase> delete ‘t1’, ‘r1’, ‘c1’, ts1
+
+The same command can also be run on a table reference. Suppose you had a reference
+t to table ‘t1’, the corresponding command would be:hbase> t.delete ‘r1’, ‘c1’, ts1
+
+deleteall	Delete all cells in a given row; pass a table name, row, and optionally
+a column and timestamp. Examples:hbase> deleteall ‘t1’, ‘r1’
+hbase> deleteall ‘t1’, ‘r1’, ‘c1’
+hbase> deleteall ‘t1’, ‘r1’, ‘c1’, ts1
+The same commands also can be run on a table reference. Suppose you had a reference
+t to table ‘t1’, the corresponding command would be:hbase> t.deleteall ‘r1’
+hbase> t.deleteall ‘r1’, ‘c1’
+hbase> t.deleteall ‘r1’, ‘c1’, ts1
+
+get	Get row or cell contents; pass table name, row, and optionally
+a dictionary of column(s), timestamp, timerange and versions. Examples:
+hbase> get ‘t1’, ‘r1’
+hbase> get ‘t1’, ‘r1’, {TIMERANGE => [ts1, ts2]}
+hbase> get ‘t1’, ‘r1’, {COLUMN => ‘c1’}
+hbase> get ‘t1’, ‘r1’, {COLUMN => [‘c1’, ‘c2’, ‘c3’]}
+hbase> get ‘t1’, ‘r1’, {COLUMN => ‘c1’, TIMESTAMP => ts1}
+hbase> get ‘t1’, ‘r1’, {COLUMN => ‘c1’, TIMERANGE => [ts1, ts2], VERSIONS => 4}
+hbase> get ‘t1’, ‘r1’, {COLUMN => ‘c1’, TIMESTAMP => ts1, VERSIONS => 4}
+hbase> get ‘t1’, ‘r1’, {FILTER => “ValueFilter(=, ‘binary:abc’)”}
+hbase> get ‘t1’, ‘r1’, ‘c1’
+hbase> get ‘t1’, ‘r1’, ‘c1’, ‘c2’
+hbase> get ‘t1’, ‘r1’, [‘c1’, ‘c2’]
+
+Besides the default ‘toStringBinary’ format, ‘get’ also supports custom formatting by
+column. A user can define a FORMATTER by adding it to the column name in the get
+specification. The FORMATTER can be stipulated:1. either as a org.apache.hadoop.hbase.util.Bytes method name (e.g, toInt, toString)
+2. or as a custom class followed by method name: e.g. ‘c(MyFormatterClass).format’.Example formatting cf:qualifier1 and cf:qualifier2 both as Integers:
+hbase> get ‘t1’, ‘r1’ {COLUMN => [‘cf:qualifier1:toInt’,
+‘cf:qualifier2:c(org.apache.hadoop.hbase.util.Bytes).toInt’] }
+
+Note that you can specify a FORMATTER by column only (cf:qualifer). You cannot specify
+a FORMATTER for all columns of a column family.The same commands also can be run on a reference to a table (obtained via get_table or
+create_table). Suppose you had a reference t to table ‘t1’, the corresponding commands
+would be:
+
+hbase> t.get ‘r1’
+hbase> t.get ‘r1’, {TIMERANGE => [ts1, ts2]}
+hbase> t.get ‘r1’, {COLUMN => ‘c1’}
+hbase> t.get ‘r1’, {COLUMN => [‘c1’, ‘c2’, ‘c3’]}
+hbase> t.get ‘r1’, {COLUMN => ‘c1’, TIMESTAMP => ts1}
+hbase> t.get ‘r1’, {COLUMN => ‘c1’, TIMERANGE => [ts1, ts2], VERSIONS => 4}
+hbase> t.get ‘r1’, {COLUMN => ‘c1’, TIMESTAMP => ts1, VERSIONS => 4}
+hbase> t.get ‘r1’, {FILTER => “ValueFilter(=, ‘binary:abc’)”}
+hbase> t.get ‘r1’, ‘c1’
+hbase> t.get ‘r1’, ‘c1’, ‘c2’
+hbase> t.get ‘r1’, [‘c1’, ‘c2’]
+
+get_counter	Return a counter cell value at specified table/row/column coordinates.
+A cell cell should be managed with atomic increment function oh HBase
+and the data should be binary encoded. Example:
+hbase> get_counter ‘t1’, ‘r1’, ‘c1’
+
+The same commands also can be run on a table reference. Suppose you had a reference
+t to table ‘t1’, the corresponding command would be:
+
+hbase> t.get_counter ‘r1’, ‘c1’
+
+incr	Increments a cell ‘value’ at specified table/row/column coordinates.
+To increment a cell value in table ‘t1’ at row ‘r1’ under column
+‘c1’ by 1 (can be omitted) or 10 do:
+hbase> incr ‘t1’, ‘r1’, ‘c1’
+hbase> incr ‘t1’, ‘r1’, ‘c1’, 1
+hbase> incr ‘t1’, ‘r1’, ‘c1’, 10
+
+The same commands also can be run on a table reference. Suppose you had a reference
+t to table ‘t1’, the corresponding command would be:hbase> t.incr ‘r1’, ‘c1’
+hbase> t.incr ‘r1’, ‘c1’, 1
+hbase> t.incr ‘r1’, ‘c1’, 10
+
+put	Put a cell ‘value’ at specified table/row/column and optionally
+timestamp coordinates. To put a cell value into table ‘t1’ at
+row ‘r1’ under column ‘c1’ marked with the time ‘ts1’, do:
+hbase> put ‘t1’, ‘r1’, ‘c1’, ‘value’, ts1
+
+The same commands also can be run on a table reference. Suppose you had a reference
+t to table ‘t1’, the corresponding command would be:
+
+hbase> t.put ‘r1’, ‘c1’, ‘value’, ts1
+
+scan	Scan a table; pass table name and optionally a dictionary of scanner
+specifications. Scanner specifications may include one or more of:
+TIMERANGE, FILTER, LIMIT, STARTROW, STOPROW, TIMESTAMP, MAXLENGTH,
+or COLUMNS, CACHEIf no columns are specified, all columns will be scanned.
+To scan all members of a column family, leave the qualifier empty as in
+‘col_family:’.The filter can be specified in two ways:
+1. Using a filterString – more information on this is available in the
+Filter Language document attached to the HBASE-4176 JIRA
+2. Using the entire package name of the filter.Some examples:hbase> scan ‘.META.’
+hbase> scan ‘.META.’, {COLUMNS => ‘info:regioninfo’}
+hbase> scan ‘t1’, {COLUMNS => [‘c1’, ‘c2’], LIMIT => 10, STARTROW => ‘xyz’}
+hbase> scan ‘t1’, {COLUMNS => ‘c1’, TIMERANGE => [1303668804, 1303668904]}
+hbase> scan ‘t1’, {FILTER => “(PrefixFilter (‘row2’) AND
+(QualifierFilter (>=, ‘binary:xyz’))) AND (TimestampsFilter ( 123, 456))”}
+hbase> scan ‘t1’, {FILTER =>
+org.apache.hadoop.hbase.filter.ColumnPaginationFilter.new(1, 0)}
+For experts, there is an additional option — CACHE_BLOCKS — which
+switches block caching for the scanner on (true) or off (false). By
+default it is enabled. Examples:hbase> scan ‘t1’, {COLUMNS => [‘c1’, ‘c2’], CACHE_BLOCKS => false}
+
+Also for experts, there is an advanced option — RAW — which instructs the
+scanner to return all cells (including delete markers and uncollected deleted
+cells). This option cannot be combined with requesting specific COLUMNS.
+Disabled by default. Example:
+
+hbase> scan ‘t1’, {RAW => true, VERSIONS => 10}
+
+Besides the default ‘toStringBinary’ format, ‘scan’ supports custom formatting
+by column. A user can define a FORMATTER by adding it to the column name in
+the scan specification. The FORMATTER can be stipulated:
+
+1. either as a org.apache.hadoop.hbase.util.Bytes method name (e.g, toInt, toString)
+2. or as a custom class followed by method name: e.g. ‘c(MyFormatterClass).format’.
+
+Example formatting cf:qualifier1 and cf:qualifier2 both as Integers:
+hbase> scan ‘t1’, {COLUMNS => [‘cf:qualifier1:toInt’,
+‘cf:qualifier2:c(org.apache.hadoop.hbase.util.Bytes).toInt’] }
+
+Note that you can specify a FORMATTER by column only (cf:qualifer). You cannot
+specify a FORMATTER for all columns of a column family.
+
+Scan can also be used directly from a table, by first getting a reference to a
+table, like such:
+
+hbase> t = get_table ‘t’
+hbase> t.scan
+
+Note in the above situation, you can still provide all the filtering, columns,
+options, etc as described above.
+
+truncate	Disables, drops and recreates the specified table.
+Examples:
+hbase>truncate ‘t1’
+4) HBase surgery tools
+
+assign	Assign a region. Use with caution. If region already assigned,
+this command will do a force reassign. For experts only.
+Examples:
+hbase> assign ‘REGION_NAME’
+balancer	Trigger the cluster balancer. Returns true if balancer ran and was able to
+tell the region servers to unassign all the regions to balance (the re-assignment itself is async).
+Otherwise false (Will not run if regions in transition).
+Examples:
+hbase> balancer
+balance_switch	Enable/Disable balancer. Returns previous balancer state.
+Examples:
+hbase> balance_switch true
+hbase> balance_switch false
+
+close_region	Close a single region. Ask the master to close a region out on the cluster
+or if ‘SERVER_NAME’ is supplied, ask the designated hosting regionserver to
+close the region directly. Closing a region, the master expects ‘REGIONNAME’
+to be a fully qualified region name. When asking the hosting regionserver to
+directly close a region, you pass the regions’ encoded name only. A region
+name looks like this:TestTable,0094429456,1289497600452.527db22f95c8a9e0116f0cc13c680396.The trailing period is part of the regionserver name. A region’s encoded name
+is the hash at the end of a region name; e.g. 527db22f95c8a9e0116f0cc13c680396
+(without the period). A ‘SERVER_NAME’ is its host, port plus startcode. For
+example: host187.example.com,60020,1289493121758 (find servername in master ui
+or when you do detailed status in shell). This command will end up running
+close on the region hosting regionserver. The close is done without the
+master’s involvement (It will not know of the close). Once closed, region will
+stay closed. Use assign to reopen/reassign. Use unassign or move to assign
+the region elsewhere on cluster. Use with caution. For experts only.
+Examples:hbase> close_region ‘REGIONNAME’
+hbase> close_region ‘REGIONNAME’, ‘SERVER_NAME’
+compact	Compact all regions in passed table or pass a region row
+to compact an individual region. You can also compact a single column
+family within a region.
+Examples:
+Compact all regions in a table:
+hbase> compact ‘t1’
+Compact an entire region:
+hbase> compact ‘r1’
+Compact only a column family within a region:
+hbase> compact ‘r1’, ‘c1’
+Compact a column family within a table:
+hbase> compact ‘t1’, ‘c1’
+flush	Flush all regions in passed table or pass a region row to
+flush an individual region. For example:hbase> flush ‘TABLENAME’
+hbase> flush ‘REGIONNAME’
+major_compact	Run major compaction on passed table or pass a region row
+to major compact an individual region. To compact a single
+column family within a region specify the region name
+followed by the column family name.
+Examples:
+Compact all regions in a table:
+hbase> major_compact ‘t1’
+Compact an entire region:
+hbase> major_compact ‘r1’
+Compact a single column family within a region:
+hbase> major_compact ‘r1’, ‘c1’
+Compact a single column family within a table:
+hbase> major_compact ‘t1’, ‘c1’
+move	Move a region. Optionally specify target regionserver else we choose one
+at random. NOTE: You pass the encoded region name, not the region name so
+this command is a little different to the others. The encoded region name
+is the hash suffix on region names: e.g. if the region name were
+TestTable,0094429456,1289497600452.527db22f95c8a9e0116f0cc13c680396. then
+the encoded region name portion is 527db22f95c8a9e0116f0cc13c680396
+A server name is its host, port plus startcode. For example:
+host187.example.com,60020,1289493121758
+Examples:hbase> move ‘ENCODED_REGIONNAME’
+hbase> move ‘ENCODED_REGIONNAME’, ‘SERVER_NAME’
+split	Split entire table or pass a region to split individual region. With the
+second parameter, you can specify an explicit split key for the region.
+Examples:
+split ‘tableName’
+split ‘regionName’ # format: ‘tableName,startKey,id’
+split ‘tableName’, ‘splitKey’
+split ‘regionName’, ‘splitKey’
+unassign	Unassign a region. Unassign will close region in current location and then
+reopen it again. Pass ‘true’ to force the unassignment (‘force’ will clear
+all in-memory state in master before the reassign. If results in
+double assignment use hbck -fix to resolve. To be used by experts).
+Use with caution. For expert use only. Examples:hbase> unassign ‘REGIONNAME’
+hbase> unassign ‘REGIONNAME’, true
+hlog_roll	Roll the log writer. That is, start writing log messages to a new file.
+The name of the regionserver should be given as the parameter. A
+‘server_name’ is the host, port plus startcode of a regionserver. For
+example: host187.example.com,60020,1289493121758 (find servername in
+master ui or when you do detailed status in shell)
+hbase>hlog_roll
+
+zk_dump	Dump status of HBase cluster as seen by ZooKeeper. Example:
+hbase>zk_dump
+5) Cluster replication tools
+
+add_peer	Add a peer cluster to replicate to, the id must be a short and
+the cluster key is composed like this:
+hbase.zookeeper.quorum:hbase.zookeeper.property.clientPort:zookeeper.znode.parent
+This gives a full path for HBase to connect to another cluster.
+Examples:hbase> add_peer ‘1’, “server1.cie.com:2181:/hbase”
+hbase> add_peer ‘2’, “zk1,zk2,zk3:2182:/hbase-prod”
+remove_peer	Stops the specified replication stream and deletes all the meta
+information kept about it. Examples:
+hbase> remove_peer ‘1’
+
+list_peers	List all replication peer clusters.
+hbase> list_peers
+enable_peer	Restarts the replication to the specified peer cluster,
+continuing from where it was disabled.Examples:
+hbase> enable_peer ‘1’
+
+disable_peer	Stops the replication stream to the specified cluster, but still
+keeps track of new edits to replicate.Examples:
+hbase> disable_peer ‘1’
+
+start_replication	Restarts all the replication features. The state in which each
+stream starts in is undetermined.
+WARNING:
+start/stop replication is only meant to be used in critical load situations.
+Examples:
+hbase> start_replication
+
+stop_replication	Stops all the replication features. The state in which each
+stream stops in is undetermined.
+WARNING:
+start/stop replication is only meant to be used in critical load situations.
+Examples:
+hbase> stop_replication
+
+6) Security tools
+
+grant	Grant users specific rights.
+Syntax : grantpermissions is either zero or more letters from the set “RWXCA”.
+READ(‘R’), WRITE(‘W’), EXEC(‘X’), CREATE(‘C’), ADMIN(‘A’)For example:hbase> grant ‘bobsmith’, ‘RWXCA’
+hbase> grant ‘bobsmith’, ‘RW’, ‘t1’, ‘f1’, ‘col1’
+revoke	Revoke a user’s access rights.
+Syntax : revoke
+For example:
+hbase> revoke ‘bobsmith’, ‘t1’, ‘f1’, ‘col1’
+
+user_permission	Show all permissions for the particular user.
+Syntax : user_permission
+For example:hbase> user_permission
+hbase> user_permission ‘table1’
+Share this:
+

@@ -3473,3 +3473,736 @@ case SQLCOM_SELECT:
     //省略
   }
 其中select_precheck是进行权限校验。而优化器和执行器是在execute_sqlcom_select这个方法中。
+
+
+
+SQL开发规范
+更新时间：2019-04-29 15:51:33
+
+
+本页目录
+总则
+常见SQL优化细节
+总则
+分析型数据库MySQL版是一个分布式、列存数据库，在编写和优化SQL时，需要充分考虑其分布式特性。
+
+在分析型数据库MySQL版中，编写和优化SQL的要求和经验总结如下：
+
+SQL编写原则：追求简单
+
+一般情况下，数据库性能会随SQL复杂度而下降。例如，单表查询（冗余设计）优于表关联查询。
+
+SQL优化核心方法：减少I/O
+
+尽可能少的进行列扫描，返回最小数据量，减少I/O同时也减少内存开销。
+
+分布式计算：本地计算&并行计算 大数据计算情况下，本地计算时充分利用分布式多计算资源的能力，避免数据跨节点。
+
+高QPS：分区裁剪 业务系统要求高QPS、毫秒级RT时，表和SQL必须设计为分区裁剪模式。
+
+常见SQL优化细节
+去掉不必要的列
+分析型数据库MySQL版是列存数据库，返回的列的数量直接影响性能，在编写SQL时一定要确认业务需要返回的列，不要直接使用*。
+
+典型错误SQL写法
+
+  select * from tab1 where c1>100 and c1<1000;
+正确SQL写法
+
+  select col1, col2 from table_name where c1>100 and c1<1000;
+索引&扫描
+当SQL包含多个查询条件时，优先选择高筛选条件，其他条件可以通过扫描实现。
+
+原理
+分析型数据库MySQL版内部采用列存方式，通过单列高效过滤后，可直接通过内部记录指针扫描其他列值，减少其他列的索引查询开销。
+
+示例
+time条件通过内部扫描
+
+以下SQL通过条件c1=3可快速查询到少量记录（假设10000），单独使用time>'2010-01-01 00:00:00'时返回的记录数又非常大。
+
+select c1,c2 from tab1 where c1=3 and time >='2010-01-01 00:00:00';
+此时可只通过c1进行索引，time通过内部扫描方式执行，查询更快，返回更多有效记录数。SQL示例如下：
+
+/* +no-index=[tab1.time] */
+select c1,c2 from tab1
+where c1=3 and time>='2010-01-01 00:00:00';
+/* +no-index=[tab1.time] */
+Hint表示强制time>='2010-01-01 00:00:00'条件走扫描。
+
+在上述SQL中，计算引擎首先检索列c1的索引，得出满足条件c1=3的行集合，然后读取每行所对应的time列数据。如果满足time>='2010-01-01 00:00:00'，则将该行数据加入返回结果。
+
+不等于条件通过内部扫描
+
+不等于条件查询，例如：c2<>100，不通过索引扫描时，c2<>100无法有效过滤掉无效记录。例如：
+
+select c1,c2 from tab1 where c1=3 and c2<>100;
+增加no-indexHint，使不等于条件通过内部扫描执行，SQL示例如下：
+
+/* +no-index=[tab1.c2] */
+select c1,c2 from tab1 where c1=3 and c2<>100;
+like条件通过内部扫描
+
+中缀或后缀查询，例如：like '%abc'或like '%abc%'。
+
+增加no-indexHint，使like条件通过内部扫描执行，更加快速地查询有效记录，SQL示例如下：
+
+/* +no-index=[tab1.c3] */
+select c1,c2 from tab1 where c1=3 and c3 like '%abc%';
+索引失效
+索引失效时，SQL语句直接以扫描的方式进行查询，如果表记录数非常大，会导致查询缓慢。
+
+以下情形容易引起索引失效：
+
+• 函数转换（列）；
+
+• 类型转换；
+
+• like条件，例如：like '%abc%'。
+
+以下SQL中的函数转换导致索引失效。time为timestamp类型，存储时间2017-12-10 10:00:23。
+
+select c1,c2 from tab1 where substr(cast(time as varchar),1,10)='2017-
+10-12';
+正确SQL：
+
+select c1,c2 from tab1 where time>='2017-10-12 00:00:00' and time<='2017-10-12 23:59:59';
+is not null
+去掉不必要的is not null过滤条件。
+
+示例
+Select c1, c2 from tab1 where c1>100 and c1<1000 and c1 is not null;
+示例SQL中的and c1 is not null为多余条件，优化后SQL如下：
+
+Select c1,c2 from tab1 where c1>100 and c1<1000;
+多表关联
+普通表join普通表，尽量包含分区列join条件，如果不包含则，尽量通过where条件过滤掉多余的数据。
+
+维度表join普通表，没有限制。
+
+多表关联查询where条件中，需要明确写明每一个表的过滤条件。通常我们在传统数据库中，都是通过索引字段关联来快速检索数据。如下SQL:
+
+Select count(*)
+from customer_table C join
+order_table O on C.customer_id= O.customer_id
+where O.order_time between'2018-07-20 10:00:11'
+and '2018-09-30 10:00:11'
+and O.order_amount=100;
+在明确t2与t1表都有同样的time和type过滤条件情况下，建议修改为如下SQL：
+
+Select count(*)
+from t1 join t2 on t1.id=t2.id
+where t1.time between '2017-12-10 00:00:00' and '2017-12-10 23:59:59'
+and t1.type= 100
+and t2.time between '2017-12-10 00:00:00' and '2017-12-10 23:59:59'
+and t2.type=100
+
+=====================
+
+本章节以简化的业务场景来介绍电子商务的最佳实践。
+
+业务场景和要求
+本例中简化的业务场景包含三个数据表：客户信息表、订单表、商品类型表（维度表）。
+
+业务场景要求如下：
+
+统计不同客户群体在不同时间段的数据。
+
+RT<60秒。
+
+每秒查询率QPS（ Query Per Second ）：偶尔查询。
+
+表的逻辑设计
+客户信息表（t_fact_customers）
+
+数据量：约有五亿客户
+
+字段名	数据类型	说明
+customer_id	varchar	客户编号
+customer_name	varchar	客户姓名
+phone_number	varchar	电话
+address	varchar	地址
+last_login_time	timestamp	最近登录时间
+age	int	年龄
+订单表（t_fact_orders）
+
+数据量：每日订单量5000万，需要存储三年的数据，总数据量约550亿。
+
+字段名	数据类型	说明
+order_id	varchar	订单编号
+customer_id	varchar	客户编号
+goods_id	bigint	商品编号
+numbers	bigint	数量
+total_price	double	总价
+order_time	timestamp	订单时间
+order_date	bigint	订单日期（二级分区）
+商品类型表（t_dim_goods）
+
+商品总数约100万
+
+字段名	数据类型	说明
+goods_id	bigint	商品id
+price	double	单价
+class	bigint	类型
+name	varchar	名称
+update_time	timestamp	更新时间
+表的物理设计
+物理设计的目的是获得最佳性能，在进行表的物理设计前，必须了解表的查询SQL，才能决策表的最佳分片策略。假设本例中大部分查询都需要关联查询客户表+订单表，那么我们优先考虑以customer_id进行一级分区，每个节点的计算都是本地数据。
+
+创建表组ads_demo
+表组为ads_demo，两个副本，SQL查询超时为30秒。创建表组的SQL语句如下：
+
+create tablegroup ads_demo;
+创建表
+创建t_fact_customers表
+每个分区数据量390万=5亿/128个一级分区。创建t_fact_customers表的SQL语句如下。
+
+CREATE TABLE t_fact_customers (
+customer_id varchar COMMENT '',
+customer_name varchar COMMENT '',
+phone_number varchar COMMENT '',
+address varchar COMMENT '',
+last_login_time timestamp COMMENT '',
+age int COMMENT '',
+PRIMARY KEY (customer_id)
+)
+PARTITION BY HASH KEY (customer_id) PARTITION NUM 128
+TABLEGROUP ads_demo
+OPTIONS (UPDATETYPE='realtime')
+COMMENT '';
+创建t_fact_orders表
+二级分区键order_date为bigint数据类型。根据数据量和存储总时间，按月（201712）间隔，每月一个二级分区，每个二级分区数据量为：1193万 = 550亿/（128个一级分区）/(3年*12个月)。创建表的SQL语句如下：
+
+CREATE TABLE t_fact_orders (
+order_id varchar COMMENT '',
+customer_id varchar COMMENT '',
+goods_id bigint COMMENT '',
+numbers bigint COMMENT '',
+total_price double COMMENT '',
+order_time timestamp COMMENT '',
+order_date bigint COMMENT '',
+PRIMARY KEY (order_id,customer_id,order_date)
+)
+PARTITION BY HASH KEY (customer_id) PARTITION NUM 128
+SUBPARTITION BY LIST KEY (order_date)
+SUBPARTITION OPTIONS (available_partition_num = 90)
+TABLEGROUP ads_demo
+OPTIONS (UPDATETYPE='realtime')
+COMMENT '';
+创建t_dim_goods商品信息表（维度表）
+CREATE DIMENSION TABLE t_dim_goods (
+goods_id bigint comment '',
+price double comment '',
+class bigint comment '',
+name VARCHAR comment '',
+update_time TIMESTAMP comment '',
+primary key (goods_id)
+)
+OPTIONS (UPDATETYPE='realtime');
+查询SQL
+按年龄段统计在一段时间内订单的客户数量、订单销售总额。
+
+SELECT
+case when cus.age <= 30 then '<20' when cus.age>20
+and cus.age <= 30 then '20-30' when cus.age>30
+and cus.age <= 40 then '30-40' else '>40' end as age_range,
+COUNT(distinct cus.customer_id),
+SUM(total_price)
+FROM
+t_fact_customers cus LEFT JOIN t_fact_orders ord ON cus.customer_id =ord.customer_id
+WHERE ord.order_time >= '2017-10-01 00:00:00' AND ord.order_time < '
+2017-11-01 00:00:00'
+AND ord.order_date = 201710
+GROUP BY age_range;
+可以增加二级分区条件，进行二级分区裁剪，提高查询效率。
+
+==============
+物流快递
+更新时间：2018-12-02 20:40:16
+
+
+本页目录
+业务场景和要求
+表的逻辑设计
+表的物理设计
+查询SQL
+本章节以简化的业务场景来介绍物流快递的最佳实践。
+
+业务场景和要求
+本例中简化的业务场景：仅包括邮件状态表用于实时监控和更新邮件包裹状态，包裹从订单、收单、装车、…、投递分为不同的状态。
+
+业务要求：每个机构实时统计当前不同状态的邮件数量。
+
+业务性能要求：
+
+实时统计新增数据，且要求一秒以内返回结果（即RT<1s）。
+
+查询并发量：QPS>300 。
+
+表的逻辑设计
+邮件状态表（t_fact_mail_status）
+要求：
+
+单日数据量约一亿记录；
+有15万机构或快递员，每个机构的邮件量为100到3000不等；
+存储30天的数据。
+为满足高QPS，从设计上采用大宽表、冗余字段，并且避免表关联。
+
+字段名	字段类型	说明
+mail_id	varchar	邮件订单唯一码
+scan_timestamp	timestamp	收件时间
+biz_date	bigint	日期（二级分区）
+org_code	varchar	机构编码
+org_name	varchar	机构名称
+dlv_person_name	varchar	投递员名称
+receiver_name	varchar	收件人名
+receiver_phone	varchar	收件人电话
+receiver_addr 收件人地址	varchar	收件人地址
+product_no 产品编码	varchar	产品编码
+mag_no	varchar	包裹编号
+op_1_timestamp	bigint	状态1操作时间
+op_2_timestamp	bigint	状态2操作时间
+op_3_timestamp	bigint	状态3操作时间
+op_4_timestamp	bigint	状态4操作时间
+op_5_timestamp	bigint	状态5操作时间
+表的物理设计
+创建邮件状态表 t_fact_mail_status ，需要规划表的一级分区、二级分区。业务查询主要按机构进行查询，QPS要求高。综上所述， 我们选择按org_code进行一级分区。
+
+CREATE TABLE t_fact_mail_status (
+mail_id varchar COMMENT '',
+scan_timestamp timestamp COMMENT '',
+biz_date bigint COMMENT '',
+org_code varchar COMMENT '',
+org_name varchar COMMENT '',
+dlv_person_name varchar COMMENT '',
+receiver_name varchar COMMENT '',
+receiver_phone varchar COMMENT '',
+receiver_addr varchar COMMENT '',
+product_no varchar COMMENT '',
+mag_no varchar COMMENT '',
+op_1_timestamp bigint COMMENT '',
+op_2_timestamp bigint COMMENT '',
+op_3_timestamp bigint COMMENT '',
+op_4_timestamp bigint COMMENT '',
+op_5_timestamp bigint COMMENT '',
+PRIMARY KEY (mail_id,org_code,biz_date)
+)
+PARTITION BY HASH KEY (org_code) PARTITION NUM 128
+SUBPARTITION BY LIST KEY (biz_date)
+SUBPARTITION OPTIONS (available_partition_num = 30)
+TABLEGROUP ads_demo
+OPTIONS (UPDATETYPE='realtime')
+COMMENT '';
+查询SQL
+要求：
+
+查询当天某机构号
+
+不同状态的邮件数据量
+
+核查需要操作的邮件量
+
+RT<1s 并且高QPS
+
+综上所述，须利用分区裁剪，使单个查询在不同的节点上运行。SQL语句示例如下：
+
+select sum(case when t.op_1_timestamp >= 20171128000000 and t.
+op_1_timestamp <= 20171128235900
+and(( t.op_2_timestamp is null or t.op_2_timestamp >
+20171128235900 or t.op_2_timestamp < 20171128000000)
+and( t.op_3_timestamp is null or t.op_3_timestamp >
+20171128235900 or t.op_3_timestamp < 20171128000000)
+and( t.op_4_timestamp is null or t.op_4_timestamp >
+20171128235900 or t.op_4_timestamp < 20171128000000))
+then 1 else 0 end ) as cn
+from t_fact_mail_status t
+where t.org_code = '21111101' and t.biz_date = 20171128;
+
+交通
+更新时间：2018-12-02 20:40:16
+
+
+本章节以简化的业务场景来介绍车辆通行的最佳实践。
+
+业务场景和要求
+本例中简化的业务场景：记录主要交通路口（卡口）的车辆通行信息。要求：
+
+每日有一亿的实时增量数据，数据需要存储五年。
+
+可实时查询每个路口车辆通行情况。例如：某一时间段通过该路口的车辆总数、车辆详单信息等。
+
+可按车辆拍照号码查询一段时间内的车辆的详单信息。
+
+表的逻辑设计
+车辆信息表（t_fact_vehicle_info）
+字段名	字段类型	说明
+uuid	varchar	唯一标识
+access_time	varchar	接收时间
+gate_number	varchar	卡口编码
+device_num	varchar
+pass_time	varchar	过车时间
+vehicle_number	varchar	号牌号码
+vehicle_num_type	varchar	号牌种类
+speed	double	行驶速度
+picture_url	varchar
+pt_month
+表的物理设计
+按车辆拍照进行HASH一级分区，可均匀的将数据分布到所有分区上。
+
+按卡口编号设置聚集列。
+
+二级分区按月存储，存储五年（60个月的数据），设置二级分区数为61。
+
+创建表组
+根据业务场景和要求，创建以下表组和表：
+
+create tablegroup app_group;
+创建t_fact_vehicle_info表
+CREATE TABLE t_fact_vehicle_info (
+uuid varchar NOT NULL COMMENT '唯一标识',
+access_time varchar DEFAULT '0' COMMENT '接收时间',
+gate_number varchar DEFAULT '0' COMMENT '卡口编码',
+device_num varchar DEFAULT '0' COMMENT '',
+pass_time varchar DEFAULT '0' COMMENT '过车时间',
+vehicle_number varchar DEFAULT '' COMMENT '号牌号码',
+vehicle_num_type varchar DEFAULT '' COMMENT '号牌种类',
+speed double DEFAULT 0 COMMENT '行驶速度',
+picture_url varchar DEFAULT '' COMMENT '',
+pt_month bigint COMMENT '',
+PRIMARY KEY (uuid,vehicle_number,pt_month)
+)
+PARTITION BY HASH KEY (vehicle_number) PARTITION NUM 256
+SUBPARTITION BY LIST KEY (pt_month)
+SUBPARTITION OPTIONS (available_partition_num = 61)
+CLUSTERED BY (gate_number)
+TABLEGROUP app_group
+OPTIONS (UPDATETYPE='realtime')
+COMMENT '过车信息';
+查询SQL
+查询某车牌号码某一段时间内的详单数据：
+
+select * from t_fact_vehicle_info
+where vehicle_number='xxxxx'
+and pass_time between '2017-10-10 09:00:00'
+and '2018-03-01 10:00:00'
+and pt_month between 20171010 and 20180301;
+查询30分钟内某一路口通过车辆总数信息：
+
+select count(*) from t_fact_vehicle_info
+where gate_number='xxxxx'
+and pass_time between '2018-03-01 09:00:00' and '2018-03-01 09:30:00'
+and pt_month =20180301;
+ 上一篇：物流快递
+下一篇：产品和业务限制
+
+全文检索最佳实践
+更新时间：2019-04-29 15:51:48
+
+
+本页目录
+按近似度排序
+结果集过滤
+多列查询
+短语查询、精确匹配
+逻辑操作符 AND OR NOT
+结构化、非结构化联合检索
+高级SQL语法：结构化、非结构化融合GROUP BY, JOIN, UNION
+分析型数据库MySQL版除了支持基本的全文检索方式还支持以下方式
+
+按近似度排序
+结果集过滤
+多列查询
+短语查询、精确匹配
+逻辑操作符AND OR NOT
+结构化、非结构化联合检索
+高级SQL语法：结构化、非结构化GROUP BY, JOIN, UNION
+按近似度排序
+SQL语义规定在不带ORDER BY的情况下不会按照近似度排序。如果需要将所有命中结果按照近似度从高到低排序，则使用如下SQL语法。
+
+如果需要将结果按照近似度从高到低排序，则加上ORDER BY DESC
+
+SELECT id, title, author, body
+FROM articles_test
+WHERE match(title) against ('浙江省杭州市')
+ORDER BY match(title) against ('浙江省杭州市') DESC
+LIMIT 100;
+结果集过滤
+全文检索会召回所有跟关键词近似的结果。在某些数据量很大的场景中，命中关键词的结果集可能也很大，但是往往只需要取出近似度较高的部分结果。
+
+分析型数据库MySQL版提供了结果集过滤的功能，如下列子中where match() against() > 0.9 表示只取近似度排在前10%的结果，过滤掉了90%的低近似度结果。
+
+SELECT id, title, author, body
+FROM articles_test
+WHERE match(title) against ('浙江省杭州市') > 0.9
+ORDER BY match(title) against ('浙江省杭州市') DESC
+LIMIT 100;
+多列查询
+在title，body两列中同时检索”浙江省杭州市”关键字，返回近似度排在前10%的结果行，并且将结果行按照近似度逆序排列。
+
+SELECT id, title, author, body
+FROM articles_test
+WHERE match(title,body) against ('浙江省杭州市') > 0.9
+ORDER BY match(title, body) against ('浙江省杭州市') DESC
+LIMIT 100;
+短语查询、精确匹配
+默认情况下，分析型数据库MySQL版全文检索会对词语进行分词后，再进行检索。比如检索”中华人民共和国”会被分词为”中华”、”人民”、”共和国”三个词分别检索。但是某些特殊情况下，可能需要完全精确的短语匹配。比如只希望返回完全精确匹配”中华人民共和国”的结果，而不希望返回分词后的检索结果，则使用短语查询语法。语法格式为：在检索关键词上加双引号。
+
+基本查询：分词后再检索。注意关键词的写法：没有双引号。
+
+SELECT id, title, author, body
+FROM articles_test
+WHERE match(body) against ('中华人民共和国') > 0.9
+ORDER BY match(body) against ('中华人民共和国') DESC
+LIMIT 100;
+短语查询：精确匹配，不会做分词处理。注意关键词的写法，有双引号。
+
+SELECT id, title, author, body
+FROM articles_test
+WHERE match(body) against ('"中华人民共和国"') > 0.9
+ORDER BY match(body) against ('"中华人民共和国"') DESC
+LIMIT 100;
+逻辑操作符 AND OR NOT
+分析型数据库MySQL版支持利用逻辑操作符对结果进行控制。目前支持的逻辑操作符包括：AND OR NOT。
+
+其中AND表示要求操作符两边的关键词都必须出现。OR表示操作符两边的关键词出现一个即可。NOT表示右侧的关键词不能出现。
+
+语法为：<word1> AND/OR/NOT <word2>
+
+注意：1）AND/OR/NOT必须大写；2）AND/OR/NOT两边必须有空格。
+
+要求 “浙江省”和”杭州市”都必须出现。
+
+SELECT id, title, author, body
+FROM articles_test
+WHERE match(body) against ('浙江省 AND 杭州市') > 0.9
+ORDER BY match(body) against ('浙江省 AND 杭州市') DESC
+LIMIT 100;
+— 要求 “浙江省”，”杭州市”出现一个即可。效果等同于如 “浙江省杭州市”, “浙江省 杭州市”
+
+SELECT id, title, author, body
+FROM articles_test
+WHERE match(body) against ('浙江省 OR 杭州市') > 0.9
+ORDER BY match(body) against ('浙江省 OR 杭州市') DESC
+LIMIT 100;
+要求 “浙江省”一定不能出现
+
+SELECT id, title, author, body
+FROM articles_test
+WHERE match(body) against ('杭州市 NOT 浙江省') > 0.9
+ORDER BY match(body) against ('杭州市 NOT 浙江省') DESC
+LIMIT 100;
+结构化、非结构化联合检索
+分析型数据库MySQL版支持对结构化列、非结构化列进行联合条件检索。
+
+要求查询create_time在20180201-20180930之间的、body命中“浙江省杭州市”、且comment不为空的数据行。
+
+SELECT id, title, author, body
+FROM articles_test
+WHERE create_time > '2018-02-01 00:00:00'
+        AND create_time < '2018-09-30 00:00:00'
+        AND match(body) against ('浙江省杭州市') > 0.9
+        AND comment is not null
+ORDER BY match(body) against ('浙江省杭州市') DESC
+LIMIT 100;
+要求在body中检索“浙江省杭州市”, 且在author中检索“张三”。
+
+SELECT id, author, body
+FROM articles_test
+WHERE match(body) against ('浙江省杭州市') > 0.9
+        AND match(author) against('张三') > 0.9
+ORDER BY match(body) against ('浙江省杭州市') DESC, match(author) against('张三') DESC
+LIMIT 100;
+高级SQL语法：结构化、非结构化融合GROUP BY, JOIN, UNION
+分组
+
+SELECT author, body, max(match(body) against ('浙江省杭州市')) as score
+FROM articles_test
+WHERE match(body) against ('浙江省杭州市') > 0.9
+GROUP BY author, body
+ORDER BY score DESC
+LIMIT 100;
+表连接: 在文章表articles_test中检索“浙江省杭州市”， 在作者信息表author_info中检索“张三”，并且利用id列将两表进行join。
+
+CREATE TABLE author_info (
+  id bigint COMMENT '',
+  name varchar COMMENT '',
+  addr varchar COMMENT '',
+  FULLTEXT INDEX name_fulltext (name),
+  FULLTEXT INDEX addr_fulltext (addr),
+  PRIMARY KEY (id)
+)
+PARTITION BY HASH KEY(id)
+PARTITION NUM 8
+CLUSTERED BY (id)
+TABLEGROUP test_group
+OPTIONS (UPDATETYPE='realtime')
+COMMENT '';
+insert into author_info(id, name, addr) values(0, '张三', '湖南省张家界市武陵源区');
+SELECT articles_test.id, articles_test.title, author_info.name, author_info.addr
+FROM articles_test
+    JOIN author_info
+    ON articles_test.id = author_info.id
+WHERE
+    match (articles_test.body) against ('浙江省杭州市')
+    AND match(author_info.name) against ('张三')
+    AND articles_test.create_time between '2018-01-01 00:00:00' and '2018-09-30 00:00:00';
+合并
+
+SELECT id, title
+FROM articles_test
+WHERE
+    match (articles_test.body) against ('浙江省杭州市')
+UNION ALL
+SELECT id, addr
+FROM author_info
+WHERE
+    match(author_info.name) against ('张三');
+
+
+
+一级分区的规划和设计
+更新时间：2019-04-29 15:52:24
+
+
+本页目录
+一级分区列选择
+数据倾斜带来的影响
+如何评估表数据是否倾斜
+本章节介绍一级分区表的规划和设计，其中主要是一级分区列的选取。
+
+一级分区列选择
+分析型数据库MySQL版一级分区表采用HASH分区，可指定任意一列（不支持多列）作为分区列。HASH分区通过标准CRC算法计算出CRC值，并将CRC值与分区数作模计算，得出每条记录的分区号。空值的HASH值与字符串-1相同。以下按照优先级从高到底列出一级分区列的选择依据。
+
+选择值分布均匀的列作为分区列，请勿选择分布不均匀的列作为分区列。
+
+建议选择一级分区列的数据类型为tinyint、smallint、int、bigint或者varchar。
+
+如果是多个普通表（不包括维度表）JOIN，则选择参与JOIN的列作为分区列。
+
+如果是多列JOIN ，则根据查询重要程度或查询性能要求（例如：某SQL的查询频率特别高）来选择分区列，以保证基于分区列的JOIN具有较好的查询性能。
+
+选择GROUP BY或DISTINCT包含的列作为分区列。
+
+如果常用的SQL包含某列的等值或IN查询条件，则选择该列作为分区列。以下列子则选择id作为分区列。
+
+ select * from table where id=123 and …;
+ select * from table where user in(1, 2,3);
+数据倾斜带来的影响
+如果一级分区列选择不合理会导致用户表数据倾斜，带来如SQL查询长尾、后台数据上线超时和单节点资源不足等诸多问题，对查询性能影响非常大也会给用户带来资源的浪费。
+
+如何评估表数据是否倾斜
+登录分析型数据库MySQL版控制台，单击监控管理>DB概览，查看表明细部分，对于存在数据倾斜的表已经标红处理，需要用户及时更换分区列。名字没有标红的表，用户也可以单击表名来查看数据分布。
+
+
+
+
+列的最佳实践
+
+分析型数据库MySQL版处理数值类型的性能远好于处理字符串类型。原因在于：
+
+数值类型定长，占用内存少，存储空间小。
+
+数值类型计算更快，尤其是join时。
+
+从内部索引机制上，字符串类型适合等值查询和范围查询情况，而时间，数值类型性能更高，建议用户尽可能使用数值类型，减少使用字符串类型。
+
+方法
+常见将字符串转换为数值类型方法：
+
+包含字符前缀或后缀，例如E12345，E12346等。可以直接去掉前缀或者将前缀映射为数字。
+
+该列只有少数几个值，例如国家名。可以对每个国家编码，每个国家对应一个唯一数字。
+
+时间/日期类型数据，避免使用varchar字符类型存储，尽量使用date，timestamp或者int类型存储时间类型。
+
+对于地理经度维度的使用，需要通过地理函数查询情况，数据类型采用double数据类型。
+
+查询报错问题
+KB: 97347 ·
+更新时间：2019-04-29 15:52:24
+
+
+本页目录
+查询报错QUERY_EXCEED_LIMIT ErrMsg:groups 100000001 exceed limit => 10000000
+查询时遇到memory is not enough
+查询时报错，提示scanRows exceed limit
+查询提示错误META_COLUMN_NOT_EXIST
+查询刚刚创建的新表时报错table is not ready
+查询报错NO_NODES_AVAILABLE
+查询性能不稳定
+查询报错IN expr values execeed limit
+查询报错QUERY_EXCEED_LIMIT ErrMsg:groups 100000001 exceed limit => 10000000
+用户在执行SQL查询用limit处理分页时，如果start值限制10000无法获取10000以后的数据，如：LIMIT 1000000,20
+
+分析型数据库MySQL版对分页数量有限制，即查询返回结果集限制10000行。分析型数据库MySQL版会对select语句查询的返回结果集做全局最大限制，如果不加limit或limit函数超过10000，则只能返回10000行。
+
+可以在查询中添加注解/*+limitmax=<最大值>*/，例如/+limitmax=2000000/select * from ar_express3 limit 1000000,20`。
+提工单申请调整默认返回限制。
+查询时遇到memory is not enough
+由于分析型数据库MySQL版查询时，大量数据存在内存中。当SQL所需处理单表或者多表join时的结果较大时，计算节点内存会成为系统瓶颈。分析型数据库MySQL版CN节点为避免SQL压垮系统，会进行自我保护，自动将查询消耗内存较大的SQL fail掉，保证其它查询正常。
+
+因此当查询分析型数据库MySQL版报错提示memory is not enough，有以下2种建议：
+
+优化SQL，尽量不返回可有可无的结果集，同时尽量对不关心的数据添加过滤条件。若没有很好的处理方法，请联系分析型数据库MySQL版技术支持。
+
+若在现有业务基础上无法进行SQL优化，可考虑DB资源扩容，甚至是调整资源模型规格。
+
+查询时报错，提示scanRows exceed limit
+分析型数据库MySQL版查询时报错，错误信息为：ErrMsg:ErrCode:2001 ErrType:QUERY_EXCEED_LIMIT ErrMsg:scanRows exceed limit: xxx > xxx
+
+其中xxx为数值，具体报错如下图所示：
+
+s2
+
+为避免用户输入的SQL误写或性能较差，从而导致扫描表的大量数据集，分析型数据库MySQL版会进行scan限制。当SQL scan的行数达到一定数量时，会fail掉SQL的执行并提示用户scanRows exceed limit错误信息。
+
+当遇到该错误时，建议进行以下改进：
+
+从SQL本身进行优化，尽量添加更多的过滤条件，筛选出需要关注的数据进行计算。
+
+判断select的列是否都有必要获取，因为一个SQL可scan的数据条数=系统默认值/select的列数，若列数减少则可scan的数据条数更多。
+
+若SQL自身无法进行优化，但依旧触发该错误，可联系分析型数据库MySQL版技术支持对单个分析型数据库MySQL版的系统默认值进行调整，此操作可能会造成数据库性能下降。
+
+查询提示错误META_COLUMN_NOT_EXIST
+在分析型数据库MySQL版表新增字段后，查询提示找不到新添加的列，具体是什么原因？表正在上线，但是上线失败或者CN副本在重启，都有可能出现META_COLUMN_NOT_EXIST。
+
+对于实时表
+
+一级普通表：新增字段且执行optimize成功后可查询到新增字段(老数据为null)。
+
+二级普通表：新增字段且需触发最大二级分区的optimize，待optimize成功后可查询到新增字段。
+
+对于未上线或者CN副本重启导致的报错，请检查上线情况或者重启情况。
+
+optimize操作为异步后台操作（目前未开放接口给用户，可联系分析型数据库MySQL版技术支持），需等待任务完成后再做查询。
+
+查询刚刚创建的新表时报错table is not ready
+新创建的表，可以INSERT数据，但查询该表报错table is not ready。
+
+ERROR 30007 (HY000): ProcessId=2017113014015101015416910909999087231 RT_ROUTER_ERROR tableId=28 DBId=1405 message=real time table is not ready.
+一般表建好以后，还需分配相应的资源，需等待几分钟表才能正常使用，否则就会报not ready错误。
+
+查询报错NO_NODES_AVAILABLE
+报错关键字： NO_NODES_AVAILABLE
+
+报错信息
+
+ERROR 1105 (HY000): MPP_QUERY_FAILED Retry_time=1 message=MPP engine error code: 30101, message: QueryError{message=Node for bucket is offline: [], sqlState=null, errorCode=65541, errorName=NO_NODES_AVAILABLE, errorType=INTERNAL_ERROR, errorLocation=null, failureInfo=mpp.client.FailureInfo@13887b2e}
+一般是数据库内部某个计算节点压力较大导致该节点暂时离线，系统能够自动修复。请用户过5~10分钟后重试。如果长时间出现该报错，请联系分析型数据库MySQL版技术支持。
+
+查询性能不稳定
+在分析型数据库MySQL版中执行SQL查询语句时，时慢时快。引起分析型数据库MySQL版查询不稳定的因素一般有以下几种：
+
+用户执行SQL时首次较慢，之后查询明显比第一次快，这是因为分析型数据库MySQL版自身带有缓存。第一次查询时会将数据缓存到内存中，若下次查询所需要的数据依然在内存中时，此时不用再次读磁盘，因此访问速度很快。
+
+用户使用的是实时表，且写入大量数据后未执行optimize操作，此时执行SQL会随着插入数据多而变得越来越慢。这是因为分析型数据库MySQL版的实时数据增量部分默认未建索引，因此执行查询时会频繁访问磁盘。为保证查询速度，建议当用户执行过大量INSERT或DELETE语句后，立即触发一次optimize table操作。
+
+用户对实时表执行大量的DELETE语句，而这些DELETE的条件中没有指定分区键，导致系统在所有分区上执行DELETE，耗费CN上大量CPU和内存资源。此时其他查询也有可能变慢或超时。
+
+按上述排查后还存在问题，请联系分析型数据库MySQL版技术支持。
+
+查询报错IN expr values execeed limit
+带有IN ()条件的查询报错IN expr values execeed limit
+
+默认情况下，如果IN ()中的值的个数大于50，则会报该错误。如果要修改此限制，请提工单联系分析型数据库MySQL版技术支持。

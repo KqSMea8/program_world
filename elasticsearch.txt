@@ -2584,3 +2584,1131 @@ Streaming 作业的监听 166
 5.4 API简化 ··························250
 5.5 其他改进 ························250
 
+============
+借助Beats搭建可视化运维系统
+更新时间：2019-03-20 11:01:55
+
+编辑 ·
+ · 我的收藏
+本页目录
+背景介绍
+背景介绍
+Beats平台集合了多种单一用途数据采集器，这些采集器安装后可用作轻量型代理，从成百上千或成千上万台机器向 Logstash 或 Elasticsearch 发送数据。
+
+Metricbeat是一个轻量级的指标采集器，用于从系统和服务收集指标。从 CPU 到内存，从 Redis 到 Nginx，Metricbeat 能够以一种轻量型的方式，输送各种系统和服务统计数据。
+
+这篇文章主要向用户演示，如何使用Metricbeat采集一台Mac电脑的指标信息，投递到阿里云Elasticsearch（以下统称阿里云ES）上，并且在Kibana中生成对应dashborard。
+
+说明 使用Metricbeat采集一台基于Linux系统或windows系统电脑的指标信息，投递到阿里云Elasticsearch（以下统称阿里云ES）上也是类似的操作步骤。
+购买并配置阿里云ES
+如果没有阿里云ES实例，需要先进行准备工作。可以通过阿里云ES提供的内网地址/公网地址将本地MAC中的数据推送给阿里云ES。
+
+说明
+如果是通过阿里云ES公网地址来访问（本篇以此为例），需要先打开阿里云ES实例公网访问的开关，并在网络配置及数据备份界面中配置公网地址访问白名单。
+
+如果是通过阿里云ES内网地址来访问，需要先购买一台与阿里云ES实例相同VPC和Region的阿里云ECS实例进行访问操作。
+
+登陆阿里云ES控制台，单击阿里云ES实例管理，切换到网络配置及数据备份界面，打开公网地址开关。
+
+将自己的MAC机器对外的公网IP配置到公网地址访问白名单中。
+
+注意 如果你使用的是公司或WIFI等网络，需要将公网出口的跳板机IP配置进去。如果获取不到，建议配置 0.0.0.0/1,128.0.0.0/1来开放尽可能多的IP（本篇以此为例）， 需要特别注意这个配置将导致你的阿里云ES基本上完全暴露在公网中，需要先评估下是否可以接受这个风险。
+配置完成后，获取阿里云ES的公网地址备用。
+
+修改YML文件配置 允许自动创建索引（默认不允许），该操作会触发重启阿里云ES进行生效，需要一些时间来生效。
+
+下载并配置Metricbeat
+MAC系统的Metricbeat安装包下载地址。
+32位Linux系统的Metricbeat安装包下载地址。
+64位Linux系统的Metricbeat安装包下载地址。
+32位Windows系统的Metricbeat安装包下载地址。
+64位Windows系统的Metricbeat安装包下载地址。
+下载到本地某一个文件夹后，解压缩，进入Metricbeat文件夹。
+
+打开并编辑 metricbeat.yml 中 Elasticsearch output部分内容，需取消对应内容注释状态。
+
+说明
+阿里云ES提供了用户名和密码的访问控制。
+
+hosts：为阿里云ES实例的公网/内网地址（本篇以阿里云ES公网地址为例）。
+protocol：需要配置为 http。
+username：默认是elastic。
+password：为购买阿里云ES服务时填写的登陆密码。
+启动Metricbeat
+启动Metricbeat向阿里云ES推送数据。
+
+./metricbeat -e -c metricbeat.yml
+
+在Kibana中查看dashboard
+打开阿里云ES实例中集成的kibana控制台，切换到dashboard界面展示如下。
+说明
+如果kibana控制台中没有创建过Index Patterns，切换到dashboard界面后可能无法正常展示对应信息，此时可以创建1个Index Patterns，再切换到dashboard界面查看对应内容。
+
+各类相关指标列表。
+
+Metricbeat-cpu指标信息。
+
+说明 数据可以定义成5s刷新一次，并且可以生成对应的report，接入webhook对异常进行告警。
+
+
+云上数据导入
+更新时间：2019-03-20 11:02:15
+
+编辑 ·
+ · 我的收藏
+本页目录
+阿里云上数据导入阿里云ES（离线）
+支持数据源
+操作步骤
+实时数据导入
+阿里云上数据导入阿里云ES（离线）
+阿里云上拥有丰富的云存储、云数据库产品。如果您希望针对这些产品中的数据进行分析和搜索，可以通过 数据集成（Data Integration）来实现最快 5min 一次的离线数据，同步到Elasticsearch的需求。
+
+支持数据源
+阿里云云数据库(MySQL、PG、SQL Server、PPAS、MongoDB、HBase)
+阿里云DRDS
+阿里云MaxCompute(ODPS)
+阿里云OSS
+阿里云Table Store
+自建HDFS、Oracle、FTP、DB2，及上述云数据库的自建版本
+说明 做数据同步时可能会产生公网流量费用，请您知晓。
+操作步骤
+完成离线数据导入，需要您完成以下几步操作：
+
+您需要有一台可以与 VPC 内的 Elasticsearch 交互的ECS，这台 ECS 将获取数据源数据并执行写ES数据的“Job”(该任务将由“Data Integration系统统一下发”)。
+您需要开通 Data Intergration 的服务，并且将ECS作为一个可以执行 Job 的“资源”注册到 Data Intergration 的服务中去。
+您需要配置一个“数据同步的脚本”，并且让其可以周期性的执行起来。
+详细步骤
+购买一台与Elasticsearch服务处于同一个VPC内的ECS服务器，并分配一个公网IP合或开通弹性IP，为了节省您的成本，您可以复用已有的ECS服务器，(如何购买ECS，请参考步骤 2：创建ECS实例文档)。
+
+说明
+建议使用 centos6、centos7 或者 aliyunos。
+如果您添加的 ECS 需要执行 MaxCompute 任务或者同步任务，需要检查当前 ECS 的 python 版本是否是 python2.6或2.7 的版本（centos5 的版本为 2.4 ，其余 os 自带了 2.6 以上版本）。
+请确保 ECS 有公网 IP。
+前往Data Integration控制台，并进入工作区。
+
+如果您已经开通过Data Integration 或者 DataWorks 产品，您将会看到如下页面：
+
+如果您未开通过Data Integration 或者 DataWorks 产品，您需要按照步骤进行 Data Integration 的开通，此开通动作 会产生费用，请您按照费用提示进行预算评估。
+
+进入Data Integration的项目管理-调度资源管理页面，将您之前VPC内的ECS配置成为一个调度资源。详细配置参考新增任务资源。
+
+在Data Integration中配置数据同步脚本，具体配置请参考脚本模式配置。Elasticsearch的Config规则请参考 配置Elasticsearch Writer。
+
+说明
+同步脚本的配置分为三个部分，Reader是配置您上游数据源（待同步数据的云产品）的config，Writer是配置ES的config，还有一个setting是配置同步中的一些丢包和最大并发等设置
+ES Writer中accessId和accessKey需要配置您的Elasticsearch的访问“用户名”和“密码”
+脚本配置完成后，将数据同步Job进行提交，按照需求填写相应的周期性执行配置，并点击“确定”完成提交动作。
+
+说明
+如果您希望周期性调度，需要配置周期任务，具体的Job开始执行时间，周期间隔，Job生命周期，均需要在这个弹窗中配置
+周期任务将于配置任务开始的第二天00:00，按照您的配置规则生效执行
+最后一步提交完成后，请务必前往运维中心-周期任务，找到您提交的Job，将其调度资源从 默认修改为 您配置好的调度资源。
+
+实时数据导入
+
+
+同步 MySQL 数据库到 Elasticsearch 中并进行搜索分析
+更新时间：2019-03-20 11:03:36
+
+编辑 ·
+ · 我的收藏
+本页目录
+准备工作
+操作步骤
+数据搜索分析
+常见问题
+阿里云上拥有丰富的云存储、云数据库产品。如果您希望针对这些产品中的数据进行分析和搜索，可以通过DataWorks的数据集成服务，将离线数据同步到Elasticsearch中，最快可达到5分钟一次。
+
+说明 做数据同步时可能会产生公网流量费用，请您知晓。
+准备工作
+完成离线数据的分析与搜索，需要您完成以下几步操作：
+
+创建一个数据库，您可以选择使用阿里云的RDS数据库，也可以在本地服务器上自建数据库。本文档以RDS MySQL数据库为例，数据库字段及数据如下图所示。
+
+
+购买一台可以与VPC内的Elasticsearch交互的ECS，这台ECS将获取数据源数据并执行写Elasticsearch数据的任务（该任务将由数据集成系统统一下发）。
+
+开通DataWorks的数据集成服务，并且将ECS作为一个可以执行任务的资源，注册到数据集成服务中去。
+
+配置一个数据同步的脚本，并且让其可以周期性的执行起来。
+
+创建一个Elasticsearch实例，用来存储数据集成系统同步成功的数据。
+
+操作步骤
+数据同步
+搭建IPv4专有网络。
+
+进入Elasticsearch控制台，单击 创建，创建一个Elasticsearch实例。
+说明 地域、 专有网络、 虚拟交换机与您第一步中创建的专有网络保持一致。
+
+购买一台与Elasticsearch服务处于同一个VPC内的ECS服务器，并分配一个公网IP合或开通弹性IP，为了节省您的成本，您可以复用已有的ECS服务器。
+说明
+建议使用 centos6、centos7 或者 aliyunos。
+如果您添加的 ECS 需要执行 MaxCompute 任务或者同步任务，需要检查当前 ECS 的 python 版本是否是 python2.6或2.7 的版本（centos5 的版本为 2.4 ，其余 os 自带了 2.6 以上版本）。
+请确保 ECS 有公网 IP。
+进入DataWorks 控制台，并进入工作区。
+
+如果您已经开通过DataWorks数据集成产品，您将会看到如下页面：
+
+
+如果您未开通过DataWorks数据集成产品，您将会看到如下页面。您需要按照步骤开通数据集成服务，此开通动作会产生费用，请您按照费用提示进行预算评估。
+
+
+单击DataWorks项目下方的进入数据集成。
+
+在数据集成页面，选择左侧导航栏中的资源组，单击新增资源组。
+
+根据界面提示，输入资源组名称和服务器信息。此服务器为您已经购买的ECS服务器，服务器信息说明如下：
+
+
+ECS UUID：步骤 3：连接ECS实例 服务器，执行 dmidecode | grep UUID，取返回值。
+
+机器 IP/机器CPU（核）/机器内存（GB）：您ECS实例的公网IP/CPU/内存。您可以在ECS控制台上单击实例名称，在配置信息模块，找到相关信息。
+
+按照界面提示，完成安装Agent步骤。其中第五步为开通服务器的8000端口，可以跳过，保持系统默认即可。
+
+配置数据库白名单，添加该资源组的IP地址和DataWorks服务器的IP地址，到您的数据库白名单中。配置方法请参见添加白名单。
+
+资源组创建成功后，选择左侧导航栏的数据源，单击新增数据源。
+
+单击MySQL，进入新增MySQL数据源页面，填入数据源信息，如下图所示。
+
+
+数据源类型：本文档以阿里云数据库（RDS）为例，您也可以选择有公网IP和无公网IP。各配置项的详细信息请参见配置MySQL数据源。
+
+选择左侧导航栏的同步任务，单击新建，选择脚本模式。
+
+在导入模板对话框中，选择数据源类型 > MySQL，数据源为您第10步中新增的数据源名称，目标类型为Elasticsearch，完成后单击确认。
+
+
+配置数据同步脚本。具体配置请参考脚本模式配置，Elasticsearch 的配置规则请参考配置Elasticsearch Writer。
+
+
+说明
+同步脚本的配置分为三个部分，Reader用来配置您上游数据源（待同步数据的云产品）的config，Writer用来配置 Elasticsearch的config，setting用来配置同步中的一些丢包和最大并发等。
+endpoint为Elasticsearch 的内网或外网地址，如果您使用的是内网地址，请在Elasticsearch的集群配置页面，配置Elasticsearch的系统白名单。如果您是用的是外网地址，请在Elasticsearch的网络配置页面，配置 Elasticsearch的公网地址访问白名单（包括DataWorks服务器的IP地址和您所使用的资源组的IP地址）。
+Elasticsearch Writer中accessId和accessKey需要配置您的Elasticsearch的访问用户名（默认为elastic）和密码。
+index为Elasticsearch实例的索引，您需要使用该索引名称访问Elasticsearch的数据。
+同步脚本配置完成后，单击页面右侧的配置任务资源组，选择您第7步创建的资源组名称，完成后单击运行，将MySQL中的数据同步到Elasticsearch中。
+
+数据搜索分析
+进入Elasticsearch控制台，单击右上角的kibana控制台，选择Dev Tools。
+
+执行如下命令，查看已经同步过来的数据。
+
+POST /testrds/_search?pretty
+{
+"query": { "match_all": {}}
+}
+testrds为您同步数据时，设置的index字段的值。
+
+
+执行如下命令，按照trans_num字段对文档进行排序。
+
+POST /testrds/_search?pretty
+{
+"query": { "match_all": {} },
+"sort": { "trans_num": { "order": "desc" } }
+}
+执行如下命令，搜索文档中的category和brand字段。
+
+POST /testrds/_search?pretty
+{
+"query": { "match_all": {} },
+"_source": ["category", "brand"]
+}
+执行如下命令，搜索category为生的文档。
+
+POST /testrds/_search?pretty
+{
+"query": { "match": {"category":"生"} }
+}
+
+更多命令和访问方式，请参考ES访问测试 和Elastic.co官方帮助中心。
+
+常见问题
+同步过程中出现无法连接数据库的相关错误。
+
+解决方法：将您资源组中所使用的ECS服务器的内网IP和外网IP，都添加到您数据库的白名单中。
+
+同步过程中无法连通Elasticsearch实例的相关错误。
+
+解决方法：按照下面步骤进行排查。
+
+检查在运行同步脚本之前，是否在页面右侧的配置任务资源组中选择了您前面步骤创建的资源组。
+
+是，执行下一步。
+否，单击页面右侧的配置任务资源组，选择您前面步骤创建的资源组。完成后单击运行。
+检查是否在Elasticsearch实例的白名单中，添加了DataWorks服务器的IP地址和您所使用的资源组的IP地址。
+
+是，执行下一步。
+否，将DataWorks服务器的IP地址和您所使用的资源组的IP地址，添加到 Elasticsearch 实例的白名单中。
+说明 如果您使用的是内网地址，请在Elasticsearch的 集群配置页面，配置Elasticsearch的系统白名单。如果您是用的是外网地址，请在Elasticsearch的 网络配置页面，配置Elasticsearch的公网地址访问白名单（包括DataWorks服务器的IP地址和您所使用的资源组的IP地址）。
+检查您的同步脚本配置是否正确。包括endpoint（您 Elasticsearch 实例的内网或外网地址）、accessId（Elasticsearch 实例的访问用户名，默认为elastic）和accessKey（Elasticsearch实例的访问密码）。
+
+
+
+RDS for MySQL与阿里云ES实时同步数据
+更新时间：2019-04-10 14:04:12
+
+编辑 ·
+ · 我的收藏
+本页目录
+支持实时同步类型
+支持SQL操作类型
+配置步骤
+数据传输服务 DTS （以下简称 DTS）支持RDS for MySQL与阿里云Elasticsearch实时同步数据，通过 DTS 提供的 RDS for MySQL->阿里云Elasticsearch实时同步功能，可以将企业线上RDS for MySQL中的生产数据实时同步到阿里云Elasticsearch中进行搜索。本小节介绍如何使用 DTS 快速创建RDS for MySQL->阿里云Elasticsearch的实时同步作业，实现RDS for MySQL数据到阿里云Elasticsearch的实时同步。
+
+支持实时同步类型
+同一个阿里云账号下 RDS for MySQL->阿里云Elasticsearch实例。
+
+支持SQL操作类型
+主要支持的SQL操作类型如下：
+
+Insert
+Delete
+Update
+说明 目前暂不支持 DDL同步，如果同步过程中遇到DDL操作，DTS会忽略掉。
+如果后续遇到DDL某个表，则对应表的DML操作可能失败，修复方法为：
+
+参考减少同步对象先将这个对象从同步列表中摘除。
+删除阿里云Elasticsearch中这个表对应的索引。
+参考 新增同步对象， 修改这个同步作业，将这个表重新添加到同步对象中，进行重新初始化。
+如果是修改表、新增列的DDL，建议DDL的操作顺序为：
+
+先在阿里云Elasticsearch中手动修改对应表的mapping，新增列。
+再在源RDS for MySQL实例中手动修改表结构，新增列。
+暂停DTS同步实例，重启DTS同步实例让DTS重新加载阿里云Elasticsearch中修改后的mapping关系。
+配置步骤
+下面详细介绍创建RDS for MySQL实例到阿里云Elasticsearch实例同步链路的具体步骤。
+
+购买同步链路
+进入数据传输服务 DTS控制台，进入数据同步界面，点击控制台右上角创建同步作业先购买一个同步链路，购买完同步链路后返回DTS控制台，进行配置同步链路。
+
+说明 在配置同步链路之前需要先购买一个同步链路，同步链路目前支持 包年包月及 按量付费两种付费模式，可以根据需要选择不同的付费模式。
+购买界面参数
+功能
+选择数据同步。
+
+源实例
+选择MySQL。
+
+源实例地域
+本示例为RDS for MySQL，需选择RDS for MySQL实例所在地域。
+目标实例
+选择Elasticsearch。
+
+目标实例地域
+阿里云Elasticsearch实例所在地域，订购后不支持更换地域，请谨慎选择。
+
+同步拓扑
+选择单项同步。
+
+网络类型
+默认为专线，目前仅支持专线模式。
+
+同步链路规格
+同步链路规格影响了链路的同步性能，同步链路规格跟性能之间的对应关系详见数据同步规格说明。
+
+订购时长
+如果是预付费，默认为1个月，支持勾选开启自动续费功能。
+购买数量
+默认为1，根据业务实际需要进行选择。
+
+说明 DTS控制台的同步实例按照地域展示，刚才购买的同步实例所属的地域为同步实例的目标地域。例如上面购买的是 杭州RDS for MySQL->杭州阿里云Elasticsearch的同步实例，那么这个同步实例在DTS的杭州地区。进入杭州区域的实例列表，查找刚才购买的同步实例，然后点击新购实例右侧的 配置同步作业开始配置实例。
+配置同步链路
+
+同步作业名称
+
+同步作业名称没有唯一性要求，为了更方便识别具体的作业，建议选择一个有业务意义的作业名称，方便后续的链路查找及管理。
+
+源实例信息
+本示例采用数据源为 RDS for MySQL，需要配置RDS实例的ID、数据库账号、数据库密码。
+
+
+目标实例信息
+目标实例信息中需要配置阿里云Elasticsearch的实例ID，及访问阿里云ES实例账号密码。
+
+
+以上内容配置完成后，点击授权白名单并进入下一步进行RDS for MySQL及阿里云Elasticsearch的白名单添加。
+
+授权实例白名单
+说明 如果是RDS for MySQL，DTS会自动添加白名单或安全组。
+如果源实例为RDS for MySQL，那么DTS将自身的IP段添加到RDS实例的白名单的安全组中，避免因为RDS实例设置了白名单，DTS服务器连接不上数据库导致同步作业创建失败。为了保证同步作业的稳定性，在同步过程中，请勿将这些服务器 IP 从 RDS实例的白名单的安全组中删除。
+
+当白名单授权后，点击下一步，进入同步账号创建。
+
+选择同步对象
+当白名单授权完成后，即进入同步对象的选择步骤。在这个步骤可以配置需要同步的表列，以及索引的命名规则。
+
+索引名称命名规则可以选择：表名、库名_表名。
+
+如果选择了表名，那么索引名称同表名。
+如果选择了库名表名，那么索引名称的命名格式为：库名表名。例如，库名为：dbtest,表名为：sbtest1，那么这张表同步到阿里云Elasticsearch后，对应的索引名称为：dbtest_sbtest1。
+如果需要同步的不同库中存在相同名称的表名，建议索引名称命名规则选择：库名_表名。
+选择具体需要同步的库表列，实时同步的同步对象的选择粒度可以支持到表级别，即用户可以选择同步某些库或某几张表。
+
+实时同步的同步对象的选择粒度可以支持到表级别，即用户可以选择同步某些库或某几张表。
+
+
+默认所有表的docid为表的主键，如果部分表没有主键，那么对于这部分配置docid 对应的源表的列。在右侧-已选择对象 框中，将鼠标挪到对应表上，点击右侧的 编辑 入口，进入这个表的高级设置界面。
+
+在高级配置中可以设置：
+
+索引名称、Type名称、分区列及分区数定义、_id取值列。其中 _id 取值如果选择 业务主键，那么需要选择对应的业务主键列。
+
+配置完同步对象后，进入高级配置步骤。
+
+高级配置
+主要配置
+同步初始化类型，建议选择 结构初始化+全量数据初始化，由DTS自动进行索引的创建及全量数据的初始化。如果不选择结构初始化，那么需要在同步创建之前，先手动在阿里云Elasticsearch中完成索引mapping的定义。如果不选择全量数据初始化，那么DTS同步增量数据的起始时间点为：启动同步的时间点。
+
+索引分片配置，默认为5个分片，1个副本。可以根据业务需要进行调整，一旦调整后，所有的索引按照这个配置定义分片。
+
+字符串analyzer定义，可以选择字符串的analyzer，默认为Standard Analyzer。取值包括：Standard Analyzer、Simple Analyzer、Whitespace Analyzer、Stop Analyzer、Keyword Analyzer、English Analyzer、Fingerprint Analyzer，所有索引的字符串字段按照这个配置定义Analyzer。
+
+
+时区，可以配置同步到阿里云Elasticsearch中的时间字段存储的时区，默认为东八区。
+
+预检查
+同步作业配置完成后，DTS会进行预检查，当预检查通过后，可以点击 启动 按钮，启动同步作业。
+
+同步作业启动后，即进入同步作业列表，此时刚启动的作业处于同步初始化状态。初始化的时间长度取决于源实例中同步对象的数据量大小，初始化完成后，同步链路即进入同步中的状态，此时源跟目标实例的同步链路才真正建立。
+
+数据效验
+以上任务完执行成后，登录阿里云ES控制台，确认对应阿里云ES实例中有无创建对应索引，及同步的数据是否符合预期。
+
+通过ES-Hadoop将Hadoop数据写入阿里云Elasticsearch
+更新时间：2019-03-20 11:03:56
+
+编辑 ·
+ · 我的收藏
+本页目录
+支持版本
+开通服务
+编写EMR写数据到ES的MR作业
+EMR中完成作业
+结果验证
+API分析
+基于阿里云Elasticsearch和E-MapReduce，通过ES-Hadoop可直接将数据写入阿里云Elasticsearch。
+
+支持版本
+阿里云Elasticsearch 5.5.3 with X-Pack。
+
+说明 不支持阿里云Elasticsearch 6.3.2 with X-Pack 版本。
+开通服务
+本示例需要用到的阿里云产品如下：
+
+专有网络VPC：由于通过公网访问推送数据安全性较差，为保证阿里云Elasticsearch访问环境安全，对应区域下必须要有VPC和虚拟交换机，因此需开通VPC专有网络。
+OSS：在本示例中将E-MapReduce的日志存储在OSS上，在开通配置E-MapReduce前需开通OSS并创建完成Bucket。
+Elasticsearch
+E-MapReduce
+请参考以下步骤开通上述阿里云产品：
+
+开通阿里云VPC
+
+登录阿里云首页后选择产品 > 云计算基础 > 网络 > 创建网络环境 > 专有网络VPC，然后单击立即开通。
+进入到VPC管理控制台界面，新建专有网络。
+创建完成之后在控制台中可以进行管理。
+说明 更多关于专有网络VPC的文档请参专有网络VPC 。
+开通专有网络OSS
+
+登录阿里云首页后选择产品 > 云计算基础 > 存储服务 > 云存储 > 对象存储 OSS，然后单击立即开通。
+进入到OSS管理控制台界面，单击新建 Bucket。
+说明 Bucket的区域要和E-MapReduce集群的区域一致，本示例将区域均选择为华东1区。
+根据界面提示完成Bucket创建。
+开通阿里云Elasticsearch
+
+登录阿里云首页后选择产品 > 大数据 > 大数据搜索与分析 > Elasticsearch，进入阿里云Elasticsearch产品界面。
+说明 新用户可以免费试用30天
+购买成功后，在Elasticsearch控制台可以看到新创建的Elasticsearch集群实例。
+开通阿里云E-MapReduce
+
+登录阿里云首页后选择产品 > 大数据 > 大数据计算 > E-MapReduce，进入E-MapReduce产品页面。
+单击立即购买，根据界面提示完成参数配置。
+E-MapReduce集群创建成功后在集群列表中查看，也可通过以下操作验证集群创建结果：
+公网IP可以直接访问，远程登录：
+ssh root@你的公网IP
+使用jps命令查看后台进程：
+[root@emr-header-1 ~]# jps
+16640 Bootstrap
+17988 RunJar
+19140 HistoryServer
+18981 WebAppProxyServer
+14023 Jps
+15949 gateway.jar
+16621 ZeppelinServer
+1133 EmrAgent
+15119 RunJar
+17519 ResourceManager
+1871 Application
+19316 JobHistoryServer
+1077 WatchDog
+17237 SecondaryNameNode
+16502 NameNode
+16988 ApacheDsTanukiWrapper
+18429 ApplicationHistoryServer
+编写EMR写数据到ES的MR作业
+推荐使用maven来进行项目管理，操作步骤如下：
+
+安装 Maven
+首先确保计算机已经正确安装maven。
+
+生成工程框架
+在工程根目录处执行如下命令：
+
+mvn archetype:generate -DgroupId=com.aliyun.emrtoes -DartifactId=emrtoes -DarchetypeArtifactId=maven-archetype-quickstart -DinteractiveMode=false
+mvn 会自动生成一个空的Sample工程，工程名为emrtoes（和指定的artifactId一致），里面包含一个简单的 pom.xml和App类（类的包路径和指定的groupId一致）。
+
+加入Hadoop和ES-Hadoop依赖
+使用任意IDE打开这个工程，编辑pom.xml文件。在dependencies内添加如下内容：
+
+<dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-mapreduce-client-common</artifactId>
+      <version>2.7.3</version>
+  </dependency>
+  <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-common</artifactId>
+      <version>2.7.3</version>
+  </dependency>
+   <dependency>
+       <groupId>org.elasticsearch</groupId>
+       <artifactId>elasticsearch-hadoop-mr</artifactId>
+       <version>5.5.3</version>
+   </dependency>
+添加打包插件
+由于使用了第三方库，需要把第三方库打包到jar文件中，在pom.xml中添加maven-assembly-plugin插件的坐标：
+
+<plugins>
+   <plugin>
+     <artifactId>maven-assembly-plugin</artifactId>
+     <configuration>
+       <archive>
+         <manifest>
+           <mainClass>com.aliyun.emrtoes.EmrToES</mainClass>
+         </manifest>
+       </archive>
+       <descriptorRefs>
+         <descriptorRef>jar-with-dependencies</descriptorRef>
+       </descriptorRefs>
+     </configuration>
+     <executions>
+       <execution>
+         <id>make-assembly</id>
+         <phase>package</phase>
+         <goals>
+           <goal>single</goal>
+         </goals>
+       </execution>
+     </executions>
+   </plugin>
+   <plugin>
+     <groupId>org.apache.maven.plugins</groupId>
+     <artifactId>maven-shade-plugin</artifactId>
+     <version>3.1.0</version>
+     <executions>
+       <execution>
+         <phase>package</phase>
+         <goals>
+           <goal>shade</goal>
+         </goals>
+         <configuration>
+           <transformers>
+             <transformer implementation="org.apache.maven.plugins.shade.resource.ApacheLicenseResourceTransformer">
+             </transformer>
+           </transformers>
+         </configuration>
+       </execution>
+     </executions>
+   </plugin>
+ </plugins>
+编写代码
+在com.aliyun.emrtoes包下和App类平行的位置添加新类EmrToES.java，内容如下：
+
+package com.aliyun.emrtoes;
+ import org.apache.hadoop.conf.Configuration;
+ import org.apache.hadoop.fs.Path;
+ import org.apache.hadoop.io.NullWritable;
+ import org.apache.hadoop.io.Text;
+ import org.apache.hadoop.mapreduce.Job;
+ import org.apache.hadoop.mapreduce.Mapper;
+ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+ import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+ import org.apache.hadoop.util.GenericOptionsParser;
+ import org.elasticsearch.hadoop.mr.EsOutputFormat;
+ import java.io.IOException;
+ public class EmrToES {
+     public static class MyMapper extends Mapper<Object, Text, NullWritable, Text> {
+         private Text line = new Text();
+         @Override
+         protected void map(Object key, Text value, Context context)
+                 throws IOException, InterruptedException {
+             if (value.getLength() > 0) {
+                 line.set(value);
+                 context.write(NullWritable.get(), line);
+             }
+         }
+     }
+     public static void main(String[] args) throws IOException, ClassNotFoundException, InterruptedException {
+         Configuration conf = new Configuration();
+         String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
+         //阿里云 Elasticsearch X-PACK用户名和密码
+         conf.set("es.net.http.auth.user", "你的X-PACK用户名");
+         conf.set("es.net.http.auth.pass", "你的X-PACK密码");
+         conf.setBoolean("mapred.map.tasks.speculative.execution", false);
+         conf.setBoolean("mapred.reduce.tasks.speculative.execution", false);
+         conf.set("es.nodes", "你的Elasticsearch内网地址");
+         conf.set("es.port", "9200");
+         conf.set("es.nodes.wan.only", "true");
+         conf.set("es.resource", "blog/yunqi");
+         conf.set("es.mapping.id", "id");
+         conf.set("es.input.json", "yes");
+         Job job = Job.getInstance(conf, "EmrToES");
+         job.setJarByClass(EmrToES.class);
+         job.setMapperClass(MyMapper.class);
+         job.setInputFormatClass(TextInputFormat.class);
+         job.setOutputFormatClass(EsOutputFormat.class);
+         job.setMapOutputKeyClass(NullWritable.class);
+         job.setMapOutputValueClass(Text.class);
+         FileInputFormat.setInputPaths(job, new Path(otherArgs[0]));
+         System.exit(job.waitForCompletion(true) ? 0 : 1);
+     }
+ }
+编译并打包
+在工程的目录下，执行如下命令：
+
+mvn clean package
+执行完毕以后，可在工程目录的target目录下看到一个emrtoes-1.0-SNAPSHOT-jar-with-dependencies.jar，这个就是作业jar包。
+
+
+EMR中完成作业
+测试数据
+把下面的数据写入到blog.json中：
+
+{"id":"1","title":"git简介","posttime":"2016-06-11","content":"svn与git的最主要区别..."}
+{"id":"2","title":"ava中泛型的介绍与简单使用","posttime":"2016-06-12","content":"基本操作：CRUD ..."}
+{"id":"3","title":"SQL基本操作","posttime":"2016-06-13","content":"svn与git的最主要区别..."}
+{"id":"4","title":"Hibernate框架基础","posttime":"2016-06-14","content":"Hibernate框架基础..."}
+{"id":"5","title":"Shell基本知识","posttime":"2016-06-15","content":"Shell是什么..."}
+上传到阿里云E-MapReduce集群，使用scp远程拷贝命令上传文件：
+
+scp blog.json root@你的弹性公网IP:/root
+把blog.json上传至HDFS：
+
+hadoop fs -mkdir /work
+hadoop fs -put blog.json /work
+上传JAR包
+把maven工程target目录下的jar包上传至阿里云E-MapReduce集群：
+
+scp target/emrtoes-1.0-SNAPSHOT-jar-with-dependencies.jar root@YourIP:/root
+执行MR作业
+执行以下命令：
+
+hadoop jar emrtoes-1.0-SNAPSHOT-jar-with-dependencies.jar /work/blog.json
+运行成功的话，控制台会输出如下图所示信息：
+
+
+结果验证
+执行以下操作验证数据是否成功写入Elasticsearch。
+
+curl -u elastic -XGET es-cn-v0h0jdp990001rta9.elasticsearch.aliyuncs.com:9200/blog/_search?pretty
+
+也可以通过Kibana查看：
+
+API分析
+Map过程按行读入，input kye的类型为Object，input value的类型为Text。输出的key为NullWritable类型，NullWritable是Writable的一个特殊类，实现方法为空实现，不从数据流中读数据，也不写入数据，只充当占位符。
+
+MapReduce中如果不需要使用键或值，就可以将键或值声明为NullWritable，这里把输出的key设置NullWritable类型。输出为BytesWritable类型，把json字符串序列化。
+
+在本示例中只需要写入，因此没有Reduce过程。
+
+参数配置说明
+conf.set(“es.net.http.auth.user”, “你的X-PACK用户名”)
+设置X-PACK的用户名
+
+conf.set(“es.net.http.auth.pass”, “你的X-PACK密码”)
+设置X-PACK的密码
+
+conf.setBoolean(“mapred.map.tasks.speculative.execution”, false)
+关闭mapper阶段的执行推测
+
+conf.setBoolean(“mapred.reduce.tasks.speculative.execution”, false)
+关闭reducer阶段的执行推测
+
+conf.set(“es.nodes”, “你的Elasticsearch内网地址”)
+配置Elasticsearch的IP和端口
+
+conf.set(“es.resource”, “blog/yunqi”)
+设置索引到Elasticsearch的索引名和类型名
+
+conf.set(“es.mapping.id”, “id”)
+设置文档id，这个参数”id”是文档中的id字段
+
+conf.set(“es.input.json”, “yes”)
+指定输入的文件类型为json
+
+job.setInputFormatClass(TextInputFormat.class)
+设置输入流为文本类型
+
+job.setOutputFormatClass(EsOutputFormat.class)
+设置输出为EsOutputFormat类型
+
+job.setMapOutputKeyClass(NullWritable.class)
+设置Map的输出key类型为NullWritable类型
+
+job.setMapOutputValueClass(BytesWritable.class)
+设置Map的输出value类型为BytesWritable类型
+
+FileInputFormat.setInputPaths(job, new Path(otherArgs[0]))
+传入HDFS上的文件路径
+
+============
+
+logstash部署
+更新时间：2019-03-20 11:04:07
+
+编辑 ·
+ · 我的收藏
+本页目录
+依赖环境准备
+测试用例
+常见问题解决
+补充说明
+依赖环境准备
+购买阿里云ES 以及 能够同时访问自建集群和阿里云ES的ECS实例（已符合条件的ECS不需要重复购买），并准备1.8及以上版本的JDK。
+可以是经典网络的ECS实例，前提是该ECS实例能够通过 经典网络问题 访问VPC内的阿里云ES服务。
+
+下载5.5.3版本的 logstash。
+在 elastic官网 页面中，找到与ElasticSearch版本一致的 logstash 下载（建议下载5.5.3版）。
+
+对下载的 logstash 压缩包进行解压缩。
+tar -xzvf logstash-5.5.3.tar.gz
+# ElasticSearch从5.x版本之后，进行了配置文件的严格校验。
+测试用例
+创建数据接入账号密码
+创建角色
+curl -XPOST -H "Content-Type: application/json" -u elastic:es-password http://***instanceId***.elasticsearch.aliyuncs.com:9200/_xpack/security/role/***role-name*** -d '{"cluster": ["manage_index_templates", "monitor"],"indices": [{"names": [ "logstash-*" ], "privileges":["write","delete","create_index"]}]}'
+# es-password 是您登录kibana的密码
+# ***instanceId*** 是您的阿里云ES实例id
+# ***role-name*** 您想使用的角色名称
+# logstash默认的索引名称以logstash-当前日期命名，所以在添加用户角色的时候，需要有对logstash-*索引读写权限。
+创建用户
+curl -XPOST -H "Content-Type: application/json" -u elastic:es-password http://***instanceId***.elasticsearch.aliyuncs.com:9200/_xpack/security/user/***user-name*** -d '{"password" : "***logstash-password***","roles" : ["***role-name***"],"full_name" : "***your full name***"}'
+# es-password 是您登录kibana的密码
+# ***instanceId*** 是您的阿里云ES实例id
+# ***user-name*** 是您想创建的数据接入用户名
+# ***logstash-password*** 是您创建的数据接入用户的密码
+# ***role-name*** 是您之前创建的角色名称
+# ***your full name*** 为当前用户名设置一个全名描述
+说明 以上创建角色和用户，同样可以在 kibana 页面中进行配置。
+添加角色
+
+添加用户
+
+编写conf文件
+详情请参见官方 配置文件结构 文档。
+
+样例
+在 ECS 中创建 test.conf 文件，添加以下配置：
+input {
+    file {
+        path => "/your/file/path/xxx"
+        }
+}
+filter {
+}
+output {
+  elasticsearch {
+    hosts => ["http://***instanceId***.elasticsearch.aliyuncs.com:9200"]
+    user => "***user-name***"
+    password => "***logstash-password***"
+  }
+}
+# ***instanceId*** 是您的阿里云ES实例id
+# ***user-name*** 是您想创建的数据接入用户名
+# ***logstash-password*** 是您创建的数据接入用户的密码
+# 用户名和密码需要用英文引号引起来防止特殊字符在启动logstash时报错
+执行
+按照配置的conf文件，执行logstash：
+bin/logstash -f path/to/your/test.conf
+# 在logstash提供了丰富的 input、filter、output 插件，只需要简单的配置就可是实现数据的流转。
+# 该例子展示了通过 logstash 获取 file 中的变化，提交到 elasticsearch 集群。只要监控的 file 文件有新增内容，logstash 就会自动的索引到 elasticsearch 集群中。
+常见问题解决
+更改集群自动创建索引配置
+
+阿里云Elasticsearch为了保证用户操作数据的时候的安全性，默认把自动创建索引的配置设置为不允许。
+
+logstash在上传数据的时候是采用的提交数据创建索引的方式，并不是采用的create index的 API 创建的索引。所以在使用 logstash 上传数据的时候，需要把集群的自动创建索引的配置先设置为允许。
+
+注意
+修改该配置并确认后，阿里云ES集群会自动重启。
+
+没有创建索引没有权限
+
+核对一下自己创建的接入数据的用户拥有的角色，是否具有write、delete、create_index这几个的权限。
+
+内存不足
+
+logstash 默认配置的是1g内存，如果您申请的 ECS 内存不足，可以适当调小 logstash 内存使用。修改 config/jvm.options 中的内存配置。
+
+配置test.conf时用户名密码没有添加引号
+
+如果在配置您的任务文件时，即上文提到的test.conf文件，用户名和密码中有特殊字符但是又没有用引号括起来，就会出现上述的错误信息。
+
+补充说明
+如果希望可以监控 logstash 节点，并收集监控日志：
+
+需要您在安装 logstash 的时候同时为 logstash 安装 X-Pack 的插件，详情请参见下载地址 。
+在完成下载后，需要对X-Pack进行部署安装。
+bin/logstash-plugin install
+        file:///path/to/file/x-pack-5.5.3.zip
+添加 logstash 监控用户，阿里云ElasticSearch集群默认禁掉 logstash_system 用户，需要创建一个以角色为 logstash_system 的用户名（用户名不可为 logstash_system）。可以根据自己的意愿命名，本文以用户 logstash_system_monitor 为例，推荐以下两种方式创建用户。
+通过 kibana 管理模块添加监控用户
+登录 kibana 管理页面，参考以下图片操作。
+
+点击 create user 功能按钮。
+
+输入需要的信息保存提交。
+
+通过指令添加用户
+curl -u elastic:es-password -XPOST http://***instanceId***.elasticsearch.aliyuncs.com:9200/_xpack/security/user/logstash_system_monitor -d '{"password" : "***logstash-monitor-password***","roles" : ["logstash_system"],"full_name" : "your full name"}'
+# es-password 是您登录kibana的密码
+# ***instanceId*** 是您的阿里云ES实例id
+# ***logstash-monitor-password*** 是您创建的 logstash_system_monitor 的密码
+
+--------
+自建ES迁移
+KB: 61145 ·
+更新时间：2019-04-10 12:35:19
+
+编辑 ·
+本页目录
+前提条件
+执行流程
+创建索引
+同步速度优化
+数据迁移
+批量创建老集群索引
+前提条件
+本文档主要用于将基于阿里云ECS自建的ES迁移至阿里云ES，参考本文档做迁移必须先满足以下条件，如果不满足以下条件需要通过其它迁移方案做迁移，详情请参见logstash部署：
+
+自建ES所在ECS必需是VPC网络（不支持Classiclink方式打通的ECS），并且自建ES所在ECS对应VPC必须与阿里云ES对应VPC相同。
+可以通过中控机器（或者任意一台机器）执行该脚本，前提是该中控机器可以同时访问新老ES集群的9200端口。
+VPC安全组不能限制 IP白名单，并且需要开启9200端口。
+VPC安全组不能限制阿里云ES实例各节点IP（kibana控制台可查看阿里云ES实例各节点IP）。
+可以在执行脚本的机器上通过 curl -XGET http://<host>:9200 验证。
+执行流程
+创建索引。
+数据迁移。
+创建索引
+需要参考老集群中需要迁移的索引配置提前在新集群中创建索引，或者新集群可以使用动态创建索引（需开启自动创建索引）和动态映射（不建议）功能。
+
+附件中提供了python脚本（indiceCreate.py），可以拉取所有的索引并创建，只设置分片数和0副本，其余需要单独调整。
+
+说明 如果执行curl命令提示以下报错，可以在curl命令中再添加 -H "Content-Type: application/json"参数重试。
+{"error":"Content-Type header [application/x-www-form-urlencoded] is not supported","status":406}
+
+// 获取老集群中所有索引信息，如果没有权限可去掉"-u user:pass"参数，oldClusterHost为老集群的host，注意替换。
+  curl -u user:pass -XGET http://oldClusterHost/_cat/indices | awk '{print $3}'
+  // 参考上面返回的索引列表，获取需要迁移的指定用户索引的setting和mapping，注意替换indexName为要查询的用户索引名。
+  curl -u user:pass -XGET http://oldClusterHost/indexName/_settings,_mapping?pretty=true
+  // 参考上面获取到的对应索引的_settings,_mapping信息，在新集群中创建对应索引，索引副本数可以先设置为0，用于加快数据同步速度，数据迁移完成后再重置副本数为1。
+  //其中newClusterHost是新集群的host，testindex是已经创建的索引名，testtype是对应索引的type。
+  curl -u user:pass -XPUT http://<newClusterHost>/<testindex> -d '{
+    "testindex" : {
+        "settings" : {
+            "number_of_shards" : "5", //假设老集群中对应索引的shard数是5个
+            "number_of_replicas" : "0" //设置索引副本为0
+          }
+        },
+        "mappings" : { //假设老集群中对应索引的mappings配置如下
+            "testtype" : {
+                "properties" : {
+                    "uid" : {
+                        "type" : "long"
+                    },
+                    "name" : {
+                        "type" : "text"
+                    },
+                    "create_time" : {
+                      "type" : "long"
+                    }
+                }
+           }
+       }
+   }
+}'
+同步速度优化
+说明 如果单索引数据量比较大，可以在迁移前将目的索引的副本数设置为 0，刷新时间为 -1。待数据迁移完成后，再更改回来，这样可以加快数据同步速度。
+// 迁移索引数据前可以先将索引副本数设为0，不刷新，用于加快数据迁移速度。
+curl -u user:password -XPUT 'http://<host:port>/indexName/_settings' -d' {
+        "number_of_replicas" : 0,
+        "refresh_interval" : "-1"
+}'
+// 索引数据迁移完成后，可以重置索引副本数为1，刷新时间1s（1s是默认值）。
+curl -u user:password -XPUT 'http://<host:port>/indexName/_settings' -d' {
+        "number_of_replicas" : 1,
+        "refresh_interval" : "1s"
+}'
+数据迁移
+为保证数据迁移结束后一致性，需要上游业务 停止老集群的写操作，读服务可以正常进行。迁移完毕后，直接切换到新集群进行读写。如不停止写操作可能会存在数据最终的不一致！
+
+说明
+使用下述方案迁移时，如果是通过 IP + Port访问老集群，则必须在新集群的 yml中配置 reindex 白名单（为老集群的 IP 地址），例如：reindex.remote.whitelist: 1.1.1.1:9200,1.2.*.*:*
+如果使用域名访问，则不允许通过 http://host:port/path 这种（带path）形式访问。
+数据量小
+使用reindex.sh脚本。
+
+#!/bin/bash
+# file:reindex.sh
+indexName="你的索引名"
+newClusterUser="新集群用户名"
+newClusterPass="新集群密码"
+newClusterHost="新集群host"
+oldClusterUser="老集群用户名"
+oldClusterPass="老集群密码"
+# 老集群host必须是[scheme]://[host]:[port]，例如http://10.37.1.1:9200
+oldClusterHost="老集群host"
+curl -u ${newClusterUser}:${newClusterPass} -XPOST "http://${newClusterHost}/_reindex?pretty" -H "Content-Type: application/json" -d'{
+    "source": {
+        "remote": {
+            "host": "'${oldClusterHost}'",
+            "username": "'${oldClusterUser}'",
+            "password": "'${oldClusterPass}'"
+        },
+        "index": "'${indexName}'",
+        "query": {
+            "match_all": {}
+        }
+    },
+    "dest": {
+       "index": "'${indexName}'"
+    }
+}'
+数据量大、无删除操作、有更新时间
+数据量较大且无删除操作时，可以使用滚动迁移的方式，减小停止写服务的时间。滚动迁移需要有一个类似于更新时间的字段代表新数据的写时序。可以在数据迁移完成后，再停止写服务，快速更新一次。即可切换到新集群，恢复读写。
+
+#!/bin/bash
+# file: circleReindex.sh
+# CONTROLLING STARTUP:
+# 这是通过reindex操作远程重建索引的脚本，要求：
+# 1. 新集群已经创建完索引，或者支持自动创建和动态映射。
+# 2. 新集群必须在yml里配置IP白名单 reindex.remote.whitelist: 172.16.123.*:9200
+# 3. host必须是[scheme]://[host]:[port]
+USAGE="Usage: sh circleReindex.sh <count>
+       count: 执行次数，多次（负数为循环）增量执行或者单次执行
+Example:
+        sh circleReindex.sh 1
+        sh circleReindex.sh 5
+        sh circleReindex.sh -1"
+indexName="你的索引名"
+newClusterUser="新集群用户名"
+newClusterPass="新集群密码"
+oldClusterUser="老集群用户名"
+oldClusterPass="老集群密码"
+## http://myescluster.com
+newClusterHost="新集群host"
+# 老集群host必须是[scheme]://[host]:[port]，例如http://10.37.1.1:9200
+oldClusterHost="老集群host"
+timeField="更新时间字段"
+reindexTimes=0
+lastTimestamp=0
+curTimestamp=`date +%s`
+hasError=false
+function reIndexOP() {
+    reindexTimes=$[${reindexTimes} + 1]
+    curTimestamp=`date +%s`
+    ret=`curl -u ${newClusterUser}:${newClusterPass} -XPOST "${newClusterHost}/_reindex?pretty" -H "Content-Type: application/json" -d '{
+        "source": {
+            "remote": {
+                "host": "'${oldClusterHost}'",
+                "username": "'${oldClusterUser}'",
+                "password": "'${oldClusterPass}'"
+            },
+            "index": "'${indexName}'",
+            "query": {
+                "range" : {
+                    "'${timeField}'" : {
+                        "gte" : '${lastTimestamp}',
+                        "lt" : '${curTimestamp}'
+                    }
+                }
+            }
+        },
+        "dest": {
+            "index": "'${indexName}'"
+        }
+    }'`
+    lastTimestamp=${curTimestamp}
+    echo "第${reindexTimes}次reIndex，本次更新截止时间 ${lastTimestamp} 结果：${ret}"
+    if [[ ${ret} == *error* ]]; then
+        hasError=true
+        echo "本次执行异常，中断后续执行操作～～，请检查"
+    fi
+}
+function start() {
+    ## 负数就不停循环执行
+    if [[ $1 -lt 0 ]]; then
+        while :
+        do
+            reIndexOP
+        done
+    elif [[ $1 -gt 0 ]]; then
+        k=0
+        while [[ k -lt $1 ]] && [[ ${hasError} == false ]]; do
+            reIndexOP
+            let ++k
+        done
+    fi
+}
+## main
+if [ $# -lt 1 ]; then
+    echo "$USAGE"
+    exit 1
+fi
+echo "开始执行索引 ${indexName} 的 ReIndex操作"
+start $1
+echo "总共执行 ${reindexTimes} 次 reIndex 操作"
+数据量大、无删除操作、无更新时间
+当数据量较大，且索引的 mapping 中没有定义更新时间字段时，需要由上游业务修改代码添加更新时间字段。添加完成后可以先将历史数据迁移完，然后再使用上述的第2种方案。
+
+下面是迁移没有更新时间字段的老数据脚本。
+
+#!/bin/bash
+# file:miss.sh
+indexName="你的索引名"
+newClusterUser="新集群用户名"
+newClusterPass="新集群密码"
+newClusterHost="新集群host"
+oldClusterUser="老集群用户名"
+oldClusterPass="老集群密码"
+# 老集群host必须是[scheme]://[host]:[port]，例如http://10.37.1.1:9200
+oldClusterHost="老集群host"
+timeField="updatetime"
+curl -u ${newClusterUser}:${newClusterPass} -XPOST "http://${newClusterHost}/_reindex?pretty" -H "Content-Type: application/json" -d '{
+    "source": {
+        "remote": {
+            "host": "'${oldClusterHost}'",
+            "username": "'${oldClusterUser}'",
+            "password": "'${oldClusterPass}'"
+        },
+        "index": "'${indexName}'",
+        "query": {
+            "bool": {
+                "must_not": {
+                    "exists": {
+                        "field": "'${timeField}'"
+                    }
+                }
+            }
+        }
+    },
+    "dest": {
+       "index": "'${indexName}'"
+    }
+}'
+不停止写服务
+敬请期待。
+
+批量创建老集群索引
+下面是一个在新集群中，批量创建老集群索引的python脚本。该脚本默认新创建的索引副本数为0。
+
+#!/usr/bin/python
+# -*- coding: UTF-8 -*-
+# 文件名：indiceCreate.py
+import sys
+import base64
+import time
+import httplib
+import json
+## 老集群host（ip+port）
+oldClusterHost = "old-cluster.com"
+## 老集群用户名，可为空
+oldClusterUserName = "old-username"
+## 老集群密码，可为空
+oldClusterPassword = "old-password"
+## 新集群host（ip+port）
+newClusterHost = "new-cluster.com"
+## 新集群用户名，可为空
+newClusterUser = "new-username"
+## 新集群密码，可为空
+newClusterPassword = "new-password"
+DEFAULT_REPLICAS = 0
+def httpRequest(method, host, endpoint, params="", username="", password=""):
+    conn = httplib.HTTPConnection(host)
+    headers = {}
+    if (username != "") :
+        'Hello {name}, your age is {age} !'.format(name = 'Tom', age = '20')
+        base64string = base64.encodestring('{username}:{password}'.format(username = username, password = password)).replace('\n', '')
+        headers["Authorization"] = "Basic %s" % base64string;
+    if "GET" == method:
+        headers["Content-Type"] = "application/x-www-form-urlencoded"
+        conn.request(method=method, url=endpoint, headers=headers)
+    else :
+        headers["Content-Type"] = "application/json"
+        conn.request(method=method, url=endpoint, body=params, headers=headers)
+    response = conn.getresponse()
+    res = response.read()
+    return res
+def httpGet(host, endpoint, username="", password=""):
+    return httpRequest("GET", host, endpoint, "", username, password)
+def httpPost(host, endpoint, params, username="", password=""):
+    return httpRequest("POST", host, endpoint, params, username, password)
+def httpPut(host, endpoint, params, username="", password=""):
+    return httpRequest("PUT", host, endpoint, params, username, password)
+def getIndices(host, username="", password=""):
+    endpoint = "/_cat/indices"
+    indicesResult = httpGet(oldClusterHost, endpoint, oldClusterUserName, oldClusterPassword)
+    indicesList = indicesResult.split("\n")
+    indexList = []
+    for indices in indicesList:
+        if (indices.find("open") > 0):
+            indexList.append(indices.split()[2])
+    return indexList
+def getSettings(index, host, username="", password=""):
+    endpoint = "/" + index + "/_settings"
+    indexSettings = httpGet(host, endpoint, username, password)
+    print index + "  原始settings如下：\n" + indexSettings
+    settingsDict = json.loads(indexSettings)
+    ## 分片数默认和老集群索引保持一致
+    number_of_shards = settingsDict[index]["settings"]["index"]["number_of_shards"]
+    ## 副本数默认为0
+    number_of_replicas = DEFAULT_REPLICAS
+    newSetting = "\"settings\": {\"number_of_shards\": %s, \"number_of_replicas\": %s}" % (number_of_shards, number_of_replicas)
+    return newSetting
+def getMapping(index, host, username="", password=""):
+    endpoint = "/" + index + "/_mapping"
+    indexMapping = httpGet(host, endpoint, username, password)
+    print index + " 原始mapping如下：\n" + indexMapping
+    mappingDict = json.loads(indexMapping)
+    mappings = json.dumps(mappingDict[index]["mappings"])
+    newMapping = "\"mappings\" : " + mappings
+    return newMapping
+def createIndexStatement(oldIndexName):
+    settingStr = getSettings(oldIndexName, oldClusterHost, oldClusterUserName, oldClusterPassword)
+    mappingStr = getMapping(oldIndexName, oldClusterHost, oldClusterUserName, oldClusterPassword)
+    createstatement = "{\n" + str(settingStr) + ",\n" + str(mappingStr) + "\n}"
+    return createstatement
+def createIndex(oldIndexName, newIndexName=""):
+    if (newIndexName == "") :
+        newIndexName = oldIndexName
+    createstatement = createIndexStatement(oldIndexName)
+    print "新索引 " + newIndexName + " 的setting和mapping如下：\n" + createstatement
+    endpoint = "/" + newIndexName
+    createResult = httpPut(newClusterHost, endpoint, createstatement, newClusterUser, newClusterPassword)
+    print "新索引 " + newIndexName + " 创建结果：" + createResult
+## main
+indexList = getIndices(oldClusterHost, oldClusterUserName, oldClusterPassword)
+systemIndex = []
+for index in indexList:
+    if (index.startswith(".")):
+        systemIndex.append(index)
+    else :
+        createIndex(index, index)
+if (len(systemIndex) > 0) :
+    for index in systemIndex:
+        print index + "  或许是系统索引，不会重新创建，如有需要，请单独处理～"
+说明 使用logstash做数据迁移，请参考 Logstash迁移Elasticsearch数据方法解读。

@@ -63,7 +63,7 @@ WHERE E.CAT_NO = C.CAT_NO
 --6. Where子句中的连接顺序
 --Oracle采用自下而上的顺序解析WHERE子句。 根据这个原理,表之间的连接必须写在其他WHERE条件之前，那些可以过滤掉最大数量记录的条件必须写在WHERE子句的末尾。
 --
---复制代码
+
 --/*低效,执行时间156.3秒*/
 --SELECT …
 --  FROM EMP E
@@ -71,8 +71,8 @@ WHERE E.CAT_NO = C.CAT_NO
 --     AND  JOB = ‘MANAGER’
 --     AND  25 < (SELECT COUNT(*) FROM EMP
 --                         WHERE MGR = E.EMPNO)
---复制代码
---复制代码
+
+
 --/*高效,执行时间10.6秒*/
 --SELECT …
 --  FROM EMP E
@@ -80,7 +80,7 @@ WHERE E.CAT_NO = C.CAT_NO
 --                        WHERE MGR=E.EMPNO)
 --     AND SAL > 50000
 --     AND JOB = ‘MANAGER’
---复制代码
+
 --7. SELECT子句中避免使用“*”
 --
 --Oracle在解析SQL语句的时候，对于“*”将通过查询数据库字典来将其转换成对应的列名。
@@ -128,8 +128,7 @@ WHERE E.CAT_NO = C.CAT_NO
 --在含有子查询的SQL语句中，要注意减少对表的查询操作。
 --
 --低效：
---
---复制代码
+
 --SELECT TAB_NAME  FROM TABLES
 --WHERE TAB_NAME =（SELECT TAB_NAME
 --                           FROM TAB_COLUMNS
@@ -137,9 +136,8 @@ WHERE E.CAT_NO = C.CAT_NO
 --     AND DB_VER =（SELECT DB_VER
 --                           FROM TAB_COLUMNS
 --                         WHERE VERSION = 604）
---复制代码
+
 --高效：
---
 --SELECT TAB_NAME  FROM TABLES
 --WHERE （TAB_NAME，DB_VER）=
 --             （SELECT TAB_NAME，DB_VER
@@ -164,14 +162,14 @@ WHERE E.CAT_NO = C.CAT_NO
 --                        WHERE LOC = ‘MELB’)
 --高效：
 --
---复制代码
+
 --SELECT * FROM EMP (基础表)
 --WHERE EMPNO > 0
 --     AND EXISTS (SELECT ‘X’
 --                      FROM DEPT
 --                    WHERE DEPT.DEPTNO = EMP.DEPTNO
 --                                 AND LOC = ‘MELB’)
---复制代码
+
 --17. 用NOT EXISTS替代NOT IN
 --
 --在子查询中，NOT IN子句将执行一个内部的排序和合并，对子查询中的表执行一个全表遍历，因此是非常低效的。
@@ -187,28 +185,28 @@ WHERE E.CAT_NO = C.CAT_NO
 --                          WHERE DEPT_CAT=’A’）
 --高效：
 --
---复制代码
+
 --SELECT ….
 --  FROM EMP E
 --WHERE NOT EXISTS （SELECT ‘X’
 --                       FROM DEPT D
 --                    WHERE D.DEPT_NO = E.DEPT_NO
 --                                  AND DEPT_CAT = ‘A’）
---复制代码
+
 --18. 用表连接替换EXISTS
 --
 --通常来说 ，采用表连接的方式比EXISTS更有效率 。
 --
 --低效：
 --
---复制代码
+
 --SELECT ENAME
 --   FROM EMP E
 --WHERE EXISTS （SELECT ‘X’
 --                  FROM DEPT
 --              WHERE DEPT_NO = E.DEPT_NO
 --                           AND DEPT_CAT = ‘A’）
---复制代码
+
 --高效：
 --
 --SELECT ENAME
@@ -237,7 +235,7 @@ WHERE E.CAT_NO = C.CAT_NO
 --
 --下面的SQL工具可以找出低效SQL ：
 --
---复制代码
+
 --SELECT EXECUTIONS, DISK_READS, BUFFER_GETS,
 --   ROUND ((BUFFER_GETS-DISK_READS)/BUFFER_GETS, 2) Hit_radio,
 --   ROUND (DISK_READS/EXECUTIONS, 2) Reads_per_run,
@@ -247,7 +245,7 @@ WHERE E.CAT_NO = C.CAT_NO
 --AND     BUFFER_GETS > 0
 --AND (BUFFER_GETS-DISK_READS)/BUFFER_GETS < 0.8
 --ORDER BY 4 DESC
---复制代码
+
 --另外也可以使用SQL Trace工具来收集正在执行的SQL的性能状态数据，包括解析次数，执行次数，CPU使用时间等 。
 --
 --21. 用Explain Plan分析SQL语句
@@ -256,7 +254,7 @@ WHERE E.CAT_NO = C.CAT_NO
 --
 --22. SQL PLUS的TRACE
 --
---复制代码
+
 --SQL> list
 --  1  SELECT *
 --  2  FROM dept, emp
@@ -271,7 +269,7 @@ WHERE E.CAT_NO = C.CAT_NO
 --   2    1     TABLE ACCESS (FULL) OF 'EMP'
 --   3    1     TABLE ACCESS (BY INDEX ROWID) OF 'DEPT'
 --   4    3       INDEX (UNIQUE SCAN) OF 'PK_DEPT' (UNIQUE)
---复制代码
+
 --23. 用索引提高效率
 --
 --（1）特点
@@ -403,7 +401,7 @@ WHERE E.CAT_NO = C.CAT_NO
 --
 --高效：
 --
---复制代码
+
 --SELECT LOC_ID , LOC_DESC , REGION
 --     FROM LOCATION
 --   WHERE LOC_ID = 10
@@ -411,7 +409,7 @@ WHERE E.CAT_NO = C.CAT_NO
 --   SELECT LOC_ID , LOC_DESC , REGION
 --     FROM LOCATION
 --   WHERE REGION = “MELBOURNE”
---复制代码
+
 --低效：
 --
 --SELECT LOC_ID , LOC_DESC , REGION
@@ -451,7 +449,7 @@ WHERE E.CAT_NO = C.CAT_NO
 --
 --如果索引是建立在多个列上， 只有在它的第一个列(leading column)被where子句引用时， 优化器才会选择使用该索引。
 --
---复制代码
+
 --SQL> create index multindex on multiindexusage(inda,indb);
 --Index created.
 --
@@ -460,7 +458,7 @@ WHERE E.CAT_NO = C.CAT_NO
 ------------------------------------------------------------
 --   0      SELECT STATEMENT Optimizer=CHOOSE
 --   1    0   TABLE ACCESS (FULL) OF 'MULTIINDEXUSAGE‘
---复制代码
+
 --很明显, 当仅引用索引的第二个列时,优化器使用了全表扫描而忽略了索引。
 --
 --29. 使用UNION ALL替代UNION
@@ -483,7 +481,7 @@ WHERE E.CAT_NO = C.CAT_NO
 --
 --当比较不同数据类型的数据时， ORACLE自动对列进行简单的类型转换。
 --
---复制代码
+
 --/*假设EMP_TYPE是一个字符类型的索引列.*/
 --SELECT …
 --  FROM EMP
@@ -493,7 +491,7 @@ WHERE E.CAT_NO = C.CAT_NO
 --SELECT …
 --  FROM EMP
 -- WHERE TO_NUMBER(EMP_TYPE)=123
---复制代码
+
 --因为内部发生的类型转换，这个索引将不会被用到。
 --
 --几点注意：
@@ -540,11 +538,11 @@ WHERE E.CAT_NO = C.CAT_NO
 --  FROM TRANSACTION
 --WHERE ACCOUNT_NAME||ACCOUNT_TYPE=’AMEXA’；
 --使用索引：
---
---SELECT ACCOUNT_NAME，AMOUNT
---  FROM TRANSACTION
---WHERE ACCOUNT_NAME = ‘AMEX’
---     AND ACCOUNT_TYPE=’ A’；
+
+SELECT ACCOUNT_NAME，AMOUNT
+  FROM TRANSACTION
+WHERE ACCOUNT_NAME = ‘AMEX’
+     AND ACCOUNT_TYPE=’ A’；
 --（3）下面的例子中，‘+’是数学函数。就象其他数学函数那样，停用了索引。
 --
 --不使用索引：
@@ -566,9 +564,9 @@ WHERE E.CAT_NO = C.CAT_NO
 --WHERE ACCOUNT_NAME = NVL(:ACC_NAME, ACCOUNT_NAME)
 --使用索引：
 --
---SELECT ACCOUNT_NAME，AMOUNT
---FROM TRANSACTION
---WHERE ACCOUNT_NAME LIKE NVL(:ACC_NAME, ’%’)
+SELECT ACCOUNT_NAME，AMOUNT
+FROM TRANSACTION
+WHERE ACCOUNT_NAME LIKE NVL(:ACC_NAME, ’%’)
 --34. 连接多个扫描
 --
 --如果对一个列和一组有限的值进行比较，优化器可能执行多次扫描并对结果进行合并连接。
@@ -580,10 +578,10 @@ WHERE E.CAT_NO = C.CAT_NO
 --    WHERE MANAGER IN (‘BILL GATES’, ’KEN MULLER’)
 --优化器可能将它转换成以下形式：
 --
---    SELECT *
---      FROM LODGING
---    WHERE MANAGER = ‘BILL GATES’
---           OR MANAGER = ’KEN MULLER’
+    SELECT *
+      FROM LODGING
+    WHERE MANAGER = ‘BILL GATES’
+           OR MANAGER = ’KEN MULLER’
 --35. CBO下使用更具选择性的索引
 --
 --基于成本的优化器（CBO，Cost-Based Optimizer）对索引的选择性进行判断来决定索引的使用是否能提高效率。
@@ -593,6 +591,12 @@ WHERE E.CAT_NO = C.CAT_NO
 --
 --带有DISTINCT，UNION，MINUS，INTERSECT，ORDER BY的SQL语句会启动SQL引擎执行耗费资源的排序（SORT）功能。DISTINCT需要一次排序操作，而其他的至少需要执行两次排序。
 --通常，带有UNION，MINUS，INTERSECT的SQL语句都可以用其他方式重写。
+
+
+
+
+
+
 --37. 优化GROUP BY
 --
 --提高GROUP BY语句的效率，可以通过将不需要的记录在GROUP BY之前过滤掉。
@@ -606,30 +610,31 @@ WHERE E.CAT_NO = C.CAT_NO
 --         OR JOB = ‘MANAGER’
 --高效：
 --
---SELECT JOB，AVG（SAL）
---   FROM EMP
---WHERE JOB = ‘PRESIDENT’
---        OR JOB = ‘MANAGER’
---GROUP BY JOB
+SELECT JOB，AVG（SAL）
+   FROM EMP
+WHERE JOB = ‘PRESIDENT’
+        OR JOB = ‘MANAGER’
+GROUP BY JOB
+
 --38. 使用日期
 --
 --当使用日期时，需要注意如果有超过5位小数加到日期上，这个日期会进到下一天!
 --
---复制代码
---SELECT TO_DATE（‘01-JAN-93’+.99999）
---  FROM DUAL
+
+SELECT TO_DATE（‘01-JAN-93’+.99999）
+  FROM DUAL
 --Returns：
 --’01-JAN-93 23:59:59’
---
---SELECT TO_DATE（‘01-JAN-93’+.999999）
---  FROM DUAL
+
+SELECT TO_DATE（‘01-JAN-93’+.999999）
+  FROM DUAL
 --Returns：
 --’02-JAN-93 00:00:00’
---复制代码
+
 --39. 使用显示游标(CURSORS)
---
 --使用隐式的游标，将会执行两次操作。第一次检索记录，第二次检查TOO MANY ROWS 这个exception。而显式游标不执行第二次操作。
---
+
+
 --40. 分离表和索引
 --
 --总是将你的表和索引建立在不同的表空间内（TABLESPACES）。

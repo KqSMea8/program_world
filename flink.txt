@@ -795,7 +795,6 @@ Questions
 
 
      Flink SQL概述
-     更新时间：2019-01-21 11:14:56
 
      编辑 ·
       · 我的收藏
@@ -816,9 +815,5055 @@ Questions
      自定义函数
 
 
+关键字
+更新时间：2018-12-27 18:46:16
+
+
+本页目录
+关键字常用类型
+命名规则
+保留关键字
+本文为您介绍实时计算中已保留的关键字和使用关键字字符的方法。
+
+关键字常用类型
+常用类型	关键字
+数据类型	VARCHAR、INT、BIGINT、DOUBLE 、DATE 、BOOLEAN 、TINYINT、 SMALLINT 、FLOAT 、DECIMAL、VARBINARY
+DDL	CREATE TABLE、CREATE FUNCTION 、CREATE VIEW
+DML	INSERT INTO
+SELECT 子句	SELECT FROM、WHERE、GROUP BY 、JOIN
+命名规则
+源表名称、结果表名称、视图表名称、别名名称遵循标准数据库命名规则定义。必须以字母开头，并且只能包含字母、数字和下划线。
+
+保留关键字
+以下字符串组合已经被保留为关键字，以备将来使用。如果您想使用以下字符串作为字段名称，请在关键字两端添加`，例如｀value｀。
+
+A,ABS,ABSOLUTE,ACTION,ADA,ADD,ADMIN,AFTER,ALL,ALLOCATE,ALLOW,ALTER,ALWAYS,AND,ANY,ARE,ARRAY,AS,ASC,ASENSITIVE,ASSERTION,ASSIGNMENT,ASYMMETRIC,AT,ATOMIC,ATTRIBUTE,ATTRIBUTES,AUTHORIZATION,AVG,BEFORE,BEGIN,BERNOULLI,BETWEEN,BIGINT,BINARY,BIT,BLOB,BOOLEAN,BOTH,BREADTH,BY,C,CALL,CALLED,CARDINALITY,CASCADE,CASCADED,CASE,CAST,CATALOG,CATALOG_NAME,CEIL,CEILING,CENTURY,CHAIN,CHAR,CHARACTER,CHARACTERISTICTS,CHARACTERS,CHARACTER_LENGTH,CHARACTER_SET_CATALOG,CHARACTER_SET_NAME,CHARACTER_SET_SCHEMA,CHAR_LENGTH,CHECK,CLASS_ORIGIN,CLOB,CLOSE,COALESCE,COBOL,COLLATE,COLLATION,COLLATION_CATALOG,COLLATION_NAME,COLLATION_SCHEMA,COLLECT,COLUMN,COLUMN_NAME,COMMAND_FUNCTION,COMMAND_FUNCTION_CODE,COMMIT,COMMITTED,CONDITION,CONDITION_NUMBER,CONNECT,CONNECTION,CONNECTION_NAME,CONSTRAINT,CONSTRAINTS,CONSTRAINT_CATALOG,CONSTRAINT_NAME,CONSTRAINT_SCHEMA,CONSTRUCTOR,CONTAINS,CONTINUE,CONVERT,CORR,CORRESPONDING,COUNT,COVAR_POP,COVAR_SAMP,CREATE,CROSS,CUBE,CUME_DIST,CURRENT,CURRENT_CATALOG,CURRENT_DATE,CURRENT_DEFAULT_TRANSFORM_GROUP,CURRENT_PATH,CURRENT_ROLE,CURRENT_SCHEMA,CURRENT_TIME,CURRENT_TIMESTAMP,CURRENT_TRANSFORM_GROUP_FOR_TYPE,CURRENT_USER,CURSOR,CURSOR_NAME,CYCLE,DATA,DATABASE,DATE,DATETIME_INTERVAL_CODE,DATETIME_INTERVAL_PRECISION,DAY,DEALLOCATE,DEC,DECADE,DECIMAL,DECLARE,DEFAULT,DEFAULTS,DEFERRABLE,DEFERRED,DEFINED,DEFINER,DEGREE,DELETE,DENSE_RANK,DEPTH,DEREF,DERIVED,DESC,DESCRIBE,DESCRIPTION,DESCRIPTOR,DETERMINISTIC,DIAGNOSTICS,DISALLOW,DISCONNECT,DISPATCH,DISTINCT,DOMAIN,DOUBLE,DOW,DOY,DROP,DYNAMIC,DYNAMIC_FUNCTION,DYNAMIC_FUNCTION_CODE,EACH,ELEMENT,ELSE,END,END-EXEC,EPOCH,EQUALS,ESCAPE,EVERY,EXCEPT,EXCEPTION,EXCLUDE,EXCLUDING,EXEC,EXECUTE,EXISTS,EXP,EXPLAIN,EXTEND,EXTERNAL,EXTRACT,FALSE,FETCH,FILTER,FINAL,FIRST,FIRST_VALUE,FLOAT,FLOOR,FOLLOWING,FOR,FOREIGN,FORTRAN,FOUND,FRAC_SECOND,FREE,FROM,FULL,FUNCTION,FUSION,G,GENERAL,GENERATED,GET,GLOBAL,GO,GOTO,GRANT,GRANTED,GROUP,GROUPING,HAVING,HIERARCHY,HOLD,HOUR,IDENTITY,IMMEDIATE,IMPLEMENTATION,IMPORT,IN,INCLUDING,INCREMENT,INDICATOR,INITIALLY,INNER,INOUT,INPUT,INSENSITIVE,INSERT,INSTANCE,INSTANTIABLE,INT,INTEGER,INTERSECT,INTERSECTION,INTERVAL,INTO,INVOKER,IS,ISOLATION,JAVA,JOIN,K,KEY,KEY_MEMBER,KEY_TYPE,LABEL,LANGUAGE,LARGE,LAST,LAST_VALUE,LATERAL,LEADING,LEFT,LENGTH,LEVEL,LIBRARY,LIKE,LIMIT,LN,LOCAL,LOCALTIME,LOCALTIMESTAMP,LOCATOR,LOWER,M,MAP,MATCH,MATCHED,MAX,MAXVALUE,MEMBER,MERGE,MESSAGE_LENGTH,MESSAGE_OCTET_LENGTH,MESSAGE_TEXT,METHOD,MICROSECOND,MILLENNIUM,MIN,MINUTE,MINVALUE,MOD,MODIFIES,MODULE,MONTH,MORE,MULTISET,MUMPS,NAME,NAMES,NATIONAL,NATURAL,NCHAR,NCLOB,NESTING,NEW,NEXT,NO,NONE,NORMALIZE,NORMALIZED,NOT,NULL,NULLABLE,NULLIF,NULLS,NUMBER,NUMERIC,OBJECT,OCTETS,OCTET_LENGTH,OF,OFFSET,OLD,ON,ONLY,OPEN,OPTION,OPTIONS,OR,ORDER,ORDERING,ORDINALITY,OTHERS,OUT,OUTER,OUTPUT,OVER,OVERLAPS,OVERLAY,OVERRIDING,PAD,PARAMETER,PARAMETER_MODE,PARAMETER_NAME,PARAMETER_ORDINAL_POSITION,PARAMETER_SPECIFIC_CATALOG,PARAMETER_SPECIFIC_NAME,PARAMETER_SPECIFIC_SCHEMA,PARTIAL,PARTITION,PASCAL,PASSTHROUGH,PATH,PERCENTILE_CONT,PERCENTILE_DISC,PERCENT_RANK,PLACING,PLAN,PLI,POSITION,POWER,PRECEDING,PRECISION,PREPARE,PRESERVE,PRIMARY,PRIOR,PRIVILEGES,PROCEDURE,PUBLIC,QUARTER,RANGE,RANK,READ,READS,REAL,RECURSIVE,REF,REFERENCES,REFERENCING,REGR_AVGX,REGR_AVGY,REGR_COUNT,REGR_INTERCEPT,REGR_R2,REGR_SLOPE,REGR_SXX,REGR_SXY,REGR_SYY,RELATIVE,RELEASE,REPEATABLE,RESET,RESTART,RESTRICT,RESULT,RETURN,RETURNED_CARDINALITY,RETURNED_LENGTH,RETURNED_OCTET_LENGTH,RETURNED_SQLSTATE,RETURNS,REVOKE,RIGHT,ROLE,ROLLBACK,ROLLUP,ROUTINE,ROUTINE_CATALOG,ROUTINE_NAME,ROUTINE_SCHEMA,ROW,ROWS,ROW_COUNT,ROW_NUMBER,SAVEPOINT,SCALE,SCHEMA,SCHEMA_NAME,SCOPE,SCOPE_CATALOGS,SCOPE_NAME,SCOPE_SCHEMA,SCROLL,SEARCH,SECOND,SECTION,SECURITY,SELECT,SELF,SENSITIVE,SEQUENCE,SERIALIZABLE,SERVER,SERVER_NAME,SESSION,SESSION_USER,SET,SETS,SIMILAR,SIMPLE,SIZE,SMALLINT,SOME,SOURCE,SPACE,SPECIFIC,SPECIFICTYPE,SPECIFIC_NAME,SQL,SQLEXCEPTION,SQLSTATE,SQLWARNING,SQL_TSI_DAY,SQL_TSI_FRAC_SECOND,SQL_TSI_HOUR,SQL_TSI_MICROSECOND,SQL_TSI_MINUTE,SQL_TSI_MONTH,SQL_TSI_QUARTER,SQL_TSI_SECOND,SQL_TSI_WEEK,SQL_TSI_YEAR,SQRT,START,STATE,STATEMENT,STATIC,STDDEV_POP,STDDEV_SAMP,STREAM,STRUCTURE,STYLE,SUBCLASS_ORIGIN,SUBMULTISET,SUBSTITUTE,SUBSTRING,SUM,SYMMETRIC,SYSTEM,SYSTEM_USER,TABLE,TABLESAMPLE,TABLE_NAME,TEMPORARY,THEN,TIES,TIME,TIMESTAMP,TIMESTAMPADD,TIMESTAMPDIFF,TIMEZONE_HOUR,TIMEZONE_MINUTE,TINYINT,TO,TOP_LEVEL_COUNT,TRAILING,TRANSACTION,TRANSACTIONS_ACTIVE,TRANSACTIONS_COMMITTED,TRANSACTIONS_ROLLED_BACK,TRANSFORM,TRANSFORMS,TRANSLATE,TRANSLATION,TREAT,TRIGGER,TRIGGER_CATALOG,TRIGGER_NAME,TRIGGER_SCHEMA,TRIM,TRUE,TYPE,UESCAPE,UNBOUNDED,UNCOMMITTED,UNDER,UNION,UNIQUE,UNKNOWN,UNNAMED,UNNEST,UPDATE,UPPER,UPSERT,USAGE,USER,USER_DEFINED_TYPE_CATALOG,USER_DEFINED_TYPE_CODE,USER_DEFINED_TYPE_NAME,USER_DEFINED_TYPE_SCHEMA,USING,VALUE,VALUES,VARBINARY,VARCHAR,VARYING,VAR_POP,VAR_SAMP,VERSION,VIEW,WEEK,WHEN,WHENEVER,WHERE,WIDTH_BUCKET,WINDOW,WITH,WITHIN,WITHOUT,WORK,WRAPPER,WRITE,XML,YEAR,ZONE
+
+-------------------------
+
+时区
+更新时间：2019-04-23 14:54:06
+
+编辑 ·
+ · 我的收藏
+本页目录
+时区简介
+示例
+支持的时区列表
+本文为您介绍如何设置实时计算作业的时区。
+
+说明 本文档适用于实时计算引擎 1.6及以上版本。
+时区简介
+在实时计算平台的作业参数中，您可配置Job的时区（如：blink.job.timeZone=America/New_York），默认配置为东八区。时区配置格式Asia/Shanghai、America/New_York或UTC等，详细列表见文章最后。
+
+您可以单独对于Source/Sink表配置时区。例如，您要读/写MySQL，但MySQL的Time/Date/Timestamp列的数据是用 America/New_York（美国时区），而Job计算需要的时区是 Asia/Shanghai（中国时区），则可以如下单独配置source/Sink的时区。
+CREATE TABLE mysql_source_my_table (
+ -- ...
+) WITH (
+timeZone='America/New_York'
+ -- ...
+)
+示例
+在实时计算引擎 1.6及以上版本中，时区相关函数语义上都是自定义的时区。下面以自定义时区是 Asia/Shanghai为例进行说明。
+字符串转时间类型（to_timestamp、timestamp和unix_timestamp）
+-- Scalar function
+TO_TIMESTAMP("2018-03-14 19:01:02.123")
+-- SQL Literal
+
+TIMESTAMP '2018-03-14 19:01:02.123'
+-- 输出:
+-- 实时计算引擎1.6.0及以上版本： `1521025262123`。
+-- 实时计算引擎1.5.x 版本： `1520996462123`。
+-- 类似的还有 UNIX_TIMESTAMP，区别是单位为秒。
+时间类型转字符串（from_timestamp和data_format）
+说明 当参数​为timestamp时，输出结果取决于自定义设定的时区。
+SELECT DATE_FORMAT(TO_TIMESTAMP(1520960523000), 'yyyy-MM-dd HH:mm:ss')
+-- 输出:
+-- 实时计算引擎1.6.0及以上版本： `2018-03-14 01:02:03`。
+-- 实时计算引擎1.5.x 版本： `2018-03-13 17:02:03`。
+
+S​ELECT DATE_FORMAT(TO_TIMESTAMP(1520960523000), 'yyyy-MM-dd HH:mm:ss')
+-- 输出:
+-- 实时计算引擎1.6.0及以上版本：`2018-03-14 01:02:03`。
+-- 实时计算引擎1.5.x 版本： `2018-03-13 17:02:03`。
+
+
+--另外，注意下面例子，实时计算引擎1.6.0和实时计算引擎1.5结果都是一致的，因为输入输出时间字符串是同一个时区计算。
+
+DATE_FORMAT('2018-03-14 01:02:03', 'yyyy-MM-dd HH:mm:ss', 'yyyy/MM/dd HH:mm:ss')
+FROM_UNIXTIME(1521025200000/1000)
+-- 输出:
+-- 实时计算引擎1.6.0及以上版本： `2018-03-14 19:00:00`。
+-- 实时计算引擎1.5.x 版本： `2018-03-14 11:00:00`。
+时间相关计算函数
+当参数​为timestamp时，extract、floor、ceil、date_diff等函数输出结果取决于自定义的时区。当输入参数时间为字符串类型，实时计算引擎 1.6.0和实时计算引擎 1.5结果都是一致的，因为输入输出时间字符串是同一个时区计算。
+-- 1521503999000 2018-03-19T23:59:59+0000, 2018-03-20T07:59:59+0800
+ EXTRACT(DAY FROM TO_TIMESTAMP(1521503999000))
+-- 输出:
+-- 实时计算引擎1.6.0及以上版本： `20`。意思为东八区的20号。
+-- 实时计算引擎1.5.x 版本： `19` 。
+当前时间函数（LOCALTIMESTAMP()、CURRENT_TIMESTAMP()、NOW()、UNIX_TIMESTAMP()）
+实时计算引擎 1.6.0版本中 LOCALTIMESTAMP语义有所改变，返回的时间戳当前时刻的时间戳。而在实时计算引擎 1.5版本中，因为 DATE_FORMAT中没有时区，为了让 DATE_FORMAT(CURRENT_TIMESTAMP) 结果正确， LOCALTIMESTAMP被错误的额外加上了默认时区的 offset。
+-- 当前时间是 2018-04-03 16:56:10 (Asia/Shanghai)
+SELECT DATE_FORMAT(CURRENT_TIMESTAMP, ‘yyyy-MM-dd HH:mm:ss’);
+-- 输出:
+-- 实时计算引擎1.6.0及以上版本： `2018-04-03 16:56:10`。
+-- 实时计算引擎1.5.x 版本： `2018-04-03 08:56:10`。
+
+SELECT DATE_FORMAT(LOCALTIMESTAMP, ‘yyyy-MM-dd HH:mm:ss’);
+-- 输出:
+-- 实时计算引擎1.6.0：`2018-04-03 16:56:10`。
+-- 实时计算引擎1.5：`2018-04-03 16:56:10`。
+-- 输出结果1.5/1.6中相同, 但是要注意到LOCALTIMESTAMP输出的时间戳实际是不同的，
+SELECT FROM_UNIXTIME(NOW()); SELECT FROM_UNIXTIME(UNIX_TIMESTAMP());
+-- 输出:
+-- 实时计算引擎1.6.0及以上版本： 输出`2018-04-03 16:56:10`。
+-- 实时计算引擎1.5.x 版本： 输出`2018-04-03 08:56:10`。
+-- 实时计算引擎1.5 / 实时计算引擎1.6.0中 NOW()、UNIX_TIMESTAMP()语义没有变化都是当前时间戳（单位秒）。输出结果不同是因为FROM_UNIXTIME语义在1.6.0中考虑了时区，以前版本没有考虑时区。
+Date/Time 类型
+对于Date/Time类型，SQL内部用整数来表示和计算。Date指的是epoch days，Time指的是用户时区的当天的零点开始的毫秒数。如果UDF里对Date、Time进行计算，需要注意的是，从内部类型转换到java.sql.Date、java.sql.Time类型时，java对象里已经加上时区偏移。
+
+支持的时区列表
+Africa/Abidjan
+Africa/Accra
+Africa/Addis_Ababa
+Africa/Algiers
+Africa/Asmara
+Africa/Asmera
+Africa/Bamako
+Africa/Bangui
+Africa/Banjul
+Africa/Bissau
+Africa/Blantyre
+Africa/Brazzaville
+Africa/Bujumbura
+Africa/Cairo
+Africa/Casablanca
+Africa/Ceuta
+Africa/Conakry
+Africa/Dakar
+Africa/Dar_es_Salaam
+Africa/Djibouti
+Africa/Douala
+Africa/El_Aaiun
+Africa/Freetown
+Africa/Gaborone
+Africa/Harare
+Africa/Johannesburg
+Africa/Juba
+Africa/Kampala
+Africa/Khartoum
+Africa/Kigali
+Africa/Kinshasa
+Africa/Lagos
+Africa/Libreville
+Africa/Lome
+Africa/Luanda
+Africa/Lubumbashi
+Africa/Lusaka
+Africa/Malabo
+Africa/Maputo
+Africa/Maseru
+Africa/Mbabane
+Africa/Mogadishu
+Africa/Monrovia
+Africa/Nairobi
+Africa/Ndjamena
+Africa/Niamey
+Africa/Nouakchott
+Africa/Ouagadougou
+Africa/Porto-Novo
+Africa/Sao_Tome
+Africa/Timbuktu
+Africa/Tripoli
+Africa/Tunis
+Africa/Windhoek
+America/Adak
+America/Anchorage
+America/Anguilla
+America/Antigua
+America/Araguaina
+America/Argentina/Buenos_Aires
+America/Argentina/Catamarca
+America/Argentina/ComodRivadavia
+America/Argentina/Cordoba
+America/Argentina/Jujuy
+America/Argentina/La_Rioja
+America/Argentina/Mendoza
+America/Argentina/Rio_Gallegos
+America/Argentina/Salta
+America/Argentina/San_Juan
+America/Argentina/San_Luis
+America/Argentina/Tucuman
+America/Argentina/Ushuaia
+America/Aruba
+America/Asuncion
+America/Atikokan
+America/Atka
+America/Bahia
+America/Bahia_Banderas
+America/Barbados
+America/Belem
+America/Belize
+America/Blanc-Sablon
+America/Boa_Vista
+America/Bogota
+America/Boise
+America/Buenos_Aires
+America/Cambridge_Bay
+America/Campo_Grande
+America/Cancun
+America/Caracas
+America/Catamarca
+America/Cayenne
+America/Cayman
+America/Chicago
+America/Chihuahua
+America/Coral_Harbour
+America/Cordoba
+America/Costa_Rica
+America/Creston
+America/Cuiaba
+America/Curacao
+America/Danmarkshavn
+America/Dawson
+America/Dawson_Creek
+America/Denver
+America/Detroit
+America/Dominica
+America/Edmonton
+America/Eirunepe
+America/El_Salvador
+America/Ensenada
+America/Fort_Nelson
+America/Fort_Wayne
+America/Fortaleza
+America/Glace_Bay
+America/Godthab
+America/Goose_Bay
+America/Grand_Turk
+America/Grenada
+America/Guadeloupe
+America/Guatemala
+America/Guayaquil
+America/Guyana
+America/Halifax
+America/Havana
+America/Hermosillo
+America/Indiana/Indianapolis
+America/Indiana/Knox
+America/Indiana/Marengo
+America/Indiana/Petersburg
+America/Indiana/Tell_City
+America/Indiana/Vevay
+America/Indiana/Vincennes
+America/Indiana/Winamac
+America/Indianapolis
+America/Inuvik
+America/Iqaluit
+America/Jamaica
+America/Jujuy
+America/Juneau
+America/Kentucky/Louisville
+America/Kentucky/Monticello
+America/Knox_IN
+America/Kralendijk
+America/La_Paz
+America/Lima
+America/Los_Angeles
+America/Louisville
+America/Lower_Princes
+America/Maceio
+America/Managua
+America/Manaus
+America/Marigot
+America/Martinique
+America/Matamoros
+America/Mazatlan
+America/Mendoza
+America/Menominee
+America/Merida
+America/Metlakatla
+America/Mexico_City
+America/Miquelon
+America/Moncton
+America/Monterrey
+America/Montevideo
+America/Montreal
+America/Montserrat
+America/Nassau
+America/New_York
+America/Nipigon
+America/Nome
+America/Noronha
+America/North_Dakota/Beulah
+America/North_Dakota/Center
+America/North_Dakota/New_Salem
+America/Ojinaga
+America/Panama
+America/Pangnirtung
+America/Paramaribo
+America/Phoenix
+America/Port-au-Prince
+America/Port_of_Spain
+America/Porto_Acre
+America/Porto_Velho
+America/Puerto_Rico
+America/Punta_Arenas
+America/Rainy_River
+America/Rankin_Inlet
+America/Recife
+America/Regina
+America/Resolute
+America/Rio_Branco
+America/Rosario
+America/Santa_Isabel
+America/Santarem
+America/Santiago
+America/Santo_Domingo
+America/Sao_Paulo
+America/Scoresbysund
+America/Shiprock
+America/Sitka
+America/St_Barthelemy
+America/St_Johns
+America/St_Kitts
+America/St_Lucia
+America/St_Thomas
+America/St_Vincent
+America/Swift_Current
+America/Tegucigalpa
+America/Thule
+America/Thunder_Bay
+America/Tijuana
+America/Toronto
+America/Tortola
+America/Vancouver
+America/Virgin
+America/Whitehorse
+America/Winnipeg
+America/Yakutat
+America/Yellowknife
+Antarctica/Casey
+Antarctica/Davis
+Antarctica/DumontDUrville
+Antarctica/Macquarie
+Antarctica/Mawson
+Antarctica/McMurdo
+Antarctica/Palmer
+Antarctica/Rothera
+Antarctica/South_Pole
+Antarctica/Syowa
+Antarctica/Troll
+Antarctica/Vostok
+Arctic/Longyearbyen
+Asia/Aden
+Asia/Almaty
+Asia/Amman
+Asia/Anadyr
+Asia/Aqtau
+Asia/Aqtobe
+Asia/Ashgabat
+Asia/Ashkhabad
+Asia/Atyrau
+Asia/Baghdad
+Asia/Bahrain
+Asia/Baku
+Asia/Bangkok
+Asia/Barnaul
+Asia/Beirut
+Asia/Bishkek
+Asia/Brunei
+Asia/Calcutta
+Asia/Chita
+Asia/Choibalsan
+Asia/Chongqing
+Asia/Chungking
+Asia/Colombo
+Asia/Dacca
+Asia/Damascus
+Asia/Dhaka
+Asia/Dili
+Asia/Dubai
+Asia/Dushanbe
+Asia/Famagusta
+Asia/Gaza
+Asia/Harbin
+Asia/Hebron
+Asia/Ho_Chi_Minh
+Asia/Hong_Kong
+Asia/Hovd
+Asia/Irkutsk
+Asia/Istanbul
+Asia/Jakarta
+Asia/Jayapura
+Asia/Jerusalem
+Asia/Kabul
+Asia/Kamchatka
+Asia/Karachi
+Asia/Kashgar
+Asia/Kathmandu
+Asia/Katmandu
+Asia/Khandyga
+Asia/Kolkata
+Asia/Krasnoyarsk
+Asia/Kuala_Lumpur
+Asia/Kuching
+Asia/Kuwait
+Asia/Macao
+Asia/Macau
+Asia/Magadan
+Asia/Makassar
+Asia/Manila
+Asia/Muscat
+Asia/Nicosia
+Asia/Novokuznetsk
+Asia/Novosibirsk
+Asia/Omsk
+Asia/Oral
+Asia/Phnom_Penh
+Asia/Pontianak
+Asia/Pyongyang
+Asia/Qatar
+Asia/Qyzylorda
+Asia/Rangoon
+Asia/Riyadh
+Asia/Saigon
+Asia/Sakhalin
+Asia/Samarkand
+Asia/Seoul
+Asia/Shanghai
+Asia/Singapore
+Asia/Srednekolymsk
+Asia/Taipei
+Asia/Tashkent
+Asia/Tbilisi
+Asia/Tehran
+Asia/Tel_Aviv
+Asia/Thimbu
+Asia/Thimphu
+Asia/Tokyo
+Asia/Tomsk
+Asia/Ujung_Pandang
+Asia/Ulaanbaatar
+Asia/Ulan_Bator
+Asia/Urumqi
+Asia/Ust-Nera
+Asia/Vientiane
+Asia/Vladivostok
+Asia/Yakutsk
+Asia/Yangon
+Asia/Yekaterinburg
+Asia/Yerevan
+Atlantic/Azores
+Atlantic/Bermuda
+Atlantic/Canary
+Atlantic/Cape_Verde
+Atlantic/Faeroe
+Atlantic/Faroe
+Atlantic/Jan_Mayen
+Atlantic/Madeira
+Atlantic/Reykjavik
+Atlantic/South_Georgia
+Atlantic/St_Helena
+Atlantic/Stanley
+Australia/ACT
+Australia/Adelaide
+Australia/Brisbane
+Australia/Broken_Hill
+Australia/Canberra
+Australia/Currie
+Australia/Darwin
+Australia/Eucla
+Australia/Hobart
+Australia/LHI
+Australia/Lindeman
+Australia/Lord_Howe
+Australia/Melbourne
+Australia/NSW
+Australia/North
+Australia/Perth
+Australia/Queensland
+Australia/South
+Australia/Sydney
+Australia/Tasmania
+Australia/Victoria
+Australia/West
+Australia/Yancowinna
+Brazil/Acre
+Brazil/DeNoronha
+Brazil/East
+Brazil/West
+CET
+CST6CDT
+Canada/Atlantic
+Canada/Central
+Canada/Eastern
+Canada/Mountain
+Canada/Newfoundland
+Canada/Pacific
+Canada/Saskatchewan
+Canada/Yukon
+Chile/Continental
+Chile/EasterIsland
+Cuba
+EET
+EST5EDT
+Egypt
+Eire
+Etc/GMT
+Etc/GMT+0
+Etc/GMT+1
+Etc/GMT+10
+Etc/GMT+11
+Etc/GMT+12
+Etc/GMT+2
+Etc/GMT+3
+Etc/GMT+4
+Etc/GMT+5
+Etc/GMT+6
+Etc/GMT+7
+Etc/GMT+8
+Etc/GMT+9
+Etc/GMT-0
+Etc/GMT-1
+Etc/GMT-10
+Etc/GMT-11
+Etc/GMT-12
+Etc/GMT-13
+Etc/GMT-14
+Etc/GMT-2
+Etc/GMT-3
+Etc/GMT-4
+Etc/GMT-5
+Etc/GMT-6
+Etc/GMT-7
+Etc/GMT-8
+Etc/GMT-9
+Etc/GMT0
+Etc/Greenwich
+Etc/UCT
+Etc/UTC
+Etc/Universal
+Etc/Zulu
+Europe/Amsterdam
+Europe/Andorra
+Europe/Astrakhan
+Europe/Athens
+Europe/Belfast
+Europe/Belgrade
+Europe/Berlin
+Europe/Bratislava
+Europe/Brussels
+Europe/Bucharest
+Europe/Budapest
+Europe/Busingen
+Europe/Chisinau
+Europe/Copenhagen
+Europe/Dublin
+Europe/Gibraltar
+Europe/Guernsey
+Europe/Helsinki
+Europe/Isle_of_Man
+Europe/Istanbul
+Europe/Jersey
+Europe/Kaliningrad
+Europe/Kiev
+Europe/Kirov
+Europe/Lisbon
+Europe/Ljubljana
+Europe/London
+Europe/Luxembourg
+Europe/Madrid
+Europe/Malta
+Europe/Mariehamn
+Europe/Minsk
+Europe/Monaco
+Europe/Moscow
+Europe/Nicosia
+Europe/Oslo
+Europe/Paris
+Europe/Podgorica
+Europe/Prague
+Europe/Riga
+Europe/Rome
+Europe/Samara
+Europe/San_Marino
+Europe/Sarajevo
+Europe/Saratov
+Europe/Simferopol
+Europe/Skopje
+Europe/Sofia
+Europe/Stockholm
+Europe/Tallinn
+Europe/Tirane
+Europe/Tiraspol
+Europe/Ulyanovsk
+Europe/Uzhgorod
+Europe/Vaduz
+Europe/Vatican
+Europe/Vienna
+Europe/Vilnius
+Europe/Volgograd
+Europe/Warsaw
+Europe/Zagreb
+Europe/Zaporozhye
+Europe/Zurich
+GB
+GB-Eire
+GMT
+GMT0
+Greenwich
+Hongkong
+Iceland
+Indian/Antananarivo
+Indian/Chagos
+Indian/Christmas
+Indian/Cocos
+Indian/Comoro
+Indian/Kerguelen
+Indian/Mahe
+Indian/Maldives
+Indian/Mauritius
+Indian/Mayotte
+Indian/Reunion
+Iran
+Israel
+Jamaica
+Japan
+Kwajalein
+Libya
+MET
+MST7MDT
+Mexico/BajaNorte
+Mexico/BajaSur
+Mexico/General
+NZ
+NZ-CHAT
+Navajo
+PRC
+PST8PDT
+Pacific/Apia
+Pacific/Auckland
+Pacific/Bougainville
+Pacific/Chatham
+Pacific/Chuuk
+Pacific/Easter
+Pacific/Efate
+Pacific/Enderbury
+Pacific/Fakaofo
+Pacific/Fiji
+Pacific/Funafuti
+Pacific/Galapagos
+Pacific/Gambier
+Pacific/Guadalcanal
+Pacific/Guam
+Pacific/Honolulu
+Pacific/Johnston
+Pacific/Kiritimati
+Pacific/Kosrae
+Pacific/Kwajalein
+Pacific/Majuro
+Pacific/Marquesas
+Pacific/Midway
+Pacific/Nauru
+Pacific/Niue
+Pacific/Norfolk
+Pacific/Noumea
+Pacific/Pago_Pago
+Pacific/Palau
+Pacific/Pitcairn
+Pacific/Pohnpei
+Pacific/Ponape
+Pacific/Port_Moresby
+Pacific/Rarotonga
+Pacific/Saipan
+Pacific/Samoa
+Pacific/Tahiti
+Pacific/Tarawa
+Pacific/Tongatapu
+Pacific/Truk
+Pacific/Wake
+Pacific/Wallis
+Pacific/Yap
+Poland
+Portugal
+ROK
+Singapore
+SystemV/AST4
+SystemV/AST4ADT
+SystemV/CST6
+SystemV/CST6CDT
+SystemV/EST5
+SystemV/EST5EDT
+SystemV/HST10
+SystemV/MST7
+SystemV/MST7MDT
+SystemV/PST8
+SystemV/PST8PDT
+SystemV/YST9
+SystemV/YST9YDT
+Turkey
+UCT
+US/Alaska
+US/Aleutian
+US/Arizona
+US/Central
+US/East-Indiana
+US/Eastern
+US/Hawaii
+US/Indiana-Starke
+US/Michigan
+US/Mountain
+US/Pacific
+US/Pacific-New
+US/Samoa
+UTC
+Universal
+W-SU
+WET
+Zulu
+
+时间属性
+更新时间：2019-04-16 16:10:16
+
+编辑 ·
+ · 我的收藏
+本页目录
+Event Time
+Processing Time
+时间属性字段传递
+本文为您介绍Flink SQL支持的Event Time和Processing Time数据类型。
+
+Flink SQL支持2种时间类型Event Time和Processing Time。
+Event Time：您提供的事件时间（通常是数据的最原始的创建时间），Event time必须是您提供在Schema里的数据。
+Processing Time：系统对事件进行处理的本地系统时间。
+下图是不同时间属性在实时计算流程中的位置。
+
+从上图的定义可以看出，Ingestion Time和Processing Time是系统为流式记录增加的时间属性，您并不能控制。Event Time则是流记录本身携带的时间属性。由于数据本身存在乱序以及网络抖动等其它原因，Event Time为t1（对应partition1）时刻的纪录，有可能会晚于t2（对应prtition2）时刻的被Flink处理，即t2 > t1。
+
+Event Time
+EventTime也称为rowtime。EventTime时间属性必须在源表DDL中声明，可以将源表中的某一字段声明成 EventTime。目前只支持将TIMESTAMP类型（将来会支持 LONG 类型）声明成rowtime字段。如果不是TIMESTAMP类型，需要借助计算列，基于现有列构造出一个TIMESTAMP类型的列。
+
+但由于数据本身会有乱序，加之网络抖动或其它原因，数据到达的顺序和被处理的顺序可能是不一致的（乱序）。因此定义一个rowtime字段，需要显示地定义一个Watermark计算方法。
+
+窗口函数基于Event Time聚合的示例如下。
+CREATE TABLE tt_stream(
+  a VARCHAR,
+  b VARCHAR,
+  c TIMESTAMP,
+  WATERMARK wk1 FOR c as withOffset(c, 1000)  --watermark计算方法
+) WITH (
+  type = 'sls',
+  topic = 'yourTopicName',
+  accessId = 'yourAccessId',
+  accessKey = 'yourAccessSecret'
+);
+
+CREATE TABLE rds_output(
+  id VARCHAR,
+  c TIMESTAMP,
+  f TIMESTAMP,
+  cnt BIGINT
+) WITH (
+  type = 'rds',
+  url = 'jdbc:mysql://****3306/test',
+  tableName = 'yourTableName',
+  userName = 'yourUserName',
+  password = 'yourPassword'
+);
+
+INSERT INTO rds_output
+SELECT a AS id,
+     SESSION_START(c, INTERVAL '1' SECOND) AS c,
+     CAST(SESSION_END(c, INTERVAL '1' SECOND) AS TIMESTAMP) AS f,
+     COUNT(a) AS cnt
+FROM tt_stream
+GROUP BY SESSION(c, INTERVAL '1' SECOND), a
+
+
+Processing Time
+Processing Time是系统产生的，不在您的原始数据中，您需要在数据源表的声明中显式的定义一个Processing Time列。
+filedName as PROCTIME()
+窗口函数基于Processing Time聚合的示例如下。
+CREATE TABLE mq_stream (
+  a VARCHAR,
+  b VARCHAR,
+  c BIGINT,
+  d AS PROCTIME()   ---在数据源表的声明中显式的定义一个Processing Time列
+) WITH (
+  type = 'mq',
+  topic = 'yourTopic',
+  accessId = 'yourAccessId',
+  accessKey = 'yourAccessSecret'
+);
+
+CREATE TABLE rds_output (
+  id VARCHAR,
+  c TIMESTAMP,
+  f TIMESTAMP,
+  cnt BIGINT
+) with (
+  type = 'rds',
+  url = 'yourDatebaseURL',
+  tableName = 'yourDatabasTableName',
+  userName = 'yourUserName',
+  password = 'yourPassword'
+);
+
+
+INSERT INTO rds_output
+SELECT a AS id,
+     SESSION_START(d, INTERVAL '1' SECOND) AS c,
+     SESSION_END(d, INTERVAL '1' SECOND) AS f,
+     COUNT(a) AS cnt
+FROM mq_stream
+GROUP BY SESSION(d, INTERVAL '1' SECOND), a
+
+时间属性字段传递
+目前，时间属性字段经过如下两种操作后会失去时间属性 ：
+非window的group by
+双流join
+如果经过以上两种操作后，继续使用该时间属性字段进行窗口函数运算会出现类似 org.apache.flink.table.api.ValidationException: Window can only be defined over a time attribute column.的报错。
+
+Watermark
+更新时间：2019-03-18 09:38:50
+
+编辑 ·
+ · 我的收藏
+实时计算可以基于时间属性对数据进行窗口聚合。基于的Event Time时间属性的窗口函数作业中，数据源表的声明中需要使用watermark方法。
+
+watermark是一种衡量Event Time进展的机制，它是数据本身的一个隐藏属性，watermark的定义是数据源表DDL定义的一部分。Flink提供了如下语法定义watermark。
+
+说明 实时计算时间属性详情，请参见时间属性。
+WATERMARK [watermarkName] FOR <rowtime_field> AS withOffset(<rowtime_field>, offset)
+参数	说明
+watermarkName	标识watermark的名字，可选。
+<rowtime_field>	必须是表中已定义的一列（当前仅支持为TIMESTAMP类型），含义是基于该列生成watermark，并且标识该列为Event Time列，可以在后续query中用来定义窗口。
+withOffset	是目前提供的watermark的生成策略，是根据<rowtime_field> - offset生成watermark的值。withOffset的第一个参数必须是<rowtime_field>。
+offset	单位为毫秒，含义为watermark值与Event Time值的偏移量。
+通常一条记录中的某个字段就代表了该记录的发生时间。例如，表中有个rowtime字段，类型为TIMESTAMP，其中某个字段为1501750584000（2017-08-03 08:56:24.000）。如果您需要定义一个基于该rowtime列的watermark，watermark策略为偏移4秒，需要如下定义。
+
+WATERMARK FOR rowtime AS withOffset(rowtime, 4000)
+在这种情况下，这条数据的watermark时间为 1501750584000 - 4000 = 1501750580000（2017-08-03 08:56:20.000）。这条数据的watermark时间含义即：时间戳小于1501750580000（2017-08-03 08:56:20.000）的数据，都已经到达了。
+
+说明
+在使用Event Time Watermark时的rowtime必须是TIMESTAMP类型。当前支持毫秒级别的、在Unix时间戳里是13位。如果是其他类型或是在Unix时间戳不是13位，建议使用计算列来做转换。
+Event Time和Processing Time的声明只能在源表上声明。
+watermark使用总结
+Watermark含义是所有时间戳t'< t 的事件都已经发生。假如watermarkt已经生效，那么后续Event Time小于t的记录都会被丢弃掉（目前实时计算的处理方式是丢弃这些来的更晚的数据，后续支持用户配置让更晚的数据也能继续更新）。
+针对乱序的的流，watermark至关重要。即使一些事件延迟到达，也不至于过于影响窗口计算的正确性。
+并行数据流中，当算子（Operator）有多个输入流时，算子的Event Time以最小流Event Time为准。
+
+计算列
+更新时间：2019-03-18 09:39:36
+
+编辑 ·
+ · 我的收藏
+本页目录
+计算列概念
+计算列的用途
+计算列语法
+计算列示例
+计算列可以使用其它列的数据，计算出其所属列的数值。如果您的数据源表中没有TIMESTAMP类型的列，可以使用计算列方法从其它类型的字段进行转换。
+
+计算列概念
+计算列是虚拟列，并非实际存储在表中。计算列可以通过表达式、内置函数、或是自定义函数等方式，使用其它列的数据，计算出其所属列的数值。计算列在Flink SQL中可以像普通字段一样被使用。
+
+计算列的用途
+目前watermark的Event Time（也称为rowtime）列只支持TIMESTAMP类型（未来会支持LONG类型）。watermark只能定义在源表DDL中，如果您的源表中没有TIMESTAMP类型的列，可以使用计算列从其他类型的字段进行转换。
+
+计算列语法
+column_name AS computed_column_expression
+计算列示例
+watermark的rowtime必须是TIMESTAMP数据类型。当前实时计算支持毫秒级别的、在Unix时间戳里是13位TIMESTAMP数据类型。如果DataHub的TIME字段是微秒级别的（16位Unix时间戳），可以用计算列方法转换为13位的时间戳，如下所示。
+
+
+CREATE TABLE test_stream(
+  a INT,
+  b BIGINT,
+  `TIME` BIGINT,
+  ts AS TO_TIMESTAMP(TIME/1000), --利用计算列，将16位时间戳转换为13位时间戳。
+  WATERMARK FOR ts AS WITHOFFSET(ts, 1000)
+) WITH (
+  type = 'datahub',
+  ...
+);
+如上示例中所示，源表数据中的字段TIME包含时间信息，为BIGINT类型。用计算列的功能将字段TIME转换成了TIMESTAMP类型的ts字段，并将ts字段作为watermark的rowtime字段
+
+数据类型概述
+更新时间：2019-03-15 09:23:10
+
+编辑 ·
+ · 我的收藏
+本页目录
+实时计算支持的数据类型
+数据类型转换
+类型转换示例
+本文为您介绍实时计算支持的数据类型以及数据类型之间的转换方法。
+
+实时计算支持的数据类型
+数据类型	说明	值域
+VARCHAR	可变长度字符串	最大容量为4Mb
+BOOLEAN	逻辑值	取值为TRUE、FALSE或UNKNOWN。
+TINYINT	微整型，1字节整数。	-128到127
+SMALLINT	短整型，2字节整数。	-32768到32767
+INT	整型，4字节整数。	-2147483648到2147483647
+BIGINT	长整型，8字节整数。	-9223372036854775808到9223372036854775807
+FLOAT	4字节浮点型	6位数字精度
+DECIMAL	小数类型	示例：123.45是DECIMAL(5,2)的值。
+DOUBLE	浮点型，8字节浮点型	15位十进制精度
+DATE	日期类型	示例：DATE'1969-07-20'。
+TIME	时间类型	示例：TIME '20：17：40'。
+TIMESTAMP	时间戳，日期和时间	示例：TIMESTAMP '1969-07-20 20:17:40'。
+VARBINARY	二进制数据	byte[] 数组
+数据类型转换
+数据类型转换
+类型转换示例
+测试数据
+
+var1（VARCHAR）	big1（BIGINT）
+1000	323
+测试语句
+
+cast (var1 as bigint) as AA;
+cast (big1 as varchar) as BB;
+测试结果
+
+AA（BIGINT）	BB（VARCHAR）
+1000	323
+
+数据类型之间运算关系
+更新时间：2019-03-06 18:46:50
+
+编辑 ·
+ · 我的收藏
+本页目录
+数学运算和逻辑运算
+本文为您介绍实时计算数据类型之间的数学运算和逻辑运算。
+
+数学运算和逻辑运算
+运算语句	描述	numeric1和numeric2支持的数据类型	示例
+numeric1 + numeric2	返回前后两数字数学运算的和	INT,DOUBLE,DECIMAL,BIGINT	2+4.2
+numeric1 - numeric2	返回前后两数字数学运算差值	3-5.3
+numeric1 * numeric2	返回前后两数字数学运算积值	2*4
+numeric1 / numeric2	返回前后两数字数学运算商值	2.4/5
+numeric1 > numeric2	返回前后两数字是否大于的逻辑运算值	2.4>5
+numeric1 < numeric2	返回前后两数字是否小于逻辑运算值	2.4<5
+numeric1 >= numeric2	返回前后两数字是否大于等于的逻辑运算值	2.4>=5
+numeric1 <= numeric2	返回前后两数字是否小于等于的逻辑运算值	2.4<=5
+numeric1 = numeric2	返回前后两数字是否相同（等）逻辑运算值	INT,DOUBLE,DECIMAL,BIGINT,VARCHAR	‘iphone’ = 5
+numeric1 <> numeric2	返回前后两数字是否不相同（等）逻辑运算值	‘iphone’ <> 5
+说明 同一运算语句中numeric1和numeric2的数据类型需要保持一致。
+
+创建数据视图
+更新时间：2019-03-15 09:23:28
+
+编辑 ·
+ · 我的收藏
+本页目录
+语法
+示例1
+示例2
+您可以通过创建实时计算数据视图简化开发过程。
+
+语法
+如果计算的逻辑比较复杂，您可以通过实时计算定义视图的方式创建数据视图，简化开发过程。
+说明 数据视图仅用于辅助计算逻辑的描述，不会产生数据的物理存储。
+CREATE VIEW viewName[ (columnName[ , columnName]*
+) ] AS queryStatement;
+示例1
+CREATE VIEW LargeOrders (r, t, c, u) AS
+SELECT
+    rowtime,
+    productId,
+    c,
+    units
+FROM
+    orders;
+INSERT INTO
+    rds_output
+SELECT
+    r,
+    t,
+    c,
+    u
+FROM
+    LargeOrders;
+示例2
+测试数据
+a（VARCHAR）	b（BIGINT）	c（ TIMESTAMP）
+test1	1	1506823820000
+test2	1	1506823850000
+test1	1	1506823810000
+test2	1	1506823840000
+test2	1	1506823870000
+test1	1	1506823830000
+test2	1	1506823860000
+测试语句
+CREATE TABLE datahub_stream (
+   a VARCHAR,
+   b BIGINT,
+   c TIMESTAMP,
+   d AS PROCTIME()
+) WITH (
+  TYPE='datahub',
+  ...
+);
+CREATE TABLE rds_output (
+   a VARCHAR,
+   b TIMESTAMP,
+   cnt BIGINT,
+   PRIMARY KEY(a)
+)WITH(
+  TYPE = 'rds',
+  ...
+);
+CREATE VIEW rds_view AS
+SELECT a,
+   CAST(
+      HOP_START(d, INTERVAL '5' SECOND, INTERVAL '30' SECOND) AS TIMESTAMP
+   ) AS cc,
+   SUM(b) AS cnt
+FROM
+   datahub_stream
+GROUP BY
+    HOP(d, INTERVAL '5' SECOND, INTERVAL '30' SECOND),a;
+INSERT INTO
+   rds_output
+SELECT
+   a,
+   cc,
+   cnt
+FROM
+   rds_view
+WHERE
+   cnt=4
+测试结果
+a(VARCHAR)	b (TIMESTAMP)	cnt (BIGINT)
+test2	2017-11-06 16:54:10	4
 
 
 
+
+创建数据总线（DataHub）源表
+更新时间：2019-03-27 17:37:40
+
+编辑 ·
+本页目录
+什么是数据总线
+示例
+属性字段
+WITH参数
+类型映射
+本文为您介绍如何为实时计算创建数据总线（DataHub）源表以及创建过程涉及到的属性字段、with参数和类型映射。
+
+什么是数据总线
+DataHub作为流式数据总线，为阿里云数加平台提供了大数据的入口服务。实时计算可以使用DataHub作为流式数据存储的源头和输出的目的端。
+
+示例
+DataHub可以作为实时计算的数据输入，示例如下。
+CREATE TABLE datahub_stream(
+  name VARCHAR,
+  age BIGINT,
+  birthday BIGINT
+) WITH (
+  type='datahub',
+  endPoint='******',
+  project='******',
+  topic='******',
+  accessId='******',
+  accessKey='******',
+  startTime='2017-07-21 00:00:00'
+);
+属性字段
+Flink SQL支持获取DataHub的属性字段。通过读取属性字段可以获得每条信息写入DataHub的系统时间（System Time），如下图所示。
+System Time
+字段名	注释说明
+timestamp	每条记录写入DataHub的系统时间（System Time）属性字段使用说明
+为了获取这些属性字段，除了按照正常逻辑声明外，还需要在类型声明后面加上header关键字以示区分。
+
+例如，DataHub属性字段timestamp并不存在于DataHub的字段声明。想获取每条记录入DataHub的系统时间，可以将timestamp作为字段名，在后面加上header。示例如下。
+
+测试数据
+name(VARCHAR)	MsgID(VARCHAR)
+ens_altar_flow	ems0a
+测试语句
+CREATE TABLE datahub_log (
+  `timestamp`  VARCHAR HEADER,
+  name     VARCHAR，
+  MsgID    VARCHAR
+)
+WITH
+(
+  type ='datahub'
+
+);
+
+CREATE TABLE RDS_out (
+  `timestamp`     VARCHAR,
+  MsgID    VARCHAR,
+  name  VARCHAR
+)
+WITH
+(
+  type ='RDS'
+
+);
+
+INSERT INTO RDS_out
+SELECT
+`timestamp`,
+MsgID,
+name
+FROM datahub_log;
+测试结果
+TIME(VARCHAR)	MsgID(VARCHAR)	name(VARCHAR)
+1522652455625	ems0a	ens_altar_flow
+WITH参数
+目前只支持tuple模式的topic。
+
+参数	注释说明	备注
+endPoint	消费端点信息	参见DataHub域名列表 。
+accessId	读取的accessId	无
+accessKey	读取的密钥	无
+project	读取的项目	无
+topic	project下的具体的topic	无
+startTime	启动位点的时间	格式为yyyy-MM-dd hh:mm:ss。
+maxRetryTimes	读取最大尝试次数	可选，默认值为20。
+retryIntervalMs	重试间隔	可选，默认值为1000，单位为毫秒。
+batchReadSize	单次读取条数	可选，默认值为10，可设置的最大值为1000。
+lengthCheck	单行字段条数检查策略	可选，默认值为NONE，表示：
+解析出的字段数大于定义字段数时，按从左到右的顺序，取定义字段数量的数据。
+解析出的字段数小于定义字段数时，跳过这行数据。
+其它可选值为SKIP、EXCEPTION和PAD。
+SKIP：解析出的字段数和定义字段数不同时跳过这行数据。
+EXCEPTION：解析出的字段数和定义字段数不同时提示异常。
+PAD：按从左到右顺序填充。
+解析出的字段数大于定义字段数时，按从左到右的顺序，取定义字段数量的数据。
+解析出的字段数小于定义字段数时，在行尾用null填充缺少的字段。
+columnErrorDebug	是否开启调试功能	可选，默认值为false，表示关闭调试功能。开启调试功能参数值为true，将打印解析异常的日志。
+类型映射
+DataHub和实时计算字段类型对应关系如下，建议使用该对应关系时进行DDL声明:
+
+DataHub字段类型	实时计算字段类型
+BIGINT	BIGINT
+TIMESTAMP
+STRING	VARCHAR
+DOUBLE	DOUBLE
+BOOLEAN	BOOLEAN
+DECIMAL	DECIMAL
+说明 DataHub的TIMESTAMP是精确到微妙级别的，在Unix时间戳里是16位的。而实时计算定义的TIMESTAMP是精确到毫秒级别的，在Unix时间戳里是13位的所以建议大家使用BIGINT来映射。如果一定是要用TIMESTAMP建议使用计算列来做转换。
+
+
+
+
+
+
+创建日志服务（LogService）源表
+更新时间：2019-04-18 14:04:36
+
+编辑 ·
+本页目录
+什么是日志服务
+属性字段
+W参数
+类型映射
+本文为您介绍如何为实时计算创建日志服务（Log Service）源表以及创建过程涉及到的属性字段、with参数和类型映射。
+
+什么是日志服务
+日志服务（LogService）是针对日志类数据的一站式服务，在阿里巴巴集团经历大量大数据场景锤炼而成。 日志服务本身是流数据存储，实时计算能将其作为流式数据输入。对于日志服务而言，数据格式类似JSON，示例如下。
+
+{
+	"a": 1000,
+	"b": 1234,
+	"c": "li"
+}
+
+对于实时计算而言，我们需要定义的DDL如下（代码中的sls代表LogService）。
+
+create table sls_stream(
+  a int,
+  b int,
+  c VARCHAR
+) with (
+  type ='sls',
+  endPoint ='yourEndpoint',
+  accessId ='yourAccessId',
+  accessKey ='yourAccessKey',
+  startTime = 'yourStartTime',
+  project ='yourProjectName',
+  logStore ='yourLogStoreName',
+  consumerGroup ='yourConsumerGroupName'
+);
+
+属性字段
+目前Flink SQL默认支持3个LogServic属性字段的获取，也支持其它自定义字段的写入。
+
+字段名	注释说明
+__source__	消息源
+__topic__	消息主题
+__timestamp__	日志时间属性字段使用说明
+为了获取这些属性字段，除了正常逻辑声明外，还需要在类型声明后加上HEADER关键字。示例如下。
+
+测试数据
+     __topic__:  ens_altar_flow
+        result:  {"MsgID":"ems0a","Version":"0.0.1"}
+测试语句
+CREATE TABLE sls_log (
+  __topic__  VARCHAR HEADER,
+  result     VARCHAR
+)
+WITH
+(
+  type ='sls'
+);
+CREATE TABLE sls_out (
+  name     VARCHAR,
+  MsgID    VARCHAR,
+  Version  VARCHAR
+)
+WITH
+(
+  type ='RDS'
+);
+INSERT INTO sls_out
+SELECT
+__topic__,
+JSON_VALUE(result,'$.MsgID'),
+JSON_VALUE(result,'$.Version')
+FROM
+sls_log
+测试结果
+name(VARCHAR)	MsgID(VARCHAR)	Version(VARCHAR)
+ens_altar_flow	ems0a	0.0.1
+W参数
+参数	注释说明	备注
+endPoint	消费端点信息	服务入口
+accessId	LogService读取的accessKey	无
+accessKey	LogService读取的密钥	无
+project	读取的LogService项目	无
+logStore	Project下的具体的LogStore名称	无
+consumerGroup	消费组名	用户可以自定义消费组名（没有固定格式）
+startTime	消费日志开始的时间点	无
+heartBeatIntervalMills	可选，消费客户端心跳间隔时间	默认为10s
+maxRetryTimes	读取最大尝试次数	可选，默认为5。
+batchGetSize	单次读取logGroup条数	可选，默认为10。
+lengthCheck	单行字段条数检查策略	可选，默认值为NONE，表示：
+解析出的字段数大于定义字段数时，按从左到右的顺序，取定义字段数量的数据。
+解析出的字段数小于定义字段数时，跳过这行数据。
+其它可选值为SKIP、EXCEPTION和PAD。
+SKIP：解析出的字段数和定义字段数不同时跳过这行数据。
+EXCEPTION：解析出的字段数和定义字段数不同时提示异常。
+PAD：按从左到右顺序填充。
+解析出的字段数大于定义字段数时，按从左到右的顺序，取定义字段数量的数据。
+解析出的字段数小于定义字段数时，在行尾用null填充缺少的字段。
+columnErrorDebug	是否打开调试开关	可选，默认为false，不打开。如果选择打开，会把解析异常的log打印出来
+directMode	是否使用LogService的直连模式	可选 ，默认为false，不开启LogService直连模式。开启后作业直接连接LogService的nginx服务器，网络可通时，连接效率能够提升。
+说明
+LogService暂不支持MAP类型的数据。
+字段顺序支持无序（建议字段顺序和表中定义一致）。
+输入数据源为JSON形式时，注意定义分隔符，并且需要采用内置函数JSON_VALUE分析，否则就会解析失败。报错如下:
+2017-12-25 15:24:43,467 WARN [Topology-0 (1/1)] com.alibaba.blink.streaming.connectors.common.source.parse.DefaultSourceCollector - Field missing error, table column number: 3, data column number: 3, data filed number: 1, data: [{"lg_order_code":"LP00000005","activity_code":"TEST_CODE1","occur_time":"2017-12-10 00:00:01"}]
+batchGetSize设置不能超过1000，否则会报错。
+batchGetSize指明的是logGroup获取的数量，如果单条logItem的大小和batchGetSize都很大，有可能会导致频繁的垃圾回收（Garbage Collection)，这种情况下该参数应调小。
+类型映射
+日志服务和实时计算字段类型对应关系如下。建议您使用该对应关系进行DDL声明:
+
+日志服务字段类型	实时计算字段类型
+STRING	VARCHAR
+
+创建消息队列（MQ）源表
+更新时间：2019-04-18 20:02:41
+
+编辑 ·
+本页目录
+什么是消息队列MQ
+示例
+CSV类格式
+二进制格式
+WITH参数
+类型映射
+本文为您介绍如何为实时计算创建消息队列（MQ）源表以及创建过程涉及到的CSV类格式、with参数和类型映射。
+
+什么是消息队列MQ
+消息队列（Message Queue），简称MQ，是阿里云专业消息中间件，是企业级互联网架构的核心产品。实时计算可以将消息队列作为流式数据输入，示例如下。
+
+示例
+create table mq_stream(
+ x varchar,
+ y varchar,
+ z varchar
+) with (
+ type='mq',
+ topic='yourTopicName',
+ endpoint='yourEndpoint',
+ pullIntervalMs='1000',
+ accessId='yourAccessId',
+ accessKey='yourAccessSecret',
+ startMessageOffset='1000',
+ consumerGroup='yourConsumerGroup',
+ fieldDelimiter='|'
+);
+说明 MQ实际上是一个非结构化存储格式，对于数据的Schema不提供强制定义，完全由业务层指定。目前实时计算支持类CSV格式文本和二进制格式。
+CSV类格式
+假设您的1条CSV格式消息记录如下。
+
+1,name,male
+2,name,female
+说明 1条MQ消息可以包括0条到多条数据记录，记录之间使用 \n分隔。
+在实时计算作业中，声明MQ数据源表的DDL如下。
+
+create table mq_stream(
+ id varchar,
+ name varchar,
+ gender varchar
+) with (
+ type='mq',
+ topic='yourTopicName',
+ endpoint='yourEndpoint',
+ pullIntervalMs='1000',
+ accessId='*yourAccessId',
+ accessKey='yourAccessSecret',
+ startMessageOffset='1000',
+ consumerGroup='yourConsumerGroup*',
+ fieldDelimiter='|'
+);
+二进制格式
+二进制格式测试代码如下。
+
+create table source_table (
+  mess varbinary
+) with (
+  type = 'mq',
+  endpoint = 'yourEndpoint',
+  pullIntervalMs='500',
+  accessId='yourAccessId',
+  accessKey='yourAccessSecret',
+  topic = 'yourTopicName',
+  consumerGroup='yourConsumerGroup'
+);
+create table out_table (
+  commodity varchar
+)with(
+  type='print'
+);
+INSERT INTO out_table
+SELECT
+  cast(mess as varchar)
+FROM source_table
+说明
+cast(mess as varbinary) 需在实时计算2.0及以上版本使用，若版本低于2.0，请先升级。
+VARBINARY只能入参一次。
+WITH参数
+参数	注释说明	备注
+topic	topic名称	无
+endPoint	endPoint地址
+公共云内网接入（阿里云经典网络/VPC）：华东1、华东2、华北1、华北2、华南1、香港的区域endpoint的地址是：onsaddr-internal.aliyun.com:8080
+公共云公网接入地址是：http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet
+accessId	accessId	无
+accessKey	accessKey	无
+consumerGroup	订阅消费group名称	无
+pullIntervalMs	拉取时间间隔	单位为毫秒
+startTime	消息消费启动的时间点	可选
+startMessageOffset	消息开始的偏移量	可选，如果填写，将优先以startMessageoffset的位点开始加载。
+tag	订阅的标签	可选
+lineDelimiter	解析block时行分隔符	可选，默认为 \n
+fieldDelimiter	字段分隔符	可选，默认为\u0001 。表示在只读模式下以 \u0001（\u0001在只读模式不可见）作为分隔符；在编辑模式下以^A作为分隔符。
+encoding	编码格式	可选，默认为 utf-8
+lengthCheck	单行字段条数检查策略	可选，默认值为NONE，表示：
+解析出的字段数大于定义字段数时，按从左到右的顺序，取定义字段数量的数据。
+解析出的字段数小于定义字段数时，跳过这行数据。
+其它可选值为SKIP、EXCEPTION和PAD。
+SKIP：解析出的字段数和定义字段数不同时跳过这行数据。
+EXCEPTION：解析出的字段数和定义字段数不同时提示异常。
+PAD：按从左到右顺序填充。
+解析出的字段数大于定义字段数时，按从左到右的顺序，取定义字段数量的数据。
+解析出的字段数小于定义字段数时，在行尾用null填充缺少的字段。
+columnErrorDebug	是否打开调试开关	可选，默认为false。如果设置为ture，则打印解析异常的log。
+类型映射
+MQ字段类型	实时计算字段类型
+STRING	VARCHAR
+
+数据结果表概述
+更新时间：2019-04-19 10:26:28
+
+编辑 ·
+本页目录
+结果表语法
+结果表示例
+实时计算使用CREATE TABLE作为输出结果数据的格式定义，同时定义数据如何写入到目的数据结果表。
+
+实时计算结果表有Append类型和Update类型。
+
+Append类型：如果输出存储是日志系统、消息系统、或未定义主键的RDS数据库，数据流的输出结果会以追加的方式写入到存储中，不会修改存储中原有的数据。
+Update类型：如果输出存储是声明了主键（primary key）的数据库（例如，RDS和HBase），数据流的输出结果有以下2种情况。
+如果根据主键查询的数据在数据库中不存在，则会将该数据插入数据库。
+如果根据主键查询的数据在数据库中存在，则会根据主键更新数据。
+结果表语法
+CREATE TABLE tableName
+    (columnName dataType [, columnName dataType ]*)
+    [ WITH (propertyName=propertyValue [, propertyName=propertyValue ]*) ];
+结果表示例
+CREATE TABLE rds_output(
+id INT,
+len INT,
+content VARCHAR,
+PRIMARY KEY(id)
+) WITH (
+type='rds',
+url='yourDatabaseURL',
+tableName='yourTableName',
+userName='yourDatabaseUserName',
+password='yourDatabasePassword'
+);
+
+创建分析型数据库（AnalyticDB）结果表
+更新时间：2019-04-19 19:56:56
+
+编辑 ·
+本页目录
+什么是分析型数据库（AnalyticDB）
+DDL定义
+WITH参数
+类型映射
+本文为您介绍如何创建实时计算分析型数据库（AnalyticDB）结果表以及分析型数据库和实时计算字段类型之间的映射关系。
+
+什么是分析型数据库（AnalyticDB）
+分析型数据库（AnalyticDB）是阿里巴巴自主研发的海量数据实时高并发在线分析（Realtime OLAP）云计算服务，使得您可以在毫秒级时单位时间内，对千亿级数据进行即时的多维分析透视和业务探索。
+
+DDL定义
+实时计算支持使用AnalyticDB作为结果输出。示例代码如下。
+CREATE TABLE stream_test_hotline_agent (
+id INTEGER,
+len BIGINT,
+content VARCHAR，
+PRIMARY KEY(id)
+) WITH (
+type='ads',
+url='yourDatabaseURL',
+tableName='yourDatabaseTableName',
+userName='yourDatabaseUserName',
+password='yourDatabasePassword',
+batchSize='20'
+);
+说明
+建议使用存储注册功能，参见注册分析型数据库（AnalyticDB）。
+实时计算AnalyticDB声明中的主键primary key要和AnalyticDB数据库里的主键一致，大小写敏感。不一致会导致数组索引越界的异常现象。
+WITH参数
+参数	注释说明	备注
+url	jdbc连接地址	AnalyticDB数据库地址 。示例：url ='jdbc:mysql://databaseName****-cn-shenzhen-a.ads.aliyuncs.com:10014/databaseName'。
+说明
+AnalyticDB数据库连接信息参见注册分析型数据库（AnalyticDB）中URL地址查询。
+AnalyticDB数据库名称（databaseName）即AnalyticDB实例名称。
+tableName	表名	无
+username	账号	无
+password	密码	无
+maxRetryTimes	写入重试次数	可选，默认为10
+bufferSize	流入多少条数据后开始去重	可选，默认为5000，表示输入的数据达到5000条就开始输出。
+batchSize	一次批量写入的条数	可选，默认值为1000。
+batchWriteTimeoutMs	写入超时时间	可选，单位为毫秒，默认值为5000。表示如果缓存中的数据在等待5秒后，依然没有达到输出条件，系统会自动输出缓存中的所有数据。
+connectionMaxActive	单连接池最大连接数	可选，默认值30
+ignoreDelete	是否忽略delete操作	默认为false
+说明 如果错代码是20015，则表示batchSize设置的过大。AnalyticDB单次batch不能超过1M。例如，batchSize设置为 1000，平均每条记录大小不能超过1Kb。
+类型映射
+建议使用AnalyticDB和实时计算字段类型对应关系进行DDL声明。
+
+AnalyticDB字段类型	实时计算字段类型
+BOOLEAN	BOOLEAN
+TINYINT	INT
+SAMLLINT
+INT
+BIGINT	BIGINT
+DOUBEL	DOUBLE
+VARCHAR	VARCHAR
+DATE	DATE
+
+创建数据总线（DataHub）结果表
+更新时间：2019-03-27 17:39:14
+
+编辑 ·
+本页目录
+什么是数据总线（DataHub）
+DDL定义
+WITH参数
+本文为您介绍如何创建实时计算数据总线（DataHub）结果表。
+
+什么是数据总线（DataHub）
+DataHub作为流式数据总线，为阿里云数加平台提供了大数据的入口服务。实时计算通常使用DataHub作为流式数据存储输入源和输出目的端。
+
+DDL定义
+实时计算支持使用DataHub作为数据输出结果表，DataHub结果表声明示例如下。
+
+create table datahub_output(
+  name VARCHAR,
+  age BIGINT,
+  birthday BIGINT
+)with(
+  type='datahub',
+  endPoint='******',
+  project='******',
+  topic='******',
+  accessId='******',
+  accessKey='******',
+  batchSize='******',
+  batchWriteTimeoutMs='******'
+);
+说明 建议使用存储注册功能，参见注册大数据总线（DataHub）。
+WITH参数
+参数	注释说明	备注
+endPoint	Endpoint地址	参见DataHub的Endpoint地址。
+project	DataHub项目名称	无
+topic	DataHub中topic名称	无
+accessId	accessId	无
+accessKey	accessKey	无
+maxRetryTimes	最大重试次数	可选，默认值为3。
+batchSize	一次批量写入的条数	可选，默认值为300。
+batchWriteTimeoutMs	缓存数据的超时时间	可选，单位为毫秒，默认值为5000。表示如果缓存中的数据在等待5秒后，依然没有达到输出条件，系统会自动输出缓存中的所有数据。
+maxBlockMessages	每次写入的最大Block数	可选，默认值为100。
+ 上一篇：创建分析型数据库（AnalyticDB）结果表
+
+ 创建日志服务（Log Service）结果表
+ 更新时间：2019-03-21 17:29:42
+
+ 编辑 ·
+ 本页目录
+ 什么是日志服务
+ DDL定义
+ WITH参数
+ 本文为您介绍如何创建实时计算日志服务（Log Service）结果表。
+
+ 什么是日志服务
+ 日志服务（Log Service）是针对日志类数据的一站式服务，在阿里巴巴集团经历大量大数据场景锤炼而成。
+
+ DDL定义
+ 实时计算支持使用日志服务作为结果输出，志服务结果表声明示例如下。
+
+ create table sls_stream(
+  name VARCHAR,
+  age BIGINT,
+  birthday BIGINT
+ )with(
+  type='sls',
+  endPoint='******',
+  accessId='******',
+  accessKey='******',
+  project='******',
+  logStore='******'
+ );
+ 说明 建议使用日志服务存储注册功能，参见注册日志服务（Log Service）。
+ WITH参数
+ 参数	注释说明	备注
+ endPoint	endPoint地址	服务入口
+ project	项目名	无
+ topic	topic表名	无
+ accessId	accessId	无
+ accessKey	accessKey	无
+ mode	写入方式	可选，默认为random模式，选择partition则会按分区写入。
+ partitionColumn	分区列	如果mode为partition则必填。
+ topic	日志服务的topic	可选，默认为空。
+ source	日志的来源地，例如产生该日志机器的IP地址。	可选，默认为空。
+
+创建消息队列（MQ）结果表
+更新时间：2019-04-01 14:59:56
+
+编辑 ·
+本页目录
+什么是消息列队（MQ）
+CSV类格式
+二进制格式
+WITH参数
+本文为您介绍如何创建实时计算消息队列（MQ）结果表。
+
+什么是消息列队（MQ）
+消息队列（Message Queue）简称MQ，是阿里云商用的专业消息中间件，是企业级互联网架构的核心产品。消息列队是基于高可用分布式集群技术，搭建了包括发布订阅、消息轨迹、资源统计、定时（延时）、监控报警等一套完整的消息云服务。 实时计算可以将消息队列作为流式数据输出，如下所示。
+CREATE TABLE stream_test_hotline_agent (
+id INTEGER,
+len BIGINT,
+content VARCHAR
+) WITH (
+type='mq',
+endpoint='******',
+accessID='******',
+accessKey='******',
+topic='******',
+producerGroup='******',
+tag='******',
+encoding='utf-8',
+fieldDelimiter=',',
+retryTimes='5',
+sleepTimeMs='500'
+);
+CSV类格式
+
+CREATE TABLE stream_test_hotline_agent (
+id INTEGER,
+len BIGINT,
+content varchar
+) WITH (
+type='mq',
+endpoint='******',
+accessID='******',
+accessKey='******',
+topic='******',
+producerGroup='******',
+tag='******',
+encoding='utf-8',
+fieldDelimiter=',',
+retryTimes='5',
+sleepTimeMs='500'
+);
+二进制格式
+二进制格式测试代码如下。
+
+
+CREATE TABLE source_table (
+  commodity VARCHAR
+)WIHT(
+  type='random'
+);
+
+CREATE TABLE result_table (
+  mess VARBINARY
+) WITH (
+  type = 'mq',
+  topic = '******',
+  endpoint = '******',
+  accessId='******',
+  accessKey='******',
+  producerGroup='******'
+);
+
+INSERT INTO result_table
+SELECT
+CAST(SUBSTRING(commodity,0,5) AS VARBINARY) AS mess
+FROM source_table
+说明
+cast(varchar as varbinary) 需在实时计算2.0及以上版本使用，若版本低于2.0，请先升级。
+varbinary只能入参一次。
+WITH参数
+参数	说明	备注
+topic	Message Queue队列名称	无
+endpoint	地址
+公共云内网接入（阿里云经典网络/VPC）：华东1、华东2、华北1、华北2、华南1香港的区域的endpoint地址为onsaddr-internal.aliyun.com:8080 。
+公共云公网接入地址为http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet。
+accessID	填写阿里云accessID	无　
+accessKey	填写阿里云accessKey	无
+producerGroup	写入的群组	无
+tag	写入的标签	可选，默认为空。
+fieldDelimiter	字段分割符	可选，默认为\u0001 。表示在只读模式下以 \u0001（\u0001在只读模式不可见）作为分隔符；在编辑模式下以^A作为分隔符。
+encoding	编码类型	可选，默认为utf-8。
+retryTimes	写入的重试次数	可选，默认为10。
+sleepTimeMs	重试间隔时间	可选，默认为1000（毫秒）。
+
+创建表格存储（Table Store）结果表
+更新时间：2019-04-19 19:57:25
+
+编辑 ·
+本页目录
+什么是表格存储（Table Store）
+DDL定义
+WITH参数
+类型映射
+本文为您介绍如何创建实时计算表格存储（Table Store）结果表以及表格存储和实时计算字段类型之间的映射关系。
+
+什么是表格存储（Table Store）
+表格存储（Table Store），简称OTS，是构建在阿里云飞天分布式系统之上的分布式NoSQL数据存储服务。表格存储通过数据分片和负载均衡技术，实现数据规模与访问并发上的无缝扩展，提供海量结构化数据的存储和实时访问服务。
+
+DDL定义
+实时计算支持使用TableStore作为结果输出，示例代码如下。
+
+CREATE TABLE stream_test_hotline_agent (
+ name VARCHAR,
+ age BIGINT,
+ birthday BIGINT,
+ PRIMARY KEY (name,age)
+) WITH (
+ type='ots',
+ instanceName='yourInstanceName',
+ tableName='yourTableName',
+ accessId='yourAccessId',
+ accessKey='yourAccessSecret',
+ endPoint='yourEndpoint',
+ valueColumns='birthday'
+);
+说明
+推荐使用数据存储注册功能，参见表格存储注册表格存储（TableStore）。
+valueColumns的值不能是声明的主键，可以是主键之外的任意字段。
+WITH参数
+参数	说明	备注
+instanceName	实例名	无
+tableName	表名	无
+endPoint	实例访问地址	参见服务地址 。
+accessId	访问的id	无
+accessKey	访问的键	无
+valueColumns	指定插入的字段列名	插入多个字段以,分割。如'ID,NAME'。
+bufferSize	流入多少条数据后开始去重	可选，默认值5000，表示输入的数据达到5000条就开始输出。
+batchWriteTimeoutMs	写入超时的时间	可选，单位为毫秒，默认值为5000。表示如果缓存中的数据在等待5秒后，依然没有达到输出条件，系统会自动输出缓存中的所有数据。
+batchSize	一次批量写入的条数	可选，默认值100。
+retryIntervalMs	重试间隔时间	可选，单位毫秒，默认值1000。
+maxRetryTimes	最大重试次数	可选，默认值100。
+ignoreDelete	是否忽略delete操作	默认为false。
+类型映射
+OTS字段类型	实时计算字段类型
+INTEGER	BIGINT
+STRING	VARCHAR
+BOOLEAN	BOOLEAN
+DOUBLE	DOUBLE
+说明 TableStore结果表须定义有 primary key，输出数据以update方式写入到现有TableStore表。update方式说明请参见数据结果表概述中 Update类型。
+
+创建云数据库（RDS和DRDS）结果表
+更新时间：2019-04-19 19:57:54
+
+编辑 ·
+本页目录
+关系型数据库（RDS）
+DDL定义
+WITH参数
+类型映射
+JDBC连接参数
+FAQ
+本文为您介绍如何创建实时计算云数据库（RDS和DRDS）结果表以及云数据库（RDS和DRDS）和实时计算字段类型之间的映射关系。
+
+关系型数据库（RDS）
+阿里云关系型数据库（Relational Database Service）简称RDS，是一种稳定可靠、可弹性伸缩的在线数据库服务。RDS基于阿里云分布式文件系统和高性能存储，支持MySQL、SQL Server、PostgreSQL和PPAS（Postgre Plus Advanced Server）引擎，并且提供了容灾、备份、恢复、监控、迁移等方面的全套解决方案。
+
+DDL定义
+实时计算支持使用RDS/DRDS作为结果输出（目前仅支持MySQL数据存储类型）。示例代码如下。
+
+CREATE TABLE rds_output(
+ id INT,
+ len INT,
+ content VARCHAR,
+ PRIMARY KEY (id,len)
+) WITH (
+ type='rds',
+ url='yourDatabaseURL',
+ tableName='yourDatabaseTable',
+ userName='yourDatabaseUserName',
+ password='yourDatabasePassword'
+);
+说明
+实时计算写入RDS/DRDS数据库结果表原理：针对实时计算每行结果数据，拼接成一行SQL语句，输入至目标端数据库，进行执行。如果使用批量写，需要在URL后面加上参数 ?rewriteBatchedStatements=true，以提高系统性能。
+RDS MySQL数据库支持自增主键。如果需要让实时计算写入数据支持自增主键，在DDL中不声明该自增字段即可。例如，ID是自增字段，实时计算DDL不写出该自增字段，则数据库在一行数据写入过程中会自动填补相关的自增字段。
+如果DRDS有分区表，拆分键必须在实时计算DDL里primary key（）中声明，否则拆分的表无法写入。关于DRDS分库分表的概念可参见DRDS分库分表。
+建议使用数据存储注册方式，参见注册云数据库（RDS）。
+WITH参数
+参数	说明	备注
+url	地址	地址请参见：
+RDS的URL地址
+DRDS的URL地址
+tableName	表名	无
+userName	用户名	无
+password	密码	无
+maxRetryTimes	最大重试次数	可选，默认值为3。
+batchSize	一次批量写入的条数	可选，默认值为50。
+bufferSize	流入多少条数据后开始去重	可选，需要指定主键才生效。默认值为1000，表示输入的数据达到1000条即开始输出。
+flushIntervalMs	清空缓存的时间间隔	可选，单位为毫秒，默认值为5000。表示如果缓存中的数据在等待5秒后，依然没有达到输出条件，系统会自动输出缓存中的所有数据。
+excludeUpdateColumns	忽略指定字段的更新	可选，默认值为空（默认忽略primary key字段）。表示更新主键值相同的数据时，忽略指定字段的更新。
+ignoreDelete	是否忽略delete操作	可选，默认为false，表示支持delete功能。
+partitionBy	分区	可选，默认为空。表示写入Sink节点前，会根据该值做hash。数据会流向相应的hash节点。
+类型映射
+RDS字段类型	实时计算字段类型
+INTEGER	INT
+FLOAT	FLOAT
+DECIMAL	DECIAML
+LONG	BIGINT
+DOUBLE	DOUBLE
+TEXT	VARCHAR
+BYTE
+DATE
+DATETIME
+TIMESTAMP
+TIME
+YEAR
+CHAR
+JDBC连接参数
+参数名称	参数说明	默认值	最低版本要求
+useUnicode	是否使用Unicode字符集，如果参数characterEncoding设置为gb2312或gbk，本参数值必须设置为true。	false	1.1g
+characterEncoding	当useUnicode设置为true时，指定字符编码。比如可设置为gb2312或gbk。	false	1.1g
+autoReconnect	当数据库连接异常中断时，是否自动重新连接。	false	1.1
+autoReconnectForPools	是否使用针对数据库连接池的重连策略。	false	3.1.3
+failOverReadOnly	自动重连成功后，连接是否设置为只读。	true	3.0.12
+maxReconnects	autoReconnect设置为true时，重试连接的次数。	3	1.1
+initialTimeout	autoReconnect设置为true时，两次重连之间的时间间隔，单位为秒。	2	1.1
+connectTimeout	和数据库服务器建立socket连接时的连接超时时长，单位为毫秒。 0表示永不超时，适用于JDK 1.4及更高版本。	0	3.0.1
+socketTimeout	socket操作（读写）超时，单位：毫秒。 0表示永不超时。	0	3.0.1
+FAQ
+Q：实时计算的结果数据写入RDS表，是按主键更新的，还是生成1条新的记录？
+
+A：如果在DDL中定义了主键，会采用insert into on duplicate key update的方式更新记录，也就意味着对于不存在的主键字段会直接插入，存在的主键字段则更新相应的值。 如果DDL中没有声明primary key，则会用insert into 方式插入记录，追加数据。
+
+Q：使用RDS表中的唯一索引做group by需要注意什么？
+
+A：
+需要在作业中的primary key中声明这个唯一索引。
+RDS中只有一个自增主键，实时计算作业中不能声明为primary key。
+
+创建MaxCompute（ODPS）结果表
+更新时间：2019-04-10 09:55:41
+
+编辑 ·
+本页目录
+DDL定义
+WITH参数
+常见问题
+本文为您介绍如何创建MaxCompute（ODPS）结果表以及创建过程中的常见问题。
+
+DDL定义
+实时计算支持使用ODPS作为结果输出，示例代码如下。
+
+create table odps_output(
+    id INT,
+    user_name VARCHAR,
+    content VARCHAR
+) with (
+    type = 'odps',
+    endPoint = 'http://service.cn.maxcompute.aliyun-inc.com/api',
+    project = 'projectName',
+    tableName = 'tableName',
+    accessId = 'yourAccessKeyId',
+    accessKey = 'yourAccessKeySecret',
+    `partition` = 'ds=2018****'
+);
+WITH参数
+参数	说明	备注
+endPoint	ODPS服务地址	必选，参见MaxCompute开通Region和服务连接对照表。
+tunnelEndpoint	MaxCompute Tunnel服务的连接地址	可选，参见MaxCompute开通Region和服务连接对照表。
+说明 VPC环境下为必填。
+project	ODPS项目名称	必选
+tableName	表名	必选
+accessId	accessId	必选
+accessKey	accessKey	必选
+partition	分区名	可选，如果存在分区表则必填。具体分区信息可在数据地图查看。例如: 一个表的分区信息为ds=20180905，则可以写 `partition` = 'ds=20180905'。多级分区之间用逗号分隔，*`partition` = 'ds=20180912,dt=xxxyyy'。
+isOverwrite	写入sink之前会把结果表或者结果表的数据清空。
+blink-3.2以下版本默认参数值为true。
+blink-3.2版本默认参数值为false。
+说明 isOverwrite参数不支持版本内修改。如果需要修改，请升级或回滚blink版本。
+说明
+实时计算数据写入ODPS的方式是每次做checkPoint的时候将缓存数据进行输入。
+
+常见问题
+Q: Stream模式的ODPS Sink是否支持isOverwrite为true的情况？
+A：isOverwrite为true功能默认开启，即写入sink之前会把结果表或者结果数据清空。作业每次启动后和暂停恢复后、写入之前会把原来结果表或者结果分区里的内容删除。流上暂停恢复后清空数据会导致数据丢失。
+
+Q: MaxCompute中的数据类型和实时计算中数据类型的对应关系是什么？
+A：如下表。
+MaxCompute	Blink
+TINYINT	TINYINT
+SMALLINT	SMALLINT
+INT	INT
+BIGINT	BIGINT
+FLOAT	FLOAT
+DOUBLE	DOUBLE
+BOOLEAN	BOOLEAN
+DATETIME	TIMESTAMP
+TIMESTAMP	TIMESTAMP
+STRING	VARCHAR
+DECIMAL	DECIMAL
+BINARY	VARBINARY
+说明
+其他MaxCompute类型，ODPS connector暂时还不支持转换。
+VARCHAR是ODPS新增加的类型，Blink connectors暂不支持，建议您将ODPS的Schema中的VARCHAR类型设置为STRING类型。
+
+
+创建云数据库（HBase）结果表
+更新时间：2019-04-26 19:55:31
+
+编辑 ·
+本页目录
+DDL定义
+WITH参数
+本文为您介绍如何创建实时计算云数据库（HBase）结果表。
+
+说明 本文档仅适用于实时计算独享模式。
+DDL定义
+实时计算支持使用HBase作为结果输出。示例代码如下。
+create table liuxd_user_behavior_test_front (
+    row_key varchar,
+    from_topic varchar,
+    origin_data varchar,
+    record_create_time varchar,
+    primary key (row_key)
+) with (
+    type = 'cloudhbase',
+    zkQuorum = '2',
+    columnFamily = 'yourColumnFamily',
+    tableName = 'yourTableName',
+    batchSize = '500'
+)
+说明
+primary key支持定义多个字段。多个字段会按照rowkeyDelimiter（默认为:）拼接起来作为row_key。
+HBase做撤回删除操作时，如果Column定义了多版本，会把所有版本的值清空。
+WITH参数
+参数	注释说明	备注
+zkQuorum	HBase集群配置的zk地址	可以在hbase-site.xml文件中找到hbase.zookeeper.quorum相关配置
+zkNodeParent	集群配置在zk上的路径	可以在hbase-site.xml文件中找到hbase.zookeeper.quorum相关配置
+tableName	HBase表名	无
+userName	用户名	无
+password	密码	无
+partitionBy	是否使用joinKey进行分区	可选，默认为False。设置为True时，使用joinKey进行分区，将数据分发到各JOIN节点，提高缓存命中率。
+shuffleEmptyKey	是否将上游EMPTY KEY随机发送到下游节点	可选，默认为False。参数意义如下：
+False：如果上游有多个EMPTY KEY，将会将所有EMPTY KEY发送大同一个JOIN节点。
+Te：如果上游有多个EMPTY KEY，将会将所有EMPTY KEY随机发送到各个JOIN节点。
+说明 shuffleEmptyKey在partitionedJoin生效后才是使用。
+columnFamily	列族名	目前只支持插入同一列族
+maxRetryTimes	最大尝试次数	可选，默认为10
+bufferSize	流入多少条数据后进行去重	默认为5000
+batchSize	一次批量写入的条数	可选，默认为100
+flushIntervalMs	最长插入时间	可选，默认为2000
+writePkValue	是否写入主键值	可选，默认为false
+stringWriteMod	是否都按照string插入	可选，默认为false
+rowkeyDelimiter	rowKey的分隔符	可选，默认为:
+isDynamicTable	是否为动态表	可选，默认为false
+说明 建议batchSize参数值设置在200到300之间。过大的batchSize值可能导致任务OOM（内存不足）报错。
+
+创建ElasticSearch（ES）结果表
+KB: 94716 ·
+更新时间：2019-04-19 19:58:22
+
+编辑 ·
+本页目录
+DDL定义
+WITH参数
+动态索引相关 WITH 参数
+本文为您介绍如何创建实时计算ElasticSearch（ES）结果表。
+
+说明 本文档仅适用于独享模式。
+DDL定义
+ElasticSearch结果表的实现使用REST API，理论上兼容ElasticSearch的各个版本。实时计算支持使用ES作为结果输出。示例代码如下。
+
+ CREATE TABLE es_stream_sink(
+  field1 LONG,
+  field2 VARBINARY,
+  field3 VARCHAR,
+  PRIMARY KEY(field1)
+) WIHT (
+  type ='elasticsearch',
+  endPoint = 'yourEndPoint',
+  accessId = 'yourAccessId',
+  accessKey = 'yourAccessSecret',
+  index = 'yourIndex',
+  typeName = 'yourTypeName'
+);
+说明 ES支持根据primary key进行update，primary key只能为1个字段。
+指定primary key后，document的id为primaryKey字段的值。
+未指定primary key的document对应的id为随机，详情请参见Index API。
+full更新模式下，后面的doc会完全覆盖之前的doc，不会原地更新字段。
+inc更新模式下，会依据传入的字段值更新对应的字段。
+所有的更新默认为upsert语义，即insert or update。
+WITH参数
+通用配置:
+
+参数	注释说明	默认值	Required
+endPoint	server地址，例：http://127.0.0.1:9211	无	是
+accessId	访问实例ID	无	是
+accessKey	访问实例密钥	无	是
+index	索引名称，类似于数据库database的名称。	无	是
+typeName	type 名称，类似于数据库的table名称。	无	是
+bufferSize	流入多少条数据后开始去重	1000	否
+maxRetryTimes	异常重试次数	30	否
+timeout	读超时，单位为毫秒。	600000	否
+discovery	是否开启节点发现。如果开启客户端会 5 分钟刷新一次 server list。	false	否
+compression	是否使用 GZIP 压缩 request bodies	true	否
+multiThread	是否开启 JestClient 多线程	true	否
+ignoreWriteError	是否忽略写入异常	false	否
+settings	创建index的settings配置	无	否
+updateMode	指定 primary key 后的更新模式	full
+说明
+full：全量覆盖
+inc：增量更新
+否
+动态索引相关 WITH 参数
+参数	注释说明	默认值	Required
+dynamicIndex	是否开启动态索引	false(true/false)	否
+indexField	抽取索引的字段名	/	dynamicIndex 为 true 时必填，只支持类型 Timestamp/Date/Long(秒为单位的 timestamp)
+indexInterval	切换索引的周期	d	dynamicIndex 为 true时必填
+d：天
+m：月
+w：周
+说明
+仅实时计算2.2.7及以上版本支持动态索引功能。
+当开启动态索引后， 基本配置中的index名称会作为后续创建索引的统一Alias，Alias和索引为一对多关系。
+不同的indexInterval对应的真实索引名称：
+d -> Alias + "yyyyMMdd"
+m -> Alias + "yyyyMM"
+w -> Alias + "yyyyMMW"
+对于单个的真实索引可以使用 Index API修改，但是对于Alias只能get，若想更新Alias，请参见Index Aliases。
+
+创建高性能时间序列数据库（HiTSDB）结果表
+更新时间：2019-01-18 10:50:44
+
+编辑 ·
+本页目录
+什么是高性能时间序列数据库（HiTSDB）
+DDL定义
+WITH参数
+常见问题
+本文为您介绍如何创建实时计算高性能时间序列数据库（HiTSDB）结果表。
+
+什么是高性能时间序列数据库（HiTSDB）
+高性能时间序列数据库 (High-Performance Time Series Database)简称HiTSDB。是一种高性能，低成本，稳定可靠的在线时序数据库服务。HiTSDB提供高效读写，高压缩比存储、时序数据插值及聚合计算，广泛应用于物联网（IoT）设备监控系统 ，企业能源管理系统（EMS），生产安全监控系统，电力检测系统等行业场景。
+
+DDL定义
+实时计算支持使用HiTSDB作为结果输出，示例代码如下。
+说明 实时计算引用高性能时间序列数据库（HiTSDB）结果表需要配置数据存储白名单。
+CREATE TABLE stream_test_hitsdb (
+    metric varchar,
+    timestamp INTEGER,
+    value DOUBLE,
+    tagk1 varchar
+) WITH (
+    type='hitsdb',
+    host='xxxxxx',
+    virtualDomainSwitch = 'xxxxxx',
+    httpConnectionPool = 'xxxxxx',
+    batchPutSize = 'xxxxxx'
+);
+
+建表默认格式：
+
+第0列：metric（VARCHAR）
+第1列：timestamp（INTEGER），单位：秒 。
+第2列：value（DOUBLE）
+第3列：tag（VARCHAR）
+第4~N列：fieldName作为TagKey，fieldValue作为TagValue。
+说明 metric、 timestamp、 value必须声明，且数据类型与HiTSDB保持一致。 tag可以为多列。详情请参见HiTSDB建表规范。
+WITH参数
+参数	注释说明	备注
+host	ip或vip域名	填写注册实例的host，具体请查看：连接实例。
+port	端口	默认为8242。
+virtualDomainSwitch	是否使用VIPServer	默认为false，若需要使用VIPServer，则设置为true。
+httpConnectionPool	HTTP连接池	默认为10。
+httpCompress	使用GZIP压缩	默认为false，即不压缩。
+httpConnectTimeout	HTTP连接超时时间	默认为0。
+ioThreadCount	IO线程数	默认为1。
+batchPutBufferSize	缓冲区大小	默认为10000。
+batchPutRetryCount	写入重试次数	默认为3。
+batchPutSize	每次提交数据量	默认每次提交500个数据点。
+batchPutTimeLimit	缓冲区等待时间	默认为200ms。
+batchPutConsumerThreadCount	序列化线程数	默认为1。
+常见问题
+Q：Failover中报错，LONG类型不能转换成INT类型。
+
+A：实时计算2.2.5以下版本只能支持到INT类型。实时计算2.2.5及以上版本支持BIGINT类型。
+
+
+创建Kafka结果表
+更新时间：2019-04-19 19:58:50
+
+编辑 ·
+本页目录
+DDL定义
+WITH参数
+Kafka版本对应关系
+示例
+本文档为您介绍如何创建实时计算Kafka结果表。
+
+说明 本文档仅适用于独享模式。
+DDL定义
+Kafka结果表需要定义的DDL如下。
+create table sink_kafka (
+    messageKey VARBINARY,
+    `message` VARBINARY,
+    PRIMARY KEY (messageKey)
+) with (
+    type = 'kafka010',
+    topic = 'yourTopicName',
+    bootstrap.servers = 'yourServerAddress'
+);
+说明
+创建Kafka结果表时，必须显示的指定primary key (messageKey)。
+实时计算仅在2.2.6及以上版本中，支持阿里云Kafka或自建Kafka的TPS、RPS等指标信息的显示。
+WITH参数
+通用配置
+
+参数	注释说明	备注
+type	Kafka对应版本	必选，必须是 Kafka08、Kafka09、Kafka010、Kafka011中的一种，版本对应关系参见Kafka版本对应关系。
+topic	写入的topic	topic名称
+必选配置
+Kafka08必选配置:
+参数	注释说明	备注
+zookeeper.connect	zk链接地址	zk连接ID
+Kafka09/Kafka010/Kafka011必选配置：
+参数	注释说明	备注
+bootstrap.servers	Kafka集群地址	Kafka集群地址
+说明 Kafka集群地址
+如果您使用的Kafka是阿里云商业版，请参见Kafka商业版准备配置文档。
+如果您使用的Kafka是阿里云公测版，请参见Kafka公测版准备配置文档。
+可选配置参数
+
+consumer.id
+socket.timeout.ms
+fetch.message.max.bytes
+num.consumer.fetchers
+auto.commit.enable
+auto.commit.interval.ms
+queued.max.message.chunks
+rebalance.max.retries
+fetch.min.bytes
+fetch.wait.max.ms
+rebalance.backoff.ms
+refresh.leader.backoff.ms
+auto.offset.reset
+consumer.timeout.ms
+exclude.internal.topics
+partition.assignment.strategy
+client.id
+zookeeper.session.timeout.ms
+zookeeper.connection.timeout.ms
+zookeeper.sync.time.ms
+offsets.storage
+offsets.channel.backoff.ms
+offsets.channel.socket.timeout.ms
+offsets.commit.max.retries
+dual.commit.enabled
+partition.assignment.strategy
+socket.receive.buffer.bytes
+fetch.min.bytes
+说明 其它可选配置项参考Kafka官方文档进行配置。
+Kafka09
+Kafka010
+Kafka011
+Kafka版本对应关系
+type	Kafka 版本
+Kafka08	0.8.22
+Kafka09	0.9.0.1
+Kafka010	0.10.2.1
+Kafka011	0.11.0.2
+示例
+create table datahub_input (
+id VARCHAR,
+nm VARCHAR
+) with (
+type = 'datahub'
+);
+
+create table sink_kafka (
+ messageKey VARBINARY,
+`message` VARBINARY,
+ PRIMARY KEY (messageKey)
+) with (
+    type = 'kafka010',
+    topic = 'yourTopicName',
+    bootstrap.servers = 'yourServerAddress'
+);
+
+
+INSERT INTO
+    sink_kafka
+SELECT
+   cast(id as VARBINARY) as messageKey,
+   cast(nm as VARBINARY) as `message`
+FROM
+    datahub_input;
+
+
+创建云数据库（HybridDB for MySQL）结果表
+更新时间：2019-04-19 19:59:18
+
+编辑 ·
+本页目录
+什么是云数据库（HybridDB for MySQL）
+DDL定义
+WITH参数
+本文为您介绍如何创建实时计算云数据库（HybridDB for MySQL）结果表。
+
+什么是云数据库（HybridDB for MySQL）
+云数据库HybridDB for MySQL（原名PetaData）是同时支持在线事务（OLTP）和在线分析（OLAP）的关系型 HTAP 类数据库。HTAP是Hybrid Transaction/Analytical Processing的简写，意为将数据的事务处理（TP）与分析（AP）混合处理，从而实现对数据的实时处理分析。
+
+HybridDB for MySQL兼容MySQL的语法及函数，并且增加了对Oracle常用分析函数的支持。完全兼容TPC-H和TPC-DS测试标准。
+
+DDL定义
+实时计算支持使用HybridDB for MySQL作为结果输出。示例代码如下。
+
+create table petadata_output(
+ id INT,
+ len INT,
+ content VARCHAR,
+ primary key(id,len)
+) with (
+ type='petaData',
+ url='yourDatabaseURL',
+ tableName='yourTableName',
+ userName='yourDatabaseUserName',
+ password='yourDatabasePassword'
+);
+说明
+实时计算写入PetaData数据库结果表原理：针对实时计算每行结果数据，拼接成一行SQL向目标端数据库进行执行。
+bufferSize默认值是1000，如果到达bufferSize阈值的话（buffer hashmap size），也会触发写出。因此您配置batchSize的同时还需要配上bufferSize。bufferSize和batchSize大小相同即可。
+建议设置batchSize='4096'，batchSize数值不建议设置过大。
+WITH参数
+参数	注释说明	备注
+url	地址	切换网络类型
+tableName	表名	无
+userName	用户名	无
+password	密码	无
+maxRetryTimes	最大重试次数	可选，默认为3。
+batchSize	一次批量写入的条数	可选，默认值1000 ，表示每次写多少条。
+bufferSize	流入多少条数据后开始去重	可选
+flushIntervalMs	写超时时间	可选，单位为毫秒，默认值为3000。表示如果缓存中的数据在等待5秒后，依然没有达到输出条件，系统会自动输出缓存中的所有数据。
+ignoreDelete	是否忽略delete操作	默认为false
+
+
+创建自定义结果表
+更新时间：2019-03-14 15:49:24
+
+编辑 ·
+本页目录
+JAR包下载
+2.0以上的版本依赖
+接口说明
+本文为您介绍如何创建实时计算自定义结果表。
+
+说明 本文档仅适用于独享模式。
+为满足各种差异化的输出需求，实时计算平台现支持用户自定义Sink插件。Maven工程需要引用以下依赖包，scope设置为<scope>provided</scope>。
+
+JAR包下载
+blink-connector-common-blink-2.2.4
+blink-connector-custom-blink-2.2.4
+blink-table-blink-2.2.4
+flink-table_2.11-blink-2.2.4
+flink-core-blink-2.2.4
+2.0以上的版本依赖
+
+   <dependencies>
+    <dependency>
+      <groupId>com.alibaba.blink</groupId>
+      <artifactId>blink-table</artifactId>
+      <version>blink-2.2.4-SNAPSHOT</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.flink</groupId>
+      <artifactId>flink-table_2.11</artifactId>
+      <version>blink-2.2.4-SNAPSHOT</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.flink</groupId>
+      <artifactId>flink-core</artifactId>
+      <version>blink-2.2.4-SNAPSHOT</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.alibaba.blink</groupId>
+      <artifactId>blink-connector-common</artifactId>
+      <version>blink-2.2.4-SNAPSHOT</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.alibaba.blink</groupId>
+      <artifactId>blink-connector-custom</artifactId>
+      <version>blink-2.2.4-SNAPSHOT</version>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
+接口说明
+自定义结果表class需要继承自定义Sink插件的基类，并实现如下方法：
+
+protected Map<String,String> userParamsMap;// 用户在SQL with语句中定义的键值对，但所有的键均为小写
+protected Set<String> primaryKeys;// 自定义的主键字段名
+protected List<String> headerFields;// 标记为header的字段列表
+protected RowTypeInfo rowTypeInfo;//字段类型和名称
+/**
+ * 初始化方法。每次初始建立和Failover的时候会调用一次
+ *
+ * @param taskNumber 当前节点的编号
+ * @param numTasks   Sink节点的总数
+ * @throws IOException
+ */
+public abstract void open(int taskNumber,int numTasks) throws IOException;
+
+/**
+ * close方法，释放资源
+ *
+ * @throws IOException
+ */
+public abstract void close() throws IOException;
+
+/**
+ * 处理插入单行数据
+ *
+ * @param row
+ * @throws IOException
+ */
+public abstract void writeAddRecord(Row row) throws IOException;
+
+/**
+ * 处理删除单行数据
+ *
+ * @param row
+ * @throws IOException
+ */
+public abstract void writeDeleteRecord(Row row) throws IOException;
+
+/**
+ * 如果进行批量插入，该方法需要把线程中缓存的数据全部刷入下游存储；若无，可不实现此方法。
+ *
+ * @throws IOException
+ */
+public abstract void sync() throws IOException;
+
+/**
+* 返回类名
+*/
+public String getName();
+在实时计算平台上传JAR包，引用资源之后，对于自定义的Sink插件，需要指明 type = 'custom'，并且指明实现接口的class，如下以自定义的Redis结果表（Demo下载）为例。
+create table in_table(
+    kv varchar
+)with(
+    type = 'random'
+);
+
+create table out_table(
+    `key` varchar,
+    `value` varchar
+)with(
+    type = 'custom',
+    class = 'com.alibaba.blink.connector.custom.demo.RedisSink',
+    -- **可以定义更多的用户参数, 在 open 函数中可以通过 userParamsMap 获取**
+    host = 'r-ufXXXXXXX.redis.rds.aliyuncs.com',
+    port = '6379',
+    db = '0',
+    batsize = '10',
+    password = 'xxxxxx'
+);
+
+insert into out_table
+select
+substring(kv,0,4) as `key`,
+substring(kv,0,6) as `value`
+from in_table;
+Redis Sink插件的参数说明如下。
+参数	说明	是否必填	备注
+host	redis实例内网连接地址（host）	是	无
+port	redis实例端口号	是	无
+password	redis连接密码	是	无
+db	db编号	否	默认值为0，代表db0
+batchsize	批量写入大小	否	默认值为1，代表不攒批写入
+
+创建SQL Server结果表
+更新时间：2019-04-22 16:45:31
+
+编辑 ·
+本页目录
+DDL定义
+WITH参数
+本文为您介绍如何创建实时计算SQL Server结果表。
+
+DDL定义
+实时计算支持使用SQL Server作为结果输出。示例代码如下。
+create table ss_output(
+ id INT,
+ len INT,
+ content VARCHAR,
+ primary key(id,len)
+) with (
+ type='jdbc',
+ url='jdbc:sqlserver://ip:port;database=****',
+ tableName='yourDatabaseTableName',
+ userName='yourDatabaseUserName',
+ password='yourDatabasePassword'
+);
+说明 实时计算引用的SQL Server真实表需要定义主键，否则初始化阶段会产生NPE（NullPointerException）报错。
+WITH参数
+参数	注释说明	备注
+url	jdbc连接地址	地址请参见：
+RDS的URL地址
+DRDS的URL地址
+tableName	表名	无
+username	账号	无
+password	密码	无
+maxRetryTimes	写入重试次数	可选，默认为3
+bufferSize	流入多少条数据后开始去重	可选，默认为500，表示输入的数据达到500条就开始输出。
+flushIntervalMs	清空缓存的时间间隔	可选，单位为毫秒，默认值为5000。表示如果缓存中的数据在等待5秒后，依然没有达到输出条件，系统会自动输出缓存中的所有数据。
+excludeUpdateColumns	忽略指定字段的更新	可选，默认值为空（默认忽略primary key字段）。表示更新主键值相同的数据时，忽略指定字段的更新。
+ignoreDelete	是否忽略delete操作	默认为false
+ 上一篇：创建自定义结果表
+
+数据维表概述
+更新时间：2019-01-29 09:55:35
+
+编辑 ·
+本页目录
+示例
+INDEX语法
+维表、源表和结果表的区别
+实时计算中没有专门为维表设计的DDL语法，增加一行PERIOD FOR SYSTEM_TIME的声明，即可使用标准的CREATE TABLE语法。这行声明定义了维表的变化周期，即表明该表是一张会变化的表。
+
+示例
+CREATE TABLE white_list (
+  id varchar,
+  name varchar,
+  age int,
+  PRIMARY KEY (id),  -- 用作维表时，必须有声明的主键。
+  PERIOD FOR SYSTEM_TIME  -- 定义维表的变化周期
+) with (
+  type = 'xxxxxx',
+  ...
+)
+说明
+声明一个维表的时候，必须要指名主键。维表Join的时候，on的条件必须包含所有主键的等值条件。
+目前只支持源表INNER JOIN或LEFT JOIN维表。
+维表的唯一键（UK）必须为数据库中的唯一键。维表声明的唯一键如果不是数据库表的唯一键会产生以下2点影响。
+维表的读取变慢。
+维表JOIN时，会从第一条数据做JOIN，在加入Job的过程中，相同Key的多条记录在DB中按顺序发生变化，可能导致JOIN结果的错误。
+INDEX语法
+说明 建议在实时计算2.2.7及以上版本使用 INDEX语法。
+在2.2版本之前，维表定义要求声明 PRIMARY KEY，这种情况下只能实现一对一连接。为支持一对多连接的需求，引入了 INDEX语法。（非 cache All的维表Join目前是通过 INDEX LOOKUP的方式实现的，Batch作业后续可能根据 COST选择 SCAN的方式）。
+CREATE TABLE Persons (
+    ID bigint,
+    LastName varchar,
+    FirstName varchar,
+    Nick varchar,
+    Age int,
+    [UNIQUE] INDEX(LastName,FirstName,Nick), --定义 index,不需要具体的类型(如 fulltext/clustered...)
+    PERIOD FOR SYSTEM_TIME
+) with (
+  type='xxx',
+  ...
+);
+UNIQUE INDEX表示 一对一连接，而 INDEX表示 一对多连接。
+说明
+UNIQUE CONSTRAINT（UNIQUE KEY）在2.2.7及以后版本中支持（和大部分RDBMS一样，声明了UNIQUE CONSTRAINT后，间接提供了UNIQUE INDEX属性），之前版本可以使用PRIMARY KEY的定义。
+在生成执行计划时，引擎优先采用UNIQUE INDEX，即若DDL中使用INDEX，但Join等值连接条件中同时包含UNIQUE/NON-UNIQUE INDEX时，会优先使用UNIQUE INDEX进行右表数据查找。
+支持一对多连接的维表类型包括RDS，ODPS（仅支持cache All模式，不支持随机访问）。
+可增加了maxJoinRows参数，表示一对多连接时，左表一条记录连接右表的最大记录数（默认值为1024），注意一对多连接的记录数过多时，需要考虑对Cache的内存需求变大（cacheSize限制的是左表key个数），单条左表记录对应的右表记录较多时，可能会极大的影响流任务的性能。
+维表、源表和结果表的区别
+源表	结果表	维表
+是否能驱动计算	是	否	否
+是否能读取数据	是，直接读取。	否	是，仅通过源表和维表join读取。
+是否能写入数据	否	是	否
+是否支持Cache	否	否	是
+
+创建表格存储（Table Store）维表
+更新时间：2018-12-27 18:56:02
+
+
+本页目录
+什么是表格存储（Table Store）
+示例
+WITH参数
+CACHE参数
+测试案例
+本文为您介绍如何创建实时计算表格存储（Table Store）维表。
+
+什么是表格存储（Table Store）
+表格存储（Table Store）简称OTS，是根据99.99%的高可用以及11个9的数据可靠性的设计标准，构建在阿里云飞天分布式系统之上的分布式NoSQL数据存储服务。表格存储通过数据分片和负载均衡技术，实现数据规模与访问并发上的无缝扩展，提供海量结构化数据的存储和实时访问服务。
+
+示例
+实时计算支持表格存储（Table Store）作为维表，示例如下。
+
+CREATE TABLE ots_dim_table (
+ id int,
+ len int,
+ content VARCHAR,
+ PRIMARY KEY (id),
+ PERIOD FOR SYSTEM_TIME--定义了维表的变化周期，即表明该表是一张会变化的表。
+) WITH (
+ type='ots',
+ endPoint='xxxxxx'
+ instanceName='yourInstanceName',
+ tableName='yourTableName',
+ accessId='xxxxxx',
+ accessKey='xxxxxx',
+);
+说明 声明一个维表的时候，必须要指名主键。维表JOIN的时候，ON的条件必须包含所有主键的等值条件。OTS的主键即表的rowkey。
+WITH参数
+参数	注释说明
+instanceName	实例名
+tableName	表名
+endPoint	实例访问地址
+accessId	访问的ID
+accessKey	访问的键
+CACHE参数
+参数	注释说明	备注
+cache	缓存策略	默认为 None, 可选 LRU。
+cacheSize	缓存大小	当选择 LRU缓存策略后，可以设置缓存大小，默认为10000 行。
+cacheTTLMs	缓存超时时间，单位为毫秒。	当选择 LRU缓存策略后，可以设置缓存失效的超时时间。
+测试案例
+CREATE TABLE datahub_input1 (
+id            BIGINT,
+name        VARCHAR,
+age           BIGINT
+) WITH (
+type='datahub'
+);
+
+create table phoneNumber(
+name VARCHAR,
+phoneNumber bigint,
+primary key(name),
+PERIOD FOR SYSTEM_TIME--定义维表的变化周期
+)with(
+type='ots'
+);
+
+CREATE table result_infor(
+id bigint,
+phoneNumber bigint,
+name VARCHAR
+)with(
+type='rds'
+);
+
+INSERT INTO result_infor
+SELECT
+t.id
+,w.phoneNumber
+,t.name
+FROM datahub_input1 as t
+JOIN phoneNumber FOR SYSTEM_TIME AS OF PROCTIME() as w --维表JOIN必须指定
+ON t.name = w.name;
+关于维表详细语法请参见维表JOIN语句。
+
+创建云数据库（RDS和DRDS）维表
+更新时间：2018-12-27 18:56:21
+
+
+本页目录
+云数据库RDS版
+示例
+WITH参数
+Cache 参数
+测试案例
+本文为您介绍如何创建实时计算云数据库（RDS和DRDS）维表。
+
+云数据库RDS版
+阿里云关系型数据库（Relational Database Service，简称 RDS）是一种稳定可靠、可弹性伸缩的在线数据库服务。基于阿里云分布式文件系统和高性能存储，RDS支持MySQL、SQL Server、PostgreSQL和PPAS（Postgre Plus Advanced Server，一种高度兼容 Oracle 的数据库）引擎，并且提供了容灾、备份、恢复、监控、迁移等方面的全套解决方案，彻底解决数据库运维的烦恼。
+
+说明 云数据库(RDS/DRDS)插件中的WITH参数一致，可以通用。 在使用云数据库(RDS和DRDS)作为维表时，RDS或DRDS中必须要有真实的表存在。
+示例
+实时计算支持使用RDS或DRDS作为维表（注意：目前仅支持MySQL数据存储类型），示例代码如下。
+
+CREATE TABLE rds_dim_table(
+ id int,
+ len int,
+ content VARCHAR,
+ PRIMARY KEY (id),
+ PERIOD FOR SYSTEM_TIME--定义维表的变化周期，表明该表是一张会变化的表。
+) with (
+ type='rds',
+ url='xxxxxx',
+ tableName='xxxxxx',
+ userName='xxxxxx',
+ password='xxxxxx'
+);
+说明 声明一个维表时，必须要指名主键。维表JOIN的时候，ON的条件必须包含所有主键的等值条件。RDS或DRDS的主键可以定义为表的主键或是唯一索引列。
+WITH参数
+参数	注释说明	备注
+url	地址	地址请参见
+RDS的URL地址
+DRDS的URL地址
+tableName	表名	无
+userName	用户名	无
+password	密码	无
+maxRetryTimes	最大尝试插入次数	可选，默认为3。
+Cache 参数
+参数	注释说明	备注
+cache	缓存策略	默认为 None, 可选 LRU或ALL。
+cacheSize	缓存大小	当选择 LRU 缓存策略后，可以设置缓存大小，默认 10000 行。
+cacheTTLMs	缓存超时时间，单位为毫秒。	当选择 LRU 缓存策略后，可以设置缓存失效的超时时间，默认不过期。当选择 ALL 策略，则为缓存reload 的间隔时间，默认不重新加载。
+cacheReloadTimeBlackList	缓存策略选择ALL 时启用。更新时间黑名单，防止在此时间内做cache 更新。（如双11场景。）	可选，默认为空。自定义输入格式为2017-10-24 14:00 -> 2017-10-24 15:00, 2017-11-10 23:30 -> 2017-11-11 08:00。用逗号,来分隔多个黑名单，用箭头->来分割黑名单的起始结束时间。
+目前RDS/DRDS提供如下三种缓存策略。
+
+None：无缓存。
+LRU：最近使用策略缓存。需要配置相关参数：缓存大小（cacheSize）和 缓存超时时间（cacheTTLMs）。
+ALL：全量缓存策略。在Job运行前会将远程表中所有数据load到内存中，之后所有的维表查询都会通过 cache进行。cache命中不到则不存在，并在缓存过期后重新加载一遍全量缓存。全量缓存策略适合远程表数据量小、miss key多的场景。全量缓存相关配置：缓存更新间隔（cacheTTLMs），更新时间黑名单（cacheReloadTimeBlackList）。
+说明
+因为会异步reload，使用cache all的时候，需要将维表JOIN的节点增加一些内存，增加的内存大小为远程表两倍的数据量。
+使用cache all，请特别注意节点的内存，防止内存溢出。
+测试案例
+CREATE TABLE datahub_input1 (
+id            BIGINT,
+name        VARCHAR,
+age           BIGINT
+) WITH (
+type='datahub'
+);
+create table phoneNumber(
+name VARCHAR,
+phoneNumber bigint,
+primary key(name),
+PERIOD FOR SYSTEM_TIME--定义维表的变化周期
+)with(
+type='rds'
+);
+CREATE table result_infor(
+id bigint,
+phoneNumber bigint,
+name VARCHAR
+)with(
+type='rds'
+);
+INSERT INTO result_infor
+SELECT
+t.id
+,w.phoneNumber
+,t.name
+FROM datahub_input1 as t
+JOIN phoneNumber FOR SYSTEM_TIME AS OF PROCTIME() as w --维表JOIN必须指定
+ON t.name = w.name;
+关于维表详细语法请参见维表JOIN语句。
+
+创建云数据库（HBase）维表
+更新时间：2018-12-27 18:56:40
+
+
+本页目录
+示例
+参数
+CACHE参数
+本文为您介绍如何创建实时计算云数据库（HBase）维表。
+
+说明 云数据库（HBase）维表的JOIN语法详见： 维表JOIN语句。
+示例
+CREATE TABLE hbase (
+   `key` varchar,
+   `name` varchar,
+    PRIMARY KEY (`key`), -- hbase中的rowkey 字段
+    PERIOD FOR SYSTEM_TIME --维表标识。
+   ) with (
+    TYPE = 'cloudhbase',
+    zkQuorum = 'xxxxxx',
+    columnFamily = 'xxxxxx',
+    tableName = 'xxxxxx'
+);
+说明 声明维表时，必须要指名主键。维表JOIN的时候，ON的条件必须包含所有主键的等值条件。HBase中的主键即rowkey。
+参数
+参数	注释说明	备注
+zkQuorum	HBase集群配置的zk地址,是以,分隔的主机列表。	可以在hbase-site.xml文件中找到hbase.zookeeper.quorum相关配置。
+zkNodeParent	集群配置在zk上的路径	可以在hbase-site.xml文件中找到hbase.zookeeper.quorum相关配置。
+tableName	HBase表名	无
+columnFamily	列族名	目前只支持插入同一列族
+userName	用户名	无
+password	密码	无　
+maxRetryTimes	最大尝试次数	默认10次
+partitionedJoin	设置为true之后会在用joinKey做partition，将数据分发到join节点，提高缓存命中率。	可选，默认关闭。
+shuffleEmptyKey	设置为true之后遇到空key会随机往下游做shuffle，否则往0号下游发。	建议打开
+CACHE参数
+参数	注释说明	备注
+cache	缓存策略	默认 None, 可选 LRU, ALL。
+cacheSize	缓存大小	当选择 LRU 缓存策略后，可以设置缓存大小，默认 10000 行。
+cacheTTLMs	缓存超时时间，单位为毫秒。	当选择 LRU 缓存策略后，可以设置缓存失效的超时时间，默认不过期。当选择 ALL 策略，则为缓存reload 的间隔时间，默认不重新加载。
+cacheReloadTimeBlackList	缓存策略选择ALL时启用。更新时间黑名单，防止在此时间内做cache更新。（如双11场景。）	可选，默认为空。自定义输入格式为
+为2017-10-24 14:00 -> 2017-10-24 15:00, 2017-11-10 23:30 -> 2017-11-11
+            08:00
+。用逗号,来分隔多个黑名单，用箭头->来分割黑名单的起始结束时间。
+cacheScanLimit	缓存策略选择ALL时启用。load全量HBase数据，服务端一次RPC返回给客户端的行数。	可选，默认100条。
+目前RDS和DRDS提供如下三种缓存策略。
+
+None：无缓存。
+LRU：最近使用策略缓存。需要配置相关参数：缓存大小（cacheSize）和 缓存超时时间（cacheTTLMs）。
+ALL：全量缓存策略。在Job运行前会将远程表中所有数据load到内存中，之后所有的维表查询都会通过cache进行。cache命中不到，则会在缓存过期后重新加载一遍全量缓存。全量缓存策略适合远程表数据量小、miss key多的场景。全量缓存相关配置：缓存更新间隔（cacheTTLMs），更新时间黑名单（cacheReloadTimeBlackList）。
+说明 因为会异步reload，使用cache all的时候，需要将维表JOIN的节点增加一些内存，增加的内存大小为远程表2倍的数据量。
+
+创建MaxCompute（ODPS）维表
+更新时间：2019-04-10 09:56:22
+
+编辑 ·
+本页目录
+创建MaxCompute（ODPS）维表示例
+WITH参数
+Cache参数
+METRIC
+如何查看ODPS分区名
+常见问题
+说明
+推荐实时计算2.1.1及以上版本使用。
+维表的Query语法参见： 维表JOIN语句。
+使用ODPS表作为维表，要先赋权读权限给ODPS账号。
+创建MaxCompute（ODPS）维表示例
+CREATE TABLE white_list (
+  id varchar,
+  name varchar,
+  age int,
+  PRIMARY KEY (id),
+  PERIOD FOR SYSTEM_TIME --定义了维表的标识。
+) WITH (
+  type = 'odps',
+  endPoint = 'http://service.cn.maxcompute.aliyun-inc.com/api',
+  project = 'projectName',
+  tableName = 'tableName',
+  accessId = 'yourAccessKeyId',
+  accessKey = 'yourAccessKeySecret',
+  `partition` = 'ds=2018****',
+  cache = 'ALL'
+)
+说明
+声明维表时，必须要指名主键，维表JOIN的时候，ON的条件必须包含所有主键的等值条件。
+ODPS维表主键必须有唯一性，否则会被去重。
+parition是关键字，使用时需要使用反引号注释`partition`。
+如果是分区表，目前不支持将分区列写入到schema定义中。
+实时计算2.2.0及以上版本支持加载最新分区表，配置方法为partition='max_pt()'，max_pt()为所有分区的字典序最大值。
+WITH参数
+参数	注释说明	备注
+endPoint	ODPS服务地址	必选，参见MaxCompute开通Region和服务连接对照表。
+tunnelEndpoint	MaxCompute Tunnel服务的连接地址	可选，参见MaxCompute开通Region和服务连接对照表。
+说明 VPC环境下为必填。
+project	ODPS项目名称	必选
+tableName	表名	必选
+accessId	accessId	必选
+accessKey	accessKey	必选
+partition	分区名	可选，分区表必填，具体分区信息到数据地图查看。例如: 一个表的分区信息为ds=20180905，则可以写 `partition` = 'ds=20180905'。多级分区之间用逗号分隔，示例: `partition` = 'ds=20180912,dt=xxxyyy'
+maxRowCount	可加载的最大表格数量	可选，默认为100000。
+说明 如果您的数据超过100000，需要设置maxRowCount参数。建议设定值比实际值大。
+Cache参数
+参数	注释说明	备注
+cache	缓存策略	默认None, 可选 LRU, ALL
+cacheSize	缓存大小	当选择LRU缓存策略后，可以设置缓存大小，ODPS默认缓存值为100000行。
+cacheTTLMs	缓存超时时间，单位毫秒。	当选择LRU 缓存策略后，可以设置缓存失效的超时时间，默认为不过期。当选择 ALL 策略，则为缓存reload的间隔时间，默认为不重新加载。
+cacheReloadTimeBlackList	ALL Cache时启用，更新时间黑名单，防止在此时间内做cache更新（如双11场景）。	可选，默认为空，格式为2017-10-24 14:00 -> 2017-10-24 15:00, 2017-11-10 23:30 -> 2017-11-11 08:00。用逗号,来分隔多个黑名单，用箭头->来分割黑名单的起始结束时间。
+cacheScanLimit	ALL Cache 时启用，load全量HBase数据，服务端一次RPC返回给客户端的行数。	可选，默认为100条。
+目前ODPS维表只支持ALL全量缓存策略，必须显式声明。
+
+ALL: 全量缓存策略。即在Job运行前会将远程表中所有数据load到内存中，之后所有的维表查询都会走cache，cache命中不到则不存在，并在缓存过期后重新加载一遍全量缓存。全量缓存策略适合远程表不大、miss key特别多的场景。全量缓存策略需要配置：缓存更新间隔（ cacheTTLMs）和更新时间黑名单（ cacheReloadTimeBlackList）。
+说明 注意：使用ALL Cache的时候，由于会进行异步Reload，需要将维表JOIN的节点增加内存，增加的内存大小为远程表两倍的数据量。
+METRIC
+维表JOIN可以查看关联率，缓存命中率等METRIC信息。目前Bayes平台还不能查看，只能通过kmonitor。
+查询语句	说明
+fetch qps	查询维表总qps，包括命中和不命中。对应的Metric Name：blink.projectName.jobName.dimJoin.fetchQPS 。
+fetchHitQPS	维表命中qps，包括换成命中和查询物理维表命中，对应Metric Name：blink.projectName.jobName.dimJoin.fetchHitQPS。
+cacheHitQPS	维表缓存命中qps，对应Metric Name：blink.projectName.jobName.dimJoin.cacheHitQPS
+dimJoin.fetchHit	维表关联率，对应Metric Name： blink.projectName.jobName.dimJoin.fetchHit 。
+dimJoin.cacheHit	维表缓存关联率，对应Metric Name：blink.projectName.jobName.dimJoin.cacheHit 。
+如何查看ODPS分区名
+进入数据地图。
+搜索表名。
+在数据表详情界面的明细信息 > 分区信息中进行查看。例如：adm_dim_csn_trans_shift的分区是ds=20180905
+
+。
+常见问题
+Q：任务出现了RejectedExecutionException: Task java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTas的Failover该怎么处理？
+
+A：实时计算1.x版本中维表JOIN存在一定的问题，推荐升级到2.1.1及以上实时计算版本。如果需要继续使用原有版本，需要对作业进行暂停恢复操作，根据failover history中第一次出现failover的具体报错信息进行排查。
+
+Q：MaxCompute中的数据类型和实时计算中数据类型的对应关系是什么？
+
+A：如下表。
+MaxCompute	Blink
+TINYINT	TINYINT
+SMALLINT	SMALLINT
+INT	INT
+BIGINT	BIGINT
+FLOAT	FLOAT
+DOUBLE	DOUBLE
+BOOLEAN	BOOLEAN
+DATETIME	TIMESTAMP
+TIMESTAMP	TIMESTAMP
+VARCHAR	VARCHAR
+STRING	STRING
+DECIMAL	DECIMAL
+BINARY	VARBINARY
+说明 其他MaxCompute类型，ODPS connector暂时还没有支持转换。
+
+INSERT INTO语句
+更新时间：2019-01-27 16:27:11
+
+编辑 ·
+ · 我的收藏
+本页目录
+语法
+示例
+操作约束
+本文为您介绍如何在实时使计算中使用INSERT INTO语句以及INSERT INTO的操作约束。
+
+语法
+INSERT INTO tableName
+      [ (columnName[ , columnName]*) ]
+          queryStatement;
+示例
+INSERT INTO LargeOrders
+SELECT * FROM Orders WHERE units > 1000;
+INSERT INTO Orders(z, v)
+SELECT c,d FROM OO;
+说明
+单个实时计算作业支持在一个SQL作业里面包含多个DML操作，同样也允许包含多个数据源、多个数据目标端、多个维表。例如，在一个作业文件里面包含两段完全业务上独立的SQL，分别写出到不同的数据目标端。
+实时计算不支持单独的SELECT查询，必须有CREATE VIEW或这是在INSERT INTO内才能操作。
+INSERT INTO支持UPDATA更新。例如，向RDS的表插入一个KEY值。如果这个KEY值存在就会更新，如果不存在就会插入一条新的KEY值。
+操作约束
+表类型	操作约束
+源表	只能引用（FROM），不可执行INSERT。
+维表	只能引用（JOIN），不可执行INSERT。
+结果表	仅支持INSERT操作。
+视图	只能引用（FROM）。
+
+SELECT语句
+更新时间：2019-01-24 14:12:17
+
+编辑 ·
+ · 我的收藏
+本页目录
+语法
+测试数据
+示例一
+示例二
+示例三
+子查询
+SELECT语句用于从表中选取数据。
+
+语法
+SELECT [ DISTINCT ]
+{ * | projectItem [, projectItem ]* }
+FROM tableExpression;
+测试数据
+a（VARCHAR）	b（INT）	c（DATE）
+a1	211	1990-02-20
+b1	120	2018-05-12
+c1	89	2010-06-14
+a1	46	2016-04-05
+示例一
+测试语句
+SELECT * FROM 表名；
+测试结果
+a（VARCHAR）	b（INT）	c（DATE）
+a1	211	1990-02-20
+b1	120	2018-05-12
+c1	89	2010-06-14
+a1	46	2016-04-05
+示例二
+测试语句
+SELECT a, c AS d FROM 表名；
+测试结果
+a（VARCHAR）	d（DATE）
+a1	1990-02-20
+b1	2018-05-12
+c1	2010-06-14
+a1	2016-04-05
+示例三
+测试语句
+SELECT DISTINCT a FROM 表名；
+测试结果
+a（VARCHAR）
+a1
+b1
+c1
+子查询
+普通的SELECT是从几张表中读数据，如SELECT column_1, column_2 … FROM table_name，但查询的对象也可以是另外一个SELECT操作。
+
+说明 当查询的对象是另一个SELECT操作时，必须为子查询加别名。示例如下。
+示例语句
+INSERT INTO result_table
+SELECT * FROM
+               (SELECT   t.a,
+                         sum(t.b) AS sum_b
+                FROM     t1 t
+                GROUP BY t.a
+               ) t1
+WHERE  t1.sum_b > 100;
+
+示例结果
+a（VARCHAR）	b（INT）
+a1	211
+b1	120
+a1	257
+
+WHERE语句
+更新时间：2018-12-27 18:58:14
+
+
+本页目录
+语法
+示例
+WHERE语句可用于对SELECT语句中的数据进行筛选。
+
+语法
+SELECT [ ALL | DISTINCT ]
+{ * | projectItem [, projectItem ]* }
+FROM tableExpression
+[ WHERE booleanExpression ];
+下面的运算符可在WHERE语句中使用。
+操作符	描述
+=	等于
+<>	不等于
+>	大于
+>=	大于等于
+<	小于
+<=	小于等于
+示例
+测试数据
+Address	City
+Oxford Street	Beijing
+Fifth Avenue	Beijing
+Changan Street	shanghai
+测试语句
+SELECT * FROM XXXX WHERE City='Beijing'
+
+测试结果
+Address	City
+Oxford Street	Beijing
+Fifth Avenue	Beijing
+
+
+HAVING语句
+更新时间：2019-01-27 12:42:52
+
+编辑 ·
+ · 我的收藏
+本页目录
+语法
+示例
+在使用聚合函数时，您需要添加HAVING语句，以实现与WHERE语句一样的过滤效果。
+
+语法
+  SELECT [ ALL | DISTINCT ]{ * | projectItem [, projectItem ]* }
+  FROM tableExpression
+  [ WHERE booleanExpression ]
+  [ GROUP BY { groupItem [, groupItem ]* } ]
+  [ HAVING booleanExpression ];
+示例
+测试数据
+Customer	OrderPrice
+Bush	1000
+Carter	1600
+Bush	700
+Bush	300
+Adams	2000
+Carter	100
+测试语句
+SELECT Customer,SUM(OrderPrice) FROM XXX
+GROUP BY Customer
+HAVING SUM(OrderPrice)<2000;
+测试结果
+Customer	SUM（OrderPrice）
+Carter	1700
+
+
+GROUP BY语句
+更新时间：2018-12-27 18:59:24
+
+
+本页目录
+语法
+示例
+GROUP BY语句用于根据一个或多个列对结果集进行分组。
+
+语法
+SELECT [ DISTINCT ]
+{ * | projectItem [, projectItem ]* }
+FROM tableExpression
+[ GROUP BY { groupItem [, groupItem ]* } ];
+示例
+测试数据
+Customer	OrderPrice
+Bush	1000
+Carter	1600
+Bush	700
+Bush	300
+Adams	2000
+Carter	100
+测试语句
+SELECT Customer,SUM(OrderPrice) FROM xxx
+GROUP BY Customer;
+测试结果
+Customer	SUM(OrderPrice)
+Bush	2000
+Carter	1700
+Adams	2000
+
+JOIN语句
+更新时间：2019-04-19 10:32:29
+
+编辑 ·
+ · 我的收藏
+本页目录
+语法
+示例1
+示例2
+实时计算的JOIN和传统批处理JOIN的语义一致，都用于将两张表联系起来。区别的是实时计算联系的是两张动态表，联系的结果也会动态更新以保证最终结果和批处理结果保持一致。
+
+语法
+tableReference [, tableReference ]* | tableexpression
+[ LEFT ] JOIN tableexpression [ joinCondition ];
+
+说明
+只支持等值连接，不支持不等连接。
+只支持INNER JOIN和LEFT OUTER JOIN两种JOIN方式。
+示例1
+测试数据
+Orders：
+
+rowtime	productId	orderId	units
+10:17:00	30	5	4
+10:17:05	10	6	1
+10:18:05	20	7	2
+10:18:07	30	8	20
+11:02:00	10	9	6
+11:04:00	10	10	1
+11:09:30	40	11	12
+11:24:11	10	12	4
+Products：
+
+productId	name	unitPrice
+30	Cheese	17
+10	Beer	0.25
+20	Wine	6
+30	Cheese	17
+10	Beer	0.25
+10	Beer	0.25
+40	Bread	100
+10	Beer	0.25
+测试语句
+  SELECT o.rowtime, o.productId, o.orderId, o.units,p.name, p.unitPrice
+  FROM Orders AS o
+  JOIN Products AS p
+  ON o.productId = p.productId;
+
+测试结果
+rowtime	productId	orderId	units	name	unitPrice
+10:17:00	30	5	4	Cheese	17
+10:17:05	10	6	1	Beer	0.25
+10:18:05	20	7	2	Wine	6
+10:18:07	30	8	20	Cheese	17
+11:02:00	10	9	6	Beer	0.25
+11:04:00	10	10	1	Beer	0.25
+11:09:30	40	11	12	Bread	100
+11:24:11	10	12	4	Beer	0.25
+示例2
+测试数据
+datahub_stream1：
+
+a（BIGINT）	b（BIGINT）	c（VARCHAR）
+0	10	test11
+1	10	test21
+datahub_stream2：
+
+a（BIGINT）	b（BIGINT）	c（VARCHAR）
+0	10	test11
+1	10	test21
+0	10	test31
+1	10	test41
+测试语句
+SELECT s1.c,s2.c
+FROM datahub_stream1 AS s1
+JOIN datahub_stream2 AS s2
+ON s1.a =s2.a
+WHERE s1.a = 0;
+
+测试结果
+s1.c（VARCHAR）	s2.c（VARCHAR）
+test11	test11
+test11	test31
+
+维表JOIN语句
+更新时间：2019-01-27 16:27:35
+
+编辑 ·
+ · 我的收藏
+本页目录
+维表JOIN语法
+示例
+维表是一张不断变化的表，因此在JOIN维表的时候，需指明这条记录关联维表快照的时刻。目前维表JOIN仅支持对当前时刻维表快照的关联。（未来会支持关联左表rowtime所对应的维表快照。）
+
+维表JOIN语法
+SELECT column-names
+FROM table1  [AS <alias1>]
+[LEFT] JOIN table2 FOR SYSTEM_TIME AS OF PROCTIME() [AS <alias2>]
+ON table1.column-name1 = table2.key-name1
+例如，事件流JOIN白名单维表的SQL如下。
+
+SELECT e.*, w.*
+FROM event AS e
+JOIN white_list FOR SYSTEM_TIME AS OF PROCTIME() AS w
+ON e.id = w.id
+说明
+维表支持INNER JOIN和LEFT JOIN，不支持RIGHT JOIN或FULL JOIN。
+必须加上FOR SYSTEM_TIME AS OF PROCTIME()，表示JOIN维表当前时刻所看到的每条数据。
+JOIN行为只发生在处理时间（processing time），即使维表中的数据新增、更新或删除，已关联的数据也不会被改变或撤回。
+ON条件必须包含维表PRIMARY KEY的等值条件（且要求与真实表定义一致），但除此之外，ON条件中也可以有其他等值条件。
+维表和维表不能做JOIN。
+示例
+测试数据
+nameinfo：
+
+id（bigint）	name（varchar）	age（bigint）
+1	lilei	22
+2	hanmeimei	20
+3	libai	28
+phoneNumber：
+
+name（varchar）	phoneNumber（bigint）
+dufu	18867889855
+baijuyi	18867889856
+libai	18867889857
+lilei	18867889858
+测试语句
+CREATE TABLE datahub_input1 (
+id            BIGINT,
+name        VARCHAR,
+age           BIGINT
+) WITH (
+type='datahub'
+);
+
+create table phoneNumber(
+name VARCHAR,
+phoneNumber bigint,
+primary key(name),
+PERIOD FOR SYSTEM_TIME
+)with(
+type='rds'
+);
+
+CREATE table result_infor(
+id bigint,
+phoneNumber bigint,
+name VARCHAR
+)with(
+type='rds'
+);
+
+INSERT INTO result_infor
+SELECT
+t.id,
+w.phoneNumber,
+t.name
+FROM datahub_input1 as t
+JOIN phoneNumber FOR SYSTEM_TIME AS OF PROCTIME() as w
+ON t.name = w.name;
+测试结果
+id（bigint）	phoneNumber（bigint）	name（varchar）
+1	18867889858	lilei
+3	18867889857	libai
+
+UNION ALL语句
+更新时间：2019-01-24 14:12:58
+
+编辑 ·
+ · 我的收藏
+本页目录
+语法
+示例
+UNION ALL语句将两个流式数据合并。要求两个流式数据的字段完全一致，包括字段类型和字段顺序。
+
+语法
+select_statement
+UNION ALL
+select_statement;
+说明 实时计算同样支持 UNION函数。 UNION ALL允许重复值， UNION不允许重复值。在实时计算底层， UNION是 UNION ALL + Distinct ，运行效率较低，一般不推荐使用 UNION。
+示例
+测试数据
+test_source_union1：
+
+a（varchar）	b（bigint）	c（bigint）
+test1	1	10
+test_source_union2：
+
+a（varchar）	b（bigint）	c（bigint）
+test1	1	10
+test2	2	20
+test_source_union3：
+
+a（varchar）	b（bigint）	c（bigint）
+test1	1	10
+test2	2	20
+test1	1	10
+测试语句
+SELECT
+    a,
+    sum(b),
+    sum(c)
+FROM
+    (SELECT * from test_source_union1
+    UNION ALL
+    SELECT * from test_source_union2
+    UNION ALL
+    SELECT * from test_source_union3
+    )t
+ GROUP BY a;
+测试结果
+d（varchar）	e（bigint）	f（bigint）
+test1	1	10
+test2	2	20
+test1	2	20
+test1	3	30
+test2	4	40
+test1	4	40
+
+TopN语句
+更新时间：2019-03-12 17:41:51
+
+编辑 ·
+ · 我的收藏
+本页目录
+语法
+示例1
+示例2
+无排名优化
+TopN语句用于对实时数据中某个指标的前N个最值的筛选。Flink SQL可以基于OVER窗口操作灵活地完成TopN的功能。
+
+语法
+SELECT *
+FROM (
+  SELECT *,
+    ROW_NUMBER() OVER ([PARTITION BY col1[, col2..]]
+    ORDER BY col1 [asc|desc][, col2 [asc|desc]...]) AS rownum
+  FROM table_name)
+WHERE rownum <= N [AND conditions]
+说明
+ROW_NUMBER()：行号计算函数OVER的窗口，行号计算从1开始。
+PARTITION BY col1[, col2..] ： 指定分区的列，可以不指定。
+ORDER BY col1 [asc|desc][, col2 [asc|desc]...]：指定排序的列和每列的排序方向。
+如上语法所示，TopN需要两层query。
+
+查询中使用 ROW_NUMBER() 窗口函数来对数据根据排序列进行排序并标上排名。
+外层查询中对排名进行过滤，只取前N条。例如N=10即为取前10条的数据。
+在执行过程中，Flink SQL会对输入的数据流根据排序键进行排序。如果某个分区的前N条记录发生了改变，则会将改变的那几条数据以更新流的形式发给下游。
+
+说明 如果需要将TopN的数据输出到外部存储，后接的结果表必须是一个带主键的表。
+WHERE条件的限制
+
+为了使Flink SQL能识别出这是一个TopN的query，外层循环中必须要指定 rownum <= N的格式来指定前N条记录，不能使用rownum - 5 <= N 这种将rownum至于某个表达式中。当然，WHERE条件中，可以额外带上其他条件，但是必须是以AND连接。
+
+示例1
+如下示例，先统计查询流中每小时、每个城市和关键字被查询的次数。然后输出每小时、每个城市被查询最多的前100个关键字。在输出表中，小时、城市、排名三者可以唯一确定一条记录，所以需要将这三列声明成联合主键（需要在外部存储中也有同样的主键设置）。
+
+CREATE TABLE rds_output (
+  rownum BIGINT,
+  start_time BIGINT,
+  city VARCHAR,
+  keyword VARCHAR,
+  pv BIGINT,
+  PRIMARY KEY (rownum, start_time, city)
+) WITH (
+  type = 'rds',
+  ...
+)
+
+INSERT INTO rds_output
+SELECT rownum, start_time, city, keyword, pv
+FROM (
+  SELECT *,
+     ROW_NUMBER() OVER (PARTITION BY start_time, city ORDER BY pv desc) AS rownum
+  FROM (
+        SELECT SUBSTRING(time_str,1,12) AS start_time,
+            keyword,
+            count(1) AS pv,
+            city
+        FROM tmp_search
+        GROUP BY SUBSTRING(time_str,1,12), keyword, city
+    ) a
+)
+WHERE rownum <= 100
+示例2
+测试数据
+ip（VARCHAR）	time（VARCHAR）
+192.168.1.1	100000000
+192.168.1.2	100000000
+192.168.1.2	100000000
+192.168.1.3	100030000
+192.168.1.3	100000000
+192.168.1.3	100000000
+测试语句
+CREATE TABLE source_table (
+  IP VARCHAR,
+  `TIME` VARCHAR
+)WITH(
+  type='datahub',
+  endPoint='xxxxxxx',
+  project='xxxxxxx',
+  topic='xxxxxxx',
+  accessId='xxxxxxx',
+  accessKey='xxxxxxx'
+);
+
+CREATE TABLE result_table (
+  rownum BIGINT,
+  start_time VARCHAR,
+  IP VARCHAR,
+  cc BIGINT,
+  PRIMARY KEY (start_time, IP)
+) WITH (
+  type = 'rds',
+  url='xxxxxxx',
+  tableName='blink_rds_test',
+  userName='xxxxxxx',
+  password='xxxxxxx'
+);
+INSERT INTO result_table
+SELECT rownum,start_time,IP,cc
+FROM (
+  SELECT *,
+     ROW_NUMBER() OVER (PARTITION BY start_time ORDER BY cc DESC) AS rownum
+  FROM (
+        SELECT SUBSTRING(`TIME`,1,2) AS start_time,--可以根据真实时间取相应的数值，这里取得是测试数据
+        COUNT(IP) AS cc,
+        IP
+        FROM  source_table
+        GROUP BY SUBSTRING(`TIME`,1,2), IP
+    )a
+)
+WHERE rownum <= 3 --可以根据真实top值取相应的数值，这里取得是测试数据
+
+
+测试结果
+rownum（BIGINT）	start_time（VARCHAR）	ip（VARCHAR）	cc（BIGINT）
+1	10	192.168.1.3	6
+2	10	192.168.1.2	4
+3	10	192.168.1.1	2
+无排名优化
+无排名优化解决数据膨胀问题
+数据膨胀问题
+
+根据TopN的语法，rownum字段会作为结果表的主键字段之一写入结果表。但是这可能导致数据膨胀的问题。例如，收到一条原排名9的更新数据，更新后排名上升到1，那么从1到9的数据排名都发生变化了。需要将这些数据作为更新都写入结果表。这样就产生了数据膨胀，可能导致结果表因为收到了太多的数据而降低更新速度。
+无排名优化方法
+
+结果表中不保存 rownum，最终的 rownum 由前端计算。因为TopN的数据量通常不会很大，前端排序100个数据很快。当收到一条原排名9，更新后排名上升到1的数据，也只需要发送这一条数据，而不用把排名1到9的数据全发送下去。这种优化能够提升结果表的更新速度。
+无排名优化语法
+SELECT col1, col2, col3
+FROM (
+ SELECT col1, col2, col3
+   ROW_NUMBER() OVER ([PARTITION BY col1[, col2..]]
+   ORDER BY col1 [asc|desc][, col2 [asc|desc]...]) AS rownum
+ FROM table_name)
+WHERE rownum <= N [AND conditions]
+
+语法与上文类似，只是在外层查询中将rownum字段裁剪掉即可。
+
+说明 在无rownum的场景，结果表主键的定义一定要特别注意。如果定义有误，会直接导致TopN结果的不正确。 无rownum场景的主键应为 TopN上游GROUP BY节点的KEY列表。
+无排名优化示例
+本示例来自某视频行业用户的真实业务（精简后）。用户每个视频在分发时会产生大量流量，依据视频产生的流量可以分析出最热门的视频。如下示例用于统计出每分钟流量最大的Top5的视频。
+
+测试语句
+--从SLS读取数据原始存储表
+CREATE TABLE sls_cdnlog_stream (
+vid VARCHAR, -- video id
+rowtime TIMESTAMP, -- 观看视频发生的时间
+response_size BIGINT, -- 观看产生的流量
+WATERMARK FOR rowtime as withOffset(rowtime, 0)
+) WITH (
+type='sls',
+...
+);
+
+--1分钟窗口统计vid带宽数
+CREATE VIEW cdnvid_group_view AS
+SELECT vid,
+TUMBLE_START(rowtime, INTERVAL '1' MINUTE) AS start_time,
+SUM(response_size) AS rss
+FROM sls_cdnlog_stream
+GROUP BY vid, TUMBLE(rowtime, INTERVAL '1' MINUTE);
+
+--存储表
+CREATE TABLE hbase_out_cdnvidtoplog (
+vid VARCHAR,
+rss BIGINT,
+start_time VARCHAR,
+   -- 注意结果表中不存储rownum字段
+   -- 特别注意该主键的定义，为TopN上游GROUP BY的keys
+PRIMARY KEY(start_time, vid)
+) WITH (
+type='RDS',
+...
+);
+
+-- 统计每分钟Top5消耗流量的vid，并输出
+INSERT INTO hbase_out_cdnvidtoplog
+
+-- 注意次外层查询，不选出rownum字段
+SELECT vid, rss, start_time FROM
+(
+SELECT
+vid, start_time, rss,
+ROW_NUMBER() OVER (PARTITION BY start_time ORDER BY rss DESC) as rownum,
+FROM
+cdnvid_group_view
+)
+WHERE rownum <= 5;
+
+测试数据
+vid（VARCHAR）	rowtime（Timestamp）	response_size（BIGINT）
+10000	2017-12-18 15:00:10	2000
+10000	2017-12-18 15:00:15	4000
+10000	2017-12-18 15:00:20	3000
+10001	2017-12-18 15:00:20	3000
+10002	2017-12-18 15:00:20	4000
+10003	2017-12-18 15:00:20	1000
+10004	2017-12-18 15:00:30	1000
+10005	2017-12-18 15:00:30	5000
+10006	2017-12-18 15:00:40	6000
+10007	2017-12-18 15:00:50	8000
+测试结果
+start_time（VARCHAR）	vid（VARCHAR）	rss（BIGINT）
+2017-12-18 15:00:00	10000	9000
+2017-12-18 15:00:00	10007	8000
+2017-12-18 15:00:00	10006	6000
+2017-12-18 15:00:00	10005	5000
+2017-12-18 15:00:00	10002	4000
+
+
+复杂事件处理（CEP）语句
+更新时间：2019-03-08 10:03:07
+
+编辑 ·
+ · 我的收藏
+本页目录
+语法
+示例
+复杂事件处理（CEP）语句MATCH_RECOGNIZE用于从输入流中识别符合指定规则的事件，并按照指定的方式输出。
+
+语法
+SELECT [ ALL | DISTINCT ]
+{ * | projectItem [, projectItem ]* }
+FROM tableExpression
+[MATCH_RECOGNIZE (
+[PARTITION BY {partitionItem [, partitionItem]*}]
+[ORDER BY {orderItem [, orderItem]*}]
+[MEASURES {measureItem AS col [, measureItem AS col]*}]
+[ONE ROW PER MATCH|ALL ROWS PER MATCH|ONE ROW PER MATCH WITH TIMEOUT ROWS|ALL ROWS PER MATCH WITH TIMEOUT ROWS]
+[AFTER MATCH SKIP]
+PATTERN (patternVariable[quantifier] [ patternVariable[quantifier]]*) WITHIN intervalExpression
+DEFINE {patternVariable AS patternDefinationExpression [, patternVariable AS patternDefinationExpression]*}
+)];
+参数	说明
+PARTITION BY	分区的列，可选项。
+ORDER BY	可指定多列，但是必须以EVENT TIME列或者PROCESS TIME列作为排序的首列，可选项。
+MEASURES	定义如何根据匹配成功的输入事件构造输出事件。
+ONE ROW PER MATCH	对于每一次成功的匹配，只会产生一个输出事件。
+ONE ROW PER MATCH WITH TIMEOUT ROWS	除了匹配成功的时候产生输出外，超时的时候也会产生输出。超时时间由PATTERN语句中的WITHIN语句定义。
+ALL ROW PER MATCH	对于每一次成功的匹配，对应于每一个输入事件，都会产生一个输出事件。
+ALL ROW PER MATCH WITH TIMEOUT ROWS	除了匹配成功的时候产生输出外，超时的时候也会产生输出。超时时间由PATTERN语句中的WITHIN语句定义。
+[ONE ROW PER MATCH|ALL ROWS PER MATCH|ONE ROW PER MATCH WITH TIMEOUT ROWS|ALL ROWS PER MATCH WITH TIMEOUT ROWS]	为可选项，默认为ONE ROW PER MATCH。
+AFTER MATCH SKIP TO NEXT ROW	匹配成功之后，从匹配成功的事件序列中的第一个事件的下一个事件开始进行下一次匹配。
+AFTER MATCH SKIP PAST LAST ROW	匹配成功之后，从匹配成功的事件序列中的最后一个事件的下一个事件开始进行下一次匹配。
+AFTER MATCH SKIP TO FIRST patternItem	匹配成功之后，从匹配成功的事件序列中第一个对应于patternItem的事件开始下一次匹配。
+AFTER MATCH SKIP TO LAST patternItem	匹配成功之后，从匹配成功的事件序列中最后一个对应于patternItem的事件开始下一次匹配。
+PATTERN	定义待识别的事件序列需要满足的规则，需要定义在()中，由一系列自定义的patternVariable构成。
+说明
+patternVariable之间若以空格间隔，表示符合这两种patternVariable的事件中间不存在其他事件。
+patternVariable之间若以->间隔，表示符合这两种patternVariable的事件之间可以存在其它事件。
+quantifier
+quantifier用于指定符合patternVariable定义的事件的出现次数。
+
+参数	参数意义
+*	0次或多次
++	1次或多次
+?	0次或1次
+{n}	n次
+{n,}	大于等于n次
+{n, m}	大于等于n次，小于等于m次
+{,m}	小于等于m次
+默认为贪婪匹配。比如对于pattern: A -> B+，输入：a b1, b2, b3，输出为：a b1, a b1 b2, a b1 b2 b3。可以在quantifier符号后面加？来表示非贪婪匹配。
+
+*?
++?
+{n}?
+{n,}?
+{n, m}?
+{,m}?
+此时对于上面例子中的pattern及输入，产生的输出为：a b1, a b2, a b1 b2, a b3, a b2 b3, a b1 b2 b3。
+
+说明
+WITHIN 定义符合规则的事件序列的最大时间跨度。
+静态窗口格式：INTERVAL ‘string’ timeUnit [ TO timeUnit ] 示例：INTERVAL ‘10’ SECOND, INTERVAL ‘45’ DAY, INTERVAL ‘10:20’ MINUTE TO SECOND, INTERVAL ‘10:20.10’ MINUTE TO SECOND, INTERVAL ‘10:20’ HOUR TO MINUTE, INTERVAL ‘1-5’ YEAR TO MONTH
+动态窗口格式： INTERVAL intervalExpression 示例： INTERVAL A.windowTime + 10，其中A为pattern定义中第一个patternVariable。 在intervalExpression的定义中，可以使用pattern定义中出现过的patternVariable。当前只能使用第一个patternVariable。intervalExpression中可以使用UDF，intervalExpression的结果必须为long，单位为millisecond，表示窗口的大小。
+DEFINE 定义在PATTERN中出现的patternVariable的具体含义，若某个patternVariable在DEFINE中没有定义，则认为对于每一个事件，该patternVariable都成立。
+MEASURES和DEFINE语句函数
+函数	函数意义
+Row Pattern Column References	形式为：patternVariable.col。表示访问patternVariable所对应的事件的指定的列。
+PREV	只能用在DEFINE语句中，一般与Row Pattern Column References合用。用于访问指定的pattern所对应的事件之前偏移指定的offset所对应的事件的指定的列。示例：对于DOWN AS DOWN.price < PREV(DOWN.price)，PREV(A.price)表示当前事件的前一个事件的price列的值。注意，DOWN.price等价于PREV(DOWN.price, 0)。 PREV(DOWN.price)等价于PREV(DOWN.price, 1)。
+FIRST、LAST	一般与Row Pattern Column References合用，用于访问指定的PATTERN所对应的事件序列中的指定偏移位置的事件。示例：FIRST(A.price, 3)表示PATTERN A所对应的事件序列中的第4个事件。LAST(A.price, 3)表示PATTERN A所对应的事件序列中的倒数第4个事件。
+输出列
+函数	输出列
+ONE ROW PER MATCH	包括PARTITION BY中指定的列及MEASURES中定义的列。 对于PARTITION BY中已经指定的列，在MEASURES中无需重复定义。
+ONE ROW PER MATCH WITH TIMEOUT ROWS	除匹配成功的时候产生输出外，超时的时候也会产生输出，超时时间由PATTERN语句中的WITHIN语句定义。
+说明
+定义PATTERN的时候，最好也定义WITHIN，否则可能会造成STATE越来越大。
+ORDER BY中定义的首列必须为EVENT TIME列或者PROCESS TIME列。
+示例
+示例语法
+SELECT *
+FROM Ticker MATCH_RECOGNIZE (
+PARTITION BY symbol
+ORDER BY tstamp
+MEASURES STRT.tstamp AS start_tstamp,
+LAST(DOWN.tstamp) AS bottom_tstamp,
+LAST(UP.tstamp) AS end_tstamp
+ONE ROW PER MATCH
+AFTER MATCH SKIP TO NEXT ROW
+PATTERN (STRT DOWN+ UP+) WITHIN INTERVAL '10' SECOND
+DEFINE
+DOWN AS DOWN.price < PREV(DOWN.price),
+UP AS UP.price > PREV(UP.price)
+) MR
+ORDER BY MR.symbol, MR.start_tstamp;
+测试数据
+timestamp（TIMESTAMP）	card_id(VARCHAR)	location（VARCHAR）	action（VARCHAR）
+2018-04-13 12:00:00	1	WW	Tom
+2018-04-13 12:05:00	1	WW1	Tom
+2018-04-13 12:10:00	1	WW2	Tom
+2018-04-13 12:20:00	1	WW	Tom
+测试案例语法
+CREATE TABLE datahub_stream (
+	`timestamp`               TIMESTAMP,
+	card_id                   VARCHAR,
+	location                  VARCHAR,
+	`action`                  VARCHAR,
+    WATERMARK wf FOR `timestamp` AS withOffset(`timestamp`, 1000)
+) WITH (
+	type = 'datahub'
+	...
+);
+CREATE TABLE rds_out (
+	start_timestamp               TIMESTAMP,
+	end_timestamp                 TIMESTAMP,
+	card_id                       VARCHAR,
+	event                         VARCHAR
+) WITH (
+	type= 'rds'
+	...
+);
+
+--案例描述
+-- 当相同的card_id在十分钟内，从两个不同的location发生刷卡现象，就会触发报警机制，以便于监测信用卡盗刷等现象
+
+-- 定义计算逻辑
+insert into rds_out
+select
+`start_timestamp`,
+`end_timestamp`,
+card_id, `event`
+from datahub_stream
+MATCH_RECOGNIZE (
+    PARTITION BY card_id   -- 按card_id分区，将相同卡号的数据分到同一个计算节点上。
+    ORDER BY `timestamp`   -- 在窗口内，对事件时间进行排序。
+    MEASURES               --定义如何根据匹配成功的输入事件构造输出事件。
+        e2.`action` as `event`,
+        e1.`timestamp` as `start_timestamp`,   --第一次的事件时间为start_timestamp。
+        LAST(e2.`timestamp`) as `end_timestamp`--最新的事件时间为end_timestamp。
+    ONE ROW PER MATCH           --匹配成功输出一条。
+    AFTER MATCH SKIP TO NEXT ROW--匹配后跳转到下一行。
+    PATTERN (e1 e2+) WITHIN INTERVAL '10' MINUTE  -- 定义两个事件，e1和e2。
+    DEFINE                     --定义在PATTERN中出现的patternVariable的具体含义。
+        e1 as e1.action = 'Tom',    --事件一的action标记为Tom。
+        e2 as e2.action = 'Tom' and e2.location <> e1.location --事件二的action标记为Tom，且事件一和事件二的location不一致。
+
+);
+测试结果
+start_timestamp（TIMESTAMP）	end_timestamp（TIMESTAMP）	card_id（VARCHAR）	event（VARCHAR）
+2018-04-13 20:00:00.0	2018-04-13 20:05:00.0	1	Tom
+2018-04-13 20:05:00.0	2018-04-13 20:10:00.0	1	Tom
+
+
+EMIT语句
+更新时间：2019-04-19 10:32:56
+
+编辑 ·
+ · 我的收藏
+本页目录
+策略
+用途
+语法
+例子
+Delay 的概念
+目前状态和未来计划
+说明 支持实时计算 2.0 以上版本
+策略
+EMIT 策略是指在Flink SQL 中，query的输出策略（如能忍受的延迟）可能在不同的场景有不同的需求，而这部分需求，传统的 ANSI SQL 并没有对应的语法支持。比如用户需求：1小时的时间窗口，窗口触发之前希望每分钟都能看到最新的结果，窗口触发之后希望不丢失迟到一天内的数据。针对这类需求，抽象出了EMIT语法，并扩展到了SQL语法。
+
+用途
+EMIT语法的用途目前总结起来主要提供了：控制延迟、数据精确性，两方面的功能。
+控制延迟。针对大窗口，设置窗口触发之前的EMIT输出频率，减少用户看到结果的延迟。
+数据精确性。不丢弃窗口触发之后的迟到的数据，修正输出结果。
+在选择EMIT策略时，还需要与处理开销进行权衡。因为越低的输出延迟、越高的数据精确性，都会带来越高的计算开销。
+语法
+EMIT 语法是用来定义输出的策略，即是定义在输出（INSERT INTO）上的动作。当未配置时，保持原有默认行为，即 window 只在 watermark 触发时 EMIT 一个结果。语法：
+INSERT INTO tableName
+query
+EMIT strategy [, strategy]*
+
+strategy ::= {WITH DELAY timeInterval | WITHOUT DELAY}
+                [BEFORE WATERMARK |AFTER WATERMARK]
+
+timeInterval ::='string' timeUnit
+
+WITH DELAY：声明能忍受的结果延迟，即按指定 interval 进行间隔输出。
+WITHOUT DELAY：声明不忍受延迟，即每来一条数据就进行输出。
+BEFORE WATERMARK：窗口结束之前的策略配置，即watermark 触发之前。
+AFTER WATERMARK：窗口结束之后的策略配置，即watermark 触发之后。
+注：
+其中 strategy可以定义多个，同时定义before和after的策略。 但不能同时定义两个 before 或 两个after 的策略。
+若配置了AFTER WATERMARK 策略，需要显式地配上 blink.state.ttl.ms 标识能忍受的最大迟到时间。
+例子
+-- 窗口结束之前，按1分钟延迟输出，窗口结束之后无延迟输出
+EMIT
+  WITH DELAY '1'MINUTE BEFORE WATERMARK,
+  WITHOUT DELAY AFTER WATERMARK
+
+-- 窗口结束之前不输出，窗口结束之后无延迟输出
+EMIT WITHOUT DELAY AFTER WATERMARK
+
+-- 全局都按1分钟的延迟输出 (minibatch)
+EMIT WITH DELAY '1'MINUTE
+-- 窗口结束之前按1分钟延迟输出
+EMIT WITH DELAY '1'MINUTE BEFORE WATERMARK
+
+最大容忍迟到时间
+
+当配置AFTER 的策略，即表示会接收迟到的数据，窗口的状态就会一直保留以等待迟到数据，那么会等待多久呢？这是一个用户能自定义的参数，即 blink.state.ttl.ms 状态的超时时间，默认未配置，如启用了 AFTER 策略，必须显式地配上 blink.state.ttl.ms 参数 。例如： blink.state.ttl.ms=3600000 最多容忍1小时的迟到数据，超过这个时间的数据会直接丢弃。
+Example
+
+例如，我们有一个一小时的滚动窗口 tumble_window 。
+CREATE VIEW tumble_window AS
+SELECT
+  id,
+  TUMBLE_START(rowtime, INTERVAL '1' HOUR) as start_time,
+  COUNT(*) as cnt
+FROM source
+GROUP BY id, TUMBLE(rowtime, INTERVAL '1' HOUR)
+
+默认 tumble_window 的输出是需要等到一小时结束才能看到结果，我们希望能尽早能看到窗口的结果（即使是不完整的结果）。例如，我们希望每分钟看到最新的窗口结果：
+INSERT INTO result
+SELECT * FROM tumble_window
+EMIT WITH DELAY '1' MINUTE BEFORE WATERMARK -- 窗口结束之前，每隔1分钟输出一次更新结果
+
+另外，默认 tumble_window 会忽略并丢弃窗口结束后到达的数据，而这部分数据对我们来说很重要，希望能统计进最终的结果里。而且我们知道我们的迟到数据不会太多，且迟到时间不会超过一天以上，并且希望收到迟到的数据立刻就更新结果：
+INSERT INTO result
+SELECT * FROM tumble_window
+EMIT WITH DELAY '1' MINUTE BEFORE WATERMARK,
+     WITHOUT DELAY AFTER WATERMARK  -- 窗口结束后，每收到一条数据输出一次更新结果
+
+-- 增加一天的 state TTL 配置
+blink.state.ttl.ms = 86400000
+
+Delay 的概念
+本文的 Delay 指的是用户能忍受的延迟，该延迟是指用户的数据从进入实时计算统，到看到结果数据（出实时计算系统）的时间，不管 mode 是Event Time 还是Processing Time。延迟的计算都是基于系统时间的。动态表（流在实时计算内部的存储）中的任意一行记录发生了变化，到结果表（实时计算外部的存储）中能看到这行新记录的时间间隔，称为延迟。
+
+假设实时计算系统的处理耗时是0，那么会产生延迟的地方有 minibatch 的攒批，window 的等待窗口数据。如果用户指定了最多延迟30秒，那这30秒可以用来给 minibatch 攒批。如果query 是一个一小时的窗口，那么最多延迟30秒的含义是，每隔30秒要 EMIT 变化的行，也就是window结果的trigger interval。
+
+例如配置 EMIT WITH DELAY '1' MINUTE ，如果普通groupby 聚合，则会用1分钟做 minibatch 攒批。如果有window且window 的size大于1分钟，则window 会每隔1分钟发射一次，否则忽略这个配置，因为窗口依靠watermark 的输出就能保证这个latency SLA。
+
+又例如配置 EMIT WITHOUT DELAY 。如果是group by，则不会启用minibatch，每来一条数据都触发计算和输出。如果是window，则也是每来一条数据都触发计算和输出。
+
+目前状态和未来计划
+目前状态和未来计划·
+目前EMIT策略只支持TUMBLE，HOP窗口，暂不支持SESSION窗口。
+目前一个Job若有多个输出，多个输出的EMIT需要定义成一样的策略。未来会支持不一样的策略。
+目前EMIT 语法还不能用来配置minibatch的allowLateness，未来打算使用EMIT 策略来声明allowLateness。
+=================
+
+
+窗口函数概述
+更新时间：2019-04-11 11:58:23
+
+编辑 ·
+ · 我的收藏
+本页目录
+窗口函数
+时间属性
+级联窗口
+本文为您介绍Flink SQL支持的窗口函数以及窗口函数支持的时间属性和窗口类型。
+
+窗口函数
+窗口函数Flink SQL支持基于无限大窗口的聚合（无需显式定义在SQL Query中添加任何的窗口）以及对一个特定的窗口的聚合。例如，需要统计在过去的1分钟内有多少用户点击了某个的网页，可以通过定义一个窗口来收集最近1分钟内的数据，并对这个窗口内的数据进行计算。
+
+Flink SQL支持的窗口聚合主要是两种：Window Aggregate和Over Aggregate。本文档主要介绍Window Aggregate。Window Aggregate支持两种时间属性做窗口：Event Time和Processing Time。每种时间属性类型下，又分别支持三种窗口类型：滚动窗口（TUMBLE）、滑动窗口（HOP）和会话窗口（SESSION）。
+
+时间属性
+Flink SQL支持以下2种时间属性。实时计算可以基于这2种时间属性对数据进行窗口聚合。
+Event Time：您提供的事件时间(通常是数据的最原始的创建时间)，Event Time一定是您提供在Schema里的数据。
+Processing Time：对事件进行处理的本地系统时间。
+实时计算时间属性详情，请参见时间属性。
+
+级联窗口
+由于rowtime列在经过窗口后，其event time属性会丢失。您可以使用辅助函数TUMBLE_ROWTIME、HOP_ROWTIME或SESSION_ROWTIME来获取窗口中的rowtime列的最大值max(rowtime)作为时间窗口的rowtime，其类型是具有rowtime attribute的TIMESTAMP，取值为 window\_end - 1 。 例如[00:00, 00:15) 的窗口，返回值为00:14:59.999 。
+
+级联窗口示例如下。示例逻辑为：基于1分钟的滚动窗口聚合结果，进行1小时的滚动窗口聚合。
+CREATE TABLE user_clicks(
+  username varchar,
+  click_url varchar,
+  ts timeStamp,
+  WATERMARK wk FOR ts as withOffset(ts, 2000)  --为rowtime定义watermark
+) with (
+  type='datahub',
+  ...
+);
+
+CREATE TABLE tumble_output(
+  window_start TIMESTAMP,
+  window_end TIMESTAMP,
+  username VARCHAR,
+  clicks BIGINT
+) with (
+  type='print'
+);
+
+CREATE VIEW one_minute_window_output as
+SELECT
+  // 使用TUMBLE_ROWTIME作为二级window的聚合时间
+  TUMBLE_ROWTIME(ts, INTERVAL '1' MINUTE) as rowtime,
+  username,
+  COUNT(click_url) as cnt
+FROM window_input
+GROUP BY TUMBLE(ts, INTERVAL '1' MINUTE), username;
+
+INSERT INTO tumble_output
+SELECT
+  TUMBLE_START(rowtime, INTERVAL '1' HOUR),
+  TUMBLE_END(rowtime, INTERVAL '1' HOUR),
+  username,
+  SUM(cnt)
+FROM one_minute_window_output
+GROUP BY TUMBLE(rowtime, INTERVAL '1' HOUR), username
+
+
+
+滚动窗口
+更新时间：2019-04-11 16:34:27
+
+编辑 ·
+ · 我的收藏
+本页目录
+什么滚动窗口
+语法
+标识函数
+示例1
+示例2
+本文为您介绍如何使用实时计算滚动窗口函数。
+
+什么滚动窗口
+滚动窗口（TUMBLE）将每个元素分配到一个指定大小的窗口中。通常滚动窗口有一个固定的大小，并且不会出现重叠。例如：如果指定了一个5分钟大小的滚动窗口，无限流的数据会根据时间划分成 [0:00 - 0:05)、 [0:05, 0:10)、 [0:10, 0:15)等窗口。如下图，展示了一个大小划分为30秒的滚动窗口。
+滚动窗口
+语法
+TUMBLE函数用在GROUP BY子句中，用来定义滚动窗口。
+
+TUMBLE(<time-attr>, <size-interval>)
+<size-interval>: INTERVAL 'string' timeUnit
+说明
+<time-attr> 参数必须是流中的一个合法的时间属性字段，指定为Processing Time或Event Time。 请参见窗口函数概述，了解如何定义时间属性和Watermark。
+
+标识函数
+使用标识函数选出窗口的起始时间或者结束时间，窗口的时间属性用于下级Window的聚合。
+
+窗口标识函数	返回类型	描述
+TUMBLE_START(time-attr, size-interval)	TIMESTAMP	返回窗口的起始时间（包含边界）。如[00:10, 00:15) 的窗口，返回 00:10 。
+TUMBLE_END(time-attr, size-interval)	TIMESTAMP	返回窗口的结束时间（包含边界）。如[00:00, 00:15] 的窗口，返回 00:15。
+TUMBLE_ROWTIME(time-attr, size-interval)	TUMBLE_ROWTIME(time-attr, size-interval)	返回窗口的结束时间（不包含边界）。如 [00:00, 00:15] 的窗口，返回 00:14:59.999 。返回值是一个 rowtime attribute，即可以基于该字段做时间属性的操作，如级联窗口。只能用在基于event time 的window 上。
+TUMBLE_PROCTIME(time-attr, size-interval)	TUMBLE_ROWTIME(time-attr, size-interval)	返回窗口的结束时间（不包含边界）。如 [00:00, 00:15] 的窗口，返回 00:14:59.999 。返回值是一个 proctime attribute，即可以基于该字段做时间属性的操作，如级联窗口。 只能用在基于processing time 的window上。
+示例1
+以下示例为使用event time统计每个用户每分钟在指定网站的点击数。
+
+测试数据
+username （VARCHAR）	click_url （VARCHAR）	ts （TIMESTAMP）
+Jark	http://taobao.com/xxx	2017-10-10 10:00:00.0
+Jark	http://taobao.com/xxx	2017-10-10 10:00:10.0
+Jark	http://taobao.com/xxx	2017-10-10 10:00:49.0
+Jark	http://taobao.com/xxx	2017-10-10 10:01:05.0
+Jark	http://taobao.com/xxx	2017-10-10 10:01:58.0
+Timo	http://taobao.com/xxx	2017-10-10 10:02:10.0
+测试语句
+CREATE TABLE user_clicks(
+username varchar,
+click_url varchar,
+ts timeStamp,
+WATERMARK wk FOR ts as withOffset(ts, 2000) -- 为rowtime定义watermark
+) with (
+type='datahub',
+...
+);
+
+CREATE TABLE tumble_output(
+window_start TIMESTAMP,
+window_end TIMESTAMP,
+username VARCHAR,
+clicks BIGINT
+) with (
+type='RDS'
+);
+
+INSERT INTO tumble_output
+SELECT
+TUMBLE_START(ts, INTERVAL '1' MINUTE),
+TUMBLE_END(ts, INTERVAL '1' MINUTE),
+username,
+COUNT(click_url)
+FROM user_clicks
+GROUP BY TUMBLE(ts, INTERVAL '1' MINUTE), username
+测试结果
+window_start （TIMESTAMP）	window_end （TIMESTAMP）	username （VARCHAR）	clicks （BIGINT）
+2017-10-10 10:00:00.0	2017-10-10 10:01:00.0	Jark	3
+2017-10-10 10:01:00.0	2017-10-10 10:02:00.0	Jark	2
+2017-10-10 10:02:00.0	2017-10-10 10:03:00.0	Timo	1
+示例2
+以下示例为使用processing time统计每个用户每分钟在指定网站的点击数。
+
+测试数据
+username （VARCHAR）	click_url （VARCHAR）
+Jark	http://taobao.com/xxx
+Jark	http://taobao.com/xxx
+Jark	http://taobao.com/xxx
+Jark	http://taobao.com/xxx
+Jark	http://taobao.com/xxx
+Timo	http://taobao.com/xxx
+测试语句
+CREATE TABLE window_test (
+  username              VARCHAR,
+  click_url             VARCHAR,
+    ts as PROCTIME()
+) WITH (
+  type = 'datahu ...c = xxx'
+);
+
+
+CREATE TABLE tumble_output(
+window_start TIMESTAMP,
+window_end TIMESTAMP,
+username VARCHAR,
+clicks BIGINT
+) with (
+type='print'
+);
+
+INSERT INTO tumble_output
+SELECT
+TUMBLE_START(ts, INTERVAL '1' MINUTE),
+TUMBLE_END(ts, INTERVAL '1' MINUTE),
+username,
+COUNT(click_url)
+FROM window_test
+GROUP BY TUMBLE(ts, INTERVAL '1' MINUTE), username
+测试结果
+window_start （TIMESTAMP）	window_end （TIMESTAMP）	username （VARCHAR）	clicks （BIGINT）
+2019-04-11 14:43:00.000	2019-04-11 14:44:00.000	Jark	5
+2019-04-11 14:43:00.000 	2019-04-11 14:44:00.000	Timo	1
+
+
+滑动窗口
+更新时间：2019-04-16 17:40:15
+
+编辑 ·
+ · 我的收藏
+本页目录
+什么是滑动窗口
+滑动窗口函数语法
+滑动窗口标识函数
+示例
+本文为您介绍如何使用实时计算滑动窗口函数。
+
+说明 实时计算滑动窗口（HOP）暂不支持与last_value、first_value或TopN函数共同使用。
+什么是滑动窗口
+滑动窗口（HOP），也被称作Sliding Window。不同于滚动窗口，滑动窗口的窗口可以重叠。
+
+滑动窗口有两个参数：slide和size。slide为每次滑动的步长，size为窗口的大小。
+
+slide < size，则窗口会重叠，每个元素会被分配到多个窗口。
+slide = size，则等同于滚动窗口（TUMBLE）。
+slide > size，则为跳跃窗口，窗口之间不重叠且有间隙。
+通常情况下大部分元素符合多个窗口情景，窗口是重叠的。因此，滑动窗口在计算移动平均数（moving averages）时很实用。例如，计算过去5分钟数据的平均值，每10秒钟更新一次，可以设置slide为10秒，size为5分钟。下图为您展示间隔为30秒，窗口大小为1分钟的滑动窗口。
+滑动窗口
+滑动窗口函数语法
+HOP函数用在group by子句中，用来定义滑动窗口。
+
+HOP(<time-attr>, <slide-interval>,<size-interval>)
+<slide-interval>: INTERVAL 'string' timeUnit
+<size-interval>: INTERVAL 'string' timeUnit
+
+说明
+<time-attr> 参数必须是流中的一个合法的时间属性字段，指定为Processing Time或Event Time。 请参见窗口函数概述，了解如何定义时间属性和Watermark。
+
+滑动窗口标识函数
+使用滑动窗口标识函数选出窗口的起始时间或者结束时间，窗口的时间属性用于下级Window的聚合。
+
+窗口标识函数	返回类型	描述
+HOP_START（<time-attr>, <slide-interval>, <size-interval>）	TIMESTAMP	返回窗口的起始时间（包含边界）。如[00:10, 00:15) 的窗口，返回 00:10 。
+HOP_END（<time-attr>, <slide-interval>, <size-interval>）	TIMESTAMP	返回窗口的结束时间（包含边界）。如[00:00, 00:15) 的窗口，返回 00:15。
+HOP_ROWTIME（<time-attr>, <slide-interval>, <size-interval>）	TIMESTAMP（rowtime-attr）	返回窗口的结束时间（不包含边界）。如 [00:00, 00:15) 的窗口，返回 00:14:59.999 。返回值是一个 rowtime attribute，也就是可以基于该字段做时间类型的操作，如级联窗口。只能用在基于event time的window上。
+HOP_PROCTIME（<time-attr>, <slide-interval>, <size-interval>）	TIMESTAMP（rowtime-attr）	返回窗口的结束时间（不包含边界）。如 [00:00, 00:15) 的窗口，返回 00:14:59.999 。返回值是一个 proctime attribute，也就是可以基于该字段做时间类型的操作，如级联窗口。只能用在基于 processing time的window 上。
+示例
+统计每个用户过去1分钟的点击次数，每30秒更新一次。即一分钟的窗口，30秒滑动一次。
+
+测试数据
+username（VARCHAR）	click_url（VARCHAR）	ts（TIMESTAMP）
+Jark	http://taobao.com/xxx	2017-10-10 10:00:00.0
+Jark	http://taobao.com/xxx	2017-10-10 10:00:10.0
+Jark	http://taobao.com/xxx	2017-10-10 10:00:49.0
+Jark	http://taobao.com/xxx	2017-10-10 10:01:05.0
+Jark	http://taobao.com/xxx	2017-10-10 10:01:58.0
+Timo	http://taobao.com/xxx	2017-10-10 10:02:10.0
+测试语句
+CREATE TABLE user_clicks (
+    username VARCHAR,
+    click_url VARCHAR,
+    ts TIMESTAMP,
+    WATERMARK wk FOR ts AS WITHOFFSET (ts, 2000)--为rowtime定义watermark
+) WITH ( TYPE = 'datahub',
+        ...);
+CREATE TABLE hop_output (
+    window_start TIMESTAMP,
+    window_end TIMESTAMP,
+    username VARCHAR,
+    clicks BIGINT
+) WITH (TYPE = 'rds',
+        ...);
+INSERT INTO
+    hop_output
+SELECT
+    HOP_START (ts, INTERVAL '30' SECOND, INTERVAL '1' MINUTE),
+    HOP_END (ts, INTERVAL '30' SECOND, INTERVAL '1' MINUTE),
+    username,
+    COUNT (click_url)
+FROM
+    user_clicks
+GROUP BY
+    HOP (ts, INTERVAL '30' SECOND, INTERVAL '1' MINUTE),
+    username
+
+测试结果
+window_start （TIMESTAMP）	window_end （TIMESTAMP）	username （VARCHAR）	clicks （BIGINT）
+2017-10-10 10:00:00.0	2017-10-10 10:01:00.0	Jark	3
+2017-10-10 10:00:30.0	2017-10-10 10:01:30.0	Jark	2
+2017-10-10 10:01:00.0	2017-10-10 10:02:00.0	Jark	2
+2017-10-10 10:01:30.0	2017-10-10 10:02:30.0	Jark	1
+2017-10-10 10:01:30.0	2017-10-10 10:02:30.0	Timo	1
+2017-10-10 10:02:00.0	2017-10-10 10:03:00.0	Timo	1
+
+
+
+会话窗口
+更新时间：2019-04-11 11:59:11
+
+编辑 ·
+ · 我的收藏
+本页目录
+什么是会话窗口
+会话窗口函数语法
+会话窗口标识函数
+示例
+本文为您介绍如何使用实时计算会话窗口函数。
+
+什么是会话窗口
+会话窗口（SESSION）通过Session活动来对元素进行分组。会话窗口与滚动窗口和滑动窗口相比，没有窗口重叠，没有固定窗口大小。相反，当它在一个固定的时间周期内不再收到元素，即会话断开时，这个窗口就会关闭。
+
+会话窗口通过一个间隔时间（Gap）来配置，这个间隔定义了非活跃周期的长度。例如，一个表示鼠标点击活动的数据流可能具有长时间的空闲时间，并在其间散布着高浓度的点击。 如果数据在最短指定的间隔持续时间之后到达，则会开始一个新的窗口。
+
+下图展示了一个会话窗口，注意每个Key由于不同的数据分布有不同的Window。
+
+会话窗口函数语法
+SESSION函数用在GROUP BY子句中定义会话窗口。
+
+SESSION(<time-attr>, <gap-interval>)
+<gap-interval>: INTERVAL 'string' timeUnit
+说明
+<time-attr> 参数必须是流中的一个合法的时间属性字段，指定为Processing Time或Event Time。 请参见窗口函数概述，了解如何定义时间属性和Watermark。
+
+会话窗口标识函数
+使用标识函数选出窗口的起始时间或者结束时间，窗口的时间属性用于下级Window的聚合。
+
+窗口标识函数	返回类型	描述
+SESSION_START（<time-attr>, <gap-interval>）	Timestamp	返回窗口的起始时间（包含边界）。如[00:10, 00:15) 的窗口，返回 00:10 。
+SESSION_END（<time-attr>, <gap-interval>）	Timestamp	返回窗口的结束时间（包含边界）。如[00:00, 00:15) 的窗口，返回 00:15。
+SESSION_ROWTIME（<time-attr>, <gap-interval>）	Timestamp（rowtime-attr）	返回窗口的结束时间（不包含边界）。如 [00:00, 00:15) 的窗口，返回00:14:59.999 。返回值是一个 rowtime attribute，也就是可以基于该字段做时间类型的操作，如级联窗口。只能用在基于event time 的window 上。
+SESSION_PROCTIME（<time-attr>, <gap-interval>）	Timestamp（rowtime-attr）	返回窗口的结束时间（不包含边界）。如 [00:00, 00:15) 的窗口，返回 00:14:59.999 。返回值是一个 proctime attribute，也就是可以基于该字段做时间类型的操作，如级联窗口。只能用在基于 processing time的window 上。
+示例
+统计每个用户在每个活跃会话期间的点击次数，会话超时时间30秒。
+
+测试数据
+username （VARCHAR）	click_url （VARCHAR）	ts （TIMESTAMP）
+Jark	http://taobao.com/xxx	2017-10-10 10:00:00.0
+Jark	http://taobao.com/xxx	2017-10-10 10:00:10.0
+Jark	http://taobao.com/xxx	2017-10-10 10:00:49.0
+Jark	http://taobao.com/xxx	2017-10-10 10:01:05.0
+Jark	http://taobao.com/xxx	2017-10-10 10:01:58.0
+Timo	http://taobao.com/xxx	2017-10-10 10:02:10.0
+测试语句
+CREATE TABLE user_clicks(
+username varchar,
+click_url varchar,
+ts timeStamp,
+WATERMARK wk FOR ts as withOffset(ts, 2000) -- 为rowtime定义watermark
+) with (
+type='datahub',
+...
+);
+
+CREATE TABLE session_output(
+window_start TIMESTAMP,
+window_end TIMESTAMP,
+username VARCHAR,
+clicks BIGINT
+) with (
+type='rds'
+);
+
+INSERT INTO session_output
+SELECT
+SESSION_START(ts, INTERVAL '30' SECOND),
+SESSION_END(ts, INTERVAL '30' SECOND),
+username,
+COUNT(click_url)
+FROM user_clicks
+GROUP BY SESSION(ts, INTERVAL '30' SECOND), username
+测试结果
+window_start （TIMESTAMP）	window_end （TIMESTAMP）	username （VARCHAR）	clicks （BIGINT）
+2017-10-10 10:00:00.0	2017-10-10 10:00:40.0	Jark	2
+2017-10-10 10:00:49.0	2017-10-10 10:01:35.0	Jark	2
+2017-10-10 10:01:58.0	2017-10-10 10:02:28.0	Jark	1
+2017-10-10 10:02:10.0	2017-10-10 10:02:40.0	Timo	1
+
+
+
+OVER窗口
+更新时间：2019-01-24 14:14:05
+
+编辑 ·
+ · 我的收藏
+本页目录
+语法
+类型
+属性
+Rows OVER Window语义
+RANGE OVER Window语义
+OVER窗口（OVER Window）是传统数据库的标准开窗，OVER Window不同于Group By Window，OVER Window中每1个元素都对应1个窗口。窗口元素是与当前元素相邻的元素集合，流上元素会在多个窗口中。在Flink SQL Window的实现中，每个触发计算的元素所确定的行，都是该元素所在窗口的最后一行。
+
+在应用OVER Window的流式数据中，每1个元素都对应1个OVER Window。每1个元素都触发一次数据计算。在实时计算的底层实现中，OVER Window的数据进行全局统一管理（数据只存储一份），逻辑上为每1个元素维护1个OVER Window，为每1个元素进行窗口计算，完成计算后会清除过期的数据。
+
+语法
+SELECT
+    agg1(col1) OVER (definition1) AS colName,
+    ...
+    aggN(colN) OVER (definition1) AS colNameN
+FROM Tab1
+说明
+agg1到aggN所对应的OVER definition1必须相同。
+AS的别名可供外层SQL进行查询。
+类型
+Flink SQL中对OVER Window的定义遵循标准SQL的定义语法，传统OVER Window没有对其进行更细粒度的窗口类型命名划分。本节为了方便您理解OVER Window的语义，将OVER Window按照计算行的定义方式划分为如下两类。
+
+ROWS OVER Window：每一行元素都视为新的计算行，即每一行都是一个新的窗口。
+RANGE OVER Window：具有相同时间值的所有元素行视为同一计算行，即具有相同时间值的所有行都是同一个窗口。
+属性
+正交属性	proctime	eventtime
+rows	√	√
+range	√	√
+rows：按照实际元素的行进行确定窗口。
+range：按照实际的元素值（时间戳值）进行确定窗口。
+Rows OVER Window语义
+窗口数据
+ROWS OVER Window的每个元素都确定一个窗口。ROWS OVER Window也有Unbounded和Bounded的两种情况。
+
+Unbounded ROWS OVER Window数据如下图所示。
+
+UnBounded ROWS OVER Window
+说明 上图所示窗口user1的w7和w8，user2的窗口w3和w4，虽然元素都是同一时刻到达，但是它们仍然是在不同的窗口，这一点有别于RANGE OVER Window。
+Bounded ROWS OVER Window数据以3个元素（2 PRECEDING）的窗口为例，如下图所示。
+
+Bounded ROWS OVER Window
+说明 上图所示窗口user1的w5和w6，user2的窗口w2和w3，虽然有元素都是同一时刻到达，但是它们仍然是在不同的窗口，这一点有别于RANGE OVER Window。
+窗口语法
+SELECT
+    agg1(col1) OVER(
+     [PARTITION BY (value_expression1,..., value_expressionN)]
+     ORDER BY timeCol
+     ROWS
+     BETWEEN (UNBOUNDED | rowCount) PRECEDING AND CURRENT ROW) AS colName, ...
+FROM Tab1
+value_expression：分区值表达式。
+timeCol：用于元素排序的时间字段。
+rowCount：是定义根据当前行开始向前追溯几行元素。
+案例
+以Bounded ROWS OVER Window场景示例，假设，有一张商品上架表，包含有商品ID、商品类型、商品上架时间、商品价格数据。假设，求在当前商品上架之前同类的3个商品中的最高价格。
+
+测试数据
+
+商品ID	商品类型	上架时间	销售价格
+ITEM001	Electronic	2017-11-11 10:01:00	20
+ITEM002	Electronic	2017-11-11 10:02:00	50
+ITEM003	Electronic	2017-11-11 10:03:00	30
+ITEM004	Electronic	2017-11-11 10:03:00	60
+ITEM005	Electronic	2017-11-11 10:05:00	40
+ITEM006	Electronic	2017-11-11 10:06:00	20
+ITEM007	Electronic	2017-11-11 10:07:00	70
+ITEM008	Clothes	2017-11-11 10:08:00	20
+测试代码
+
+CREATE TABLE tmall_item(
+   itemID VARCHAR,
+   itemType VARCHAR,
+   onSellTime TIMESTAMP,
+   price DOUBLE,
+   WATERMARK onSellTime FOR onSellTime as withOffset(onSellTime, 0)
+)
+WITH (
+  type = 'sls',
+   ...
+) ;
+
+SELECT
+    itemID,
+    itemType,
+    onSellTime,
+    price,
+    MAX(price) OVER (
+        PARTITION BY itemType
+        ORDER BY onSellTime
+        ROWS BETWEEN 2 preceding AND CURRENT ROW) AS maxPrice
+  FROM tmall_item
+测试结果
+
+itemID	itemType	onSellTime	price	maxPrice
+ITEM001	Electronic	2017-11-11 10:01:00	20	20
+ITEM002	Electronic	2017-11-11 10:02:00	50	50
+ITEM003	Electronic	2017-11-11 10:03:00	30	50
+ITEM004	Electronic	2017-11-11 10:03:00	60	60
+ITEM005	Electronic	2017-11-11 10:05:00	40	60
+ITEM006	Electronic	2017-11-11 10:06:00	20	60
+ITEM007	Electronic	2017-11-11 10:07:00	70	70
+ITEM008	Clothes	2017-11-11 10:08:00	20	20
+RANGE OVER Window语义
+窗口数据
+RANGE OVER Window所有具有共同元素值（元素时间戳）的元素行确定一个窗口，RANGE OVER Window也有Unbounded和Bounded的两种情况。
+
+Unbounded RANGE OVER Window 数据如下图所示。
+UnBounded RANGE OVER Window
+注意: 上图所示窗口user1的w7， user2的窗口w3 ，两个元素同一时刻到达，他们属于相同的window，这一点有别于ROWS OVER Window。
+
+Bounded RANGE OVER Window 数据，以3秒中数据(INTERVAL '2' SECOND)的窗口为例，如下图所示。
+
+Bounded RANGE OVER Window
+说明 上图所示窗口user1的w6， user2的窗口w3，元素都是同一时刻到达，他们属于相同的window，这一点有别于ROWS OVER Window。
+窗口语法
+SELECT
+    agg1(col1) OVER(
+     [PARTITION BY (value_expression1,..., value_expressionN)]
+     ORDER BY timeCol
+     RANGE
+     BETWEEN (UNBOUNDED | timeInterval) PRECEDING AND CURRENT ROW) AS colName,
+...
+FROM Tab1
+value_expression：进行分区的字表达式。
+timeCol：用于元素排序的时间字段。
+timeInterval：是定义根据当前行开始向前追溯指定时间的元素行。
+案例
+以Bounded RANGE OVER Window场景示例，假设有一张商品上架表，包含有商品ID、商品类型、商品上架时间、商品价格数据。假设求比当前商品上架时间早2分钟的同类商品中的最高价格。
+
+测试数据
+
+商品ID	商品类型	上架时间	销售价格
+ITEM001	Electronic	2017-11-11 10:01:00	20
+ITEM002	Electronic	2017-11-11 10:02:00	50
+ITEM003	Electronic	2017-11-11 10:03:00	30
+ITEM004	Electronic	2017-11-11 10:03:00	60
+ITEM005	Electronic	2017-11-11 10:05:00	40
+ITEM006	Electronic	2017-11-11 10:06:00	20
+ITEM007	Electronic	2017-11-11 10:07:00	70
+ITEM008	Clothes	2017-11-11 10:08:00	20
+测试代码
+
+CREATE TABLE tmall_item(
+   itemID VARCHAR,
+   itemType VARCHAR,
+   onSellTime TIMESTAMP,
+   price DOUBLE,
+   WATERMARK onSellTime FOR onSellTime as withOffset(onSellTime, 0)
+)
+WITH (
+  type = 'sls',
+   ...
+) ;
+
+SELECT
+    itemID,
+    itemType,
+    onSellTime,
+    price,
+    MAX(price) OVER (
+        PARTITION BY itemType
+        ORDER BY onSellTime
+        RANGE BETWEEN INTERVAL '2' MINUTE preceding AND CURRENT ROW) AS maxPrice
+  FROM tmall_item
+
+测试结果
+
+itemID	itemType	onSellTime	price	maxPrice
+ITEM001	Electronic	2017-11-11 10:01:00	20	20
+ITEM002	Electronic	2017-11-11 10:02:00	50	50
+ITEM003	Electronic	2017-11-11 10:03:00	30	50
+ITEM004	Electronic	2017-11-11 10:03:00	60	60
+ITEM005	Electronic	2017-11-11 10:05:00	40	60
+ITEM006	Electronic	2017-11-11 10:06:00	20	40
+ITEM007	Electronic	2017-11-11 10:07:00	70	70
+ITEM008	Clothes	2017-11-11 10:08:00	20	20
+
+本文为您介绍如何使用实时计算逻辑运算函数=。
+
+语法
+ A = B
+入参
+参数	数据类型
+A	INT
+B	INT
+功能描述
+如果A等于B，返回TRUE，否则返回FALSE。
+
+示例
+测试数据
+int1(INT)	int2(INT)	int3(INT)
+97	65	65
+测试语句
+SELECT int1 as aa
+FROM T1
+WHERE int3 = int2;
+测试结果
+aa(int)
+97
+
+
+
+本文为您介绍如何使用实时计算逻辑运算函数>。
+
+语法
+ A > B
+入参
+参数	数据类型
+A	INT
+B	INT
+功能描述
+如果A大于B，返回TRUE，否则返回FALSE。
+示例
+测试数据
+int1(INT)	int2(INT)	int3(INT)
+97	65	100
+测试语句
+SELECT int1 as aa
+FROM T1
+WHERE int3 > int2;
+测试结果
+aa(int)
+97
+
+>=
+更新时间：2018-12-27 19:08:01
+
+
+本页目录
+语法
+入参
+功能描述
+示例
+本文为您介绍如何使用实时计算逻辑运算函数>=。
+
+语法
+ A >= B
+入参
+参数	数据类型
+A	INT
+B	INT
+功能描述
+如果A大于等于B，返回TRUE，否则返回FALSE。
+示例
+测试数据
+int1(INT)	int2(INT)	int3(INT)
+97	65	65
+9	6	61
+测试语句
+SELECT int1 as aa
+FROM T1
+WHERE int3 >= int2;
+测试结果
+aa(int)
+97
+9
+
+<=
+更新时间：2018-12-28 11:03:46
+
+
+本页目录
+语法
+入参
+功能描述
+示例
+本文为您介绍如何使用实时计算逻辑运算函数<=。
+
+语法
+ A <= B
+入参
+参数	数据类型
+A	INT
+B	INT
+功能描述
+如果A小于等于B，返回TRUE，否则返回FALSE。
+示例
+测试数据
+int1(INT)	int2(INT)	int3(INT)
+97	66	65
+9	6	5
+测试语句
+SELECT int1 as aa
+FROM T1
+WHERE int3 <= int2;
+测试结果
+aa(int)
+97
+9
+
+<
+更新时间：2018-12-27 19:11:17
+
+
+本页目录
+语法
+入参
+功能描述
+示例
+本文为您介绍如何使用实时计算逻辑运算函数<。
+
+语法
+ A < B
+入参
+参数	数据类型
+A	INT
+B	INT
+功能描述
+如果A小于B，返回TRUE，否则返回FALSE。
+示例
+测试数据
+int1(INT)	int2(INT)	int3(INT)
+97	66	65
+9	6	5
+测试语句
+SELECT int1 as aa
+FROM T1
+WHERE int3 < int2;
+测试结果
+aa(int)
+97
+9
+
+<>
+更新时间：2018-12-27 19:11:35
+
+
+本页目录
+语法
+入参
+功能描述
+示例
+本文为您介绍如何使用实时计算逻辑运算函数<>。
+
+语法
+ A <> B
+入参
+参数	数据类型
+A	INT
+B	INT
+功能描述
+如果A不等于B，返回TRUE，否则返回FALSE。
+示例
+测试数据
+int1(INT)	int2(INT)	int3(INT)
+97	66	6
+测试语句
+SELECT int1 as aa
+FROM T1
+WHERE int3 <> int2;
+测试结果
+aa(int)
+97
+
+AND
+更新时间：2018-12-27 19:11:56
+
+
+本页目录
+语法
+入参
+功能描述
+示例
+本文为您介绍如何使用实时计算逻辑运算函数AND。
+
+语法
+ A AND B
+入参
+参数	数据类型
+A	BOOLEAN
+B	BOOLEAN
+功能描述
+如果A和B均为TRUE，则为TRUE，否则为FALSE。
+示例
+测试数据
+int1(INT)	int2(INT)	int3(INT)
+255	97	65
+测试语句
+SELECT int2 as aa
+FROM T1
+WHERE int1=255 AND int3=65;
+测试结果
+aa(int)
+97
+
+BETWEEN AND
+更新时间：2019-04-19 10:33:32
+
+编辑 ·
+本页目录
+语法
+入参
+功能描述
+示例1
+示例2
+示例3
+本文为您介绍如何使用实时计算逻辑运算函数BETWEEN AND。
+
+语法
+ A BETWEEN AND B
+
+入参
+参数	数据类型
+A	DOUBLE，BIGINT，INT，VARCHAR，DATE，TIMESTAMP，TIME
+B	DOUBLE，BIGINT，INT，VARCHAR，DATE，TIMESTAMP，TIME
+C	DOUBLE，BIGINT，INT，VARCHAR，DATE，TIMESTAMP，TIME
+功能描述
+BETWEEN操作符用于选取介于两个值之间的数据范围内的值。
+
+示例1
+测试数据
+int1(INT)	int2(INT)	int3(INT)
+90	80	100
+11	10	7
+测试语句
+SELECT int1 as aa
+FROM T1
+WHERE int1 BETWEEN int2 AND int3;
+
+测试结果
+aa(int)
+90
+示例2
+测试数据
+var1(varchar)	var2(varchar)	var3(varchar)
+b	a	c
+测试语句
+SELECT var1 as aa
+FROM T1
+WHERE var1 BETWEEN var2 AND var3;
+
+测试结果
+aa(varchar)
+b
+示例3
+测试数据
+TIMESTAMP1(TIMESTAMP)	TIMESTAMP2(TIMESTAMP)	TIMESTAMP3(TIMESTAMP)
+1969-07-20 20:17:30	1969-07-20 20:17:20	1969-07-20 20:17:45
+测试语句
+SELECT TIMESTAMP1 as aa
+FROM T1
+WHERE TIMESTAMP1 BETWEEN TIMESTAMP2 AND TIMESTAMP3;
+
+测试结果
+aa(TIMESTAMP)
+1969-07-20 20:17:30
+
+IS NOT FALSE
+更新时间：2018-12-27 19:12:33
+
+
+本页目录
+语法
+入参
+功能描述
+示例
+本文为您介绍如何使用实时计算逻辑运算函数IS NOT FALSE。
+
+语法
+A IS NOT FALSE
+入参
+参数	数据类型
+A	BOOLEAN
+功能描述
+如果A是TRUE，返回TRUE。如果A是FALSE，返回FALSE。
+
+示例
+测试数据
+int1(INT)	int2(INT)
+255	97
+测试语句
+SELECT int2 as aa
+FROM T1
+WHERE int1=255 IS NOT FALSE;
+测试结果
+aa(int)
+97
+
+
+IS NOT NULL
+更新时间：2018-12-27 19:12:50
+
+
+本页目录
+语法
+入参
+功能描述
+示例
+本文为您介绍如何使用实时计算逻辑运算函数IS NOT NULL。
+
+语法
+value IS NOT NULL
+入参
+参数	数据类型
+value	任意数据类型
+功能描述
+如果 value为NULL，返回FALSE，否则返回TRUE。
+
+示例
+测试数据
+int1(INT)	int2(VARCHAR)
+97	无
+9	ww123
+测试语句
+SELECT int1 as aa
+FROM T1
+WHERE int2 IS NOT NULL;
+测试结果
+aa(int)
+9
+
+IS NOT TRUE
+更新时间：2018-12-27 19:14:12
+
+
+本页目录
+语法
+入参
+功能描述
+示例
+本文为您介绍如何使用实时计算逻辑运算函数IS NOT TRUE。
+
+语法
+A IS NOT TRUE
+入参
+参数	数据类型
+A	BOOLEAN
+功能描述
+如果A是TRUE，返回FALSE。如果A是FALSE，返回TRUE。
+
+示例
+测试数据
+int1(INT)	int2(INT)
+255	97
+测试语句
+SELECT int1 as aa
+FROM T1
+WHERE int1=25 IS NOT TRUE;
+测试结果
+aa(int)
+97
+
+IS NOT UNKNOWN
+更新时间：2018-12-27 19:14:30
+
+
+本页目录
+语法
+入参
+功能描述
+示例一
+示例二
+本文为您介绍如何使用实时计算逻辑运算函数IS NOT UNKNOWN。
+
+语法
+A IS NOT UNKNOWN
+入参
+参数	数据类型
+A	BOOLEAN
+功能描述
+A为逻辑比较表达式，例如： 6<8。
+
+正常情况下数值型与数值型作逻辑比较时，A值为TRUE或者FALSE。当其中一个不为数值型数据类型时，就会出现无法比较的情况。IS NOT UNKNOWN 就是判断这种情况是否存在。 当两边无法进行正常的逻辑判断时，即A值既不是TRUE也不是FALSE，返回 FALSE。可正常逻辑判断时，即A值为TRUE或者FALSE，返回 TRUE 。
+
+示例一
+测试数据
+int1(INT)	int2(INT)
+255	97
+测试语句
+SELECT int2 as aa
+FROM T1
+WHERE int1=25 IS NOT UNKNOWN;
+测试结果
+aa(int)
+97
+示例二
+测试数据
+int1(INT)	int2(INT)
+255	97
+测试语句
+SELECT int2 as aa
+FROM T1
+WHERE int1 < null IS NOT UNKNOWN;
+测试结果
+aa(int)
+空
+
+IS NULL
+更新时间：2018-12-27 19:14:48
+
+
+本页目录
+语法
+入参
+功能描述
+示例
+本文为您介绍如何使用实时计算逻辑运算函数IS NULL。
+
+语法
+value IS NULL
+入参
+参数	数据类型
+value	任意数据类型
+功能描述
+如果 value为NULL，返回TURE，否则返回FALSE。
+
+示例
+测试数据
+int1(INT)	int2(VARCHAR)
+97	无
+9	www
+测试语句
+SELECT int1 as aa
+FROM T1
+WHERE int2 IS NULL;
+测试结果
+aa(int)
+97
+
+IS TRUE
+更新时间：2018-12-27 19:15:34
+
+
+本页目录
+语法
+入参
+功能描述
+示例
+本文为您介绍如何使用实时计算逻辑运算函数IS TURE。
+
+语法
+A IS TRUE
+入参
+参数	数据类型
+A	BOOLEAN
+功能描述
+如果A是TRUE，返回TURE。如果A是FALSE，返回FALSE。
+
+示例
+测试数据
+int1(INT)	int2(INT)
+255	97
+测试语句
+SELECT int1 as aa
+FROM T1
+WHERE int1=255 IS TRUE;
+测试结果
+aa(int)
+97
+
+IS UNKNOWN
+更新时间：2018-12-27 19:15:53
+
+
+本页目录
+语法
+入参
+功能描述
+示例一
+示例二
+本文为您介绍如何使用实时计算逻辑运算函数IS UNKNOWN。
+
+语法
+A IS UNKNOWN
+入参
+参数	数据类型
+A	BOOLEAN
+功能描述
+当两边无法进行正常的逻辑判断时，即A(逻辑比较表达式)值既不是TRUE也不是FALSE，返回 TRUE。可正常逻辑判断时，即A值为TRUE或者FALSE，返回 FALSE。正常情况下数值型 与数值型作逻辑比较时(例如6<>8)，A值为TRUE或者FALSE。但是，当其中一个不为数值型数据类型时，就会出现无法比较的情况。IS UNKNOWN就是判断这种情况是否存在。
+
+示例一
+测试数据
+int1(INT)	int2(INT)
+255	97
+测试语句
+SELECT int2 as aa
+FROM T1
+WHERE int1=25 IS UNKNOWN;
+测试结果
+aa(int)
+空
+示例二
+测试数据
+int1(INT)	int2(INT)
+255	97
+测试语句
+SELECT int2 as aa
+FROM T1
+WHERE int1 > null IS UNKNOWN;
+测试结果
+aa(int)
+97
+
+LIKE
+更新时间：2019-04-19 10:33:57
+
+编辑 ·
+本页目录
+语法
+入参
+功能描述
+示例1
+示例2
+本文为您介绍如何使用实时计算逻辑运算函数LIKE。
+
+语法
+A LIKE B
+
+入参
+参数	数据类型
+A	VARCHAR
+B	VARCHAR
+功能描述
+如果匹配，返回TRUE，否则返回FALSE。
+说明 %可用于定义通配符。
+示例1
+测试数据
+int1(INT)	VARCHAR2(VARCHAR)	VARCHAR3(VARCHAR)
+90	ss97	97ss
+99	ss10	7ho7
+测试语句
+SELECT int1 as aa
+FROM T1
+WHERE VARCHAR2 LIKE 'ss%';
+
+测试结果
+aa(int)
+90
+99
+示例2
+测试数据
+int1(INT)	VARCHAR2(VARCHAR)	VARCHAR3(VARCHAR)
+90	ss97	97ss
+99	ss10	7ho7
+测试语句
+SELECT int1 as aa
+FROM T1
+WHERE VARCHAR3 LIKE '%ho%';
+
+测试结果
+aa(int)
+99
+
+NOT
+更新时间：2018-12-27 19:16:36
+
+
+本页目录
+语法
+入参
+功能描述
+示例
+本文为您介绍如何使用实时计算逻辑运算函数NOT。
+
+语法
+NOT A
+入参
+参数	数据类型
+A	BOOLEAN
+功能描述
+如果A是TRUE，返回FALSE。如果A是FALSE，返回TRUE。
+
+示例
+测试数据
+int2(INT)	int3(INT)
+97	65
+测试语句
+SELECT int2 as aa
+FROM T1
+WHERE NOT int3=62;
+测试结果
+aa(int)
+97
+
+
+NOT BETWEEN AND
+更新时间：2019-04-19 10:34:28
+
+编辑 ·
+本页目录
+语法
+入参
+功能描述
+示例1
+示例2
+示例3
+本文为您介绍如何使用实时计算逻辑运算函数NOT BETWEEN AND。
+
+语法
+A NOT BETWEEN B AND C
+
+入参
+参数	数据类型
+A	DOUBLE、BIGINT、INT、VARCHAR、DATE、TIMESTAMP、TIME
+B	DOUBLE、BIGINT、INT、VARCHAR、DATE、TIMESTAMP、TIME
+C	DOUBLE、BIGINT、INT、VARCHAR、DATE、TIMESTAMP、TIME
+功能描述
+NOT BETWEEN AND操作符用于选取不存在与两个值之间的数据范围内的值。
+
+示例1
+测试数据
+int1(INT)	int2(INT)	int3(INT)
+90	97	80
+11	10	7
+测试语句
+SELECT int1 as aa
+FROM T1
+WHERE int1 NOT BETWEEN int2 AND int3;
+
+测试结果
+aa(int)
+11
+示例2
+测试数据
+var1(varchar)	var2(varchar)	var3(varchar)
+d	a	c
+测试语句
+SELECT int1 as aa
+FROM T1
+WHERE var1 NOT BETWEEN var2 AND var3;
+
+测试结果
+aa(varchar)
+d
+示例3
+测试数据
+TIMESTAMP1(TIMESTAMP)	TIMESTAMP2(TIMESTAMP)	TIMESTAMP3(TIMESTAMP)
+1969-07-20 20:17:30	1969-07-20 20:17:40	1969-07-20 20:17:45
+测试语句
+SELECT TIMESTAMP1 as aa
+FROM T1
+WHERE TIMESTAMP1 NOT BETWEEN TIMESTAMP2 AND TIMESTAMP3;
+
+测试结果
+aa(TIMESTAMP)
+1969-07-20 20:17:30
+
+===========
+
+DDL概述
+更新时间：2019-03-27 17:37:21
+
+编辑 ·
+ · 我的收藏
+本页目录
+语法
+说明
+字段映射
+处理大小写敏感
+相关章节
+本文为您介绍实时计算DDL语法以及在DDL使用过程中需要注意的字段映射和大小写敏感问题。
+
+语法
+CREATE TABLE tableName
+      (columnName dataType [, columnName dataType ]*)
+      [ WITH (propertyName=propertyValue [, propertyName=propertyValue ]*) ];
+说明
+阿里云实时计算本身不带有数据存储功能，所有涉及表创建DDL的操作，实际上均是对于外部数据表、存储的引用声明，如下所示。
+
+CREATE TABLE mq_stream(
+ a VARCHAR,
+ b VARCHAR,
+ c VARCHAR
+) WITH (
+ type='mq',
+ topic='blink_mq_test',
+ accessID='xxxxxx',
+ accessKey='xxxxxx'
+);
+
+以上代码不是在Flink SQL中创建消息队列（MQ）源表的topic，而是声明了一个名称为mq_stream的表引用。下游所有对这个MQ的topic相关的DML操作中，均可以用别名mq_stream来代替topic名。
+
+实时计算声明表的作用域是当前作业（1个SQL文件提交后生成1个实时计算作业），即上述有关mq_stream的声明仅在当前SQL有效。相同实时计算项目下的不同SQL文件同样可以声明名称为mq_stream的表。
+按照SQL标准定义，DDL语法中关键字、表名、列名等不区分大小写。
+表名、列名必须以字母或者数字开头，并且名称中只能包含字母、数字或下划线。
+DDL声明不完全根据名称进行映射（取决于上游插件的性质）。建议您引用声明的字段名称、字段个数和外部表保持一致，避免因定义混乱而导致的数据错乱情况。
+说明 对于声明表和外部表，如果插件支持根据key取值，则不要求两者字段数量一致，但字段名称需要一致。如果上游插件不支持根据key取值，则需要字段数量和字段顺序一致。
+字段映射
+声明表的字段映射根据外部数据源是否有Shema，分为两大类别。
+顺序映射
+适用于以MQ为代表的不带有Schema系统。这类系统通常是非结构化存储系统，不支持根据key取值。建议您在DDL SQL声明中对字段名称进行自定义，并且和外部表的字段类型、字段数量保持一致。
+
+如下以MQ的1条记录为例。
+
+asavfa,sddd32,sdfdsv
+按照命名规范设置MQ的字段名。
+
+CREATE TABLE mq_stream(
+ a VARCHAR,
+ b VARCHAR,
+ c VARCHAR
+) WITH (
+ type='mq',
+ topic='blink_mq_test',
+ accessID='XXXXXX',
+ accessKey='XXXXXX'
+);
+名称映射
+适用于带有Schema的系统。这类系统在表存储级别定义了字段名称以及字段类型，支持根据key取值。建议您在Flink SQL的声明中保持和外部数据存储Schema定义一致，包括字段名称、字段数量以及字段的顺序。
+说明 如果外部数据存储的字段名称是大小写敏感类型（如表格存储），则需要在区分大小写的字段名称处使用反引号 ｀｀进行转换。在DDL语法中，声明表的字段名和外部表的字段名需要一致。
+DataHub定义的Schema如下：
+
+字段名	类型
+name	STRING
+age	BIGINT
+value	STRING
+说明 DataHub中的STRING数据类型对应的是在实时计算中的VARCHAR类型。
+关于上述DataHub声明的DDL如下：
+
+
+create  table stream_result (
+    `name` varchar,
+    age bigint,
+    `value` varchar
+  ) with (
+      type='datahub',
+      endpoint='http://dh-cn-hangzhou.aliyuncs.com',
+      accessId='xxxxxx',
+      accessKey='xxxxxx',
+      project='project',
+      topic='topic'
+  );
+说明 建议您将所有列进行声明引用。声明引用时可以减少字段，不能新增字段。
+处理大小写敏感
+SQL标准定义中，大小写是不敏感的。如下所示，2段语句的含义相同。
+
+create table stream_result (
+    name varchar,
+    value varchar
+);
+create table STREAM_RESULT (
+    NAME varchar,
+    VALUE varchar
+);
+但实时计算引用的大量外部数据源中，存在要求大小写敏感的数据源。例如，表格存储（Table Store）对于大小写是敏感的。如果需要在Table Store定义大写NAME字段，我们应该如下定义。
+
+create  table STREAM_RESULT (
+    `NAME` varchar,
+    `VALUE` varchar
+);
+在之后所有的DML操作中，对于这个字段的引用均需要添加反引号｀｀，如下所示。
+
+INSERT INTO xxx
+SELECT
+  `NAME`,
+  `VALUE`
+FROM
+  XXX;
+
+https://help.aliyun.com/knowledge_detail/62520.html
+数据源表概述
+更新时间：2019-03-18 09:40:12
+
+编辑 ·
+本页目录
+语法
+示例
+获取数据源表属性字段
+包含窗口函数的数据源表
+支持创建的数据源表类型
+实时计算的数据源表是指流式数据存储。流式数据存储驱动实时计算的运行，因此每个实时计算作业必须提供至少1个流式数据存储。
+
+语法
+  CREATE TABLE tableName
+      (columnName dataType [, columnName dataType ]*)
+      [ WITH (propertyName=propertyValue [, propertyName=propertyValue ]*) ];
+示例
+CREATE TABLE  datahub_stream(
+  name VARCHAR,
+  age BIGINT,
+  birthday BIGINT
+) WITH (
+  type='datahub',
+  endPoint='xxxxxx',
+  project='xxxxxx',
+  topic='xxxxxx',
+  accessId='xxxxxx',
+  accessKey='xxxxxx',
+  startTime='2017-07-21 00:00:00'
+);
+获取数据源表属性字段
+获取数据源表属性字段语法
+实时计算在源表的DDL语句中提供 HEADER 关键字，用于获取源表中的属性字段。
+
+CREATE TABLE sourcetable
+(
+ `timestamp`  VARCHAR HEADER,
+  name        VARCHAR，
+  MsgID       VARCHAR
+)WITH(
+     type='XXX'
+);
+上面示例中 `timestamp`字段定义为 HEADER，可从数据的属性字段读取数值，后续当成普通字段使用。
+说明 不同的源表（DataHub/Log Service/MQ等）存在不同的默认属性字段，部分源表支持设置自定义的属性字段，具体请参见对应的源表文档。
+获取源表属性字段示例
+以日志服务（Log service）为例，为您介绍如何获取源表属性字段。目前日志服务默认支持如下3个属性字段。
+
+字段名	说明
+__source__	消息源
+__topic__	消息主题
+__timestamp__	日志时间
+说明 获取属性字段，除了按照正常逻辑声明外，还需要在类型声明后面加上 HEADER。
+示例如下：
+
+示例数据
+__topic__:  ens_altar_flow
+        result:  {"MsgID":"ems0a","Version":"0.0.1"}
+示例语句
+CREATE TABLE sls_log (
+  __topic__  VARCHAR HEADER,
+  result     VARCHAR
+)WITH(
+  type ='sls'
+);
+CREATE TABLE sls_out (
+  name     varchar,
+  MsgID    varchar,
+  Version  varchar
+)WITH(
+  type ='RDS'
+);
+INSERT INTO sls_out
+SELECT
+__topic__,
+JSON_VALUE(result,'$.MsgID'),
+JSON_VALUE(result,'$.Version')
+FROM
+sls_log
+测试结果
+name(VARCHAT)	MsgID(VARCHAT)	Version(VARCHAT)
+ens_altar_flow	ems0a	0.0.1
+
+
+包含窗口函数的数据源表
+实时计算可以基于Event Time和Processing Time这2种时间属性对数据进行窗口聚合。包含窗口函数的作业中，数据源表的声明中需要使用到watermark和计算列方法。实时计算基于时间属性的聚合详情，请参见时间属性。
+
+支持创建的数据源表类型
+实时计算支持创建多种类型的数据源表。详情请参见以下文档。
+创建数据总线（DataHub）源表
+创建日志服务（Log Service）源表
+创建消息队列（MQ）源表
+创建消息队列（Kafka）源表
+
+
+
+
+
+
+
+
+
+
+
+
+
+-----------
 
 阿里云实时计算(Alibaba Cloud Realtime Compute)是一套基于Apache Flink构建的一站式、高性能实时大数据处理平台，广泛适用于流式数据处理、离线数据处理、DataLake计算等多种场景。阿里云实时计算产品彻底规避繁重的底层流式处理逻辑开发工作，助力中国企业向实时化、智能化大数据计算升级转型。
 
@@ -2279,4 +7324,371 @@ Caused by: java.io.EOFException
      native_memory：jvm堆外内存，jni使用，默认0，建议用10MB。
      chain
      Flink SQL任务是一个DAG图，会有很多个节点（Operator），有些上下游的节点在运行时是可以合成一个点的，这称之为chain。对于chain之后的点，CPU取最大的最大值，内存取总和。例如Node1如果operator有用state，Node2{128MB，0.5core}，Node3{128MB，0.25core}，那么这三个点chain后的CPU是 0.5core，内存是 512MB。chain的规则简单来说就是：并发度需要一样。但是，有些节点之间是不能合在一起的，比如groupBy。一般来说，尽可能的让节点都chain在一起，减少网络传输。
+
+=============================================================================================================================
+
+场景一：语法检查报错
+更新时间：2018-08-15 18:42:53
+
+
+场景描述：
+用户在编写完SQL时首先要进行语法检查，保证SQL的正确性，当语法检查出现报错提示需要及时更改SQL才能上线运行。
+
+1.无完整的job逻辑
+解决方案：
+无完整的job逻辑无法通过语法检查，请先确保已编写一个完整的job逻辑，包括定义source和sink，有完整的DML和Query语句。
+
+2.insert时的字段与sink表中字段的数量、类型、顺序不一致导致语法检查报错
+解决方案：
+参考insert与sink字段不一致的解决方案
+
+3.RDS不能做源表导致语法检查报错
+解决方案：
+参考RDS不能做源表报错的解决方案
+
+4.使用了中文字符
+解决方案：
+注意将中文的“，”改为英文的“,”。
+
+场景二：调试报错
+更新时间：2018-07-18 11:41:07
+
+
+场景描述
+用户在编写完SQL后，语法检查通过的前提下，会使用本地调试模式，来检测SQL能否达到业务需求。调试时会产生一些报错导致没有调试结果输出，具体报错场景请参考下文。
+
+1.参数类型不匹配导致调试报错
+解决方案：
+
+请参考参数类型不匹配报错的解决方案文档
+
+2.类型转换异常导致调试报错
+解决方案：
+
+请参考类型转换异常报错的解决方案文档
+
+
+
+场景三：作业无法上线
+更新时间：2018-07-18 11:41:07
+
+
+场景描述
+用户在语法检查通过后，提交上线作业时报错该如何排查？
+
+排查流程
+1.查看是否有错误信息？
+
+解决方案：
+
+如果有failover错误信息可以参阅SQL常见问题！
+
+2.作业一直在提交中，但是等了好久也无法提交上线，最后的报错信息如下：
+
+code:[30017],  brief  info:[get  app  plan  failed],  context  info:[detail:[java.lang.StackOverflowError
+at  java.util.HashMap.hash(HashMap.java:338)
+at  java.util.HashMap.get(HashMap.java:556)
+at  GeneratedMetadataHandler_RowCount.getRowCount(Unknown  Source)
+at  org.apache.calcite.rel.metadata.RelMetadataQuery.getRowCount(RelMetadataQuery.java:236)
+at  org.apache.calcite.rel.metadata.RelMdUtil.estimateFilteredRows(RelMdUtil.java:718)
+at  org.apache.calcite.rel.metadata.RelMdRowCount.getRowCount(RelMdRowCount.java:123)
+at  GeneratedMetadataHandler_RowCount.getRowCount_$(Unknown  Source)
+at  GeneratedMetadataHandler_RowCount.getRowCount(Unknown  Source)
+at  org.apache.calcite.rel.metadata.RelMetadataQuery.getRowCount(RelMetadataQuery.java:236)
+at  org.apache.calcite.rel.metadata.RelMdRowCount.getRowCount(RelMdRowCount.java:71)
+at  GeneratedMetadataHandler_RowCount.getRowCount_$(Unknown  Source)
+at  GeneratedMetadataHandler_RowCount.getRowCount(Unknown  Source)
+at  org.apache.calcite.rel.metadata.RelMetadataQuery.getRowCount(RelMetadataQuery.java:236)
+at  org.apache.calcite.rel.metadata.RelMdRowCount.getRowCount(RelMdRowCount.java:132)
+at  GeneratedMetadataHandler_RowCount.getRowCount_$(Unknown  Source)
+at  GeneratedMetadataHandler_RowCount.getRowCount(Unknown  Source)
+at  org.apache.calcite.rel.metadata.RelMetadataQuery.getRowCount(RelMetadataQuery.java:236)
+at  org.apache.calcite.rel.metadata.RelMdRowCount.getRowCount(RelMdRowCount.java:71)
+解决方案：
+
+在作业参数中增加以下参数。
+
+client.jvm.option=-Xss20m
+blink.job.submit.timeoutInSeconds=300
+blink.job.option=-yD env.java.opts='-Xss20m'
+
+
+==================================
+
+场景四：作业无法启动
+KB: 85654 ·
+更新时间：2018-08-14 10:12:21
+
+
+本页目录
+场景描述
+场景描述
+用户在完成作业开发上线以后，在运维页面无法启动作业。
+
+排查流程
+1.作业有Failover的情况
+排查指引：
+查看Failover报错信息，分析job运行异常原因。一般Failover有以下报错：
+
+Slot allocation request timed out
+解决方案：
+这个问题一般是由于资源不足引起的，如果遇到，先检查资源够不够，不够的话先扩容。
+
+2.资源不足
+排查指引：
+在运行信息里有如下的报错提示：
+
+Submit blink job failed, name: test_copy, errcode:30011, errmsg:code:[30011], brief info:[error occur while run app], context info:[details:[资源不足，请手动停止任务提交，并联系管理员扩容.(yarn resource not available, so here try to kill it to avoid long time waiting)java.lang.Exception: shell cmd execute failed
+解决方案：
+查看总览里面的资源够不够，一般都是已使用CU接近已购买CU的时候，作业CU又比较大，导致启动不起来。需要增加资源，公有云版本需要购买新的资源，集团内部需要找Blink Pre的值班人员增加资源。
+
+3.获取资源配置失败
+排查指引：
+在运行信息里有如下的报错提示：
+
+errcode:30011, errmsg:code:[30011], brief info:[error occur while run app], context info:[details:[任务提交失败，请检查详细日志输出.（submit app failed)java.lang.UnsupportedOperationException: Cannot set chaining strategy on Union Transformation.
+报错截图如下：
+
+peizhi
+
+解决方案：
+重新获取资源配置。BlinkSQL任务开发完成后，需要点『资源配置』，通过『获取自动生成JSON配置』来生成一份默认的配置文件。
+
+4.无作业指标
+排查指引：
+在作业运维曲线上没有任何指标，作业一直处于created状态，也没有failover报错。这种情况主要是由于jm没有起来。
+
+解决方案：
+先检查是否是资源不足的问题，如果资源足够，手动指定增加CU重启。
+
+
+
+
+场景五：作业无数据输出
+更新时间：2018-07-18 11:41:07
+
+
+本页目录
+场景描述
+场景描述
+用户在上线运行JOB时，出现下游结果表中没有数据输出的情况。
+
+排查流程图：
+image | left
+
+1.作业有Failover情况
+排查指引：
+查看Failover报错信息，分析job运行异常原因。
+
+解决方案：
+解决Failover问题，使作业正常运行。
+
+2.源表没有数据进入流计算的情况
+排查指引：
+这种情况下没有Failover，数据延时会很大，请查看数据曲线，检查各source输入是否有数据。
+
+解决方案：
+检查源表，保证上游有数据进入流计算。
+
+3.数据被某个节点过滤的情况
+排查指引：
+
+在作业状态页面查看每个节点的 RecvCnt（输入） 和 SendCnt（输出），如果输入有数据，输出为0，就说明数据被这个节点过滤了。
+点击对应节点的Name进去后，再点击对应的到 Metrics的页面，可以查看更细的Metrics。
+
+查看 xxx.IO.numRecordsIn_sum 和 xxx.IO.numRecordsOut_sum 这个指标
+如果输入有数据，输出为0，就说明数据是被 xxx 这个operator过滤了。
+看数据曲线，是否有数据进入流计算
+
+a：没有，是不是启动位点设置的不对
+
+b：有，检查是否用了数据存储的方式引入
+
+解决方案：
+
+检查数据过滤节点，看看在哪个逻辑上导致没有输出。
+
+常见的数据被过滤情况如下：
+
+join后没有输出
+wiondow把数据过滤掉了（检查watermark的字段是否有效）
+where条件将数据过滤掉了
+4.排除JOB的业务逻辑异常后，可能是下游的默认缓存机制缓存了数据导致
+解决方案：
+
+调整下游存储的batchsize的大小设置为1.（添加该参数可能会造成下游数据库IO压力过大、存在性能瓶颈的风险）
+
+with(
+type ='DATAHUB',
+endpoint = 'XXXX',
+batchsize = '1'
+)
+5.下游使用RDS，可能出现RDS死锁导致没有数据输出的情况
+解决方案：
+
+请参考死锁问题的文档。
+
+
+
+写MySQL(TDDL/RDS)出现死锁（DeadLock）
+更新时间：2018-10-22 17:57:15
+
+
+本页目录
+报错信息：Caused by: com.mysql.jdbc.exceptions.jdbc4.MySQLTransactionRollbackException: Deadlock found when trying to get lock; try restarting transaction
+死锁形成的示例
+RDS/TDDL、OTS数据库引擎锁的区别
+死锁的解决方案
+报错信息：Caused by: com.mysql.jdbc.exceptions.jdbc4.MySQLTransactionRollbackException: Deadlock found when trying to get lock; try restarting transaction
+在实时计算 Flink中，下游数据库使用Mysql等关系数据库（对应的connector为TDDL和RDS），当实时计算频繁写某个表或者资源时，存在死锁风险。
+
+死锁形成的示例
+假设完成一次insert需要依次抢占(A, B) 2个锁。A是一个范围锁，有2个事务（T1，T2），表的schema为(id(自增主键), nid(唯一键))。T1包含2条insert（null, 2）,(null, 1), T2包含1条insert(null, 2)。
+
+t时刻, T1第一条insert插入，此时T1持有(A, B)2个锁。
+t+1时刻T2开始插入，需要等待锁A来锁住(-inf, 2], 此时A被T1拥有，且锁住了（-inf, 2]，区间存在包含关系，所以T2依赖T1释放A。
+t+2时刻T1第二条insert执行，需要A锁住(-inf, 1], 该区间属于(-inf, 2]，所以需要排队等T2释放锁，所以T1依赖T2释放A。
+当T1和T2相互依赖且相互等待时死锁形成。
+
+RDS/TDDL、OTS数据库引擎锁的区别
+RDS、TDDL：——InnoDB的行锁是针对索引加的锁，不是针对单条记录加的锁，所以虽然是访问不同行的记录，但是如果是使用相同的索引键，是会出现锁冲突的，造成了一整个区域的数据都无法更新。
+OTS：——单行锁，不影响其他数据更新。
+死锁的解决方案
+高QPS/TPS或高并发写入情况场景，建议使用OTS作为结果表，可以解决死锁的问题。一般不建议使用TDDL或者RDS作为Flink Job的结果表。
+
+如果必须要使用Mysql等关系数据库作为sink节点，有以下建议：
+
+确保没有其他读写业务方的干扰
+如果Job的数据量不大可以尝试单并发写入。但是在高QPS/TPS、高并发情况下，写入性能会降低。
+尽可能不使用UniqueKey, 带UniqueKey(唯一主键)表的写入可能会导致死锁。如果业务要求表必须包含UniqueKey，请按照字段区分能力从大到小排列来定义UniqueKey，可大幅降低死锁出现概率。如一个md5值的区分能力大于day_time(20171010)。
+根据业务特点做分库分表，尽可能避免单表写入，实施细节请联系对应的DBA。
+
+
+场景六：作业延迟过大
+更新时间：2018-07-23 17:20:10
+
+
+本页目录
+场景描述
+场景描述
+线上作业业务延迟不正常，表现为曲线图中平均延迟呈水平趋势但延迟过大、或逐步成上升趋势、或在追数据的过程中下降非常缓慢。
+
+1. 脏数据导致延迟
+排查指引：
+1.查看脏数据曲线图，有脏数据会显示相应时间节点上显示数据量，没有则显示为0.
+
+2.查看failover，脏数据会在错误中标明。
+
+解决方案：脏数据未进行过滤，导致报错，作业重启造成业务延迟。需要改SQL，处理/过滤脏数据，重新上线。
+2.源表没有数据进入流计算的
+排查指引：
+
+这种情况下没有Failover，数据延时会很大，请查看数据曲线，检查各source输入是否有数据。
+
+解决方案：
+
+检查源表，保证上游有数据进入流计算。
+
+3.RDS写入瓶颈
+排查指引： RDS写入过慢，调大并发、增加资源，输出为0或RPS极小。
+解决方案： 新建结果表，重新引入后上线。
+4.数据有输入
+排查指引： 查看数据源数据是否存在以下情况：
+
+历史数据
+周期性数据输出为0
+数据不稳定，波动大
+解决方案
+
+数据源的流入数据问题，历史数据处理完成后（如追数据完成），延迟会下降。
+周期性数据输入为0，查看是否是数据生产机制产生。
+数据输入波动大，检查source源。
+5.作业部分节点出现反压情况
+解决方案：
+
+先自动调优
+找到反压的节点，通过手动调优，增加节点的资源、并发。
+作业中有group by：设置作业参数blink.miniBatch.allowLatencyMs=5000 #表示整个job允许的延迟 blink.miniBatch.size=1000 #单个batch的size
+针对JOIN、GROUP BY等节点 ，单独调大资源。
+
+
+场景七：作业启动一段时间后报错停止，有failover
+更新时间：2018-07-23 17:20:10
+
+
+本页目录
+场景描述
+场景描述
+作业正常运行一段时间后，作业停止运行，报错。failover里出现报错信息。
+
+1.sts token过期
+1STS token过期导致的,不会影响线上作业
+
+2.脏数据处理失败报错
+排查指引
+
+在failover中查看脏数据具体内容。
+
+解决方案
+
+修改SQL，过滤脏数据，重新上线。
+
+3.写入MYSQL类型数据库死锁
+排查指引
+
+手动调优后，sink节点拆除的部分节点，与同时写入的其他节点中间出现rebalance。
+sink节点多并发写入数据库。
+出现死锁的表中pk与数据库表定义的UK是否一致，包括顺序。
+定义的pk是否按照区分度高低进行排列。
+解决方案
+参考死锁解决方案：写MySQL(TDDL/RDS)出现死锁（DeadLock）
+
+
+场景八：作业无运行信息和曲线指标
+更新时间：2018-07-18 11:42:52
+
+
+场景描述
+用户在上线作业后，作业的运维页面看不到拓补图、看不到一些瞬时值的指标、曲线指标看不到该怎么排查？
+
+排查流程
+1.查看是否有faliover错误信息。
+
+解决方案：
+
+如果有failover错误信息可以参阅SQL常见问题！
+
+2.查看运维页面的作业信息中如果没有有拓扑图和瞬时值的数据该怎么解决？
+
+解决方案：
+
+直接提工单询问值班同学，工单格式如下：
+
+项目名
+作业名称
+什么时间提交的作业
+公司名称
+报错信息截图
+3.如果运维页面的曲线指标，全部指标或者是部分指标都没有信息该怎么排查？
+
+解决方案：
+
+首先确认是否使用了自定义的source，如果是自定义的source，source的输入曲线为空是正常的，因为是自定义的source流计算无法监控到。
+
+如果没有使用自定义的插件也发生了曲线指标不存在的现象该怎么排查？
+
+直接提工单询问值班同学，工单格式如下：
+
+项目名
+作业名称
+什么时间提交的作业
+公司名称
+报错信息截图
+
+
+
+
+
+
+
 

@@ -1,0 +1,800 @@
+视频直播解决方案之视频核心指标监控视频直播解决方案之视频核心指标监控
+                 更新时间：2019-01-23 14:51:56
+
+                 编辑 ·
+                  · 我的收藏
+                 本页目录
+                 背景
+                 业务
+                 业务目标
+                 数据格式
+                 SQL编写
+                 Demo示例以及源代码
+                 本文通过案例为您介绍如何使用实时计算完成视频核心指标监控。
+
+                 背景
+                 随时互联网络技术的发展，直播的概念有了新的拓展和发展，现在更多的人关注网络直播，特别是视频直播生态链更受关注。通过网络信号，在线收看球赛、体育赛事、重大活动和新闻等，这样，让大众有了广阔且自由的选择空间，我们能够真正的随时随地的体验直播的快乐和便捷。
+
+                 在当前体验为王的时代，任何体验不佳均会导致客户群体的大规模流式。对于网站直播平台而言，需要重点关注用户(主播和粉丝)的使用体验，重点关注的系统指标包括音视频卡顿率、延迟率、丢包情况，同时由于直播平台时效性，平台方更需要实时了解到系统周边问题，并先于用户发现并定位问题和故障。另外，作为平台运营方还应该对于整体网站客户运营情况、视屏爆款情况有及时的跟踪和了解。
+
+                 下面我们以某个视屏直播平台方为例，讲解下如何使用实时计算进行系统稳定性以及平台运营情况进行实时监控和展现。
+
+                 业务
+                 为了最大程度活跃用户社群，覆盖更多场景直播频道，最终实现平台方盈利，通常同一个视频直播网站有多个主播，每个主播向一个频道内的用户进行广播，用户可以看到当前频道内的主播视频，并听到其声音，主播可以与频道内的多个用户进行私聊。
+
+                 主播和粉丝各自持有直播APP软件，该APP软件将每10S向服务器打点，服务器接收到打点信息会输出到本地磁盘，并通过阿里云日志服务采集端将打点数据到日志服务，实时计算通过订阅该日志，实时计算客户端视频播放情况。
+
+                 整体流程如下:
+
+                 321
+                 业务目标
+                 针对客户端APP的监控，获取以下指标：
+
+                 房间故障，故障包括卡顿、丢帧、音视频不同步等
+                 分地域统计数据端到端延迟平均情况
+                 统计实时整体卡顿率（出现卡顿的在线用户数/在线总用户数*100%，通过此指标可以衡量当前卡顿影响的人群范围）
+                 统计人均卡顿次数（在线卡顿总次数/在线用户数，通过此指标可以从卡顿频次上衡量整体的卡顿严重程度）
+                 最终我们希望将上述数据实时计算并写入RDS，并提供在线数据报表展示、大屏展示、甚至部分监控告警。
+
+                 数据格式
+                 客户端APP向服务器打点日志格式如下：
+
+                 字段	含义
+                 ip	用户端ip
+                 agent	端类型
+                 roomid	房间号
+                 userid	用户id
+                 abytes	音频码率
+                 afcnt	音频帧数
+                 adrop	音频丢帧数量
+                 afts	音频时间戳
+                 alat	音频帧端到端延迟
+                 vbytes	视频码率
+                 vfcnt	视频帧数
+                 vdrop	视频丢帧数量
+                 vfts	视频时间戳
+                 vlat	视频帧端到端延迟
+                 ublock	上行卡顿次数
+                 dblock	下行卡顿次数
+                 timestamp	打点时间戳
+                 region	地域
+                 日志服务内部是半结构化存储，上述数据将展现出来格式如下：
+
+                 {
+                 	"ip": "ip",
+                 	"agent": "agent",
+                 	"roomid": "123456789",
+                 	"userid": "123456789",
+                 	"abytes": "123456",
+                 	"afcnt": "34",
+                 	"adrop": "3",
+                 	"afts": "1515922566",
+                 	"alat": "123",
+                 	"vbytes": "123456",
+                 	"vfcnt": "34",
+                 	"vdrop": "4",
+                 	"vfts": "1515922566",
+                 	"vlat": "123",
+                 	"ublock": "1",
+                 	"dblock": "2",
+                         "timestamp": "15151922566",
+                 	"region": "hangzhou"
+                 }
+                 SQL编写
+                 数据清洗
+                 我们首先在实时计算中声明源表，如下
+
+                 CREATE TABLE app_heartbeat_stream_source (
+                 	ip VARCHAR,
+                 	agent VARCHAR,
+                 	roomid VARCHAR,
+                 	userid VARCHAR,
+                 	abytes VARCHAR,
+                 	afcnt VARCHAR,
+                 	adrop VARCHAR,
+                 	afts VARCHAR,
+                 	alat VARCHAR,
+                 	vbytes VARCHAR,
+                 	vfcnt VARCHAR,
+                 	vdrop VARCHAR,
+                 	vfts VARCHAR,
+                 	vlat VARCHAR,
+                 	ublock VARCHAR,
+                 	dblock VARCHAR,
+                 	`timestamp` VARCHAR,
+                 	app_ts AS TO_TIMESTAMP(CAST(`timestamp` AS BIGINT)), --定义生成WATERMARK的字段，
+                 	WATERMARK FOR app_ts AS withOffset(app_ts, 10000) --WATERMARK比数据时间线性增加10S
+                 ) WITH (
+                 	type ='sls',
+                 	endPoint ='http://cn-hangzhou-corp.sls.aliyuncs.com',
+                 	accessId ='xxxxxxxxxxx',
+                 	accessKey ='xxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+                 	project ='xxxx',
+                 	logStore ='app_heartbeat_stream_source',
+                 );
+                 源端业务为考虑业务方便，将所有的数据均处理为VARCHAR类型。为了方便后续处理，我们将上述源表进行数据清洗，主要清洗目标是：
+
+                 格式转换。将部分VARCHAR类型转为BIGINT。
+                 业务补充。例如: 填上地域相关信息。
+                 如下：
+
+                 CREATE VIEW view_app_heartbeat_stream AS
+                 SELECT
+                 	ip,
+                 	agent,
+                 	CAST(roomid AS BIGINT),
+                 	CAST(userid AS BIGINT),
+                 	CAST(abytes AS BIGINT),
+                 	CAST(afcnt AS BIGINT),
+                 	CAST(adrop AS BIGINT),
+                 	CAST(afts AS BIGINT),
+                 	CAST(alat AS BIGINT),
+                 	CAST(vbytes AS BIGINT),
+                 	CAST(vfcnt AS BIGINT),
+                 	CAST(vdrop AS BIGINT),
+                 	CAST(vfts AS BIGINT),
+                 	CAST(vlat AS BIGINT),
+                 	CAST(ublock AS BIGINT),
+                 	CAST(dblock AS BIGINT),
+                 	app_ts,
+                 	region
+                 FROM
+                 	app_heartbeat_stream_source;
+                 房间故障统计
+                 统计房间故障，故障包括卡顿、丢帧、音视频不同步信息，使用10分钟一个窗口进行统计。
+
+                 CREATE VIEW room_error_statistics_10min AS
+                 SELECT
+                 	CAST(TUMBLE_START(app_ts, INTERVAL '10' MINUTE) as VARCHAR) as app_ts,
+                 	roomid,
+                 	SUM(ublock) as ublock, --统计10分钟内上行卡顿次数
+                 	SUM(dblock) as dblock, --统计10分钟内下行卡顿次数
+                 	SUM(adrop) as adrop, --统计10分钟内音频丢包次数
+                 	SUM(vdrop) as vdrop, --统计10分钟内视频丢包次数
+                 	SUM(alat) as alat, --统计10分钟内音频延迟
+                 	SUM(vlat) as vlat, --统计10分钟内音频延迟
+                 FROM
+                 	view_app_heartbeat_stream
+                 GROUP BY
+                 	TUMBLE(app_ts, INTERVAL '10' MINUTE), roomid
+                 分地域统计延迟情况
+                 分地域统计数据端到端延迟平均情况，每10分钟统计音频、视频平均延迟情况。
+
+                 CREATE VIEW region_lat_statistics_10min AS
+                 SELECT
+                 	CAST(TUMBLE_START(app_ts, INTERVAL '10' MINUTE) as VARCHAR) as app_ts,
+                 	region,
+                 	SUM(alat)/COUNT(alat) as alat,
+                 	SUM(vlat)/COUNT(vlat) as vlat,
+                 FROM
+                 	view_app_heartbeat_stream
+                 GROUP BY
+                 	TUMBLE(app_ts, INTERVAL '10' MINUTE), region;
+                 实时整体卡顿率
+                 统计实时整体卡顿率，即出现卡顿的在线用户数/在线总用户数*100%，通过此指标可以衡量当前卡顿影响的人群范围。
+
+                 CREATE VIEW block_total_statistics_10min AS
+                 SELECT
+                 	CAST(TUMBLE_START(app_ts, INTERVAL '10' MINUTE) as VARCHAR) as app_ts,
+                 	SUM(IF(ublock <> 0 OR dblock <> 0, 1, 0)) / CAST(COUNT(DISTINCT userid) AS DOUBLE) as block_rate, --COUNT(DISTINCT) 需要在1.4.4版本以上Blink才能支持
+                 FROM
+                 	view_app_heartbeat_stream
+                 GROUP BY
+                 	TUMBLE(app_ts, INTERVAL '10' MINUTE);
+                 统计人均卡顿次数
+                 统计人均卡顿次数，即在线卡顿总次数/在线用户数，通过此指标可以从卡顿频次上衡量整体的卡顿严重程度。
+
+                 CREATE VIEW block_peruser_statistics_10min AS
+                 SELECT
+                 	CAST(TUMBLE_START(app_ts, INTERVAL '10' MINUTE) as VARCHAR) as app_ts,
+                 	SUM(ublock+dblock) / CAST(COUNT(DISTINCT userid) AS DOUBLE) as block_peruser, --COUNT(DISTINCT) 需要在1.4.4版本以上Blink才能支持
+                 FROM
+                 	view_app_heartbeat_stream
+                 GROUP BY
+                 	TUMBLE(app_ts, INTERVAL '10' MINUTE);
+                 Demo示例以及源代码
+                 根据上文介绍的视频直播解决方案之视频核心指标监控，阿里云团队为您创建了一个包含完整链路的Demo示例，如下。
+
+                 选择csv文件上传至DataHub作为源表。
+                 使用RDS作为结果表。
+                 Demo代码完整，您可参考示例代码，注册上下游数据，制定自己的视频核心指标监控的解决方案。点击附件进行下载。
+
+                 --Blink SQL
+                 --********************************************************************--
+                 --Author:
+                 --CreateTime: 2018-12-04 09:27:19
+                 --Comment: 视频直播解决方案之 视频核心指标监控
+                 --********************************************************************--
+                 CREATE TABLE app_heartbeat_stream_source (
+                 	`ip`                   VARCHAR,
+                 	agent                   VARCHAR,
+                 	roomid                  VARCHAR,
+                 	userid                  VARCHAR,
+                 	abytes                  VARCHAR,
+                 	afcnt                   VARCHAR,
+                 	adrop                   VARCHAR,
+                 	afts                    VARCHAR,
+                 	alat                    VARCHAR,
+                 	vbytes                  VARCHAR,
+                 	vfcnt                   VARCHAR,
+                 	vdrop                   VARCHAR,
+                 	vfts                    VARCHAR,
+                 	vlat                    VARCHAR,
+                 	ublock                  VARCHAR,
+                 	dblock                  VARCHAR,
+                 	`timestamp`             VARCHAR,
+                 	region                  VARCHAR,
+                     app_ts AS TO_TIMESTAMP(`timestamp`), --定义生成WATERMARK的字段，
+                     WATERMARK FOR app_ts AS withOffset(app_ts, 10000) --WATERMARK比数据时间线性增加10S
+                 ) WITH (
+                 	type = 'datahub',
+                 	endPoint = 'http://dh-cn-hangzhou.aliyun-inc.com',
+                 	roleArn='',
+                 	project = '',
+                 	topic = ''
+                 );
+
+
+                 CREATE VIEW view_app_heartbeat_stream AS
+                 SELECT
+                     ip,
+                     agent,
+                     CAST(roomid AS BIGINT)as roomid,
+                     CAST(userid AS BIGINT)as userid,
+                     CAST(abytes AS BIGINT)as abytes,
+                     CAST(afcnt AS BIGINT)as afcnt,
+                     CAST(adrop AS BIGINT)as adrop,
+                     unix_timestamp(afts) as afts,
+                     CAST(alat AS BIGINT)AS alat,
+                     CAST(vbytes AS BIGINT)as vbytes,
+                     CAST(vfcnt AS BIGINT)as vfcnt,
+                     CAST(vdrop AS BIGINT)as vdrop,
+                     unix_timestamp(vfts)as vfts,
+                     CAST(vlat AS BIGINT)as vlat,
+                     CAST(ublock AS BIGINT)as ublock,
+                     CAST(dblock AS BIGINT)as dblock,
+                     app_ts,
+                 	region
+                 FROM
+                     app_heartbeat_stream_source;
+                 ------------------------------------------------------------------------------------------------------
+                 --统计房间故障，故障包括卡顿、丢帧、音视频不同步信息，使用10分钟一个窗口进行统计。
+                 CREATE VIEW room_error_statistics_10min AS
+                 SELECT
+                     CAST(TUMBLE_START(app_ts, INTERVAL '10' MINUTE) as VARCHAR) as app_ts,
+                     roomid,
+                     SUM(ublock) as ublock, --统计10分钟内上行卡顿次数
+                     SUM(dblock) as dblock, --统计10分钟内下行卡顿次数
+                     SUM(adrop) as adrop, --统计10分钟内音频丢包次数
+                     SUM(vdrop) as vdrop, --统计10分钟内视频丢包次数
+                     SUM(alat) as alat, --统计10分钟内音频延迟
+                     SUM(vlat) as vlat  --统计10分钟内音频延迟
+                 FROM
+                     view_app_heartbeat_stream
+                 GROUP BY
+                     TUMBLE(app_ts,INTERVAL '10' MINUTE), roomid;
+
+                 CREATE TABLE output_1 (
+                 	app_ts             VARCHAR,
+                 	roomid             BIGINT,
+                 	ublock             BIGINT,
+                 	dblock             BIGINT,
+                 	adrop              BIGINT,
+                 	vdrop              BIGINT,
+                 	alat               BIGINT,
+                 	vlat               BIGINT,
+                 	PRIMARY KEY (roomid)
+                 ) WITH (
+                 	type= 'rds',
+                 	url = 'jdbc:mysql://*:3306/*',
+                 	userName = '',
+                 	password = '',
+                 	tableName = ''
+                 );
+
+                 INSERT INTO output_1
+                 SELECT * FROM room_error_statistics_10min;
+
+                 ------------------------------------------------------------------------------------------------------
+                 --分地域统计数据端到端延迟平均情况，每10分钟统计音频、视频平均延迟情况。
+                 CREATE VIEW region_lat_statistics_10min AS
+                 SELECT
+                     CAST(TUMBLE_START(app_ts, INTERVAL '10' MINUTE) as VARCHAR) as app_ts,
+                     region,
+                     SUM(alat)/COUNT(alat) as alat,
+                     SUM(vlat)/COUNT(vlat) as vlat
+                 FROM
+                     view_app_heartbeat_stream
+                 GROUP BY
+                     TUMBLE(app_ts, INTERVAL '10' MINUTE), region;
+
+                 CREATE TABLE output_2 (
+                     app_ts VARCHAR,
+                     region VARCHAR,
+                     alat   DOUBLE,
+                     vlat   DOUBLE
+                 ) WITH (
+                     type ='PRINT'
+                 );
+
+                 INSERT INTO output_2
+                 SELECT * FROM region_lat_statistics_10min;
+
+                 ------------------------------------------------------------------------------------------------------
+                 --统计实时整体卡顿率，即出现卡顿的在线用户数/在线总用户数*100%，通过此指标可以衡量当前卡顿影响的人群范围。
+                 CREATE VIEW block_total_statistics_10min AS
+                 SELECT
+                     CAST(TUMBLE_START(app_ts, INTERVAL '10' MINUTE) as VARCHAR) as app_ts,
+                     SUM(IF(ublock <> 0 OR dblock <> 0, 1, 0)) / CAST(COUNT(DISTINCT userid) AS DOUBLE) as block_rate
+                     --COUNT(DISTINCT) 需要在1.4.4版本以上Blink才能支持
+                 FROM
+                     view_app_heartbeat_stream
+                 GROUP BY
+                     TUMBLE(app_ts, INTERVAL '10' MINUTE);
+
+                 CREATE TABLE output_3 (
+                 	app_ts                VARCHAR,
+                 	block_rate            DOUBLE
+                 ) WITH (
+                 	type= 'rds',
+                 	url = 'jdbc:mysql://*:3306/*',
+                 	userName = '',
+                 	password = '',
+                 	tableName = ''
+                 );
+
+
+                 INSERT INTO output_3
+                 SELECT * FROM block_total_statistics_10min;
+
+                 -----------------------------------------------------------------------------------------------------
+                 --统计人均卡顿次数，即在线卡顿总次数/在线用户数，通过此指标可以从卡顿频次上衡量整体的卡顿严重程度。
+                 CREATE VIEW block_peruser_statistics_10min AS
+                 SELECT
+                     CAST(TUMBLE_START(app_ts, INTERVAL '10' MINUTE) as VARCHAR) as app_ts,
+                     SUM(ublock+dblock) / CAST(COUNT(DISTINCT userid) AS DOUBLE) as block_peruser
+                     --COUNT(DISTINCT) 需要在1.4.4版本以上Blink才能支持
+                 FROM
+                     view_app_heartbeat_stream
+                 GROUP BY
+                     TUMBLE(app_ts, INTERVAL '10' MINUTE);
+
+                 CREATE TABLE output_4 (
+                 	app_ts                   VARCHAR,
+                 	block_peruser            DOUBLE
+                 ) WITH (
+                 	type= 'rds',
+                 	url = 'jdbc:mysql://*:3306/*',
+                 	userName = '',
+                 	password = '',
+                 	tableName = ''
+                 );
+
+
+                 INSERT INTO output_4
+                 SELECT * FROM block_peruser_statistics_10min;
+
+                 -----------------------------
+                 ============================================
+
+                 视频直播解决方案之直播数字化运营
+                 更新时间：2019-01-23 14:52:10
+
+                 编辑 ·
+                  · 我的收藏
+                 本页目录
+                 直播数字化运营业务
+                 解决方案
+                 Demo示例以及源代码
+                 本文通过案例为您介绍如何使用实时计算完成直播数字化运营的视频直播解决方案。
+
+                 直播数字化运营业务
+                 本文主要关注的是直播数据化运营业务。为您介绍使用实时计算完成对当前直播间运营情况实时的监控，包括热门视频、用户走势等等的。
+
+                 解决方案
+                 业务目标
+                 全站观看直播总人数以及走势
+                 房间直播总人数以及走势
+                 热门直播房间及主播Top10，分类目主播Top10
+                 数据格式
+                 参考上面的数据格式，使用APP打点日志作为原始数据进行统计。
+
+                 客户端APP向服务器打点日志格式如下：
+
+                 字段	含义
+                 ip	用户端ip
+                 agent	端类型
+                 roomid	房间号
+                 userid	用户id
+                 abytes	音频码率
+                 afcnt	音频帧数
+                 adrop	音频丢帧数量
+                 afts	音频时间戳
+                 alat	音频帧端到端延迟
+                 vbytes	视频码率
+                 vfcnt	视频帧数
+                 vdrop	视频丢帧数量
+                 vfts	视频时间戳
+                 vlat	视频帧端到端延迟
+                 ublock	上行卡顿次数
+                 dblock	下行卡顿次数
+                 timestamp	打点时间戳
+                 region	地区
+                 日志服务内部是半结构化存储，上述数据将展现出来格式如下：
+
+                 {
+                 	"ip": "ip",
+                 	"agent": "agent",
+                 	"roomid": "123456789",
+                 	"userid": "123456789",
+                 	"abytes": "123456",
+                 	"afcnt": "34",
+                 	"adrop": "3",
+                 	"afts": "1515922566",
+                 	"alat": "123",
+                 	"vbytes": "123456",
+                 	"vfcnt": "34",
+                 	"vdrop": "4",
+                 	"vfts": "1515922566",
+                 	"vlat": "123",
+                 	"ublock": "1",
+                 	"dblock": "2",
+                         "timestamp": "1515922566",
+                 	"region": "hangzhou"
+                 }
+                 SQL编写
+                 全站总人数及走势
+                 使用每分钟一个窗口统计全站观看人数走势，走势最近的1分钟计算结果就是当前总人数。
+
+                 CREATE VIEW view_app_total_visit_1min AS
+                 SELECT
+                 	CAST(TUMBLE_START(app_ts, INTERVAL '1' MINUTE) as VARCHAR) as app_ts,
+                 	COUNT(DISTINCT userid) as app_total_user_cnt
+                 FROM
+                 	view_app_heartbeat_stream
+                 GROUP BY
+                 	TUMBLE(app_ts, INTERVAL '1' MINUTE);
+                 房间直播总人数以及走势
+                 同样，使用每分钟一个窗口统计房间内观看人数走势，走势最近的1分钟计算结果就是当前房间人数。
+
+                 CREATE VIEW view_app_room_visit_1min AS
+                 SELECT
+                 	CAST(TUMBLE_START(app_ts, INTERVAL '1' MINUTE) as VARCHAR) as app_ts,
+                 	roomid as room_id,
+                 	COUNT(DISTINCT userid) as app_room_user_cnt
+                 FROM
+                 	view_app_heartbeat_stream
+                 GROUP BY
+                 	TUMBLE(app_ts, INTERVAL '1' MINUTE), roomid;
+                 热门直播房间排名
+                 统计热门直播实际上为首页推荐用户使用，把热门的房间放在首页推广能够获取更多流量和点击。
+
+                 CREATE VIEW view_app_room_visit_top10 AS
+                 SELECT
+                   app_ts,
+                   room_id,
+                   app_room_user_cnt,
+                   rangking
+                 FROM
+                 (
+                 	SELECT
+                 		app_ts,
+                 		room_id,
+                 		app_room_user_cnt,
+                 		ROW_NUMBER() OVER (PARTITION BY 1 ORDER BY app_room_user_cnt desc) AS ranking
+                 	FROM
+                 		view_app_room_visit_1min
+                 ) WHERE ranking <= 10;
+                 分类目统计热门直播房间排行
+                 为了最大程度活跃用户社群，覆盖更多场景直播频道，最终实现平台方盈利，通常同一个视频直播网站会开设大量的不同频道，以迎合各类不同人群的观看需求。例如，淘宝直播就会有美妆、男装、汽车、健身等多个不同类目。
+
+                 类目和房间关系表是在RDS存储的映射表，里面字段如下：
+
+                 CREATE TABLE dim_category_room (
+                 	id	BIGINT,
+                 	category_id BIGINT,
+                 	category_name VARCHAR,
+                 	room_id	BIGINT
+                   	PRIMARY KEY (room_id),
+                   	PERIOD FOR SYSTEM_TIME --定义为维表
+                  ) WITH (
+                      type= 'rds',
+                      url = 'xxxx',--您的数据库url
+                      tableName = 'xxx',--您的表名
+                      userName = 'xxx',--您的用户名
+                      password = 'xxx'--您的密码
+                  );
+                 针对不同的房间，关联类目表，并分类统计各自的排名情况，如下:
+
+                 CREATE VIEW view_app_room_visit_1min AS
+                 SELECT
+                 	CAST(TUMBLE_START(app_ts, INTERVAL '1' MINUTE) as VARCHAR) as app_ts,
+                 	roomid as room_id,
+                 	COUNT(DISTINCT userid) as app_room_user_cnt
+                 FROM
+                 	view_app_heartbeat_stream
+                 GROUP BY
+                 	TUMBLE(app_ts, INTERVAL '1' MINUTE), roomid;
+
+                 --关联类目表
+                 CREATE VIEW view_app_category_visit_1min AS
+                 SELECT
+                 	r.app_ts,
+                 	r.room_id,
+                 	d.category_id,
+                 	d.category_name，
+                 	r.app_room_user_cnt
+                 FROM
+                 	view_app_room_visit_1min r
+                 JOIN
+                 	dim_category_room d
+                 ON
+                 	r.room_id = d.room_id;
+
+
+                 --计算不同类目下房间号排名
+                 CREATE VIEW view_app_category_visit_top10 AS
+                 SELECT
+                   app_ts,
+                   category_id,
+                   category_name,
+                   app_room_user_cnt,
+                   rangking
+                 FROM
+                 (
+                 	SELECT
+                 		app_ts,
+                 		room_id,
+                 		category_id,
+                 		category_name,
+                 		app_room_user_cnt,
+                 		ROW_NUMBER() OVER (PARTITION BY category_id ORDER BY app_room_user_cnt desc) AS ranking
+                 	FROM
+                 		view_app_category_visit_1min
+                 ) WHERE ranking <= 10;
+                 Demo示例以及源代码
+                 根据上文介绍的视频直播解决方案之直播数字化运营，阿里云团队您创建了一个包含完整链路的Demo示例，如下。
+
+                 选择csv文件上传至DataHub作为源表。
+                 RDS作为维表。
+                 RDS作为结果表。
+                 Demo代码完整，您可参考示例代码，注册上下游数据，制定自己的直播数字化运营的解决方案。点击附件进行下载。
+
+                 ------------
+                 --Blink SQL
+                 --********************************************************************--
+                 --Author:
+                 --CreateTime: 2018-12-04 09:31:05
+                 --Comment: 视频直播解决方案之 直播数字化运营
+                 --********************************************************************--
+                 CREATE TABLE app_heartbeat_stream_source (
+                 	ip                      VARCHAR,
+                 	agent                   VARCHAR,
+                 	roomid                  VARCHAR,
+                 	userid                  VARCHAR,
+                 	abytes                  VARCHAR,
+                 	afcnt                   VARCHAR,
+                 	adrop                   VARCHAR,
+                 	afts                    VARCHAR,
+                 	alat                    VARCHAR,
+                 	vbytes                  VARCHAR,
+                 	vfcnt                   VARCHAR,
+                 	vdrop                   VARCHAR,
+                 	vfts                    VARCHAR,
+                 	vlat                    VARCHAR,
+                 	ublock                  VARCHAR,
+                 	dblock                  VARCHAR,
+                 	`timestamp`             VARCHAR,
+                 	region                  VARCHAR,
+                     app_ts AS TO_TIMESTAMP(`timestamp`), --定义生成WATERMARK的字段，
+                     WATERMARK FOR app_ts AS withOffset(app_ts, 10000) --WATERMARK比数据时间线性增加10S
+                 ) WITH (
+                 	type = 'datahub',
+                 	endPoint = 'http://dh-cn-hangzhou.aliyun-inc.com',
+                 	roleArn='',
+                 	project = '',
+                 	topic = ''
+                 );
+
+
+                 CREATE VIEW view_app_heartbeat_stream AS
+                 SELECT
+                     ip,
+                     agent,
+                     CAST(roomid AS BIGINT)as roomid,
+                     CAST(userid AS BIGINT)as userid,
+                     CAST(abytes AS BIGINT)as abytes,
+                     CAST(afcnt AS BIGINT)as afcnt,
+                     CAST(adrop AS BIGINT)as adrop,
+                     unix_timestamp(afts) as afts,
+                     CAST(alat AS BIGINT)AS alat,
+                     CAST(vbytes AS BIGINT)as vbytes,
+                     CAST(vfcnt AS BIGINT)as vfcnt,
+                     CAST(vdrop AS BIGINT)as vdrop,
+                     unix_timestamp(vfts)as vfts,
+                     CAST(vlat AS BIGINT)as vlat,
+                     CAST(ublock AS BIGINT)as ublock,
+                     CAST(dblock AS BIGINT)as dblock,
+                     app_ts
+                 FROM
+                     app_heartbeat_stream_source;
+
+                 --------------------------------------------------------------------------------------------------------全站总人数及走势
+                 CREATE VIEW view_app_total_visit_1min AS
+                 SELECT
+                     CAST(TUMBLE_START(app_ts, INTERVAL '60' SECOND) as VARCHAR) as app_ts,
+                     COUNT(DISTINCT userid) as app_total_user_cnt
+                 FROM
+                     view_app_heartbeat_stream
+                 GROUP BY
+                     TUMBLE(app_ts, INTERVAL '60' SECOND);
+
+                 CREATE TABLE output_5 (
+                 	app_ts                        VARCHAR,
+                 	app_total_user_cnt            BIGINT
+                 ) WITH (
+                 	type= 'rds',
+                 	url = 'jdbc:mysql://*:3306/*',
+                 	userName = '',
+                 	password = '',
+                 	tableName = ''
+                 );
+
+
+
+                 INSERT INTO output_5
+                 SELECT * FROM view_app_total_visit_1min;
+
+                 -------------------------------------------------------------------------------------------------------------
+                 --房间直播总人数以及走势
+                 CREATE VIEW view_app_room_visit_1min_user AS
+                 SELECT
+                     CAST(TUMBLE_START(app_ts, INTERVAL '60' SECOND) as VARCHAR) as app_ts,
+                     roomid as room_id,
+                     COUNT(DISTINCT userid) as app_room_user_cnt
+                 FROM
+                     view_app_heartbeat_stream
+                 GROUP BY
+                     TUMBLE(app_ts, INTERVAL '60' SECOND), roomid;
+
+
+                 CREATE TABLE output_6 (
+                 	app_ts                        VARCHAR,
+                 	roomid                        BIGINT,
+                 	app_total_user_cnt            BIGINT,
+                 	PRIMARY KEY (app_ts,roomid)
+                 ) WITH (
+                 	type= 'rds',
+                 	url = 'jdbc:mysql://*:3306/*',
+                 	userName = '',
+                 	password = '',
+                 	tableName = ''
+                 );
+
+
+
+                 INSERT INTO output_6
+                 SELECT * FROM view_app_room_visit_1min_user;
+                 ---------------------------------------------------------------------------------------------------------------
+                 --针对不同的房间，关联类目表，并分类统计各自的排名情况
+                 CREATE VIEW view_app_room_visit_1min AS
+                 SELECT
+                     CAST(TUMBLE_START(app_ts, INTERVAL '60' SECOND) as VARCHAR) as app_ts,
+                     roomid as room_id,
+                     COUNT(DISTINCT userid) as app_room_user_cnt
+                 FROM
+                     view_app_heartbeat_stream
+                 GROUP BY
+                     TUMBLE(app_ts, INTERVAL '60' SECOND), roomid;
+
+                 --热门直播房间排行
+                 CREATE VIEW view_app_room_visit_top10 AS
+                 SELECT
+                   app_ts,
+                   room_id,
+                   app_room_user_cnt,
+                   ranking
+                 FROM
+                 (
+                     SELECT
+                         app_ts,
+                         room_id,
+                         app_room_user_cnt,
+                         ROW_NUMBER() OVER (PARTITION BY 1 ORDER BY app_room_user_cnt desc) AS ranking
+                     FROM
+                         view_app_room_visit_1min
+                 ) WHERE ranking <= 10;
+
+                 CREATE TABLE output_7 (
+                 	app_ts                       VARCHAR,
+                 	roomid                       BIGINT,
+                 	app_room_user_cnt            BIGINT,
+                 	ranking                      BIGINT
+                 ) WITH (
+                 	type= 'rds',
+                 	url = 'jdbc:mysql://*:3306/*',
+                 	userName = '',
+                 	password = '',
+                 	tableName = ''
+                 );
+
+
+
+                 INSERT INTO output_7
+                 SELECT * FROM view_app_room_visit_top10;
+                 ---------------------------------------------------------------------------------------------------------------
+                 --分类目统计热门直播房间排行
+                 --类目和房间关系表是在RDS存储的映射表，里面字段如下：
+
+                 CREATE TABLE dim_category_room (
+                 	id                        BIGINT,
+                 	category_id               BIGINT,
+                 	category_name             VARCHAR,
+                 	room_id                   BIGINT,
+                 	PRIMARY KEY (room_id),
+                 	PERIOD FOR SYSTEM_TIME
+                 ) WITH (
+                 	type= 'rds',
+                 	url = 'jdbc:mysql://*:3306/*',
+                 	userName = '',
+                 	password = '',
+                 	tableName = ''
+                 );
+
+
+                 --关联类目表
+                 CREATE VIEW view_app_category_visit_1min AS
+                 SELECT
+                     r.app_ts,
+                     r.room_id,
+                     d.category_id,
+                     d.category_name,
+                     r.app_room_user_cnt
+                 FROM
+                     view_app_room_visit_1min AS r
+                 JOIN
+                     dim_category_room FOR SYSTEM_TIME AS OF PROCTIME() AS d
+                 ON
+                     r.room_id = d.room_id;
+
+                 --计算不同类目下房间号排名
+                 CREATE VIEW view_app_category_visit_top10 AS
+                 SELECT
+                   app_ts,
+                   category_id,
+                   category_name,
+                   app_room_user_cnt,
+                   ranking
+                 FROM
+                 (
+                     SELECT
+                         app_ts,
+                         room_id,
+                         category_id,
+                         category_name,
+                         app_room_user_cnt,
+                         ROW_NUMBER() OVER (PARTITION BY category_id ORDER BY app_room_user_cnt desc) AS ranking
+                     FROM
+                         view_app_category_visit_1min
+                 ) WHERE ranking <= 10;
+
+                 CREATE TABLE output_8 (
+                 	app_ts                       VARCHAR,
+                 	category_id                  BIGINT,
+                 	category_name                VARCHAR,
+                 	app_room_user_cnt            BIGINT,
+                 	ranking                      BIGINT
+                 ) WITH (
+                 	type= 'rds',
+                 	url = 'jdbc:mysql://*:3306/*',
+                 	userName = '',
+                 	password = '',
+                 	tableName = ''
+                 );
+
+
+                 INSERT INTO output_8
+                 SELECT * FROM view_app_category_visit_top10;
+
+
+               =========================

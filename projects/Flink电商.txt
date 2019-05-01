@@ -1,0 +1,1424 @@
+https://help.aliyun.com/document_detail/65669.html?spm=a2c4g.11186623.2.22.877662b6ktvYsr
+
+电商场景实战之多类目成交总额管理
+更新时间：2019-04-15 16:35:27
+
+编辑 ·
+ · 我的收藏
+本页目录
+背景信息
+多类目成交总额管理案例
+常见问题
+DEMO示例以及源代码
+本文通过案例为您介绍如何使用实时计算完成数据的实时处理、多类目的管理。
+
+背景信息
+以下是天猫工程师利用实时计算实现实时多类目成交总额管理的案例。
+
+多类目成交总额管理案例
+说明 为了聚焦核心逻辑，订单数据格式做了大量精简，只保留了与案例有关的属性。
+SQL结构图
+
+操作步骤如下
+创建数据总线（DataHub）源表
+系统订单是实时产生的，源表语句如下。
+
+CREATE TABLE source_order (
+id VARCHAR,-- 商品ID
+buyer_id VARCHAR, --买家ID
+site VARCHAR,--商品类别
+pay_time VARCHAR,--订单支付时间
+buy_amount DOUBLE, --订单金额
+wap VARCHAR--购买方式
+) WITH (
+type='datahub',
+endPoint='http://dh-cn-hangzhou.aliyun-inc.com',
+project='yourProjectName',--DataHub中Poject的名称
+topic='yourTopicName',--DataHub Poject中Topic的名称
+roleArn='yourRoleArn',--指定角色的roleArn
+batchReadSize='500'
+);
+
+创建RDS结果表
+RDS结果表语句如下。
+
+CREATE TABLE ads_site_block_trd_pay_ri (
+id VARCHAR,
+site VARCHAR,
+data_time VARCHAR,
+all_alipay BIGINT,
+all_ord_cnt BIGINT,
+primary key(id,site,data_time)
+) WITH (
+type= 'rds',
+url = 'yourRDSDatabaseURL',--RDS数据库URL
+tableName = 'yourDatabaseTableName',--RDS数据库中的表名
+userName = 'yourDatabaseUserName',--登录数据库的的用户名
+password = 'yourDatabasePassword'-登录数据库的密码
+);
+
+
+创建一个View视图
+如下根据商品ID、商品类别、买家ID和订单支付时间做分组操作。
+
+CREATE VIEW tmp_ads_site_block_trd_pay_ri AS
+SELECT
+id id,
+mod(HASH_CODE(`a`.buyer_id),4096) hash_id,
+site site,
+date_format(`a`.pay_time , 'yyyy-MM-dd HH:mm:ss' , 'yyyyMMddHH') data_time,
+SUM(cast(buy_amount as bigint)) all_alipay,
+count(distinct `a`.buyer_id) all_ord_cnt
+FROM
+source_order `a`
+GROUP BY id , site , mod(HASH_CODE(`a`.buyer_id),4096) , date_format(`a`.pay_time , 'yyyy-MM-dd HH:mm:ss' , 'yyyyMMddHH') ;
+
+
+数据聚合后插入RDS结果表
+把分组好的数据聚合后插入RDS结果表中，语句如下。
+
+INSERT INTO ads_site_block_trd_pay_ri
+SELECT
+id,
+site,
+`a`.data_time,
+CAST(sum(all_alipay) AS BIGINT) as all_alipay,
+CAST(sum(all_ord_cnt) AS BIGINT) as all_ord_cnt
+FROM
+tmp_ads_site_block_trd_pay_ri `a`
+GROUP BY id , site , `a`.data_time ;
+
+常见问题
+Q：怎么解决数据倾斜？
+
+A：假如您的ID数据非常大，根据您的ID进行分组计算可能会造成机器热点从而导致数据倾斜，计算性能会很差。
+
+mod(HASH_CODE(`a`.buyer_id),4096) hash_id
+
+
+使用HASH_CODE这个离散函数来分离数据热点，接下来使用MOD函数对哈希值进行分组操作。这样做的好处是规范每个节点数据的数量避免大量数据的堆积导致数据倾斜(4096指的是分组的数量，可以根据数据的大小进行分组操作)。HASH_CODE函数详情请参见HASH_CODE。
+
+Q：您得到的UV量是否准确？
+
+A：直接使用count(distinct,buyer_id)会出现计算不准的问题。用GROUP BY mod(HASH_CODE(a.buyer_id),4096)，把相同buyer_id过滤去重后,再做SUM就可以避免这样的错误产生。
+
+CREATE VIEW tmp_ads_site_block_trd_pay_ri AS
+ SELECT
+   id id,
+   mod(HASH_CODE(`a`.buyer_id),4096) hash_id,
+   site site,
+   date_format(`a`.pay_time , 'yyyy-MM-dd HH:mm:ss' , 'yyyyMMddHH') data_time,
+   SUM(cast(buy_amount as bigint)) all_qty_cnt,
+   count(distinct `a`.buyer_id) all_ord_cnt
+     FROM
+ source_order `a`
+  GROUP BY id , site , mod(HASH_CODE(`a`.buyer_id),4096) , date_format(`a`.pay_time , 'yyyy-MM-dd HH:mm:ss' , 'yyyyMMddHH') ;
+
+
+DEMO示例以及源代码
+根据上文介绍的成交总额管理解决方案，为您创建了一个包含完整链路的DEMO示例，如下。
+DataHub作为源表
+RDS作为结果表
+DEMO代码完整，您可参考示例代码，注册上下游数据，制定自己的多类目成交总额管理解决方案。点击DEMO代码进行下载。
+
+-SQL
+--********************************************************************--
+--Author: ***@aliyun-inner.com
+--CreateTime: 2019-03-21 11:12:39
+--Comment: 请输入业务注释信息
+--********************************************************************--
+--源表
+CREATE TABLE source_order (
+id VARCHAR,-- 商品ID
+buyer_id VARCHAR, --买家ID
+site VARCHAR,--商品类别
+pay_time VARCHAR,--订单支付时间
+buy_amount double, --订单金额
+wap VARCHAR--购买方式
+) WITH (
+type='datahub',
+endPoint='http://dh-cn-hangzhou.aliyun-inc.com',
+project='yourProjectName',--DataHub中Poject的名称
+topic='yourTopicName',--DataHub Poject中Topic的名称
+roleArn='yourRoleArn',--指定角色的roleArn
+batchReadSize='500'
+);
+--结果表
+CREATE TABLE ads_site_block_trd_pay_ri (
+id VARCHAR,
+site VARCHAR,
+data_time VARCHAR,
+all_alipay BIGINT,
+all_ord_cnt BIGINT,
+primary key(id,site,data_time)
+) WITH (
+type= 'rds',
+url = 'yourURL',--RDS数据库URL
+tableName = 'yourTableName',--RDS数据库中的表名
+userName = 'yourUserName',--登录数据库的的用户名
+password = 'yourPassword'--登录数据库的密码
+);
+--视图
+CREATE VIEW tmp_ads_site_block_trd_pay_ri AS
+SELECT
+id id,
+mod(HASH_CODE(`a`.buyer_id),4096) hash_id,
+site site,
+date_format(`a`.pay_time , 'yyyy-MM-dd HH:mm:ss' , 'yyyyMMddHH') data_time,
+SUM(cast(buy_amount as bigint)) all_alipay,
+count(distinct `a`.buyer_id) all_ord_cnt
+FROM
+source_order `a`
+GROUP BY id , site , mod(HASH_CODE(`a`.buyer_id),4096) , date_format(`a`.pay_time , 'yyyy-MM-dd HH:mm:ss' , 'yyyyMMddHH') ;
+--查询
+INSERT INTO ads_site_block_trd_pay_ri
+SELECT
+id,
+site,
+`a`.data_time,
+CAST(sum(all_alipay) AS BIGINT) as all_alipay,
+CAST(sum(all_ord_cnt) AS BIGINT) as all_ord_cnt
+FROM
+tmp_ads_site_block_trd_pay_ri `a`
+GROUP BY id , site , `a`.data_time ;
+
+===============
+
+电商场景实战之订单与销量统计
+
+
+背景信息
+以下案例是实时计算的合作伙伴袋鼠云通过阿里云实时计算来完成电商订单管理的案例。
+
+业务架构图
+
+业务流程：
+
+用阿里云的DTS数据实时同步把您的数据同步到大数据总线（DataHub）。具体步骤请参见MySQL到DataHub数据实时同步。
+阿里云实时计算订阅大数据总线（DataHub）的数据进行实时计算。
+将实时数据插入到RDS的云数据库。
+再通过阿里云的DataV或者是其他的大屏做数据展示。
+准备工作
+将RDS for MySQL产生的增量数据实时同步到DataHub中的Topic。由RDS经过DTS数据同步到大数据总线（DataHub）Schema表的信息。
+
+具体步骤请参见MySQL到DataHub数据实时同步。
+
+订单源表
+
+字段名	数据类型	详情
+dts_ordercodeofsys	VARCHAR	订单编号
+dts_paytime	BIGINT	订单付款时间
+dts_deliveredtime	VARCHAR	订单发货时间
+dts_storecode	VARCHAR	店铺编号
+dts_warehousecode	VARCHAR	仓库code
+dts_cancelled	BIGINT	是否取消
+dts_delivered	BIGINT	是否发货
+dts_receivercity	VARCHAR	收货人城市
+dts_receiverprovince	VARCHAR	收货人省份
+dts_record_id	VARCHAR	记录ID
+dts_operation_flag	VARCHAR	操作Flag
+dts_instance_id	VARCHAR	数据库instanceId
+dts_db_name	VARCHAR	数据库名
+dts_table_name	VARCHAR	数据表
+dts_utc_timestamp	VARCHAR	更新时间
+dts_before_flag	VARCHAR	变更前标识
+dts_after_flag	VARCHAR	变更后标识
+订单详情源表
+
+字段名	数据类型	详情
+dts_ordercodeofsys	VARCHAR	订单编号
+dts_skuname	VARCHAR	商品名字
+dts_skucode	VARCHAR	商品编号
+dts_quantity	BIGINT	数量
+dts_dividedamount	DOUBLE	发货金额
+dts_salechanneldividedamount	DOUBLE	渠道销售金额
+dts_initialcost	DOUBLE	成本
+dts_record_id	VARCHAR	记录ID
+dts_operation_flag	VARCHAR	操作Flag
+dts_instance_id	VARCHAR	数据库instanceId
+dts_db_name	VARCHAR	数据库名字
+dts_table_name	VARCHAR	表名
+dts_utc_timestamp	VARCHAR	更新时间
+dts_before_flag	VARCHAR	变更前标识
+dts_after_flag	VARCHAR	变更后标识
+编写业务逻辑
+--数据的订单源表
+create table orders_real(
+dts_ordercodeofsys varchar,
+dts_paytime bigint,
+dts_deliveredtime varchar,
+dts_storecode varchar,
+dts_warehousecode varchar,
+dts_cancelled bigint,
+dts_delivered bigint,
+dts_receivercity varchar,
+dts_receiverprovince varchar,
+dts_record_id varchar,
+dts_operation_flag varchar,
+dts_instance_id varchar,
+dts_db_name varchar,
+dts_table_name varchar,
+dts_utc_timestamp varchar,
+dts_before_flag varchar,
+dts_after_flag varchar
+)with(
+type='datahub',
+endPoint='http://dh-cn-****.com',
+project='your',
+topic='表名',
+accessId='您的ID',
+accessKey='您的KEY'
+);
+
+create table orderdetail_real(
+dts_ordercodeofsys varchar,
+dts_skuname varchar,
+dts_skucode varchar,
+dts_quantity bigint,
+dts_dividedamount double,
+dts_salechanneldividedamount double,
+dts_initialcost double,
+dts_record_id varchar,
+dts_operation_flag varchar,
+dts_instance_id varchar,
+dts_db_name varchar,
+dts_table_name varchar,
+dts_utc_timestamp varchar,
+dts_before_flag varchar,
+dts_after_flag varchar
+)with(
+type='datahub',
+endPoint='http://dh-cn-****.com',
+project='yourPorjectName',
+topic='yourTableName',
+accessId='yourAccessId',
+accessKey='yourAccessSecret'
+);
+
+
+create table ads_all_count_amount(
+bill_date varchar,--下单时间
+bill_count bigint,--总的订单总数
+qty bigint,--总的销售量
+primary key (bill_date)
+)with(
+type='rds',
+url='jdbc:mysql://rm-XXXX.mysql.rds.aXXXXcs.com:3306/XXXX',
+tableName='yourDatabaseTableName',
+userName='yourDatabaseAccount',
+password='yourDatabasePassword'
+);
+
+
+--订单源表，最新交易时间的商品编号
+CREATE VIEW new_paytime AS
+SELECT
+dts_ordercodeofsys,
+MAX(dts_paytime) AS dts_paytime
+FROM orders_real
+GROUP BY dts_ordercodeofsys ;
+
+--订单详情表，有效的订单的订单编码、商品名称、商品编号、数量的信息
+CREATE VIEW new_orderdetail AS
+SELECT
+dts_ordercodeofsys,
+dts_skuname,
+dts_skucode,
+CASE WHEN dts_operation_flag='U'
+AND dts_before_flag='Y'
+AND dts_after_flag='N' THEN -1*dts_quantity
+WHEN dts_operation_flag='U'
+AND dts_before_flag='N'
+AND dts_after_flag='Y' THEN dts_quantity
+WHEN dts_operation_flag='D' THEN -1*dts_quantity
+ELSE dts_quantity
+END AS dts_quantity
+FROM
+orderdetail_real ;
+
+--订单总单数，总销售量
+INSERT INTO ads_all_count_amount
+SELECT
+FROM_UNIXTIME(cast(a.dts_paytime/1000000 AS bigint),'yyyyMMdd') AS bill_date,
+COUNT(DISTINCT a.dts_ordercodeofsys) AS bill_count,
+SUM(b.dts_quantity) AS qty
+from
+new_paytime a
+join
+new_orderdetail b
+ON a.dts_ordercodeofsys=b.dts_ordercodeofsys
+GROUP BY
+FROM_UNIXTIME(CAST(a.dts_paytime/1000000 AS bigint),'yyyyMMdd');
+
+难点解析
+为了方便您理解结构化代码和代码维护，推荐使用View(数据视图概念）把业务逻辑差分成三个模块。
+
+模块1
+根据订单编号做分组。
+
+同一个编号订单会有多次业务操作（例如下单、付款、发货），会在Binlog日志中形成多条同一订单编号的订单流水记录。使用MAX(dts_paytime)获取同一编号的最后一次操作数据库最终付款交易时间。
+
+CREATE VIEW new_paytime AS
+SELECT
+	dts_ordercodeofsys,
+	MAX(dts_paytime) AS dts_paytime
+FROM orders_real
+GROUP BY dts_ordercodeofsys
+
+模块2
+生成有效订单的信息。
+--订单详情表，有效的订单的订单编码、商品名称、商品编号、数量的信息
+CREATE VIEW new_orderdetail AS
+SELECT
+dts_ordercodeofsys,
+dts_skuname,
+dts_skucode,
+CASE WHEN dts_operation_flag='U'
+		AND dts_before_flag='Y'
+		AND dts_after_flag='N' THEN -1*dts_quantity
+	WHEN dts_operation_flag='U'
+		AND dts_before_flag='N'
+		AND dts_after_flag='Y' THEN dts_quantity
+	WHEN dts_operation_flag='D' THEN -1*dts_quantity
+	ELSE dts_quantity
+	END AS dts_quantity
+		FROM orderdetail_real
+数据库日志会获取所有的数据记录的变更，而每个订单是有状态的。如下列表所示。
+
+字段名	数据类型	详情
+dts_record_id	VARCHAR	记录ID。增量日志的唯一标识，唯一递增。如果变更类型为Update，那么增量更新会被拆分成2条，一条Insert，一条Delete。这两条记录具有相同的record_id。
+dts_operation_flag	VARCHAR
+标示这条增量日志的操作类型。取值为
+
+I：Insert
+D：Delete
+U：Update
+dts_instance_id	VARCHAR	数据库instanceId。这条增量日志所对应的数据库的Server ID
+dts_db_name	VARCHAR	这条增量更新日志更新的表所在的数据库库名。
+dts_table_name	VARCHAR	这条增量更新日志更新的表名。
+dts_utc_timestamp	VARCHAR	这条增量日志的操作时间戳，为这个更新操作记录Binlog的时间戳。时间戳为UTC时间。
+dts_before_flag	VARCHAR	表示这条增量日志后面带的各个Column值是否为更新前的值。取值包括：Y和N。当后面的Column为更新前的值时，dts_before_flag＝Y,当后面的Column值为更新后的值时，dts_before_flag=N。
+dts_after_flag	VARCHAR	表示这条增量日志后面带的各个Column值是否为更新后的值。取值包括：Y和N。当后面的Column为更新前的值时，dts_after_flag=N，当后面的Column值为更新后的值时，dts_after_flag=Y。
+对于不同的操作类型，增量日志中的dts_before_flag和dts_after_flag定义如下：
+
+操作类型为Insert
+所有Column值为新插入的记录值，即为更新后的值。所以 dts_before_flag＝N， dts_after_flag=Y。
+
+操作类型为Update
+Update操作被拆为2条增量日志。这两条增量日志的 dts_record_id， dts_operation_flag及 dts_utc_timestamp相同。第一条日志记录更新前的值，所以 dts_before_flag=Y， dts_after_flag=N第二条日志记录了更新后的值，所以 dts_before_flag=N， dts_after_flag=Y。
+
+操作类型为Delete
+所有Column值为被删除的记录值，即为更新前的值。所以 dts_before_flag＝Y， dts_after_flag=N。
+
+说明
+Q：怎么判断是有效交易订单呢？
+
+A：首先是要满足dts_operation_flag=U或者dts_operation_flag=I，然后dts_before_flag代表的是变更前订单状态，dts_after_flag是变更后订单状态。所以有效交易订单如下。
+
+dts_operation_flag='U'
+		AND dts_before_flag='N'
+		AND dts_after_flag='Y' THEN dts_quantity
+
+Q：为什么THEN -1*dts_quantity呢？
+
+A：订单的取消或者是交易没有成功在总的销量里也会记录；为了保证总销量的正确性，所以把没有成交的订单数量设为负数在计算总的销量会减去这个数量。
+
+模块3
+统计总订单数和销售额。
+
+SELECT
+	from_unixtime(CAST(a.dts_paytime/1000000 AS bigint),'yyyyMMdd') AS bill_date,
+	COUNT(DISTINCTa.dts_ordercodeofsys) AS bill_count,
+	SUM(b.dts_quantity) AS qty
+from
+	(new_paytime) a
+join
+	(new_orderdetail) b
+ON
+	a.dts_ordercodeofsys=b.dts_ordercodeofsys
+GROUP BY
+from_unixtime(CAST(a.dts_paytime/1000000 AS bigint),'yyyyMMdd');
+
+Q：为什么订单源表和订单详情要做JOIN操作？
+
+A：new_paytime查出的是最新交易的时间的所有的订单编号；new_orderdetail查询的是所有的有效的订单的订单编码、商品名称、商品编号、数量的信息；两张表Join是为方便用户来统计订单总数和总的销量。
+
+DEMO示例以及源代码
+根据上文介绍的订单与销量统计解决方案，为您创建了一个包含完整链路的DEMO示例，如下。
+DataHub作为源表
+RDS作为结果表
+DEMO代码完整，您可参考示例代码，注册上下游数据，制定自己的订单与销量统计解决方案。点击DEMO代码进行下载。
+
+
+--SQL
+--********************************************************************--
+--Author: ***@aliyun-inner.com
+--CreateTime: 2019-03-21 11:55:10
+--Comment: 请输入业务注释信息
+--********************************************************************--
+
+--数据的订单源表
+create table orders_real(
+dts_ordercodeofsys varchar,
+dts_paytime bigint,
+dts_deliveredtime varchar,
+dts_storecode varchar,
+dts_warehousecode varchar,
+dts_cancelled bigint,
+dts_delivered bigint,
+dts_receivercity varchar,
+dts_receiverprovince varchar,
+dts_record_id varchar,
+dts_operation_flag varchar,
+dts_instance_id varchar,
+dts_db_name varchar,
+dts_table_name varchar,
+dts_utc_timestamp varchar,
+dts_before_flag varchar,
+dts_after_flag varchar
+)with(
+type='datahub',
+endPoint='http://dh-cn-****.com',
+project=‘yourProjectName’,
+topic=‘yourTopicName’,
+accessId=‘yourAccessId’,
+accessKey=‘yourAcesssSecret’
+);
+
+create table orderdetail_real(
+dts_ordercodeofsys varchar,
+dts_skuname varchar,
+dts_skucode varchar,
+dts_quantity bigint,
+dts_dividedamount double,
+dts_salechanneldividedamount double,
+dts_initialcost double,
+dts_record_id varchar,
+dts_operation_flag varchar,
+dts_instance_id varchar,
+dts_db_name varchar,
+dts_table_name varchar,
+dts_utc_timestamp varchar,
+dts_before_flag varchar,
+dts_after_flag varchar
+)with(
+type='datahub',
+endPoint='http://dh-cn-****.com',
+project='yourProjectName’,
+topic=‘yourTpociName’,
+accessId='yourAccessId',
+accessKey='yourAcesssSecret'
+);
+
+create table ads_all_count_amount(
+bill_date varchar,--下单时间
+bill_count bigint,--总的订单总数
+qty bigint,--总的销售量
+primary key (bill_date)
+)with(
+type='rds',
+url='jdbc:mysql://rm-****.mysql.rds.a****cs.com:3306/****',
+tableName=‘yourTableName’,
+userName=‘yourDatabaseName’,
+password=‘yourDatabasePassword’
+);
+
+--订单源表，最新交易时间的商品编号
+CREATE VIEW new_paytime AS
+SELECT
+dts_ordercodeofsys,
+MAX(dts_paytime) AS dts_paytime
+    FROM orders_real
+    GROUP BY dts_ordercodeofsys ;
+    
+--订单详情表，有效的订单的订单编码、商品名称、商品编号、数量的信息
+CREATE VIEW new_orderdetail AS
+SELECT
+dts_ordercodeofsys,
+dts_skuname,
+dts_skucode,
+CASE WHEN dts_operation_flag='U'
+        AND dts_before_flag='Y'
+        AND dts_after_flag='N' THEN -1*dts_quantity
+    WHEN dts_operation_flag='U'
+        AND dts_before_flag='N'
+        AND dts_after_flag='Y' THEN dts_quantity
+    WHEN dts_operation_flag='D' THEN -1*dts_quantity
+    ELSE dts_quantity
+    END AS dts_quantity
+        FROM
+orderdetail_real ;
+        
+--订单总单数，总销售量
+INSERT INTO ads_all_count_amount
+SELECT
+    FROM_UNIXTIME(cast(a.dts_paytime/1000000 AS bigint),'yyyyMMdd') AS bill_date,
+    COUNT(DISTINCT a.dts_ordercodeofsys) AS bill_count,
+    SUM(b.dts_quantity) AS qty
+from
+    new_paytime a
+join
+    new_orderdetail b
+ON a.dts_ordercodeofsys=b.dts_ordercodeofsys
+GROUP BY
+FROM_UNIXTIME(CAST(a.dts_paytime/1000000 AS bigint),'yyyyMMdd');
+
+-------------------------------------------
+
+电商场景实战之实时PV和UV曲线
+更新时间：2019-04-15 16:34:55
+
+编辑 ·
+ · 我的收藏
+本页目录
+背景
+案例
+DEMO示例以及源代码
+本文以实时计算合作伙伴格格家的案例为您介绍如何使用实时计算制作实时PV/UV曲线图。
+
+背景
+随着新零售的概念慢慢崛起，互联网电商行业竞争越来越激烈。实时数据信息对于电商行业尤为重要，比如实时的统计网页PV/UV的总量。
+
+案例
+业务架构图
+
+业务流程
+通过大数据总线（DataHub）提供的SDK把Binlog日志的数据同步到大数据总线（DataHub）。
+阿里云实时计算订阅大数据总线（DataHub）的数据进行实时计算。
+将实时数据插入到RDS云数据库。
+再通过阿里云的DataV或者是其他的大屏做数据展示。
+准备工作
+日志源表
+
+字段名	数据类型	详情
+account_id	VARCHAR	用户ID
+client_ip	VARCHAR	客户端IP
+client_info	VACHAR	设备机型信息
+platform	VARHCAR	系统版本信息
+imei	VARCHAR	设备唯一标识
+version	BIGINT	版本号
+action	BIGINT	页面跳转描述
+gpm	VARCHAR	埋点链路
+c_time	VARCHAR	请求时间
+target_type	VARCHAR	目标类型
+target_id	VARCHAR	目标ID
+udata	VARCHAR	扩展信息
+session_id	VARHCAR	会话ID
+product_id_chain	VARHCAR	商品ID串
+cart_product_id_chain	VARCHAR	加购商品ID
+tag	VARCHAR	特殊标记
+position	VARCHAR	位置信息
+network	VARCHAR	网络使用情况
+p_dt	VARCHAR	时间分区
+p_platform	VARCHAR	系统版本信息
+数据库RDS结果表
+
+字段名	数据类型	详情
+summary_date	BIGINT	统计日期
+summary_min	VARCHAR	统计分钟
+pv	BIGINT	点击量
+uv	BIGINT	访客量
+说明 一天内同个访客多次访问仅计算一个UV。
+currenttime	TIMESTAMP	当前时间
+业务逻辑
+
+ --数据的订单源表
+
+CREATE TABLE source_ods_fact_log_track_action (
+	account_id                        VARCHAR,--用户ID
+	client_ip                         VARCHAR,--客户端IP
+	client_info                       VARCHAR,--设备机型信息
+	platform                          VARCHAR,--系统版本信息
+	imei                              VARCHAR,--设备唯一标识
+	`version`                         VARCHAR,--版本号
+	`action`                          VARCHAR,--页面跳转描述
+	gpm                               VARCHAR,--埋点链路
+	c_time                            VARCHAR,--请求时间
+	target_type                       VARCHAR,--目标类型
+	target_id                         VARCHAR,--目标ID
+	udata                             VARCHAR,--扩展信息，JSON格式
+	session_id                        VARCHAR,--会话ID
+	product_id_chain                  VARCHAR,--商品ID串
+	cart_product_id_chain             VARCHAR,--加购商品ID
+	tag                               VARCHAR,--特殊标记
+	`position`                        VARCHAR,--位置信息
+	network                           VARCHAR,--网络使用情况
+	p_dt                              VARCHAR,--时间分区天
+	p_platform                        VARCHAR--系统版本信息
+
+
+) WITH (
+	type='datahub',
+  	endPoint='yourEndpointURL',
+    project='yourProjectName',
+    topic='yourTopicName',
+    accessId='yourAccessId',
+    accessKey='yourAccessSecret',
+    batchReadSize='1000'
+);
+
+
+
+CREATE TABLE result_cps_total_summary_pvuv_min (
+	summary_date              bigint,--统计日期
+	summary_min               varchar,--统计分钟
+	pv                        bigint,--点击量
+	uv                        bigint,--一天内同个访客多次访问仅计算一个UV
+	currenttime               timestamp,--当前时间
+	primary key (summary_date,summary_min)
+) WITH (
+	type= 'rds',
+	url = 'yourRDSDatabaseURL',
+	userName = 'yourDatabaseUserName',
+	password = 'yourDatabasePassword',
+	tableName = 'yourTableName'
+);
+
+CREATE VIEW result_cps_total_summary_pvuv_min_01 AS
+select
+cast(p_dt as bigint) as summary_date --时间分区
+,count(client_ip) as pv --客户端的IP
+,count(distinct client_ip) as uv--客户端去重
+,cast(max(c_time ) as TIMESTAMP)  as c_time--请求的时间
+from source_ods_fact_log_track_action
+group by p_dt;
+
+INSERT into  result_cps_total_summary_pvuv_min
+select
+a.summary_date,--时间分区
+cast(DATE_FORMAT(c_time,'HH:mm')  as varchar) as summary_min,--取出小时分钟级别的时间
+a.pv,
+a.uv,
+CURRENT_TIMESTAMP  as currenttime--当前时间
+from result_cps_total_summary_pvuv_min_01 AS a
+;
+难点解析
+为了方便大家理解结构化代码和代码维护，我们推荐使用View（数据视图概念）把业务逻辑差分成二个模块。
+
+模块一
+CREATE VIEW result_cps_total_summary_pvuv_min_01 AS
+select
+cast(p_dt as bigint) as summary_date, --时间分区
+count(client_ip) as pv, --客户端的IP
+count(distinct client_ip) as uv,--客户端去重
+cast(max(c_time) as TIMESTAMP) as c_time--请求的时间
+from source_ods_fact_log_track_action
+group by p_dt;
+查出客户的IP访问网站的点击次数作为PV。对客户的IP去重作为UV。
+cast(max(c_time) as TIMESTAMP)，记录最后请求的时间。
+这段业务逻辑根据p_dt（时间分区，以天为单位）的时间来做分组，以max(c_time)表示一段时间的最后访问时间为截止，向数据库插入一条PV/UV的数量。
+结果如下表。
+
+p_dt	pv	uv	max(c_time)
+2017-12-12	1000	100	2017-12-12 9:00:00
+2017-12-12	1500	120	2017-12-12 9:01:00
+2017-12-12	2200	200	2017-12-12 9:02:00
+2017-12-12	3300	320	2017-12-12 9:03:00
+模块二
+INSERT into  result_cps_total_summary_pvuv_min
+select
+a.summary_date,--时间分区,天为单位
+cast(DATE_FORMAT(c_time,'HH:mm')  as varchar) as summary_min,--取出小时分钟级别的时间
+a.pv,
+a.uv,
+CURRENT_TIMESTAMP  as currenttime--当前时间
+from result_cps_total_summary_pvuv_min_01 AS a
+
+
+把模块一的数据精确到小时分钟级别取出，最后根据数据得出PV、UV的增长曲线。如图所示：
+
+DEMO示例以及源代码
+根据上文介绍的PV和UV曲线解决方案，为您创建了一个包含完整链路的DEMO示例，如下。
+DataHub作为源表
+RDS作为结果表
+DEMO代码完整，您可参考示例代码，注册上下游数据，制定自己的PV和UV曲线解决方案。点击DEMO代码进行下载。
+
+
+
+--SQL
+--********************************************************************--
+--Author: ***@aliyun-inner.com
+--CreateTime: 2019-03-21 15:38:29
+--Comment: 请输入业务注释信息
+--********************************************************************--
+ --数据的订单源表
+
+CREATE TABLE source_ods_fact_log_track_action (
+    account_id                        VARCHAR,--用户ID
+    client_ip                         VARCHAR,--客户端IP
+    client_info                       VARCHAR,--设备机型信息
+    platform                          VARCHAR,--系统版本信息
+    imei                              VARCHAR,--设备唯一标识
+    `version`                         VARCHAR,--版本号
+    `action`                          VARCHAR,--页面跳转描述
+    gpm                               VARCHAR,--埋点链路
+    c_time                            VARCHAR,--请求时间
+    target_type                       VARCHAR,--目标类型
+    target_id                         VARCHAR,--目标ID
+    udata                             VARCHAR,--扩展信息，JSON格式
+    session_id                        VARCHAR,--会话ID
+    product_id_chain                  VARCHAR,--商品ID串
+    cart_product_id_chain             VARCHAR,--加购商品ID
+    tag                               VARCHAR,--特殊标记
+    `position`                        VARCHAR,--位置信息
+    network                           VARCHAR,--网络使用情况
+    p_dt                              VARCHAR,--时间分区天
+    p_platform                        VARCHAR--系统版本信息
+) WITH (
+    type='datahub',
+    endPoint=‘yourEndpoint’,
+    project=‘yourProjectName’,
+    topic=‘yourTopicName’,
+    accessId=‘yourAccessId’,
+    accessKey=‘yourAccessSecret’
+);
+
+CREATE TABLE result_cps_total_summary_pvuv_min (
+    summary_date              bigint,--统计日期
+    summary_min               varchar,--统计分钟
+    pv                        bigint,--点击量
+    uv                        bigint,--一天内同个访客多次访问仅计算一个UV
+    currenttime               timestamp,--当前时间
+    primary key (summary_date,summary_min)
+) WITH (
+    type='rds',
+    url='jdbc:mysql://rm-****.mysql.rds.a****cs.com:3306/*****’,
+    tableName=‘yourTableName’,
+    userName=‘yourDatabaseUserName’,
+    password=‘yourDatabasePassword’
+);
+
+CREATE VIEW result_cps_total_summary_pvuv_min_01 AS
+select
+cast(p_dt as bigint) as summary_date --时间分区
+,count(client_ip) as pv --客户端的IP
+,count(distinct client_ip) as uv--客户端去重
+,cast(max(c_time ) as TIMESTAMP)  as c_time--请求的时间
+from source_ods_fact_log_track_action
+group by p_dt;
+
+INSERT into  result_cps_total_summary_pvuv_min
+select
+a.summary_date,--时间分区
+cast(DATE_FORMAT(c_time,'HH:mm')  as varchar) as summary_min,--取出小时分钟级别的时间
+a.pv,
+a.uv,
+CURRENT_TIMESTAMP  as currenttime--当前时间
+from result_cps_total_summary_pvuv_min_01 AS a
+;
+
+--------------------------------------
+
+电商场景实战之营销红包
+更新时间：2019-04-15 16:35:03
+
+编辑 ·
+ · 我的收藏
+本页目录
+背景
+解决方案
+总结
+DEMO示例以及源代码
+本文为您介绍实时计算如何在营销红包的策略中筛选满足营销红包发放条件的用户。
+
+背景
+某商家双十一活动期间的“回血红包”营销方案。用户在消费达到一定金额后，商家为了促进用户继续消费会返给用户一定金额的“回血红包”。实时计算能够为您实时的去监控用户的消费金额，筛选满足营销红包发放条件的用户。
+
+解决方案
+SQL结构图
+
+数据源表
+系统订单源表
+说明 为了聚焦核心逻辑，订单数据格式做了大量精简，只保留了与案例有关的属性。
+CREATE TABLE dwd_tb_trd_pay_ri(
+        biz_order_id    VARCHAR, --订单ID
+        auction_id      VARCHAR, --商品ID
+        auction_title   VARCHAR, -- '商品标题'
+        buyer_id        VARCHAR, -- '买家ID'
+        buyer_nick      VARCHAR, -- '买家昵称'
+        pay_time        VARCHAR, -- '支付时间'
+        gmt_create      VARCHAR, -- '创建时间'
+        gmt_modified    VARCHAR, -- '修改时间'
+        biz_type        VARCHAR, -- '交易类型'
+        pay_status      VARCHAR, -- '支付状态'
+        `attributes`    VARCHAR, -- '订单标记'
+        from_group      VARCHAR, -- '订单来源'
+        div_idx_actual_total_fee   DOUBLE  --成交金额
+) WITH (
+    type='datahub',
+    endPoint='http://dh-cn-hangzhou.aliyun-inc.com',
+    project='yourProjectName',--您的project
+    topic='yourTopicName',--您的topic
+    roleArn='yourRoleArn',--您的roleArn
+    batchReadSize='500'
+);
+
+
+退货源表
+说明 为了聚焦核心逻辑，订单数据格式做了大量精简，只保留了与案例有关的属性。
+CREATE TABLE dwd_tb_trd_rfd_ri(
+        biz_order_id    VARCHAR, -- '订单ID'
+        auction_id      VARCHAR, -- '商品ID'
+        auction_title   VARCHAR, -- '商品标题'
+        buyer_id        VARCHAR, -- '买家ID'
+        buyer_nick      VARCHAR, -- '买家昵称'
+        pay_time        VARCHAR, -- '支付时间'
+        gmt_create      VARCHAR, -- '创建时间'
+        gmt_modified    VARCHAR, -- '修改时间'
+        biz_type        VARCHAR,  -- '交易类型'
+        pay_status      VARCHAR,-- '支付状态'
+        `attributes`    VARCHAR, -- '订单标记'
+        from_group      VARCHAR,-- '订单来源'
+        refund_fee      DOUBLE  -- '退款金额'
+) WITH (
+    type='datahub',
+    endPoint='http://dh-cn-hangzhou.aliyun-inc.com',
+    project='yourProjectName',--您的project
+    topic='yourTopicName',--您的topic
+    roleArn='yourRoleArn',--您的roleArn
+    batchReadSize='500'
+);
+
+
+数据结果表
+关系型数据库RDS结果表
+
+CREATE TABLE tddl_output(
+    gmt_create   VARCHAR,-- '创建时间'
+    gmt_modified VARCHAR,-- '修改时间'
+    buyer_id     BIGINT,-- '买家ID'
+    cumulate_amount BIGINT,-- '金额'
+    effect_time BIGINT,--'支付时间'
+    primary key(buyer_id,effect_time)
+) WITH (
+        type= 'rds',
+        url = 'yourDatabaseURL',--您的数据库url
+        tableName = 'yourTableName',--您的表名
+        userName = 'yourUserName',--您的用户名
+        password = 'yourDatabasePassword'--您的密码
+    );
+
+业务逻辑
+把订单表和退货表做UNION ALL操作,获取到用户购买的所有商品的信息，统计用户的真实的消费金额和明细。
+
+CREATE VIEW  dwd_tb_trd_and_rfd_pay_ri
+AS
+SELECT
+*
+FROM(
+    (SELECT
+        `a`.biz_order_id biz_order_id,
+        `a`.auction_id auction_id,
+        `a`.auction_title auction_title,
+        `a`.buyer_id buyer_id,
+        `a`.buyer_nick buyer_nick,
+        `a`.pay_time pay_time,
+        `a`.gmt_create gmt_create,
+        `a`.gmt_modified gmt_modified,
+        `a`.biz_type biz_type,
+        `a`.pay_status pay_status,
+        `a`.`attributes` `attributes`,
+        `a`.from_group,
+        `a`.div_idx_actual_total_fee div_idx_actual_total_fee
+    FROM
+        dwd_tb_trd_pay_ri `a`
+    )
+    UNION ALL
+    (
+    SELECT
+        `b`.biz_order_id biz_order_id,
+        `b`.auction_id auction_id,
+        `b`.auction_title auction_title,
+        `b`.buyer_id buyer_id,
+        `b`.buyer_nick buyer_nick,
+        `b`.pay_time pay_time,
+        `b`.gmt_create gmt_create,
+        `b`.gmt_modified gmt_modified,
+        `b`.biz_type biz_type,
+        `b`.pay_status pay_status,
+        `b`.`attributes` `attributes`,
+        `b`.from_group,
+        `b`.refund_fee div_idx_actual_total_fee --退款取负值
+    FROM
+        dwd_tb_trd_rfd_ri `b`
+    )
+);
+
+去重操作
+在订单表和退货表中可能会存在大量重复的数据比如商品ID、商品名称等。用MIN函数是为了只取第一次来的参数值，从而过滤掉其他的信息，然后再通过订单号和支付状态做分组取出需要的商品ID、商品名称等。
+
+
+CREATE VIEW filter_hxhb_dwd_tb_trd_and_rfd_pay_ri_distinct AS
+SELECT
+   biz_order_id biz_order_id,
+   pay_status pay_status,
+   MIN(auction_id) auction_id,
+   MIN(auction_title) auction_title,
+   MIN(buyer_id) buyer_id,
+   MIN(buyer_nick)  buyer_nick,
+   MIN(pay_time)  pay_time,
+   MIN(gmt_create)  gmt_create,
+   MIN(gmt_modified)  gmt_modified,
+   MIN(biz_type)  biz_type,
+   MIN(attributes)  attributes,
+   MIN(div_idx_actual_total_fee)  div_idx_actual_total_fee
+FROM
+    dwd_tb_trd_and_rfd_pay_ri
+GROUP BY biz_order_id ,pay_status;
+
+
+数据汇总所有数据做汇总处理
+CREATE VIEW ads_tb_trd_and_rfd_pay_ri AS
+SELECT
+   MIN(gmt_create) gmt_create,-- '创建时间'
+   MAX(gmt_modified) gmt_modified,-- '修改时间'
+   CAST (buyer_id AS BIGINT) buyer_id,--购买ID
+   CAST (date_format(pay_time , 'yyyy-MM-dd HH:mm:ss' , 'yyyyMMdd') AS BIGINT) as effect_time,--购买时间
+   SUM(CAST(div_idx_actual_total_fee/100 AS BIGINT)) cumulate_amount--总的金额
+FROM
+   filter_hxhb_dwd_tb_trd_and_rfd_pay_ri_distinct
+GROUP BY
+   buyer_id,date_format(pay_time , 'yyyy-MM-dd HH:mm:ss' , 'yyyyMMdd');
+
+
+Q：为什么取MAX、MIN
+ MIN(gmt_create) gmt_create,-- '创建时间'
+ MAX(gmt_modified) gmt_modified,-- '修改时间'
+
+
+A：MIN(gmt_create)是指的订单的第一笔订单的创建时间，MAX(gmt_modified)是指的最后一比订单的时间。根据订单的业务逻辑您可以用MAX和MIN来取相应的值。
+
+说明 如果时间字段不是BIGINT类型的可以用相应的内置函数做转换，详情请参看内置函数。
+数据入库
+把统计好的数据插入RDS结果，再由其他的推送软件把相应的红包数发放给满足条件的用户。
+
+INSERT INTO tddl_output
+SELECT
+    gmt_create,
+    gmt_modified,
+    buyer_id,
+    cumulate_amount,
+    effect_time
+from ads_tb_trd_and_rfd_pay_ri
+where cumulate_amount>0;
+
+
+Q：为什么要取总的金额大于0的数
+
+cumulate_amount>0
+
+
+A：是为了过滤掉在上一步做UNION ALL的退货商品的金额。
+
+总结
+Q：在大量的订单和退货单中怎样才能清洗出我们所需要的数据？
+
+A：在真实的购买记录中会存在大量的购买量和退货量，用UNION ALL把两张或者是多张表合并成一张大表，然后再通过具体的业务逻辑去重、聚合操作。最后把用户所有的真实订单交易金额写入存储中为后续的红包推送做准备。
+
+DEMO示例以及源代码
+根据上文介绍的营销红包解决方案，为您创建了一个包含完整链路的DEMO示例，如下。
+DataHub作为源表
+RDS作为结果表
+DEMO代码完整，您可参考示例代码，注册上下游数据，制定自己的营销红包解决方案。点击DEMO代码进行下载。
+
+
+--SQL
+--********************************************************************--
+--Author: ***@aliyun-inner.com
+--CreateTime: 2019-03-22 10:20:43
+--Comment: 请输入业务注释信息
+--********************************************************************--
+
+CREATE TABLE dwd_tb_trd_pay_ri(
+        biz_order_id    VARCAHR ,--订单ID
+        auction_id      VARCAHR , --商品ID
+        auction_title   VARCAHR, -- '商品标题'
+        buyer_id        VARCAHR, -- '买家ID'
+        buyer_nick      VARCAHR, -- '买家昵称'
+        pay_time        VARCAHR, -- '支付时间'
+        gmt_create      VARCAHR, -- '创建时间'
+        gmt_modified    VARCAHR, -- '修改时间'
+        biz_type        VARCAHR,  -- '交易类型'
+        pay_status      VARCAHR,-- '支付状态'
+        `attributes`    VARCAHR, -- '订单标记'
+        from_group      VARCAHR, --订单来源
+        div_idx_actual_total_fee   DOUBLE  --成交金额
+) WITH (
+    type='datahub',
+    endPoint='http://dh-cn-****.com',
+    project=‘yourProjectName’,
+    topic=‘yourTopicName’,
+    accessId=‘yourAccessId’,
+    accessKey=‘yourAccessSecret’
+);
+
+CREATE TABLE dwd_tb_trd_rfd_ri(
+        biz_order_id    VARCAHR,--订单ID
+        auction_id      VARCAHR, --商品ID
+        auction_title   VARCAHR, -- '商品标题'
+        buyer_id        VARCAHR, -- '买家ID'
+        buyer_nick      VARCAHR, -- '买家昵称'
+        pay_time        VARCAHR, -- '支付时间'
+        gmt_create      VARCAHR, -- '创建时间'
+        gmt_modified    VARCAHR, -- '修改时间'
+        biz_type        VARCAHR,  -- '交易类型'
+        pay_status      VARCAHR,-- '支付状态'
+        `attributes`    VARCAHR, -- '订单标记'
+        from_group      VARCAHR,-- 订单来源
+        refund_fee      DOUBLE  -- 退款金额
+) WITH (
+    type='datahub',
+    endPoint='http://dh-cn-****.com',
+    project=‘yourProjectName’,
+    topic=‘yourTableName’,
+    accessId=‘yourAccessId’,
+    accessKey=‘yourAccessSecret’
+);
+
+CREATE TABLE tddl_output(
+    gmt_create   VARCAHR,-- '创建时间'
+    gmt_modified VARCAHR,-- '修改时间'
+    buyer_id     BIGINT,-- '买家ID'
+    cumulate_amount BIGINT,--金额
+    effect_time BIGINT,--支付时间
+    primary key(buyer_id,effect_time)
+) WITH (
+    type='rds',
+    url='jdbc:mysql://rm-****.mysql.rds.a****cs.com:3306/****',
+    tableName=‘yourTableName’,
+    userName=‘yourDatabaseName’,
+    password=‘yourDatabasePassword’
+    );
+
+CREATE VIEW  dwd_tb_trd_and_rfd_pay_ri
+AS
+SELECT
+*
+FROM(
+    (SELECT
+        `a`.biz_order_id biz_order_id,
+        `a`.auction_id auction_id,
+        `a`.auction_title auction_title,
+        `a`.buyer_id buyer_id,
+        `a`.buyer_nick buyer_nick,
+        `a`.pay_time pay_time,
+        `a`.gmt_create gmt_create,
+        `a`.gmt_modified gmt_modified,
+        `a`.biz_type biz_type,
+        `a`.pay_status pay_status,
+        `a`.`attributes` `attributes`,
+        `a`.from_group,
+        `a`.div_idx_actual_total_fee div_idx_actual_total_fee
+    FROM
+        dwd_tb_trd_pay_ri `a`
+    )
+    UNION ALL
+    (
+    SELECT
+        `b`.biz_order_id biz_order_id,
+        `b`.auction_id auction_id,
+        `b`.auction_title auction_title,
+        `b`.buyer_id buyer_id,
+        `b`.buyer_nick buyer_nick,
+        `b`.pay_time pay_time,
+        `b`.gmt_create gmt_create,
+        `b`.gmt_modified gmt_modified,
+        `b`.biz_type biz_type,
+        `b`.pay_status pay_status,
+        `b`.`attributes` `attributes`,
+        `b`.from_group,
+        `b`.refund_fee div_idx_actual_total_fee --退款取负值
+    FROM
+        dwd_tb_trd_rfd_ri `b`
+    )
+);
+
+CREATE VIEW filter_hxhb_dwd_tb_trd_and_rfd_pay_ri_distinct AS
+SELECT
+   biz_order_id biz_order_id,
+   pay_status pay_status,
+   MIN(auction_id) auction_id,
+   MIN(auction_title) auction_title,
+   MIN(buyer_id) buyer_id,
+   MIN(buyer_nick)  buyer_nick,
+   MIN(pay_time)  pay_time,
+   MIN(gmt_create)  gmt_create,
+   MIN(gmt_modified)  gmt_modified,
+   MIN(biz_type)  biz_type,
+   MIN(attributes)  attributes,
+   MIN(div_idx_actual_total_fee)  div_idx_actual_total_fee
+FROM
+    dwd_tb_trd_and_rfd_pay_ri
+GROUP BY biz_order_id ,pay_status;
+
+CREATE VIEW ads_tb_trd_and_rfd_pay_ri AS
+SELECT
+   MIN(gmt_create) gmt_create,-- '创建时间'
+   MAX(gmt_modified) gmt_modified,-- '修改时间'
+   CAST (buyer_id AS BIGINT) buyer_id,--购买ID
+   CAST (date_format(pay_time , 'yyyy-MM-dd HH:mm:ss' , 'yyyyMMdd') AS BIGINT) as effect_time,--购买时间
+   SUM(CAST(div_idx_actual_total_fee/100 AS BIGINT)) cumulate_amount--总的金额
+FROM
+   filter_hxhb_dwd_tb_trd_and_rfd_pay_ri_distinct
+GROUP BY
+   buyer_id,date_format(pay_time , 'yyyy-MM-dd HH:mm:ss' , 'yyyyMMdd');
+
+INSERT INTO tddl_output
+SELECT
+    gmt_create,
+    gmt_modified,
+    buyer_id,
+    cumulate_amount,
+    effect_time
+from ads_tb_trd_and_rfd_pay_ri
+where cumulate_amount>0;
+
+
+========================
+
+
+电商场景实战之实时态势感知和订单地理分布
+
+
+背景信息
+实时态势感知和订单地理分布有助于企业及时的优化产品品类的分配和发布。以下是某食品电商企业通过实时计算完成产品的实时态势感知和订单地理分布的案例。
+案例
+
+说明 为了聚焦核心逻辑，订单数据格式做了大量精简，只保留了与案例有关的属性。
+创建数据存储
+在电商系统里，订单与订单地址一般都是分开存储的（下单人可以给多个地址下单），所以在订单创建时并没有收货地址，只有在订单提交时才真正的知道收货地址。订单地址里保存的是城市的id（city_id），为了获取地理信息，还需要一张城市表，这张表存储着城市的地理信息。目标是按日统计不同地域订单（总销售额）的分布情况。
+
+订单
+CREATE TABLE source_order (
+    id VARCHAR,-- 订单ID
+    seller_id VARCHAR, --卖家ID
+    account_id VARCHAR,--买家ID
+    receive_address_id VARCHAR,--收货地址ID
+    total_price VARCHAR,--订单金额
+    pay_time VARCHAR --订单支付时间
+) WITH (
+    type='datahub',
+    endPoint='http://dh-cn-hangzhou.aliyun-inc.com',
+    project='yourProjectName',--您的project
+    topic='yourTopicName',--您的topic
+    roleArn='yourRoleArn',--您的roleArn
+    batchReadSize='500'
+);
+订单地址
+CREATE TABLE source_order_receive_address (
+     id VARCHAR,--收货地址ID
+     full_name VARCHAR,--收货人全名
+     mobile_number VARCHAR,--收货人手机号
+     detail_address VARCHAR,--收货详细地址
+     province VARCHAR,--收货省份
+     city_id VARCHAR,--收货城市
+     create_time VARCHAR --创建时间
+ ) WITH (
+     type='datahub',
+     endPoint='http://dh-cn-hangzhou.aliyun-inc.com',
+     project='yourProjectName',--您的project
+     topic='yourTopicName',--您的topic
+     roleArn='yourRoleArn',--您的roleArn
+     batchReadSize='500'
+ );
+
+城市表
+CREATE TABLE dim_city (
+     city_id varchar,
+     city_name varchar,--城市名
+     province_id varchar,--所属省份ID
+     zip_code varchar,--邮编
+     lng varchar,--经度
+     lat varchar,--纬度
+  PRIMARY KEY (city_id),
+  PERIOD FOR SYSTEM_TIME --定义为维表
+ ) WITH (
+     type= 'rds',
+     url = 'yourDatabaseURL',--您的数据库url
+     tableName = 'yourTableName',--您的表名
+     userName = 'yourDatabaseName',--您的用户名
+     password = 'yourDatabasePassword'--您的密码
+ );
+按日统计不同地域订单（总销售额）的分布。
+CREATE TABLE result_order_city_distribution (
+     summary_date varchar,--统计日期
+     city_id bigint,--城市ID
+     city_name varchar,--城市名
+     province_id bigint,--所属省份ID
+     gmv double,--总销售额
+     lng varchar,--经度
+     lat varchar,--纬度
+     primary key (summary_date,city_id)
+    ) WITH (
+        type= 'rds',
+        url = 'yourDatabaseURL',--您的数据库url
+        tableName = 'yourTableName',--您的表名
+        userName = 'yourDatabaseName',--您的用户名
+        password = 'yourDatabasePassword'--您的密码
+    );
+编辑业务逻辑
+ insert into result_order_city_distribution
+ select
+ d.summary_date
+ ,cast(d.city_id as BIGINT)
+ ,e.city_name
+ ,cast(e.province_id as BIGINT)
+ ,d.gmv
+ ,e.lng
+ ,e.lat
+ from
+ (
+         select
+         DISTINCT
+         DATE_FORMAT(a.pay_time,'yyyyMMdd') as summary_date
+         ,b.city_id as city_id
+         ,round(sum(cast(a.total_price as double)),2) as gmv
+         from source_order as a
+         join source_order_receive_address as b on a.receive_address_id =b.id
+         group by DATE_FORMAT(a.pay_time,'yyyyMMdd'),b.city_id
+         --双流join，并根据日期和城市ID得到销售额分布
+ )d join dim_city FOR SYSTEM_TIME AS OF PROCTIME() as e on d.city_id = e.city_id
+ -- join维表，补齐城市地理信息，得到最终结果
+ ;
+DEMO示例以及源代码
+根据上文介绍的实时态势感知和订单地理分布解决方案，为您创建了一个包含完整链路的DEMO示例，如下。
+DataHub作为源表
+RDS作为结果表
+DEMO代码完整，您可参考示例代码，注册上下游数据，制定自己的解决方案。点击DEMO代码进行下载。
+
+---------------------
+
+电商场景实战之最新交易记录获取
+更新时间：2019-04-15 16:35:18
+
+编辑 ·
+ · 我的收藏
+本页目录
+背景
+操作流程
+DEMO示例以及源代码
+本文为您介绍如何利用实时计算获取最新交易记录。
+
+背景
+在互联网电商的真实交易记录里，订单交易表里会出现不同时间对一笔订单出现多次操作的记录。比如您修改了购买的数量、退货等一系列的操作，但是商家只想取有效的交易记录。下文为您介绍如何利用实时计算获取最新交易记录。
+
+操作流程
+语法
+SELECT col1, col2, col3
+FROM (
+  SELECT col1, col2, col3
+    ROW_NUMBER() OVER ([PARTITION BY col1[, col2..]]
+    ORDER BY col1 [asc|desc][, col2 [asc|desc]...]) AS rownum
+  FROM table_name)
+WHERE rownum <= N [AND conditions]
+
+参数	说明
+ROW_NUMBER()	计算行号的OVER窗口函数，行号计算从1开始。
+PARTITION BY col1[, col2..]	指定分区的列，可选
+ORDER BY col1 [asc|desc][, col2 [asc|desc]...]	指定排序的列，可以多列不同排序方向。
+测试案例
+测试数据
+id（BIGINT）	TIME（VARCHAR）	VALUE（BIGINT）
+1	1517898096	5
+1	1517887296	44
+1	1517872896	32
+2	1517872896	10
+测试语句
+create table source_table (
+  id      BIGINT,
+  `TIME`  VARCHAR,
+  `VALUE` BIGINT
+)with(
+  type='datahub',
+  endPoint='yourEndpointURL',
+  project='yourProjectName',
+  topic='yourTableName',
+  accessId='yourAccessId',
+  accessKey='yourAccessSecret'
+);
+CREATE TABLE result_table (
+	 id   BIGINT,
+  `TIME`  VARCHAR,
+  `VALUE` BIGINT
+) WITH (
+	type= 'rds',
+	url = 'yourRDSDatabaseURL',
+	userName = 'yourDatabaseName',
+	password = 'yourDatabasePassword',
+	tableName = 'yourTableName'
+);
+INSERT INTO result_table
+SELECT id,`TIME`,`VALUE`
+FROM (
+	SELECT *,
+	   ROW_NUMBER() OVER (PARTITION BY id ORDER BY `TIME` desc) AS rownume
+	FROM
+    source_table
+)
+WHERE rownume <= 1
+;
+
+测试结果
+id（BIGINT）	TIME（VARCHAR）	VALUE（BIGINT）
+1	1517898096	5
+2	1517872896	10
+难点解析
+SELECT id,`TIME`,`VALUE`
+FROM (
+	SELECT *,
+	   ROW_NUMBER() OVER (PARTITION BY id ORDER BY `TIME` desc) AS rownume
+	FROM
+    source_table
+)
+WHERE rownume <= 1
+
+在您的订单表里有多个业务时间处理的订单，您只想取最后时间的订单里面的数据，所以您使用row_number() OVER (PARTITION BY id ORDER BY TIME DESC) 表示根据ID分组，在分组内部根据 TIME排序，而此函数计算的值就表示每组内部排序后的顺序编号（组内连续的唯一的），这样我们取的就是最后时间的订单里面的数据。
+
+DEMO示例以及源代码
+根据上文介绍的最新交易记录获取解决方案，为您创建了一个包含完整链路的DEMO示例，如下。
+DataHub作为源表
+RDS作为结果表
+DEMO代码完整，您可参考示例代码，注册上下游数据，制定自己的解决方案。点击DEMO代码进行下载。
+
+--SQL
+--********************************************************************--
+--Author: ***@aliyun-inner.com
+--CreateTime: 2019-04-15 11:47:28
+--Comment: 请输入业务注释信息
+--********************************************************************--
+
+create table source_table (
+  id      BIGINT,
+  `TIME`  VARCHAR,
+  `VALUE` BIGINT
+)with(
+    type='datahub',
+    endPoint='http://dh-cn-****.com',
+    project='yourProjectName',
+    topic='yourTableName',
+    accessId='yourAccessId',
+    accessKey='yourAccessSecret'
+);
+CREATE TABLE result_table (
+     id   BIGINT,
+  `TIME`  VARCHAR,
+  `VALUE` BIGINT
+) WITH (
+    type='rds',
+    url='jdbc:mysql://rm-XXXX.mysql.rds.aXXXXcs.com:3306/XXXX',
+    tableName='yourTableName',
+    userName='yourDatabaseName',
+    password='yourDatabasePassword'
+);
+INSERT INTO result_table
+SELECT id,`TIME`,`VALUE`
+FROM (
+    SELECT *,
+       ROW_NUMBER() OVER (PARTITION BY id ORDER BY `TIME` desc) AS rownume
+    FROM
+    source_table
+)
+WHERE rownume <= 1 ;
+
+========================================
+
