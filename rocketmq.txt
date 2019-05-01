@@ -265,3 +265,923 @@
 9.8　应用场景分析 280
 9.9　本章小结 281
 附录A　参数说明 282
+
+
+名词解释
+更新时间：2019-01-17 11:00:40
+
+
+本文主要对消息队列 RocketMQ 涉及的专有名词及术语进行定义和解析，方便您更好地理解相关概念并使用消息队列 RocketMQ。
+
+Topic
+
+消息主题，一级消息类型，通过 Topic 对消息进行分类。详情请见Topic 与 Tag 最佳实践。
+
+Message
+
+消息，消息队列中信息传递的载体。
+
+Message ID
+
+消息的全局唯一标识，由消息队列 RocketMQ 系统自动生成，唯一标识某条消息。
+
+Message Key
+
+消息的业务标识，由消息生产者（Producer）设置，唯一标识某个业务逻辑。
+
+Tag
+
+消息标签，二级消息类型，用来进一步区分某个 Topic 下的消息分类。详情请见Topic 与 Tag 最佳实践。
+
+Producer
+
+消息生产者，也称为消息发布者，负责生产并发送消息。
+
+Producer 实例
+
+Producer 的一个对象实例，不同的 Producer 实例可以运行在不同进程内或者不同机器上。Producer 实例线程安全，可在同一进程内多线程之间共享。
+
+Consumer
+
+消息消费者，也称为消息订阅者，负责接收并消费消息。
+
+Consumer 实例
+
+Consumer 的一个对象实例，不同的 Consumer 实例可以运行在不同进程内或者不同机器上。一个 Consumer 实例内配置线程池消费消息。
+
+Group
+
+一类 Producer 或 Consumer，这类 Producer 或 Consumer 通常生产或消费同一类消息，且消息发布或订阅的逻辑一致。
+
+Group ID
+
+Group 的标识。
+
+Exactly-Once 投递语义
+
+Exactly-Once 投递语义是指发送到消息系统的消息只能被消费端处理且仅处理一次，即使生产端重试消息发送导致某消息重复投递，该消息也在消费端也只被消费一次。详情请见Exactly-Once 投递语义。
+
+集群消费
+
+一个 Group ID 所标识的所有 Consumer 平均分摊消费消息。例如某个 Topic 有 9 条消息，一个 Group ID 有 3 个 Consumer 实例，那么在集群消费模式下每个实例平均分摊，只消费其中的 3 条消息。详情请见集群消费和广播消费。
+
+广播消费
+
+一个 Group ID 所标识的所有 Consumer 都会各自消费某条消息一次。例如某个 Topic 有 9 条消息，一个 Group ID 有 3 个 Consumer 实例，那么在广播消费模式下每个实例都会各自消费 9 条消息。详情请见集群消费和广播消费。
+
+定时消息
+
+Producer 将消息发送到消息队列 RocketMQ 服务端，但并不期望这条消息立马投递，而是推迟到在当前时间点之后的某一个时间投递到 Consumer 进行消费，该消息即定时消息。详情请见定时和延时消息。
+
+延时消息
+
+Producer 将消息发送到消息队列 RocketMQ 服务端，但并不期望这条消息立马投递，而是延迟一定时间后才投递到 Consumer 进行消费，该消息即延时消息。详情请见定时和延时消息。
+
+事务消息
+
+消息队列 RocketMQ 提供类似 X/Open XA 的分布事务功能，通过消息队列 RocketMQ 的事务消息能达到分布式事务的最终一致。详情请见事务消息。
+
+顺序消息
+
+消息队列 RocketMQ 提供的一种按照顺序进行发布和消费的消息类型, 分为全局顺序消息和分区顺序消息。详情请见顺序消息。
+
+全局顺序消息
+
+对于指定的一个 Topic，所有消息按照严格的先入先出（FIFO）的顺序进行发布和消费。详情请见顺序消息。
+
+分区顺序消息
+
+对于指定的一个 Topic，所有消息根据 sharding key 进行区块分区。同一个分区内的消息按照严格的 FIFO 顺序进行发布和消费。Sharding key 是顺序消息中用来区分不同分区的关键字段，和普通消息的 key 是完全不同的概念。详情请见顺序消息。
+
+消息堆积
+
+Producer 已经将消息发送到消息队列 RocketMQ 的服务端，但由于 Consumer 消费能力有限，未能在短时间内将所有消息正确消费掉，此时在消息队列 RocketMQ 的服务端保存着未被消费的消息，该状态即消息堆积。
+
+消息过滤
+
+消费者可以根据消息标签（Tag）对消息进行过滤，确保消费者最终只接收被过滤后的消息类型。消息过滤在消息队列 RocketMQ 的服务端完成。详情请见消息过滤。
+
+消息轨迹
+
+在一条消息从生产者发出到订阅者消费处理过程中，由各个相关节点的时间、地点等数据汇聚而成的完整链路信息。通过消息轨迹，您能清晰定位消息从生产者发出，经由消息队列 RocketMQ 服务端，投递给消息消费者的完整链路，方便定位排查问题。详情请见消息轨迹简介。
+
+重置消费位点
+
+以时间轴为坐标，在消息持久化存储的时间范围内（默认 3 天），重新设置消息消费者对其订阅 Topic 的消费进度，设置完成后订阅者将接收设定时间点之后由消息生产者发送到消息队列 RocketMQ 服务端的消息。详情请见重置消费位点。
+
+死信队列
+
+死信队列用于处理无法被正常消费的消息。当一条消息初次消费失败，消息队列 RocketMQ 会自动进行消息重试；达到最大重试次数后，若消费依然失败，则表明消费者在正常情况下无法正确地消费该消息，此时，消息队列 RocketMQ 不会立刻将消息丢弃，而是将其发送到该消费者对应的特殊队列中。
+
+消息队列 RocketMQ 将这种正常情况下无法被消费的消息称为死信消息（Dead-Letter Message），将存储死信消息的特殊队列称为死信队列（Dead-Letter Queue）。
+
+详情请见死信队列。
+
+消息路由
+
+消息路由常用于不同地域之间的消息同步，保证地域之间的数据一致性。消息队列 RocketMQ 的全球消息路由功能依托阿里云优质基础设施实现的高速通道专线，可以高效地实现国内外不同地域之间的消息同步复制。详情请见全球消息路由。
+
+
+
+
+消息队列 RocketMQ
+查看产品>
+消息队列 RocketMQ 是阿里巴巴集团中间件技术部自主研发的专业消息中间件。产品基于高可用分布式集群技术，提供消息发布订阅、消息轨迹查询、定时（延时）消息、资源统计、监控报警等一系列消息云服务，是企业级互联网架构的核心产品。消息队列 RocketMQ 历史超过9年，为分布式应用系统提供异步解耦、削峰填谷的能力，同时具备海量消息堆积、高吞吐、可靠重试等互联网应用所需的特性，是阿里巴巴双11使用的核心产品。
+
+Topic 与 Tag 最佳实践
+更新时间：2019-01-16 20:44:49
+
+
+本页目录
+概念
+区分
+示例
+概念
+Topic 和 Tag 的定义如下：
+
+Topic：消息主题，通过 Topic 对不同的业务消息进行分类。
+
+Tag：消息标签，用来进一步区分某个 Topic 下的消息分类，消息队列 RocketMQ 允许消费者按照 Tag 对消息进行过滤，确保消费者最终只消费到他关注的消息类型。
+
+Topic 与 Tag 都是业务上用来归类的标识，区分在于 Topic 是一级分类，而 Tag 可以说是二级分类，关系如图所示。
+
+Tag
+
+区分
+您可能会有这样的疑问：到底什么时候该用 Topic，什么时候该用 Tag？
+
+建议您从以下几个方面进行判断：
+
+消息类型是否一致：如普通消息，事务消息，定时消息，顺序消息，不同的消息类型使用不同的 Topic，无法通过 Tag 进行区分。
+
+业务是否相关联：没有直接关联的消息，如淘宝交易消息，京东物流消息使用不同的 Topic 进行区分；而同样是天猫交易消息，电器类订单、女装类订单、化妆品类订单的消息可以用 Tag 进行区分。
+
+消息优先级是否一致：如同样是物流消息，盒马必须小时内送达，天猫超市 24 小时内送达，淘宝物流则相对会会慢一些，不同优先级的消息用不同的 Topic 进行区分。
+
+消息量级是否相当：有些业务消息虽然量小但是实时性要求高，如果跟某些万亿量级的消息使用同一个 Topic，则有可能会因为过长的等待时间而『饿死』，此时需要将不同量级的消息进行拆分，使用不同的 Topic。
+
+示例
+以天猫交易平台为例，订单消息，支付消息属于不同业务类型的消息，分别创建 Topic_Order 和 Topic_Pay，其中订单消息根据商品品类以不同的 Tag 再进行细分，如电器类、男装类、女装类、化妆品类，最后他们都被各个不同的系统所接收。
+
+通过合理的使用 Topic 和 Tag，可以让业务结构清晰，更可以提高效率。
+
+关于如何通过 Tag 进行消费端的过滤，请参见消息过滤。
+
+ 上一篇：跨云账号授权（STS）
+
+
+ 消费幂等的必要性
+ 处理建议
+ 消息队列 RocketMQ 消费者在接收到消息以后，有必要根据业务上的唯一 Key 对消息做幂等处理的必要性。
+
+ 消费幂等的必要性
+ 在互联网应用中，尤其在网络不稳定的情况下，消息队列 RocketMQ 的消息有可能会出现重复，这个重复简单可以概括为以下两种情况：
+
+ 发送时消息重复
+
+ 当一条消息已被成功发送到服务端并完成持久化，此时出现了网络闪断或者客户端宕机，导致服务端对客户端应答失败。 如果此时生产者意识到消息发送失败并尝试再次发送消息，消费者后续会收到两条内容相同并且 Message ID 也相同的消息。
+
+ 投递时消息重复
+
+ 消息消费的场景下，消息已投递到消费者并完成业务处理，当客户端给服务端反馈应答的时候网络闪断。 为了保证消息至少被消费一次，消息队列 RocketMQ 的服务端将在网络恢复后再次尝试投递之前已被处理过的消息，消费者后续会收到两条内容相同并且 Message ID 也相同的消息。
+
+ 负载均衡时消息重复
+
+ 当消息队列 RocketMQ 的 Broker 或客户端重启、扩容或缩容时，会触发 Rebalance，此时消费者可能会收到重复消息。
+
+ 处理建议
+ 因为 Message ID 有可能出现冲突（重复）的情况，所以真正安全的幂等处理，不建议以 Message ID 作为处理依据。
+
+
+  最好的方式是以业务唯一标识作为幂等处理的关键依据，而业务的唯一标识可以通过消息 Key 进行设置：
+
+ Message message = new Message();
+ message.setKey("ORDERID_100");
+ SendResult sendResult = producer.send(message);
+ 订阅方收到消息时可以根据消息的 Key 进行幂等处理：
+
+ consumer.subscribe("ons_test", "*", new MessageListener() {
+     public Action consume(Message message, ConsumeContext context) {
+         String key = message.getKey()
+         // 根据业务唯一标识的 key 做幂等处理
+     }
+ });
+
+
+
+订阅关系一致
+更新时间：2019-01-16 20:44:50
+
+
+本页目录
+订阅关系图片示例
+订阅关系代码示例
+消息队列 RocketMQ 里的一个消费者 Group ID 代表一个 Consumer 实例群组。 对于大多数分布式应用来说，一个消费者 Group ID 下通常会挂载多个 Consumer 实例。 订阅关系一致指的是同一个消费者 Group ID 下所有 Consumer 实例的处理逻辑必须完全一致。 一旦订阅关系不一致，消息消费的逻辑就会混乱，甚至导致消息丢失。
+
+由于消息队列 RocketMQ 的订阅关系主要由 Topic+Tag 共同组成，因此，保持订阅关系一致意味着同一个消费者 Group ID 下所有的实例需在以下两方面均保持一致：
+
+订阅的 Topic 必须一致；
+
+订阅的 Topic 中的 Tag 必须一致。
+
+订阅关系图片示例
+正确订阅关系图片示例
+在下图中，多个 Group ID 订阅了多个 Topic，并且每个 Group ID 里的多个消费者实例的订阅关系保持了一致。
+
+订阅关系一致
+
+错误订阅关系图片示例
+在下图中，单个 Group ID 订阅了多个 Topic，但是该 Group ID 里的多个消费者实例的订阅关系并没有保持一致。
+
+订阅关系不一致
+
+订阅关系代码示例
+错误订阅关系代码示例
+【例一】
+
+以下例子中，同一个 Group ID 下的两个实例订阅的 Topic 不一致。
+
+Consumer 实例 1-1：
+
+Properties properties = new Properties();
+properties.put(PropertyKeyConst.ConsumerId, "CID_jodie_test_1");
+Consumer consumer = ONSFactory.createConsumer(properties);
+consumer.subscribe("jodie_test_A", "*", new MessageListener() {
+    public Action consume(Message message, ConsumeContext context) {
+        System.out.println(message.getMsgID());
+        return Action.CommitMessage;
+    }
+});
+Consumer 实例 1-2：
+
+Properties properties = new Properties();
+properties.put(PropertyKeyConst.ConsumerId, " CID_jodie_test_1");
+Consumer consumer = ONSFactory.createConsumer(properties);
+consumer.subscribe("jodie_test_B ", "*", new MessageListener() {
+    public Action consume(Message message, ConsumeContext context) {
+        System.out.println(message.getMsgID());
+        return Action.CommitMessage;
+    }
+});
+【例二】
+
+以下例子中，同一个 Group ID 下订阅 Topic 的 Tag 不一致。 Consumer 实例2-1 订阅了 TagA，而 Consumer 实例2-2 未指定 Tag。
+
+Consumer 实例 2-1：
+
+Properties properties = new Properties();
+properties.put(PropertyKeyConst.ConsumerId, "CID_jodie_test_2");
+Consumer consumer = ONSFactory.createConsumer(properties);
+consumer.subscribe("jodie_test_A", "TagA", new MessageListener() {
+    public Action consume(Message message, ConsumeContext context) {
+        System.out.println(message.getMsgID());
+        return Action.CommitMessage;
+    }
+});
+Consumer 实例 2-2：
+
+Properties properties = new Properties();
+properties.put(PropertyKeyConst.ConsumerId, " CID_jodie_test_2");
+Consumer consumer = ONSFactory.createConsumer(properties);
+consumer.subscribe("jodie_test_A ", "*", new MessageListener() {
+    public Action consume(Message message, ConsumeContext context) {
+        System.out.println(message.getMsgID());
+        return Action.CommitMessage;
+    }
+});
+【例三】
+
+此例中，错误的原因有俩个：
+
+同一个 Group ID 下订阅 Topic 个数不一致。
+
+同一个 Group ID 下订阅 Topic 的 Tag 不一致。
+
+Consumer 实例 3-1：
+
+Properties properties = new Properties();
+properties.put(PropertyKeyConst.ConsumerId, "CID_jodie_test_3");
+Consumer consumer = ONSFactory.createConsumer(properties);
+consumer.subscribe("jodie_test_A", "TagA", new MessageListener() {
+    public Action consume(Message message, ConsumeContext context) {
+        System.out.println(message.getMsgID());
+        return Action.CommitMessage;
+    }
+});
+consumer.subscribe("jodie_test_B", "TagB", new MessageListener() {
+    public Action consume(Message message, ConsumeContext context) {
+        System.out.println(message.getMsgID());
+        return Action.CommitMessage;
+    }
+});
+Consumer 实例 3-2：
+
+Properties properties = new Properties();
+properties.put(PropertyKeyConst.ConsumerId, " CID_jodie_test_3");
+Consumer consumer = ONSFactory.createConsumer(properties);
+consumer.subscribe("jodie_test_A ", "TagB", new MessageListener() {
+    public Action consume(Message message, ConsumeContext context) {
+        System.out.println(message.getMsgID());
+        return Action.CommitMessage;
+    }
+});
+
+
+
+普通消息
+更新时间：2019-03-11 19:10:57
+
+
+普通消息是指消息队列 RocketMQ 中无特性的消息，区别于有特性的定时和延时消息、顺序消息和事务消息。
+
+
+TCP SDK 收发普通消息的示例代码
+
+Java
+
+发送消息（三种方式）
+发送消息（多线程）
+订阅消息
+C/C++
+
+收发普通消息
+.NET
+
+收发普通消息
+HTTP SDK 收发普通消息的示例代码
+
+消息队列 RocketMQ 支持 RESTful 风格的 HTTP 协议通信，并提供了以下七种语言的 SDK：
+
+Go
+Python
+Nodejs
+PHP
+Java
+C++
+C#
+请到消息队列 RocketMQ HTTP SDK 示例代码查看消息收发的示例代码。
+
+关于 HTTP SDK 的更多信息，请参见 SDK 参考（HTTP 版）。
+
+定时消息和延时消息
+更新时间：2019-02-28 16:48:16
+
+
+本页目录
+概念介绍
+适用场景
+使用方式
+注意事项
+示例代码
+本文主要介绍消息队列 RocketMQ 的定时消息和延时消息的概念、适用场景以及使用过程中的注意事项。
+
+概念介绍
+定时消息：Producer 将消息发送到消息队列 RocketMQ 服务端，但并不期望这条消息立马投递，而是推迟到在当前时间点之后的某一个时间投递到 Consumer 进行消费，该消息即定时消息。
+延时消息：Producer 将消息发送到消息队列 RocketMQ 服务端，但并不期望这条消息立马投递，而是延迟一定时间后才投递到 Consumer 进行消费，该消息即延时消息。
+定时消息与延时消息在代码配置上存在一些差异，但是最终达到的效果相同：消息在发送到消息队列 RocketMQ 服务端后并不会立马投递，而是根据消息中的属性延迟固定时间后才投递给消费者。
+
+适用场景
+定时消息和延时消息适用于以下一些场景：
+
+消息生产和消费有时间窗口要求：比如在电商交易中超时未支付关闭订单的场景，在订单创建时会发送一条 延时消息。这条消息将会在 30 分钟以后投递给消费者，消费者收到此消息后需要判断对应的订单是否已完成支付。 如支付未完成，则关闭订单。如已完成支付则忽略。
+通过消息触发一些定时任务，比如在某一固定时间点向用户发送提醒消息。
+使用方式
+定时消息和延时消息的使用在代码编写上存在略微的区别：
+
+发送定时消息需要明确指定消息发送时间点之后的某一时间点作为消息投递的时间点。
+发送延时消息时需要设定一个延时时间长度，消息将从当前发送时间点开始延迟固定时间之后才开始投递。
+注意事项
+定时和延时消息的 msg.setStartDeliverTime 参数需要设置成当前时间戳之后的某个时刻（单位毫秒）。如果被设置成当前时间戳之前的某个时刻，消息将立刻投递给消费者。
+定时和延时消息的 msg.setStartDeliverTime 参数可设置40天内的任何时刻（单位毫秒），超过40天消息发送将失败。
+StartDeliverTime 是服务端开始向消费端投递的时间。 如果消费者当前有消息堆积，那么定时和延时消息会排在堆积消息后面，将不能严格按照配置的时间进行投递。
+由于客户端和服务端可能存在时间差，消息的实际投递时间与客户端设置的投递时间之间可能存在偏差。
+设置定时和延时消息的投递时间后，依然受 3 天的消息保存时长限制。例如，设置定时消息 5 天后才能被消费，如果第 5 天后一直没被消费，那么这条消息将在第8天被删除。
+除 Java 语言支持延时消息外，其他语言都不支持延时消息。
+示例代码
+关于收发定时消息和延时消息的示例代码，请参考以下文档：
+
+Java
+
+收发定时消息
+收发延时消息
+C++
+
+收发定时消息
+.NET
+
+收发定时消息
+
+顺序消息
+更新时间：2019-04-10 11:30:02
+
+
+本页目录
+概念介绍
+全局顺序与分区顺序对比
+注意事项
+SDK 支持和示例代码
+本文主要介绍消息队列 RocketMQ 顺序消息的概念、适用场景以及使用过程中的注意事项。
+
+概念介绍
+顺序消息（FIFO 消息）是消息队列 RocketMQ 提供的一种严格按照顺序进行发布和消费的消息类型。 顺序消息指消息发布和消息消费都按顺序进行。
+
+顺序发布：对于指定的一个 Topic，客户端将按照一定的先后顺序发送消息。
+
+顺序消费：对于指定的一个 Topic，按照一定的先后顺序接收消息，即先发送的消息一定会先被客户端接收到。
+
+全局顺序
+对于指定的一个 Topic，所有消息按照严格的先入先出（FIFO）的顺序进行发布和消费。
+
+ordered-msg-1
+
+适用场景
+性能要求不高，所有的消息严格按照 FIFO 原则进行消息发布和消费的场景。
+
+示例
+
+在证券处理中，以人民币兑换美元为 Topic，在价格相同的情况下，先出价者优先处理，则可以通过全局顺序的方式按照 FIFO 的方式进行发布和消费。
+
+分区顺序
+对于指定的一个 Topic，所有消息根据 sharding key 进行区块分区。 同一个分区内的消息按照严格的 FIFO 顺序进行发布和消费。Sharding key 是顺序消息中用来区分不同分区的关键字段，和普通消息的 Key 是完全不同的概念。
+
+ordered-msg-2
+
+适用场景
+性能要求高，以 sharding key 作为分区字段，在同一个区块中严格的按照 FIFO 原则进行消息发布和消费的场景。
+
+示例
+
+例一：用户注册需要发送发验证码，以用户 ID 作为 sharding key， 那么同一个用户发送的消息都会按照先后顺序来发布和消费。
+
+例二：电商的订单创建，以订单 ID 作为 sharding key，那么同一个订单相关的创建订单消息、订单支付消息、订单退款消息、订单物流消息都会按照先后顺序来发布和消费。
+
+阿里巴巴集团内部电商系统均使用分区顺序消息，既保证业务的顺序，同时又能保证业务的高性能。
+
+全局顺序与分区顺序对比
+在控制台创建顺序消息使用的不同类型 Topic 对比如下。
+
+消息类型对比
+
+Topic 的消息类型	支持事务消息	支持定时/延时消息	性能
+无序消息（普通、事务、定时/延时消息）	是	是	最高
+分区顺序消息	否	否	高
+全局顺序消息	否	否	一般
+发送方式对比
+
+消息类型	支持可靠同步发送	支持可靠异步发送	支持 Oneway 发送
+无序消息（普通、事务、定时/延时消息）	是	是	是
+分区顺序消息	是	否	否
+全局顺序消息	是	否	否
+注意事项
+顺序消息暂不支持广播模式。
+建议同一个 Group ID 只对应一种类型的 Topic，即不同时用于顺序消息和无序消息的收发。
+顺序消息不支持异步发送方式，否则将无法严格保证顺序。
+对于全局顺序消息，建议创建实例个数 >=2。 同时运行多个实例的作用是为了防止工作实例意外退出时，业务中断。 当工作实例退出时，其他实例可以立即接手工作，不会导致业务中断，实际同时工作的只会有一个实例。
+SDK 支持和示例代码
+请使用 Java SDK 1.2.7 及以上版本。
+
+示例代码请参考以下文档：
+
+Java 收发送顺序消息
+C/C++ 收发顺序消息
+.NET 收发顺序消息
+
+事务消息
+更新时间：2019-02-28 16:48:16
+
+
+本页目录
+概念介绍
+适用场景
+使用方式
+注意事项
+示例代码
+本文主要介绍消息队列 RocketMQ 事务消息的概念、适用场景以及使用过程中的注意事项。
+
+概念介绍
+事务消息：消息队列 RocketMQ 提供类似 X/Open XA 的分布事务功能，通过消息队列 RocketMQ 事务消息能达到分布式事务的最终一致。
+半消息：暂不能投递的消息，发送方已经将消息成功发送到了消息队列 RocketMQ 服务端，但是服务端未收到生产者对该消息的二次确认，此时该消息被标记成“暂不能投递”状态，处于该种状态下的消息即半消息。
+消息回查：由于网络闪断、生产者应用重启等原因，导致某条事务消息的二次确认丢失，消息队列 RocketMQ 服务端通过扫描发现某条消息长期处于“半消息”时，需要主动向消息生产者询问该消息的最终状态（Commit 或是 Rollback），该过程即消息回查。
+适用场景
+事务消息的适用场景示例：
+
+通过购物车进行下单的流程中，用户入口在购物车系统，交易下单入口在交易系统，两个系统之间的数据需要保持最终一致，这时可以通过事务消息进行处理。交易系统下单之后，发送一条交易下单的消息到消息队列 RocketMQ，购物车系统订阅消息队列 RocketMQ 的交易下单消息，做相应的业务处理，更新购物车数据。
+
+使用方式
+交互流程
+消息队列 RocketMQ 事务消息交互流程如下所示：
+
+mq-trans-msg
+
+其中：
+
+发送方向消息队列 RocketMQ 服务端发送消息。
+服务端将消息持久化成功之后，向发送方 ACK 确认消息已经发送成功，此时消息为半消息。
+发送方开始执行本地事务逻辑。
+发送方根据本地事务执行结果向服务端提交二次确认（Commit 或是 Rollback），服务端收到 Commit 状态则将半消息标记为可投递，订阅方最终将收到该消息；服务端收到 Rollback 状态则删除半消息，订阅方将不会接受该消息。
+在断网或者是应用重启的特殊情况下，上述步骤 4 提交的二次确认最终未到达服务端，经过固定时间后服务端将对该消息发起消息回查。
+发送方收到消息回查后，需要检查对应消息的本地事务执行的最终结果。
+发送方根据检查得到的本地事务的最终状态再次提交二次确认，服务端仍按照步骤 4 对半消息进行操作。
+说明：事务消息发送对应步骤 1、2、3、4，事务消息回查对应步骤 5、6、7。
+
+注意事项
+事务消息的 Producer ID 不能与其他类型消息的 Producer ID 共用。与其他类型的消息不同，事务消息有回查机制，回查时消息队列 RocketMQ 服务端会根据Producer ID去查询客户端。
+
+通过 ONSFactory.createTransactionProducer 创建事务消息的 Producer 时必须指定 LocalTransactionChecker 的实现类，处理异常情况下事务消息的回查。
+
+事务消息发送完成本地事务后，可在 execute 方法中返回以下三种状态：
+
+TransactionStatus.CommitTransaction 提交事务，允许订阅方消费该消息。
+TransactionStatus.RollbackTransaction 回滚事务，消息将被丢弃不允许消费。
+TransactionStatus.Unknow 暂时无法判断状态，期待固定时间以后消息队列 RocketMQ 服务端向发送方进行消息回查。
+可通过以下方式给每条消息设定第一次消息回查的最快时间：
+
+ Message message = new Message();
+ // 在消息属性中添加第一次消息回查的最快时间，单位秒。例如，以下设置实际第一次回查时间为 120 秒 ~ 125 秒之间
+ message.putUserProperties(PropertyKeyConst.CheckImmunityTimeInSeconds,"120");
+// 以上方式只确定事务消息的第一次回查的最快时间，实际回查时间向后浮动0~5秒；如第一次回查后事务仍未提交，后续每隔5秒回查一次。
+示例代码
+关于收发事务消息的示例代码，请参考以下文档：
+
+Java 收发事务消息
+C/C++ 收发事务消息
+.NET 收发事务消息
+ 上一篇：顺序消息
+
+
+消息重试
+更新时间：2019-01-16 20:44:50
+
+
+本页目录
+顺序消息的重试
+无序消息的重试
+顺序消息的重试
+对于顺序消息，当消费者消费消息失败后，消息队列 RocketMQ 会自动不断进行消息重试（每次间隔时间为 1 秒），这时，应用会出现消息消费被阻塞的情况。因此，建议您使用顺序消息时，务必保证应用能够及时监控并处理消费失败的情况，避免阻塞现象的发生。
+
+无序消息的重试
+对于无序消息（普通、定时、延时、事务消息），当消费者消费消息失败时，您可以通过设置返回状态达到消息重试的结果。
+
+无序消息的重试只针对集群消费方式生效；广播方式不提供失败重试特性，即消费失败后，失败消息不再重试，继续消费新的消息。
+
+注意：以下内容都只针对无序消息生效。
+
+重试次数
+消息队列 RocketMQ 默认允许每条消息最多重试 16 次，每次重试的间隔时间如下：
+
+第几次重试	与上次重试的间隔时间	第几次重试	与上次重试的间隔时间
+1	10 秒	9	7 分钟
+2	30 秒	10	8 分钟
+3	1 分钟	11	9 分钟
+4	2 分钟	12	10 分钟
+5	3 分钟	13	20 分钟
+6	4 分钟	14	30 分钟
+7	5 分钟	15	1 小时
+8	6 分钟	16	2 小时
+如果消息重试 16 次后仍然失败，消息将不再投递。如果严格按照上述重试时间间隔计算，某条消息在一直消费失败的前提下，将会在接下来的 4 小时 46 分钟之内进行 16 次重试，超过这个时间范围消息将不再重试投递。
+
+注意： 一条消息无论重试多少次，这些重试消息的 Message ID 不会改变。
+
+配置方式
+消费失败后，重试配置方式
+集群消费方式下，消息消费失败后期望消息重试，需要在消息监听器接口的实现中明确进行配置（三种方式任选一种）：
+
+返回 Action.ReconsumeLater （推荐）
+返回 Null
+抛出异常
+示例代码
+
+public class MessageListenerImpl implements MessageListener {
+    @Override
+    public Action consume(Message message, ConsumeContext context) {
+        //方法3：消息处理逻辑抛出异常，消息将重试
+        doConsumeMessage(message);
+        //方式1：返回 Action.ReconsumeLater，消息将重试
+        return Action.ReconsumeLater;
+        //方式2：返回 null，消息将重试
+        return null;
+        //方式3：直接抛出异常， 消息将重试
+        throw new RuntimeException("Consumer Message exceotion");
+    }
+}
+消费失败后，不重试配置方式
+集群消费方式下，消息失败后期望消息不重试，需要捕获消费逻辑中可能抛出的异常，最终返回 Action.CommitMessage，此后这条消息将不会再重试。
+
+示例代码
+
+public class MessageListenerImpl implements MessageListener {
+    @Override
+    public Action consume(Message message, ConsumeContext context) {
+        try {
+            doConsumeMessage(message);
+        } catch (Throwable e) {
+            //捕获消费逻辑中的所有异常，并返回 Action.CommitMessage;
+            return Action.CommitMessage;
+        }
+        //消息处理正常，直接返回 Action.CommitMessage;
+        return Action.CommitMessage;
+    }
+}
+自定义消息最大重试次数
+自定义消息队列 RocketMQ 的客户端日志配置，请升级 TCP Java SDK 版本到1.2.2及以上。
+
+消息队列 RocketMQ 允许 Consumer 启动的时候设置最大重试次数，重试时间间隔将按照如下策略：
+
+最大重试次数小于等于 16 次，则重试时间间隔同上表描述。
+最大重试次数大于 16 次，超过 16 次的重试时间间隔均为每次 2 小时。
+配置方式如下：
+
+Properties properties = new Properties();
+//配置对应 Group ID 的最大消息重试次数为 20 次
+properties.put(PropertyKeyConst.MaxReconsumeTimes,"20");
+Consumer consumer =ONSFactory.createConsumer(properties);
+注意：
+
+消息最大重试次数的设置对相同 Group ID 下的所有 Consumer 实例有效。
+如果只对相同 Group ID 下两个 Consumer 实例中的其中一个设置了 MaxReconsumeTimes，那么该配置对两个 Consumer 实例均生效。
+配置采用覆盖的方式生效，即最后启动的 Consumer 实例会覆盖之前的启动实例的配置。
+获取消息重试次数
+消费者收到消息后，可按照如下方式获取消息的重试次数：
+
+public class MessageListenerImpl implements MessageListener {
+    @Override
+    public Action consume(Message message, ConsumeContext context) {
+        //获取消息的重试次数
+        System.out.println(message.getReconsumeTimes());
+        return Action.CommitMessage;
+    }
+}
+
+消息过滤
+更新时间：2019-01-16 20:44:50
+
+
+本页目录
+参考示例
+本文描述消息队列 RocketMQ 的消费者如何根据 Tag 在消息队列 RocketMQ 服务端完成消息过滤，关于 Topic 和 Tag 的介绍，请参考Topic 与 Tag 最佳实践。
+
+Tag，即消息标签、消息类型，用于对某个 Topic 下的消息进行分类。 消息队列 RocketMQ 允许消费者按照 Tag 对消息进行过滤，确保消费者最终只消费到他关心的消息类型。
+
+以下图电商交易场景为例，从客户下单到收到商品这一过程会生产一系列消息，比如订单创建消息（order）、支付消息（pay）、物流消息（logistics）。 这些消息会发送到 Topic 为 Trade_Topic 的队列中，被各个不同的系统所接收，比如支付系统、物流系统、交易成功率分析系统、实时计算系统等。 其中，物流系统只需接收物流类型的消息（logistics），而实时计算系统需要接收所有和交易相关（order、pay、logistics）的消息。
+
+消息过滤
+
+说明：针对消息归类，您可以选择创建多个 Topic， 或者在同一个 Topic 下创建多个 Tag。 但通常情况下，不同的 Topic 之间的消息没有必然的联系，而 Tag 则用来区分同一个 Topic 下相互关联的消息，比如全集和子集的关系，流程先后的关系。
+
+参考示例
+发送消息
+
+发送消息时，每条消息必须指明 Tag：
+
+Message msg = new Message("MQ_TOPIC","TagA","Hello MQ".getBytes());
+消费方式-1
+
+消费者如需订阅某 Topic 下所有类型的消息，Tag 用符号 * 表示：
+
+consumer.subscribe("MQ_TOPIC", "*", new MessageListener() {
+    public Action consume(Message message, ConsumeContext context) {
+        System.out.println(message.getMsgID());
+        return Action.CommitMessage;
+    }
+});
+消费方式-2
+
+消费者如需订阅某 Topic 下某一种类型的消息，请明确标明 Tag：
+
+consumer.subscribe("MQ_TOPIC", "TagA", new MessageListener() {
+    public Action consume(Message message, ConsumeContext context) {
+        System.out.println(message.getMsgID());
+        return Action.CommitMessage;
+    }
+});
+消费方式-3
+
+消费者如需订阅某 Topic 下多种类型的消息，请在多个 Tag 之间用 || 分隔：
+
+consumer.subscribe("MQ_TOPIC", "TagA||TagB", new MessageListener() {
+    public Action consume(Message message, ConsumeContext context) {
+        System.out.println(message.getMsgID());
+        return Action.CommitMessage;
+    }
+});
+消费方式-4（错误示例）
+
+同一个消费者多次订阅某个 Topic 下的 Tag，以最后一次订阅的 Tag 为准：
+
+//如下错误代码中，consumer 只能接收到 MQ_TOPIC 下 TagB 的消息，而不能接收 TagA 的消息。
+consumer.subscribe("MQ_TOPIC", "TagA", new MessageListener() {
+    public Action consume(Message message, ConsumeContext context) {
+        System.out.println(message.getMsgID());
+        return Action.CommitMessage;
+    }
+});
+consumer.subscribe("MQ_TOPIC", "TagB", new MessageListener() {
+    public Action consume(Message message, ConsumeContext context) {
+        System.out.println(message.getMsgID());
+        return Action.CommitMessage;
+    }
+});
+
+Exactly-Once 投递语义
+更新时间：2019-04-15 11:06:24
+
+
+本页目录
+什么是 Exactly-Once 投递语义
+典型使用场景
+本文主要介绍消息队列 RocketMQ 的 Exactly-Once 投递语义的概念和典型使用场景，以便您理解如何使得消息只被消费端处理且仅处理一次。
+
+关于如何使用 Exactly-Once 投递语义，请参见使用 Exactly-Once 投递语义收发消息。
+
+什么是 Exactly-Once 投递语义
+Exactly-Once 是指发送到消息系统的消息只能被消费端处理且仅处理一次，即使生产端重试消息发送导致某消息重复投递，该消息在消费端也只被消费一次。
+
+Exactly-Once 语义是消息系统和流式计算系统中消息流转的最理想状态，但是在业界并没有太多理想的实现，因为真正意义上的 Exactly-Once 依赖消息系统的服务端、消息系统的客户端和用户消费逻辑这三者状态的协调，例如，当您的消费端完成一条消息的消费处理后出现异常宕机，而消费端重启后由于消费的位点没有同步到消息系统的服务端，该消息有可能被重复消费。
+
+业界对于 Exactly-Once 投递语义存在很大的争议，很多人会拿出 “FLP 不可能理论”或者其他一致性定律对此议题进行否定，但事实上，特定场景的 Exactly-Once 语义实现并不是非常复杂，只是因为通常大家没有精确的描述问题的本质。
+
+如果您需要解决的问题是一条消息的消费结果只能在业务系统中生效一次，你需要解决的只是如何保证同一条消息的消费幂等问题，消息队列 RocketMQ 的 Exactly-Once 语义就是解决业务中最常见的一条消息的消费结果（消息在消费端计算处理的结果）在数据库系统中有且仅生效一次的问题。
+
+典型使用场景
+在电商系统中，上游实时计算模块发布商品价格变更的信息，异步通知到下游商品管理模块进行价格变更。此时，需要保证每一条信息的消费幂等，即重复的价格变更信息只会生效一次，这样便不会发生价格多次重复修改的情况，确保实现了消息消费的幂等。
+
+集群消费和广播消费
+更新时间：2019-04-15 17:03:06
+
+
+本页目录
+基本概念
+场景对比
+本文主要介绍消息队列 RocketMQ 的集群消费和广播消费的基本概念，适用场景以及注意事项。
+
+说明：关于集群消费模式和广播消费模式的具体配置方法，请参见以下文档：
+
+Java：订阅消息
+.NET：订阅消息
+C/C++：订阅消息
+基本概念
+消息队列 RocketMQ 是基于发布/订阅模型的消息系统。消息的订阅方订阅关注的 Topic，以获取并消费消息。由于订阅方应用一般是分布式系统，以集群方式部署有多台机器。因此消息队列 RocketMQ 约定以下概念。
+
+集群：使用相同 Group ID 的订阅者属于同一个集群。同一个集群下的订阅者消费逻辑必须完全一致（包括 Tag 的使用），这些订阅者在逻辑上可以认为是一个消费节点。
+
+集群消费：当使用集群消费模式时，消息队列 RocketMQ 认为任意一条消息只需要被集群内的任意一个消费者处理即可。
+
+广播消费：当使用广播消费模式时，消息队列 RocketMQ 会将每条消息推送给集群内所有注册过的客户端，保证消息至少被每台机器消费一次。
+
+场景对比
+集群消费模式：
+
+g1
+
+适用场景&注意事项
+
+消费端集群化部署，每条消息只需要被处理一次。
+由于消费进度在服务端维护，可靠性更高。
+集群消费模式下，每一条消息都只会被分发到一台机器上处理。如果需要被集群下的每一台机器都处理，请使用广播模式。
+集群消费模式下，不保证每一次失败重投的消息路由到同一台机器上，因此处理消息时不应该做任何确定性假设。
+广播消费模式：
+
+groupid111
+
+适用场景&注意事项
+
+广播消费模式下不支持顺序消息。
+每条消息都需要被相同逻辑的多台机器处理。
+消费进度在客户端维护，出现重复的概率稍大于集群模式。
+广播模式下，消息队列 RocketMQ 保证每条消息至少被每台客户端消费一次，但是并不会对消费失败的消息进行失败重投，因此业务方需要关注消费失败的情况。
+广播模式下，客户端第一次启动时默认从最新消息消费。客户端的消费进度是被持久化在客户端本地的隐藏文件中，因此不建议删除该隐藏文件，否则会丢失部分消息。
+广播模式下，每条消息都会被大量的客户端重复处理，因此推荐尽可能使用集群模式。
+目前仅 Java 客户端支持广播模式。
+广播模式下服务端不维护消费进度，所以消息队列 RocketMQ 控制台不支持消息堆积查询、消息堆积报警和订阅关系查询功能。
+使用集群模式模拟广播：
+
+如果业务需要使用广播模式，也可以创建多个 Group ID，用于订阅同一个 Topic。
+
+g2
+
+适用场景&注意事项
+
+每条消息都需要被多台机器处理，每台机器的逻辑可以相同也可以不一样。
+消费进度在服务端维护，可靠性高于广播模式。
+对于一个 Group ID 来说，可以部署一个消费端实例，也可以部署多个消费端实例。 当部署多个消费端实例时，实例之间又组成了集群模式（共同分担消费消息）。 假设 Group ID 1 部署了三个消费者实例 C1、C2、C3，那么这三个实例将共同分担服务器发送给 Group ID 1 的消息。 同时，实例之间订阅关系必须保持一致。
+ 上一篇：Exactly-Once 投递语义
+
+ 无法连接 Broker
+ 更新时间：2019-02-28 16:48:42
+
+
+ 可能产生的原因
+
+ 您使用的阿里云云主机（ECS）与消息队列 RocketMQ 所属服务器不在同一 Region。
+
+ 您可能在非阿里云主机上访问消息队列 RocketMQ 服务，且您创建的 Topic 不支持非阿里云主机访问。
+
+ 建议解决方案
+
+ 按如下步骤操作：
+
+ 请确保阿里云主机与创建的 Topic 在同一个 Region。
+
+ 非阿里云主机访问消息队列 RocketMQ，请确保 Topic 所在区域为公网。
+
+
+ 启动 Producer、Consumer 失败，Group ID 重复
+ 更新时间：2019-02-28 16:49:00
+
+
+ 可能产生的原因
+
+ 在同一个 JVM 进程里面启动多个 Producer 或 Consumer 实例，且这些实例配置了同一个 Group ID，从而导致客户端启动失败。
+
+ 建议解决方案
+
+ 按如下步骤操作：
+
+ 确保在一个 JVM 进程中只启动了同一个 Group ID 的一个 Producer 或 Consumer 实例，即可以在一个 JVM 进程中同时启动同一个 Group ID 的一个 Producer 和一个 Consumer 实例，但不能同时启动多个 Producer 或 Consumer 实例。
+
+ 重启应用。
+
+ 广播模式下，消费者启动加载 JSON 文件异常
+ 更新时间：2018-01-23 21:01:35
+
+
+ 可能产生的原因
+
+ Fastjson 版本太低导致广播消费者加载本地的 offsets.json 文件异常，导致启动失败。
+
+ 建议解决方案
+
+ 将 Fastjson 的版本升级到 ons-client 所依赖的版本，保证本地的 offsets.json 能够被正常加载。默认情况下 offsets.json 在 /home/{user}/.rocketmq_offsets/ 下。
+
+ 主动订阅消息，获取队列列表失败
+ 更新时间：2019-03-28 20:39:39
+
+
+ 可能产生的原因
+
+ 可能未在控制台上创建该 Topic，导致订阅方启动时获取 Topic 的队列信息失败。
+
+ 建议解决方案
+
+ 按如下步骤操作：
+
+ 登录消息队列 RocketMQ 控制台，在左侧导航栏选择 Topic 管理，单击创建 Topic，按提示创建 Topic。
+
+ 在左侧导航栏选择 Group 管理，单击创建 Group ID，按提示创建 Group ID。
+
+ 重启应用。
+
+ 消息队列 RocketMQ 报错 “Can not find name server”
+ KB: 39131 ·
+ 更新时间：2019-02-28 16:48:42
+
+
+ 如果 onsaddr 配置错误，日志中会报以下错误：
+
+ “Exception in thread “main” com.aliyun.openservices.ons.api.exception.ONSClientException: Cannot find name server. Please check your network connection.”
+
+ 这时，请检查以下几点。
+
+ 是否违背部署限制，详见主账号-快速入门中步骤二：创建资源中关于创建 Topic 的注意事项。
+
+ 检查本地和接入点之间的网络连接情况。
+
+ 若 Topic 在公网环境:
+
+ 措施：ping onsaddr-internet.aliyun.com
+
+ 正常情况下，会解析到112.124.141.195。
+
+ 若 Topic 在生产环境：
+
+ 措施：ping onsaddr-internal.aliyun.com
+
+ 正常情况下，会解析到 100.100.25.94/95。例如：如果无法解析接入点地址，请在本地机器上增加 DNS 223.5.5.5，增加 DNS 223.5.5.5 成功后，可查看到：
+
+ 代码截图
+
+ 另外，消息队列 RocketMQ 无法设置代理，如果用户使用公网环境，在申请开通安全策略时，需要将以下四个地址（端口80和8080）加入开通列表：
+
+ 112.124.141.191
+
+ 112.124.141.195
+
+ 115.28.250.94
+
+ 115.28.250.95
+
+ 尝试通过 curl 的方式从接入点获取 name server 的元数据信息。
+
+ 若 Topic 在生产环境:
+
+ curl http://onsaddr-internal.aliyun.com:8080/rocketmq/nsaddr4client-internal
+
+ 返回 100.100.26.1:8080;100.100.26.2:8080;100.100.25.96:8080 则为正常。
+
+ 若 Topic 在公网环境:
+
+ curl http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet
+
+ 返回 112.124.141.191:80 则为正常。
+
+ 如问题还未解决，请提交工单。

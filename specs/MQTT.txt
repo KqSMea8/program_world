@@ -1,0 +1,294 @@
+微消息队列 MQTT 广泛应用移动互联网以及物联网领域，覆盖互动直播、车联网、金融支付、智能餐饮、即时聊天、移动 Apps 等多种应用场景；通过对 MQTT、WebSocket 等协议的全面支持，连接端和云之间的双向通信，可支撑千万级设备与消息并发，从而实现万物互联。
+
+名词解释
+更新时间：2019-04-15 20:06:39
+
+
+本页目录
+网络类
+协议相关
+本文主要介绍微消息队列 MQTT 的一些基本术语以及 MQTT 协议涉及到的主要概念和术语。关于微消息队列 MQTT 接入的基本概念及使用场景，请参见产品概述。
+
+实例（Instance）
+
+创建购买微消息队列 MQTT 服务的实体单元，每个微消息队列 MQTT 实例都对应一个全局唯一的服务接入点 URL。使用微消息队列 MQTT 前都需要在对应的 Region 创建一个实例，并使用对应的接入点来访问服务。关于如何创建 MQTT 实例，请参见快速入门指导。
+
+父级 Topic（Parent Topic）
+
+MQTT 协议基于 Pub/Sub 模型，因此任何消息都属于一个 Topic。根据 MQTT 协议，Topic 存在多级，定义第一级 Topic 为父级 Topic，使用微消息队列 MQTT 前，需先在控制台创建该父级 Topic，可以在微消息队列 MQTT 控制台创建，或者直接在消息队列 RocketMQ 的控制台创建。
+
+子级 Topic（Subtopic）
+
+MQTT 的二级 Topic，甚至三级 Topic 都是父级 Topic 下的子类。使用时，直接在代码里设置，无需创建。需要注意的是微消息队列 MQTT 限制父级 Topic 和子级 topic 的总长度为 64 个字符，如果超出长度限制将会导致客户端异常。
+
+Client ID
+
+微消息队列 MQTT 的 Client ID 是每个客户端的唯一标识，要求全局唯一，使用相同的 Client ID 连接微消息队列 MQTT 服务会被拒绝。
+
+Client ID 由两部分组成，组织形式为 <GroupID>@@@<DeviceID>。Client ID 的长度限制为 64 个字符，不允许使用不可见字符，具体限制请参见使用限制。
+
+Group ID: 用于指定一组逻辑功能完全一致的节点共用的组名，代表一类相同功能的设备。Group ID 需要在消息队列 RocketMQ 的控制台创建，创建后方可使用。关于如何创建，请参见快速入门指导。
+Device ID: 每个设备独一无二的标识，由业务方自己指定。需要保证全局唯一，例如每个传感器设备的序列号。
+网络类
+ServerUrl
+
+微消息队列 MQTT 推荐移动终端使用公网接入点，也支持内网接入点。目前微消息队列 MQTT 的接入除了支持标准协议的 1883 端口，同时还支持加密 SSL、WebSocket、Flash 等方式。接入点 URL 是在创建实例之后自动分配，请妥善保管。关于如何创建实例，请参见快速入门指导。
+
+协议相关
+QoS
+
+QoS（Quality of Service）指代消息传输的服务质量。它包括 QoS0（最多分发一次）、QoS1（至少达到一次）和 QoS2（仅分发一次）三种级别。
+
+cleanSession
+
+cleanSession 标志是 MQTT 协议中对一个客户端建立 TCP 连接后是否关心之前状态的定义。具体语义如下：
+
+cleanSession=true：客户端再次上线时，将不再关心之前所有的订阅关系以及离线消息。
+cleanSession=false：客户端再次上线时，还需要处理之前的离线消息，而之前的订阅关系也会持续生效。
+注意：
+
+MQTT 要求每个客户端每次连接时的 cleanSession 标志必须固定，不允许动态变化，否则会导致离线消息的判断有误。
+MQTT 目前对外 QoS2 消息不支持非 cleanSession ，如果客户端以 QoS2 方式订阅消息，即使设置 cleanSession=false 也不会生效。
+P2P 消息的 cleanSession 判断以发送方客户端的配置为准。
+QoS 和 cleanSession 的不同组合产生的结果如下表所示。
+
+表 1. QoS 和 cleanSession 的组合关系
+QoS 级别	cleanSession=true	cleanSession=false
+QoS0	无离线消息，在线消息只尝试推一次	无离线消息，在线消息只尝试推一次
+QoS1	无离线消息，在线消息保证可达	有离线消息，所有消息保证可达
+QoS2	无离线消息，在线消息保证只推一次	暂不支持
+
+消息收发功能
+更新时间：2019-04-15 20:07:03
+
+
+本页目录
+单独使用微消息队列 MQTT 收发消息
+微消息队列 MQTT 发送 RocketMQ 接收
+RocketMQ 发送微消息队列 MQTT 接收
+微消息队列 MQTT 客户端使用签名模式
+微消息队列 MQTT 客户端使用 Token 模式
+微消息队列 MQTT 客户端使用 SSL 加密
+微消息队列 MQTT 客户端发送顺序消息到 RocketMQ
+查询微消息队列 MQTT 客户端在线数量
+微消息队列 MQTT 支持多语言的消息收发。本文提供单独使用微消息队列 MQTT 收发消息以及与消息队列 Rocket 结合使用时需使用的代码示例的链接。
+
+单独使用微消息队列 MQTT 收发消息
+语言	链接
+Java	https://github.com/AliwareMQ/lmq-demo/blob/master/lmq-java-demo/src/main/java/com/aliyun/openservices/lmq/example/demo/MQ4IoTSendMessageToMQ4IoTUseSignatureMode.java
+C	https://github.com/AliwareMQ/lmq-demo/blob/master/lmq-c-demo/src/c/mqttDemo.c
+Python	https://github.com/AliwareMQ/lmq-demo/blob/master/lmq-python-demo/MQTTSendMessage2MQTT.py
+.NET	https://github.com/AliwareMQ/lmq-demo/blob/master/lmq-DoNet-demo/MQTTDemo.cs
+JavaScript	https://github.com/AliwareMQ/lmq-demo/blob/master/lmq-js-demo/lmqdemo.html
+iOS	https://github.com/AliwareMQ/lmq-demo/tree/master/lmq-ios-demo/MQTTChatDemo
+微消息队列 MQTT 发送 RocketMQ 接收
+语言	链接
+Java	https://github.com/AliwareMQ/lmq-demo/blob/master/lmq-java-demo/src/main/java/com/aliyun/openservices/lmq/example/demo/MQ4IoTSendMessageToRocketMQ.java
+RocketMQ 发送微消息队列 MQTT 接收
+语言	链接
+Java	https://github.com/AliwareMQ/lmq-demo/blob/master/lmq-java-demo/src/main/java/com/aliyun/openservices/lmq/example/demo/RocketMQSendMessageToMQ4IoT.java
+微消息队列 MQTT 客户端使用签名模式
+语言	链接
+Java	https://github.com/AliwareMQ/lmq-demo/blob/master/lmq-java-demo/src/main/java/com/aliyun/openservices/lmq/example/demo/MQ4IoTSendMessageToMQ4IoTUseSignatureMode.java
+C	https://github.com/AliwareMQ/lmq-demo/blob/master/lmq-c-demo/src/c/mqttDemo.c
+Python	https://github.com/AliwareMQ/lmq-demo/blob/master/lmq-python-demo/MQTTSendMessage2MQTT.py
+.NET	https://github.com/AliwareMQ/lmq-demo/blob/master/lmq-DoNet-demo/MQTTDemo.cs
+JavaScript	https://github.com/AliwareMQ/lmq-demo/blob/master/lmq-js-demo/lmqdemo.html
+iOS	https://github.com/AliwareMQ/lmq-demo/tree/master/lmq-ios-demo/MQTTChatDemo
+微消息队列 MQTT 客户端使用 Token 模式
+语言	链接
+Java	https://github.com/AliwareMQ/lmq-demo/blob/master/lmq-java-demo/src/main/java/com/aliyun/openservices/lmq/example/demo/MQ4IoTSendMessageToMQ4IoTUseTokenMode.java
+微消息队列 MQTT 客户端使用 SSL 加密
+语言	链接
+Java	https://github.com/AliwareMQ/lmq-demo/blob/master/lmq-java-demo/src/main/java/com/aliyun/openservices/lmq/example/demo/MQ4IoTSendMessageToMQ4IoTUseSignatureMode.java
+C	https://github.com/AliwareMQ/lmq-demo/blob/master/lmq-c-demo/src/c/mqttDemo.c
+Python	https://github.com/AliwareMQ/lmq-demo/blob/master/lmq-python-demo/MQTTSendMessage2MQTT.py
+.NET	https://github.com/AliwareMQ/lmq-demo/blob/master/lmq-DoNet-demo/MQTTDemo.cs
+JavaScript	https://github.com/AliwareMQ/lmq-demo/blob/master/lmq-js-demo/lmqdemo.html
+iOS	https://github.com/AliwareMQ/lmq-demo/tree/master/lmq-ios-demo/MQTTChatDemo
+微消息队列 MQTT 客户端发送顺序消息到 RocketMQ
+语言	链接
+Java	https://github.com/AliwareMQ/lmq-demo/blob/master/lmq-java-demo/src/main/java/com/aliyun/openservices/lmq/example/demo/MQ4IoTSendMessageToMQ4IoTUseSignatureMode.java
+查询微消息队列 MQTT 客户端在线数量
+语言	链接
+Java	https://github.com/AliwareMQ/lmq-demo/blob/master/lmq-java-demo/src/main/java/com/aliyun/openservices/lmq/example/demo/QueryOnlineClientNumDemo.java
+
+获取离线消息
+更新时间：2019-04-15 20:07:04
+
+
+为了简化离线消息获取机制，微消息队列 MQTT 系统在客户端成功建立连接并通过权限校验后，会自动加载离线消息并下发到客户端。
+
+其中需要注意的是：
+
+客户端建立连接后，需要通过权限校验才能自动加载离线消息。例如，若您使用的是 Token 验证的方式，则需要完成 Token 上传并通过校验后才会收到离线消息。
+
+离线消息生成需要一定的时间，因为推送的消息需要等待客户端的 ack 超时才会被判成离线消息。所以，如果客户端闪断重连，不一定马上可以获取到刚刚的离线消息。延迟时间一般在 5 秒 ~ 10 秒左右。
+
+如果您的离线消息过多，即大于 30 条，微消息队列系统会分批（5 秒一次，每次 30 条）下发离线消息。
+
+说明
+对于部分老用户来说，有了自动加载机制，可不再使用原来的主动拉取的方式获取离线消息，但继续保留也无影响。
+
+获取客户端在线状态
+更新时间：2019-04-15 20:07:06
+
+
+本页目录
+基本原理
+同步查询接口（公测期间）
+查询接口
+请求参数列表
+返回结果
+异步上下线通知
+1. 创建事件 Topic
+2. 服务端订阅消息
+本文介绍如何获取微消息队列 MQTT 客户端当前在线情况。
+
+获取客户端在线状态这个功能主要的应用场景如下所示：
+
+主业务流程中需要根据客户端是否在线来决定后续运行逻辑；
+运维过程需要判断特定客户端当前是否在线；
+服务端需要在客户端上线或者下线时触发一些预定义的动作。
+基本原理
+微消息队列 MQTT 服务端对上述功能需求提供了 2 种获取方式，分别是同步查询接口以及异步上下线通知。
+
+同步查询接口的方式相对简单，即用户通过开放的接入点地址调用 HTTP 方式的 API 查询特定客户端的在线情况，该方式只能查询单个客户端当前实时状态，适用于对单个客户端的状态判断。
+
+异步上下线通知则是利用消息通知的方式，在客户端上线和下线事件触发时，微消息队列 MQTT 服务器会向后端消息队列 RocketMQ 推送一条上下线消息。用户的服务端一般部署在阿里云的服务器上。用户的服务端通过订阅这条消息队列 RocketMQ 消息来获取所有客户端的上下线动作。该方式属于异步感知客户端的状态，且感知到的是上下线事件，而非在线状态，应用需要根据事件发生的时间序列分析出客户端的状态。
+
+说明
+同步查询接口是查询当前客户端的实时状态，理论上比异步通知的方式更精确，但只能查询单个客户端状态。上下线通知因为采用消息解耦，状态判断更加复杂，且误判可能性更大，但该方法可以基于事件分析多个客户端的运行状态轨迹。
+
+同步查询接口（公测期间）
+微消息队列 MQTT 服务端对外通过 HTTP 协议方式暴露查询接口，查询接口的使用描述如下：
+
+说明
+同步查询接口功能目前处于公测期间，仅限公网测试地域（Region）使用，后续会在其他地域开放服务。
+
+查询接口
+https://mqtt-xxx.mqtt.aliyuncs.com/route/clientId/get
+
+其中：
+
+接口地址复用购买实例的接入点域名。
+协议可选 HTTP 或者 HTTPS，调用方式仅限 GET 方法。
+请求参数列表
+表 1. 请求参数列表
+参数名称	参数类型	说明
+accessKey	String	当前请求使用的账号的 AccessKeyId
+resource	String	需要查询的客户端 clientId，只能查询当前账号拥有的 clientId
+timestamp	Long	构建当前请求的 UNIX 毫秒时间戳，时间戳过期时间为当前真实时间前后5分钟
+instanceId	String	当前使用的实例 ID
+signature	String	对当前请求参数计算得到的签名字符串，服务端用于安全认证
+其中：
+
+timstamp 参数用于阻止非法过期请求，需要设置为当前真实时间，系统容忍前后 5 分钟误差区间。
+signature 为请求参数的签名，将其他参数作为待签名字符串，使用账户 AccessKeySecret 计算得到，用于权限验证和防止请求篡改。具体计算方式请参见应用服务器 Token 接口规范。
+返回结果
+微消息队列 MQTT 服务端接收到查询请求后，会进行接口参数验证，对于合法的查询请求返回当前 客户端的在线连接数。具体返回情况如下表所示：
+
+表 2. 状态码列表
+HTTP 状态码	说明
+400	非法请求，可能是接口 URL 不正确，或者参数缺失
+403	权限验证失败，可能是签名计算错误，或者没有权限查询对应的 clientId 状态
+200	请求处理成功
+返回结果中，除 HTTP 状态码，HTTP content 中也会包含对应的返回结果，返回结果为 JSON 格式，具体的字段映射如下：
+
+表 3. 返回参数列表
+字段名称	类型	说明
+code	int	请求处理结果状态码，用于判断当前请求是否成功和失败原因
+success	boolean
+true：代表查询成功
+false：代表查询失败
+online	int	当前客户端维持的 TCP 连接数，为 0 代表不在线，大于 0 代表在线，应用方应注意该字段大于 1 可能存在重复连接情况。因服务端数据同步延迟，会有很小概率出现返回 -1 的情况，代表查询结果未知，建议应用重试，或者基于实际场景做保守判断。
+message	string	请求处理结果描述，用于判断异常原因
+其中 code 错误码说明如下：
+
+表 4. 错误码列表
+code	说明
+0	请求处理成功
+1	参数缺失，建议检查参数对是否完整
+2	签名计算错误，建议检查签名计算过程
+3	权限验证错误，建议检查当前账号是否创建过该设备所属的 Group ID
+4	请求时间戳过期，建议检查 timestamp 字段是否为最近 5 分钟内
+异步上下线通知
+如上文所述，使用异步上下线通知的方式，上下线动作的这个事件会映射到消息队列 RocketMQ 的消息中，该消息对应的 Topic 命名规范是：“GroupID”拼接后缀“_MQTT”
+
+例如您需要关注 GID_XXX@@@YYYYY 类型的微消息队列 MQTT 客户端，那么对应的事件 Topic 就是 GID_XXX_MQTT。具体接入步骤如下所述：
+
+1. 创建事件 Topic
+根据上文原理介绍，用户关注哪些 Group ID 分组的设备，就创建对应的事件 Topic，创建 Topic 方法请参考快速入门指导中的步骤二：创建 Topic 和 Group ID。
+
+2. 服务端订阅消息
+使用上一步骤中创建的 Topic，即可收到关注的微消息队列 MQTT 客户端上下线事件。消息队列 RocketMQ 的接收程序请参见订阅消息。
+
+其中，数据格式如下：
+
+事件类型放在消息队列 RocketMQ 的 Tag 中，代表是上线还是下线。
+
+RocketMQ Tag：connect/disconnect/tcpclean
+
+其中：
+
+connect 事件代表客户端上线动作。
+disconnect 事件代表客户端主动断开连接。按照 MQTT 协议，客户端主动断开 TCP 连接之前应该发送 disconnect 报文，服务端在收到 disconnect 报文后触发该类型消息。如果某些客户端 SDK 没有按照协议发送 disconnect 报文，服务端相应无法收到该消息。
+tcpclean 事件代表实际的 TCP 连接断开。无论客户端是否显示发送过 disconnect 报文，只要当前 TCP 连接断开就会触发 tcpclean 事件。
+说明
+tcpclean 消息代表客户端网络层连接的真实断开。对应的，disconnect 消息仅仅代表客户端是主动发送了下线报文。受限于客户端的实现，有时候客户端异常退出会导致 disconnect 消息并没有正常发送。因此判断客户端下线请使用 tcpclean 事件。
+
+数据内容为 JSON 类型，相关的 Key 如下：
+
+clientId 代表具体设备；
+time 代表本次事件的时间；
+eventType 代表事件类型，供微消息队列 MQTT 客户端区分事件类型；
+channelId 代表每个 TCP 连接的唯一标识；
+clientIp 代表微消息队列 MQTT 客户端使用的公网出口 IP 地址；
+示例：
+
+clientId：GID_XXX@@@XXXXX
+time:1212121212
+eventType:connect/disconnect/tcpclean
+channelId:2b9b1281046046faafe5e0b458e4f553
+clientIp：192.168.0.1:13345
+
+判断客户端当前是否在线不能仅仅根据收到的最后一条消息的状态，而需要结合上下线消息的前后关联来判断。
+
+具体判断规则如下：
+
+同一个 clientId 的客户端，产生上下线事件的先后顺序以时间为准。越大则越新。
+同一个 clientId 的客户端，可能存在多次闪断，因此，当收到下线消息时，一定要根据 channelId 字段判断是否是当前的 TCP 连接。简而言之，下线消息只能覆盖 channelId 相同的下线消息，如果下线消息的 channelId 不一样，尽管 eventIndex 较新，也不能覆盖。
+
+
+点对点（P2P）消息模式
+更新时间：2019-04-15 20:07:08
+
+
+本页目录
+收发点对点（P2P）消息
+发送 P2P 消息
+接收 P2P 消息
+微消息队列 MQTT 除了支持标准 MQTT 协议支持的发布/订阅（Pub/Sub）的消息模型外，还补充了点对点（P2P）模式的支持。本文将向您介绍点对点模式的概念和原理，以及如何使用微消息队列 MQTT 进行点对点的消息收发。
+
+点对点（Point to Point, 简称 P2P），顾名思义，是一对一的消息传递模式，即只有一个消息发送者和一个消息接收者。而发布/订阅（Pub/Sub）通常用于一对多或多对多的消息群发场景，拥有一个或多个消息发送者和多个消息接收者。
+
+在点对点（P2P）模型中，发送者发送消息时已经明确该消息预期的接收方信息，并明确该消息只需要被特定的单个客户端消费。发送者发送消息时通过 Topic 信息直接指定接收者，接收者无需提前进行订阅即可获取该消息。
+
+点对点模式可以节省接收方注册订阅关系的成本，而且收发消息的链路有单独的优化，推送延迟更低。
+
+收发点对点（P2P）消息
+在微消息队列 MQTT 中使用 P2P 模式进行消息收发与使用 Pub/Sub 的普通模式进行消息收发的区别，只在以下两点：
+
+发送消息时，Pub/Sub 模式需要按照和接收端约定好的 Topic 发送消息，而 P2P 模式下无需事先约定传输消息的 Topic，发送端可以直接按照规范发送消息到目标的接收客户端。
+接收消息时，Pub/Sub 模式需要按照和发送端约定好的 Topic 提前订阅才能收到消息，而 P2P 模式下无需事先订阅，可以简化接收端的程序逻辑，并节省订阅的成本。
+发送 P2P 消息
+使用 MQTT SDK 发送 P2P 消息时，需将二级 Topic 设为 “p2p”，将三级 Topic 设为目标接收方的 Client ID，例如：
+
+String p2pTopic =topic+"/p2p/GID_xxxx@@@DEVICEID_001";
+sampleClient.publish(p2pTopic,message);
+使用消息队列 RocketMQ 的 SDK 发送 P2P 消息时，由于一级 Topic 和子级 Topic 是分开设置的，因此只需要将子级 Topic 属性设置成上述的子级 Topic 字符串，例如：
+
+String subTopic="/p2p/GID_xxxx@@@DEVICEID_001";
+msg.putUserProperties(PropertyKeyConst.MqttSecondTopic, subTopic);
+接收 P2P 消息
+客户端无需任何订阅处理，只需要完成客户端的初始化即可收到 P2P 消息。
