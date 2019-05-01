@@ -1,0 +1,55 @@
+背景
+最近互联网上出现一个热词就是“freestyle”，源于一个比拼rap的综艺节目。在节目中需要大量考验选手的freestyle能力，freestyle指的是rapper即兴的根据一段主题讲一串rap。freestyle除了考验一个人rap的技巧，其实我觉得最难的是如何在短时间内在脑海中浮现出有韵律的歌词。
+
+
+本文会介绍如何自动生成歌词，到底什么工具有这样的功效呢？答案是PAI。PAI平台是阿里云人工智能平台，在上面可以通过最简单的拖拉拽的方式，完成对各种结构化以及非结构化数据的处理。因为有了PAI，这种自动生成歌词的事情都不再成为难题。我现在不光可以瞬间生成万首歌词，我还可以同时融合周杰伦、王力宏、林俊杰、汪峰的歌词风格在里面，因为PAI利用深度学习能力可以快速的学习这些歌手的所有歌曲并且实现自己创作歌词。不信？下面我就来show一下PAI的威力。
+
+执行过程
+1.首先进入PAI:https://data.aliyun.com/product/learn
+开通机器学习以及机器学习内的GPU服务。
+2.训练数据说明
+这里我们的数据是一份txt文件，文件中包含了周杰伦、王力宏、林俊杰、汪峰的歌词,一共有接近300首歌，歌词都是去掉标题等干扰因素的（花了好几个小时整理）。数据截图：
+
+
+3.实验代码说明
+本实验使用的是PAI内置的深度学习框架Tensorflow，使用的了seq2seq以及RNN网络进行歌词语义的学习以及建模。使用train.py文件生成模型，使用predict.py文件进行预测。以下是部分网络结构搭建的截图，大家可以在下方找到源代码下载地址进行使用。(PS:实例代码虽然可以运行，但是数据IO采用的是低效方式，高效方式可以参考此文https://yq.aliyun.com/articles/126918)
+        with tf.name_scope('model'):
+            self.cell = rnn_cell.BasicLSTMCell(args.state_size)
+            self.cell = rnn_cell.MultiRNNCell([self.cell] * args.num_layers)
+            self.initial_state = self.cell.zero_state(
+                args.batch_size, tf.float32)
+            with tf.variable_scope('rnnlm'):
+                w = tf.get_variable(
+                    'softmax_w', [args.state_size, data.vocab_size])
+                b = tf.get_variable('softmax_b', [data.vocab_size])
+                with tf.device("/gpu:0"):
+                    embedding = tf.get_variable(
+                        'embedding', [data.vocab_size, args.state_size])
+                    inputs = tf.nn.embedding_lookup(embedding, self.input_data)
+            outputs, last_state = tf.nn.dynamic_rnn(
+                self.cell, inputs, initial_state=self.initial_state)
+
+4.数据上传
+将实验数据和代码文件打包上传到OSS（之所以打包是本文案例使用的是原生PYTHON的数据IO方式，需要代码和训练数据组成同一个tar.gz文件）。OSS是PAI可读的对象存储工具，具体方式可以参考此视频链接https://help.aliyun.com/video_detail/54945.html
+5.搭建实验
+在PAI的画布拖动OSS以及Tensorflow组件搭建如下实验，两个Tensorflow节点分别对应着训练和预测节点，先训练生成写歌模型，然后预测节点获取模型自动生成歌词。
+
+配置对应的执行代码路径和输出路径，跟上面的OSS路径对应。下图是负责预测的Tensorflow节点配置。
+
+点击运行，PAI就开始学习歌词并且尝试自己写作啦。
+
+
+写歌结果
+经过差不多20分钟的学习，PAI已经掌握了几位歌坛大神的歌词技巧，下面就看看PAI写出来的歌词是怎样的。（歌词需要在log中查看，可以参考https://yq.aliyun.com/articles/72841
+
+歌词来了，
+
+看上去写的歌还算通畅，没有出现特别多语病。当然，想写出更好的词，需要对训练模型的迭代次数、词长等参数进行不断调试，也可以多为PAI输送更多的歌词供训练，因为300多的样本还是略显单薄。
+
+以上就是通过PAI自动写歌词的教程，希望对各位喜欢音乐和尝试做文本自动生成的同学有帮助，让我们一起freestyle起来！！
+
+下载地址
+1.数据以及代码已经打包，直接上传PAI配置路径即可使用：下载地址
+2.PAI用户钉钉群：11768691
+3.跟作者讨论，可以加我个人微信公众号留言（PAI使用问题请在钉钉群里问）：
+凡人机器学习
