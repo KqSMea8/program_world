@@ -1,3 +1,151 @@
+
+通过MR实现好友推荐
+更新时间：2017-11-08 15:32:55
+
+
+本页目录
+实验介绍
+操作步骤
+社交网络是现如今影响力巨大的信息平台，社交网站中，您可以通过 可能感兴趣的人 途径增加交友方式。可能感兴趣的人 也称作 好友推荐， 它主要是通过查找两个非好友之间的共同好友情况来实现的。本文将通过一个示例，简单介绍如何通过 MapReduce 的方式实现好友推荐功能。
+
+实验介绍
+A，B，C，D，E 五个人的好友关系如下图所示，其中实线表示互为好友关系。那么，如何获取两个不是好友的两个人之间的好友数，并以此为参考，向用户推荐陌生人呢？
+
+图片名称
+
+主要通过以下几个步骤实现：
+
+将好友关系分配到两个 Map 进行处理，其中每个 Map 包含 3 条好友关系。对每一条好友关系进行拆分，若 Key 中的两个人为朋友，则记录 value 值为0，否则 value 值为 1。将拆分的结果进行排序，其中（A B）和（B A）作为同一个 key（A B）。
+
+图片名称
+
+分别对两个 Map 处理的记录进行初步合并，若两个记录的 Key 值相同且每条记录的 Value 都不为 0，则 Value 值加 1。
+
+注意：
+
+在 Combine 阶段，必须保留 Value 为 0 的记录，否则，在 Reduce 阶段，获取的结果会出错。
+
+图片名称
+
+通过 Reduce 方式，合并两个 Map 处理的 Combine 结果。
+
+若两个记录的 Key 值相同且每条记录的 Value 都不为 0，则 Value 值加 1。
+
+将 Value 值为 0 的记录删除。
+
+获取不为好友的两个用户之间的公共好友数：Key 为两个不为好友的用户，Value 是两个不是好友的用户之间的共同好友数。社交网站或者 APP 可以根据这个数值对不是好友的两个用户进行推荐。
+
+图片名称
+
+操作步骤
+新建数据表
+登录 DataWorks 管理控制台，单击相应项目空间后的 进入工作区。
+
+单击顶部导航栏中的 数据开发，进入数据开发首页后单击 新建 > 新建脚本文件 或 新建脚本。
+
+图片名称
+
+配置新建脚本文件弹出框中的相关信息，填写文件名称，选择类型为 ODPS SQL 后，单击提交。如下图所示：
+
+图片名称
+
+输入建表语句，如下所示：
+
+drop table if exists dual;--创建系统dual
+create table dual(id bigint);--如project中不存在此伪表，则需创建并初始化数据
+insert overwrite table dual select count(*)from dual;--向系统伪表初始化数据
+---创建好友推荐MR的数据输入表.其中uid表示某个用户;friends表示uid用户的好友
+create table friends_in (uid string, friends string);
+---创建好友推荐MR的数据输出表.其中userA表示某个用户;userB表示不是userA的用户,cnt表示userA和userB之间的共同好友数。
+create table friends_out (userA string, userB string, cnt bigint);
+单击 运行，直至日志信息返回成功表示目标表创建成功。
+
+图片名称
+
+单击 保存，保存输入的 SQL 建表语句。
+
+导入本地数据
+单击顶部功能栏中的 导入 > 导入本地数据，打开本地保存的文件 friends_in_data.csv（点此下载）。
+
+所有配置均设为默认，并查看导入的数据。完成后，单击 下一步。
+
+注意：
+
+在真实的工作环境中，数据必须以txt或csv的文件类型导入。
+
+图片名称
+
+在本地数据导入页面的 导入至表 中，输入 friends_in，即将本次实验的测试数据，导入到好友推荐的输入表 friends_in 中，确定 目标字段 与 源字段 匹配。完成后单击 导入。
+
+图片名称
+
+由于数据量较大，请等待1-2分钟。
+
+数据导入完成后，可输入语句进行查询、确认。如下图所示：
+
+1
+
+添加 MR 资源
+单击左侧导航栏中的 资源管理，单击列表右上角的 上传资源。
+
+1
+
+配置资源上传弹出框中的信息，选择需要上传的文件 Friends_MR。如下图所示：
+
+图片名称
+
+单击 提交。
+
+在左侧导航栏的 资源管理 下，即可看到上传成功的 Jar 包 friends_mr.jar。
+
+测试并验证好友推荐
+单击顶部导航栏中的 新建 > 新建任务，开始创建本次实验的 MR 任务。
+
+在弹出的对话框中，选择新建任务的 任务类型 为 节点任务，配置如下图所示：
+
+图片名称
+
+单击 创建。
+
+在任务页面中输入各配置信息，如下图所示：
+
+图片名称
+
+配置项说明：
+
+MRJar 包：单击文本框，选择 friends_mr.jar。
+资源：默认设置为 friends_mr.jar。
+
+输入表：输入 friends_in。
+
+mapper：输入 friends_mr_odps.FriendsMapper，此为 Jar 包中 Mapper 的 class 全名。
+
+reducer：输入 friends_mr_odps.FriendsReducer，此为 Jar 包中 Reducer 的 class 全名。
+
+combiner：输入 friends_mr_odps.FriendsCombiner，此为 Jar 包中 Combiner 的 class 全名。
+
+输出表：输入 friends_out。
+
+输出 Key：输入 userA:String，userB:String。
+
+输出 Val：输入 cnt:Bigint。
+
+保存 并 运行 配置的 OPEN MR 任务，可在底部的 日志 中，查看运行状态和运行结果。如下图所示：
+
+图片名称
+
+在脚本文件中输入如下的 SQL 命令，并单击 运行，查询共同好友超过 2 个的数据信息。
+
+SELECT * FROM friends_out WHERE cnt>2 order by cnt desc limit 100;
+
+
+
+
+
+
+
+
+===================================
 WordCount示例
 更新时间：2019-03-07 16:31:37
 

@@ -262,3 +262,295 @@ D
 
 ===============
 
+
+
+
+实验背景介绍
+本手册为阿里云MVP Meetup Workshop《云计算·大数据：海量日志数据分析与应用》的《数据加工：用户画像》篇而准备。主要阐述在使用大数据开发套件过程中如何将已经采集至MaxCompute上的日志数据进行加工并进行用户画像，学员可以根据本实验手册，去学习如何创建SQL任务、如何处理原始日志数据。
+
+实验涉及大数据产品
+大数据计算服务 MaxCompute
+大数据开发套件 DataWorks
+实验环境准备
+必备条件：
+
+开通大数据计算服务MaxCompute
+创建大数据开发套件项目空间
+进入大数据开发套件，创建DataWorks项目空间
+确保阿里云账号处于登录状态。
+
+step1：点击进入大数据（数加）管理控制台>大数据开发套件tab页面下。
+step2：点击右上角创建项目或者直接在项目列表—>创建项目，跳出创建项目对话框。
+1
+选择相应的服务器时如果没有购买是选择不了会提示您去开通购买。数据开发、运维中心、数据管理默认是被选择中。
+
+step3：勾选相应的服务单击 确认，跳转到下面的界面，填写相应的信息单击确认，创建项目完成。
+2
+项目名需要字母或下划线开头，只能包含字母下划线和数字。【注意】项目名称全局唯一，建议大家采用自己容易区分的名称来作为本次workshop的项目空间名称。
+
+step4：单击进入项目跳转到下面的界面：
+进入大数据开发套件
+新建数据表
+若在实验《数据采集：日志数据上传》中已经新建脚本文件，可以直接切换至脚本开发tab下，双击打开create_table_ddl脚本文件。若无新建脚本文件可通过如下详细步骤进行创建脚本文件。
+
+1.新建ods_log_info_d表
+step1：点击数据开发，进入数据开发首页中点击新建脚本。
+新建脚本
+
+step2：配置文件名称为create_table_ddl，类型选择为ODPS SQL，点击提交。
+配置脚本
+
+step3：编写DDL创建表语句。
+编写DDL
+
+DDL建表语句如下：
+
+CREATE TABLE ods_log_info_d (
+  ip STRING COMMENT 'ip地址',
+  uid STRING COMMENT '用户ID',
+  time STRING COMMENT '时间yyyymmddhh:mi:ss',
+  status STRING COMMENT '服务器返回状态码',
+  bytes STRING COMMENT '返回给客户端的字节数',
+  region STRING COMMENT '地域，根据ip得到',
+  method STRING COMMENT 'http请求类型',
+  url STRING COMMENT 'url',
+  protocol STRING COMMENT 'http协议版本号',
+  referer STRING COMMENT '来源url',
+  device STRING COMMENT '终端类型 ',
+  identity STRING COMMENT '访问类型 crawler feed user unknown'
+)
+PARTITIONED BY (
+  dt STRING
+);
+step4：选择需要执行的SQL语句，点击运行，直至日志信息返回成功表示表创建成功。
+运行DDL
+
+step5：可以使用desc语法来确认创建表是否成功。
+DESC
+
+step6：点击保存，保存编写的SQL建表语句。
+保存DDL
+
+2.新建dw_user_info_all_d表
+创建表方法同上，本小节附建表语句:
+
+--创建dw_user_info_all_d表
+drop table if exists dw_user_info_all_d;
+CREATE TABLE dw_user_info_all_d (
+  uid STRING COMMENT '用户ID',
+  gender STRING COMMENT '性别',
+  age_range STRING COMMENT '年龄段',
+  zodiac STRING COMMENT '星座',
+  region STRING COMMENT '地域，根据ip得到',
+  device STRING COMMENT '终端类型 ',
+  identity STRING COMMENT '访问类型 crawler feed user unknown',
+  method STRING COMMENT 'http请求类型',
+  url STRING COMMENT 'url',
+  referer STRING COMMENT '来源url',
+  time STRING COMMENT '时间yyyymmddhh:mi:ss'
+)
+PARTITIONED BY (
+  dt STRING
+);
+3.新建rpt_user_info_d表
+创建表方法同上，本小节附建表语句:
+
+--创建rpt_user_info_d表
+DROP TABLE IF EXISTS rpt_user_info_d;
+CREATE TABLE rpt_user_info_d (
+  uid STRING COMMENT '用户ID',
+  region STRING COMMENT '地域，根据ip得到',
+  device STRING COMMENT '终端类型 ',
+  pv BIGINT COMMENT 'pv',
+  gender STRING COMMENT '性别',
+  age_range STRING COMMENT '年龄段',
+  zodiac STRING COMMENT '星座'
+)
+PARTITIONED BY (
+  dt STRING
+);
+上述三张表创建成功后，保存脚本文件。
+保存脚本文件
+
+工作流设计
+若成功完成实验《数据采集：日志数据上传》，即可切换至任务开发tab中，双击打开workshop工作流任务。
+
+打开工作流任务
+
+向画布中拖入三个ODPS SQL节点，依次命名为ods_log_info_d、dw_user_info_all_d、rpt_user_info_d，并配置依赖关系如下：
+
+SQL依赖关系
+
+若未完成实验《数据采集：日志数据上传》篇，可通过进入查看如何创建工作流任务。
+
+创建自定义函数
+step1：点击下载
+ip2region.jar
+
+step2：切换至资源管理tab页，点击上传按钮。
+
+进入资源管理
+
+step3：点击选择文件，选择已经下载到本地的ip2region.jar。
+资源上传
+
+step4：点击提交。
+
+step5：切换至函数管理tab，点击创建函数按钮。
+进入函数管理
+
+step6：资源选择ip2region.jar，其他配置项如下所示。
+新建函数
+
+配置项说明如下：
+
+函数名：getregion
+类名：org.alidata.odps.udf.Ip2Region
+资源：ip2region.jar
+step7：点击提交。
+配置ODPS SQL节点
+1）配置ods_log_info_d节点：
+step1：双击ods_log_info_d节点，进入节点配置界面，编写处理逻辑。
+ODS
+附SQL逻辑如下：
+
+INSERT OVERWRITE TABLE ods_log_info_d PARTITION (dt=${bdp.system.bizdate})
+SELECT ip
+  , uid
+  , time
+  , status
+  , bytes --使用自定义UDF通过ip得到地域
+  , getregion(ip) AS region --通过正则把request差分为三个字段
+  , regexp_substr(request, '(^[^ ]+ )') AS method
+  , regexp_extract(request, '^[^ ]+ (.*) [^ ]+$') AS url
+  , regexp_substr(request, '([^ ]+$)') AS protocol --通过正则清晰refer，得到更精准的url
+  , regexp_extract(referer, '^[^/]+://([^/]+){1}') AS referer --通过agent得到终端信息和访问形式
+  , CASE
+    WHEN TOLOWER(agent) RLIKE 'android' THEN 'android'
+    WHEN TOLOWER(agent) RLIKE 'iphone' THEN 'iphone'
+    WHEN TOLOWER(agent) RLIKE 'ipad' THEN 'ipad'
+    WHEN TOLOWER(agent) RLIKE 'macintosh' THEN 'macintosh'
+    WHEN TOLOWER(agent) RLIKE 'windows phone' THEN 'windows_phone'
+    WHEN TOLOWER(agent) RLIKE 'windows' THEN 'windows_pc'
+    ELSE 'unknown'
+  END AS device
+  , CASE
+    WHEN TOLOWER(agent) RLIKE '(bot|spider|crawler|slurp)' THEN 'crawler'
+    WHEN TOLOWER(agent) RLIKE 'feed'
+    OR regexp_extract(request, '^[^ ]+ (.*) [^ ]+$') RLIKE 'feed' THEN 'feed'
+    WHEN TOLOWER(agent) NOT RLIKE '(bot|spider|crawler|feed|slurp)'
+    AND agent RLIKE '^[Mozilla|Opera]'
+    AND regexp_extract(request, '^[^ ]+ (.*) [^ ]+$') NOT RLIKE 'feed' THEN 'user'
+    ELSE 'unknown'
+  END AS identity
+  FROM (
+    SELECT SPLIT(col, '##@@')[0] AS ip
+    , SPLIT(col, '##@@')[1] AS uid
+    , SPLIT(col, '##@@')[2] AS time
+    , SPLIT(col, '##@@')[3] AS request
+    , SPLIT(col, '##@@')[4] AS status
+    , SPLIT(col, '##@@')[5] AS bytes
+    , SPLIT(col, '##@@')[6] AS referer
+    , SPLIT(col, '##@@')[7] AS agent
+  FROM ods_raw_log_d
+  WHERE dt = ${bdp.system.bizdate}
+) a;
+step2：点击保存。
+保存ODS
+
+step3：点击返回，返回至工作流开发面板。
+返回工作流任务
+
+2）配置dw_user_info_all_d节点：
+step1：双击dw_user_info_all_d节点，进入节点配置界面，编写处理逻辑。
+DW
+
+附SQL语句如下：
+
+INSERT OVERWRITE TABLE dw_user_info_all_d PARTITION (dt='${bdp.system.bizdate}')
+SELECT COALESCE(a.uid, b.uid) AS uid
+  , b.gender
+  , b.age_range
+  , b.zodiac
+  , a.region
+  , a.device
+  , a.identity
+  , a.method
+  , a.url
+  , a.referer
+  , a.time
+FROM (
+  SELECT *
+  FROM ods_log_info_d
+  WHERE dt = ${bdp.system.bizdate}
+) a
+LEFT OUTER JOIN (
+  SELECT *
+  FROM ods_user_info_d
+  WHERE dt = ${bdp.system.bizdate}
+) b
+ON a.uid = b.uid;
+step2：点击保存。
+
+step3：点击返回，返回至工作流开发面板。
+
+配置rpt_user_info_d节点
+step1：双击进入rpt_user_info_d节点进入配置界面。rpt
+附SQL代码如下：
+
+INSERT OVERWRITE TABLE rpt_user_info_d PARTITION (dt='${bdp.system.bizdate}')
+SELECT uid
+  , MAX(region)
+  , MAX(device)
+  , COUNT(0) AS pv
+  , MAX(gender)
+  , MAX(age_range)
+  , MAX(zodiac)
+FROM dw_user_info_all_d
+WHERE dt = ${bdp.system.bizdate}
+GROUP BY uid;
+step2：点击保存。
+
+step3：点击返回，返回至工作流开发面板。
+
+提交工作流任务
+step1：点击提交，提交已配置的工作流任务。
+提交工作流
+
+step2：在变更节点列表弹出框中点击确定提交。
+变更节点列表
+
+提交成功后工作流任务处于只读状态，如下：
+
+只读状态
+
+通过补数据功能测试新建的SQL任务
+鉴于在数据采集阶段已经测试了数据同步任务，本节中直接测试下游SQL任务即可，也保证了时效性。
+
+step1：进入运维中心>任务列表，找到workshop工作流任务。
+工作流任务
+
+step2：单击名称展开工作流。
+![进入节点试图]image
+
+step3：选中ods_log_info_d节点，单击补数据。
+![选择补数据节点]image
+
+step4：在补数据节点对话框中全选节点名称，选择业务日期，点击运行选中节点。
+补数据节点列表
+
+自动跳转到补数据任务实例页面。
+
+step5：输入字母‘d’，通过过滤条件刷新，直至SQL任务都运行成功即可。
+展开子节点
+确认数据是否成功写入MaxCompute相关表
+step1：返回到create_table_ddl脚本文件中。
+
+step2：编写并执行sql语句查看rpt_user_info_d数据情况。
+数据预览
+
+附录：SQL语句如下。
+
+---查看rpt_user_info_d数据情况
+select * from rpt_user_info_d where dt=业务日期 limit 10;
+

@@ -678,3 +678,494 @@ Wide&Deep方法是一种专门针对推荐领域的结合常规机器学习以�
 选用分类算法生成模型，并用AutoML方法不断提升模型准确率
 将模型部署到PAI EAS生成HTTP服务，供业务方调用
 
+==============
+
+示例背景
+本示例主要介绍如何使用 DataWorks（数据工场，原大数据开发套件）完成一个完整的 MaxCompute SQl 工作流。您可以根据本示例，了解一个完整的工作流开发过程，包括：创建 MaxCompute 表、数据导入 MaxCompute 表、创建工作流、创建节点、测试运行工作流等过程。
+
+示例介绍
+本示例主要通过准备 用户 > 品牌特征 表为后期天猫品牌推荐模型做铺垫。在天猫，每天都会有数千万的用户通过品牌发现自己喜欢的商品，品牌推荐是链接商家和消费者的重要纽带。
+
+本示例通过分析用户前三个月的的品牌购买情况以及最近3天、7天的用户偏好特征，得出下个月 用户 > 品牌特征，为后续品牌个性化推荐模型做准备。
+
+ 上一篇：步骤6：数据回流
+
+
+ 步骤1：数据准备
+ 更新时间：2017-11-07 11:49:22
+
+
+ 本页目录
+ 后续步骤
+ 本示例假设 用户 > 品牌信息（源数据表） 存储在业务方的 RDS 上，进而利用 DataWorks（数据工场，原大数据开发套件）进行数据同步、数据加工等操作，来详细阐述常见开发流程 数据产生 > 数据收集和存储 > 数据分析和计算。
+
+ 源数据 请参见 附件，数据说明如下：
+
+ 字段	字段说明	提取说明
+ user_id	用户标识
+ brand_id	品牌ID
+ type	用户对品牌的行为类型	点击：0；购买：1；收藏：2；加入购物车：3
+ visit_datetime	行为时间	格式：年月日（yyyymmdd）
+ 该数据主要记录 20150415-20150815 四个月的用户行为信息，本示例将以该数据作为源数据进行分析，产出目标表。
+
+ 本示例实现过程中，涉及到的 MaxCompute 表说明如下：
+
+ 序号	表名	说明
+ 1	s_user_brand_demo	用户-品牌行为信息源表
+ 2	b_cvr_demo	品牌转化率表，前3个月品牌的购买用户数/点击数
+ 3	ub_action_demo	用户偏好表，统计用户最近7天和最近3天的行为次数
+ 4	ub_features_demo	用户-品牌所有特征表
+ 经分析，源数据 visit_datetime 字段刚好是年月日，为了提高后续查询速度，源表 s_user_brand_demo 建为分区表，以字段 visit_datetime 为分区。
+
+ 用户数据每天都不断新增变化，本示例的表，都以年月日作为分区表。
+
+ 后续步骤
+ 现在，您已经对实验所需的数据做了一定的准备和了解，您可以继续学习下一个教程。在该教程中您将学习如何配置实验所需的 RDS 数据源。详情请参见 配置 RDS 数据源。
+
+ 由前文可知，原始数据在 RDS 上，那么需要把 RDS 数据导入到 MaxCompute 中。本示例通过数据同步任务来完成数据的导入，而数据同步任务必须事先创建好数据源。
+
+ 前提条件
+ 创建 RDS 数据源必须要清楚 RDS 的相关信息（可在 RDS 的基本信息页面中获取），此处数据源配置成通过 RDS 实例形式连接，所以需要提前知道的 RDS 信息包括：RDS 实例 ID，RDS 实例购买者 ID，数据库名，用户名和密码。
+
+ 操作步骤
+ 以项目管理员身份进入 DataWorks 管理控制台，单击对应项目操作栏中的 进入工作区。
+
+ 单击顶部菜单栏中的 数据集成，导航至 数据源 页面。
+
+ 单击 新增数据源。
+
+ 在新建数据源弹出框中，选择数据源类型为 RDS > MySQL。
+
+ 选择以 RDS 实例形配置该 MySQL 数据源。
+
+
+
+ 查看 RDS > MySQL 中的实例 ID，如下图所示：
+
+ instance_id
+
+ 单击 测试连通性。
+
+ 测试连通性通过后，单击 确定。
+
+ 注意：
+
+ 若测试连通性失败，请参见 RDS 数据源测试连通性不通。
+
+ 后续步骤
+ 现在，您已经学习了如何配置 RDS 数据源，您可以继续学习下一个教程。在该教程中您将学习如何准备相关的 MaxCompute 表。详情请参见 创建 MaxCompute 表。
+
+ 步骤3：创建MaxCompute表
+ 更新时间：2017-11-08 15:31:56
+
+
+ 本页目录
+ 操作步骤
+ 建表语句
+ 后续步骤
+ 操作步骤
+ 以新建 s_user_brand_demo 数据表为例，具体操作如下：
+
+ 以开发者身份进入 DataWorks 管理控制台，单击对应项目操作栏中的 进入工作区。
+
+ 创建脚本文件。
+
+ 单击顶部菜单栏中的 数据开发，导航至 新建 > 新建脚本。
+
+ 1
+
+ 编辑建表语句。
+
+ CREATE TABLE IF NOT EXISTS s_user_brand_demo (
+  user_id STRING COMMENT '用户标识',
+  brand_id STRING COMMENT '品牌ID',
+  type STRING COMMENT '用户对品牌的行为类型，点击：0，购买：1，收藏：2，加入购物车：3'
+  )
+ PARTITIONED BY (
+  dt STRING
+  )
+ LIFECYCLE 150;
+ 单击运行按钮 Run_Button 运行建表语句。
+
+ 语句运行成功，则建表成功。
+
+ 注意：
+
+ 您可以执行 desc tablename;，查看表是否真正创建成功。
+
+ 建表语句
+ 您可根据上述步骤，完成其他表的创建。需要创建的表和对应的建表语句，如下所示：
+
+ b_cvr_demo（品牌转化率表）
+
+ --品牌转化率表，品牌的购买用户数/点击数
+ CREATE TABLE IF NOT EXISTS b_cvr_demo (
+   brand_id STRING,
+   cvr DOUBLE
+ )
+ PARTITIONED BY (
+   dt STRING
+ )
+ LIFECYCLE 7;
+ ub_action_demo（用户偏好表）
+
+ --用户偏好表，这里统计用户最近 7 天和最近 3 天的行为次数
+ CREATE TABLE IF NOT EXISTS ub_action_demo (
+   user_id STRING,
+   brand_id STRING,
+   buy_cnt BIGINT,
+   click_d7 BIGINT,
+   collect_d7 BIGINT,
+   shopping_cart_d7 BIGINT,
+   click_d3 BIGINT,
+   collect_d3 BIGINT,
+   shopping_cart_d3 BIGINT
+ )
+ PARTITIONED BY (
+   dt STRING
+ )
+ LIFECYCLE 7;
+ ub_features_demo（用户-品牌所有特征表）
+
+ --品牌-用户所有特征表
+ CREATE TABLE IF NOT EXISTS ub_features_demo (
+   user_id STRING,
+   brand_id STRING,
+   buy_cnt BIGINT,
+   click_d7 BIGINT,
+   collect_d7 BIGINT,
+   shopping_cart_d7 BIGINT,
+   click_d3 BIGINT,
+   collect_d3 BIGINT,
+   shopping_cart_d3 BIGINT,
+   cvr DOUBLE
+ )
+ PARTITIONED BY (
+   dt STRING
+ )
+ LIFECYCLE 7;
+ 后续步骤
+ 现在，您已经学习了如何创建 MaxCompute 表，您可以继续学习下一个教程。在该教程中您将学习如何创建工作流来对项目空间的数据进行进一步的计算与分析。详情请参见 创建工作流。
+
+
+ 步骤4：创建工作流
+ 更新时间：2017-11-08 15:32:55
+
+
+ 本页目录
+ 操作步骤
+ 后续步骤
+ 本示例中，数据的分析流程如下图所示：
+
+ tm_demo_dataflow.JPG
+
+ 源表经过加工成为两个中间表，最后通过两个中间表加工得出目标表，一个工作流即可完成。同时，在 数据准备 中分析得出需要创建日分区表，也就是每日一分区。因此工作流需配置为周期性天调度。
+
+ 操作步骤
+ 以开发者身份进入 DataIDE 管理控制台，单击对应项目操作栏中的 进入工作区。
+
+ 单击顶部导航栏中的 数据开发，导航至 新建 > 新建任务。
+
+ 填写弹出框中的各配置项，指定任务类型为 工作流任务。如下图所示：
+
+ 1
+
+ 单击 创建。
+
+ 进入工作流页面后，单击右侧导航栏的 调度配置 进行配置。
+
+ 基本属性无需修改。
+
+ 1
+
+ 调度属性保留默认配置。
+
+ 因为工作流需要周期调度，且目前没有预设下线时间，因此所有配置项保留默认。
+
+ 1
+
+ 调度周期为天，具体时间为 0 点整，即每日 0 点调度服务开始调度当天示例时，即可开始调度此工作流。
+
+ 依赖属性保留默认配置。
+
+ 因为源头数据导入后，打算直接在本工作流中配置任务，没有必须依赖的上游工作流，所以此配置保持不变。
+
+ 跨周期依赖可根据自己的需求进行相应的配置。
+
+ 1
+
+ 后续步骤
+ 现在，您已经学习了如何创建工作流，您可以继续学习下一个教程。在该教程中您将学习如何通过创建同步任务来把数据导入到 MaxCompute 中。详情请参见 配置数据导入任务。
+
+ 步骤5：配置数据导入任务
+ 更新时间：2017-09-20 19:04:45
+
+
+ 本页目录
+ 操作步骤
+ 后续步骤
+ 原始数据在 RDS 数据库上，若想通过 MaxCompute 对数据进行加工、分析，需要先把数据导入到 MaxCompute 中。前文中已成功 配置 RDS 数据源 和 创建 MaxCompute 表，接下来即可开始创建数据导入任务。
+
+ 操作步骤
+ 打开创建的工作流（tmall_ub_features_demo），将数据同步节点组件拖拽至画布中。
+
+ 1
+
+ 名称：s_user_brand_demo。
+
+ 描述：RDS 上同步数据到表 s_user_brand_demo。
+
+ 双击该节点或右键查看节点内容进入任务配置界面。
+
+ 选择来源。
+
+ 1
+
+ 源头默认为单表，选择前面添加的数据源，和对应的原始数据表。
+
+ 选择目标。
+
+ 1
+
+ 目标选择本项目对应的 MaxCompute project，所以数据源为 odps_frist，目标表为 s_user_brand_demo 表。
+
+ 字段映射。
+
+ 选择要抽取的列，并映射到目标表字段。
+
+ 1
+
+ 选好源和目标表之后，列会先自动按照字段名对应匹配，匹配不到的目标字段留空，默认显示所有源表字段，数据同步任务执行的时候就按该字段配置顺序一一对应读写。
+
+ 通道控制。
+
+ 1
+
+ 完成以上配置后，单击 保存。
+
+ 配置节点参数。
+
+
+
+ 由于 ${bdp.system.bizdate} 为系统参数，因此参数配置中无需赋值。
+
+ 单击 保存。
+
+ 后续步骤
+ 现在，您已经学习了如何配置数据同步任务，您可以继续学习下一个教程。在该教程中您将学习如何配置 SQL 任务，产出结果表。详情请参见 配置 SQL 任务产出特征表。
+
+ 步骤6：配置SQL任务产出特征表
+ 更新时间：2017-09-25 11:00:27
+
+
+ 本页目录
+ 操作步骤
+ 后续步骤
+ 本示例为了更形象的说明工作流配置，一个 MaxCompute SQL 节点产出一个表。经分析需要创建 3 个 MaxCompute SQL 节点。
+
+ 操作步骤
+ 工作流（tmall_ub_features_demo）设计器的节点组件中向画布拖拽 3 个 MaxCompute SQL 节点组件，进行创建。
+
+ 节点名称分别为：b_cvr_demo、ub_action_demo、ub_features_demo。
+
+ 描述：对应上面的节点名称分别为：产出品牌转化率表、产出用户偏好表、产出用户-品牌所有特征表。
+
+ 此时看到工作流设计器上有 4 个 节点：1 个同步任务，3 个 MaxCompute SQL 任务，如下图所示：
+
+
+
+ 配置节点依赖。
+
+ 根据前面的数据分析，中间表数据来自同步任务产出的源表，最终特征表数据来自两个中间表，因此，节点的依赖关系如下图所示：
+
+
+
+ 编辑 MaxCompute SQL 节点代码，与参数配置（内置调度时间参数说明请参见 数据开发手册 > 系统调度参数）。
+
+ 分别双击 SQL 节点进入代码编辑页面进行代码编辑，代码如下：
+
+ 节点 b_cvr_demo 代码与参数配置
+
+ --产出品牌转化率表,前3个月品牌的购买用户数/点击数
+ INSERT OVERWRITE TABLE b_cvr_demo PARTITION (dt=${bdp.system.bizdate})
+ SELECT brand_id
+ , CASE
+    WHEN click_cnt > 0 THEN buy_cnt / click_cnt
+    ELSE 0
+ END AS cvr
+ FROM (
+ SELECT brand_id
+    , COUNT(DISTINCT CASE
+        WHEN type = '1' THEN user_id
+        ELSE NULL
+    END) AS buy_cnt
+    , COUNT(DISTINCT CASE
+        WHEN type = '0' THEN user_id
+        ELSE NULL
+    END) AS click_cnt
+ FROM s_user_brand_demo
+ WHERE dt >= ${before3mont}
+ GROUP BY brand_id
+ ) t1;
+ 产出表分区表达式与前面数据同步任务分区表达式一致，每次运行读源表分区为前三个月分区，源表分区过滤条件 dt>=${before3mont}
+
+ 参数配置如下图：
+
+
+
+ ${bdp.system.bizdate} 变量在调度的时候会自动替换成业务日期，所以不需要赋值。
+
+ ${before3mont} 自定义变量需要在此赋值，因为是取前 3 个月的数据，所以可以去当前节点实例定时时间减 3 个月，即 $[add_months(YYYYMMDD,-3)]。
+
+ 节点 ub_action_demo 代码与参数配置
+
+ --产出用户偏好表,这里统计用户最近7天和最近3天的行为次数
+ INSERT OVERWRITE TABLE ub_action_demo PARTITION (dt=${bdp.system.bizdate})
+ SELECT user_id
+ , brand_id
+ , SUM(CASE
+    WHEN type = '1' THEN 1
+    ELSE 0
+ END) AS buy_cnt
+ , SUM(CASE
+    WHEN type = '0'
+    AND dt > '${before7days}' THEN 1
+    ELSE 0
+ END) AS click_d7
+ , SUM(CASE
+    WHEN type = '2'
+    AND dt > '${before7days}' THEN 1
+    ELSE 0
+ END) AS collect_d7
+ , SUM(CASE
+    WHEN type = '3'
+    AND dt > '${before7days}' THEN 1
+    ELSE 0
+ END) AS shopping_cart_d7
+ , SUM(CASE
+    WHEN type = '0'
+    AND dt > '${before3days}' THEN 1
+    ELSE 0
+ END) AS click_d3
+ , SUM(CASE
+    WHEN type = '2'
+    AND dt > '${before3days}' THEN 1
+    ELSE 0
+ END) AS collect_d3
+ , SUM(CASE
+    WHEN type = '3'
+    AND dt > '${before3days}' THEN 1
+    ELSE 0
+ END) AS shopping_cart_d3
+ FROM s_user_brand_demo
+ WHERE dt >= ${before7days}
+ and dt <= ${bdp.system.bizdate}
+ GROUP BY user_id,
+ brand_id;
+ 参数配置如下图：
+
+
+
+ ${bdp.system.bizdate} 变量在调度的时候会自动替换成业务日期，所以不需要赋值。
+
+ ${before7days} 和 ${before3days} 需要的是业务日期的前7天和前3天，所以可以用调度时间参数 $[yyyymmdd-8] 和 $[yyyymmdd-4]，即当前节点实例定时时间年月日减 8 天/减 4 天。
+
+ 节点ub_features_demo代码与参数配置
+
+ INSERT OVERWRITE TABLE ub_features_demo PARTITION (dt=${bdp.system.bizdate})
+ SELECT t1.user_id
+ , t1.brand_id
+ , t1.buy_cnt
+ , t1.click_d7
+ , t1.collect_d7
+ , t1.shopping_cart_d7
+ , t1.click_d3
+ , t1.collect_d3
+ , t1.shopping_cart_d3
+ , t2.cvr
+ FROM ub_action_demo t1
+ LEFT OUTER JOIN b_cvr_demo t2
+ ON t1.brand_id = t2.brand_id
+ AND t1.dt = ${bdp.system.bizdate}
+ AND t2.dt = ${bdp.system.bizdate};
+ ${bdp.system.bizdate}变量在调度的时候会自动替换成业务日期，所以不需要赋值,代码中没用到其他自定义变量名，所以不需要配置参数。
+
+ 返回工作流设置器页面，单击 保存。
+
+ 至此，已完成本示例的工作流配置，但要想让工作流根据配置每天自动调度，还需要把工作流提交到调度系统，即在工作流设计页面（整体视图页面）单击 提交，在变更节点列表中选择所有节点并单击 确定提交，提交成功则成功的把工作流提交到调度服务。
+
+ 后续步骤
+ 现在，您已经学习了如何通过 MaxCompute SQL 对数据进行加工处理，并产出最终目标表，您可以继续学习下一个教程。在该教程中您将学习如何测试工作流。详情请参见 测试任务。
+
+ 测试任务
+ 更新时间：2017-06-07 13:26:11
+
+
+ 工作流提交后，即可对整个工作流手动在调度上试运行一次，目的是看运行过程中代码、调度配置是否符合预期。（注意测试运行是真正的在跑任务，结果是真实的结果。）具体操作步骤如下：
+
+ 方式一：
+ 步骤1：紧接上个章节，在整体视图页面右击节点，点击“测试节点”，在弹出的业务日期选择框里选择业务日期，点击“生成并运行”。
+
+
+
+ 步骤2：前往运维中心查看工作流测试情况。
+
+
+
+ 点击“前往查看冒烟结果”会直接跳到运维中心>>任务运维>>测试页面中且定位到具体的工作流测试实例。
+
+ 1
+
+ 步骤3：查看任务具体运行日志。不管是执行成功还是失败，都应该去查看一次每个节点的运行日志，如查看真正运行的代码是什么，查看生产的节点实例的SKYNET_BIZDATE是否就是选择的测试业务日期，查看使用的调度参数是否正常替换等。
+
+ 方式二：
+ 步骤1：进入运维中心>>任务管理，搜索到本任务，选择后，在右边的DAG图里对工作流右键->测试节点。
+
+
+
+ 步骤2：选择需要测试的业务日期，点击“生成并运行”。
+
+
+
+ 点击后会直接跳到测试模块，且定位到具体的工作流测试实例。
+
+ 1
+
+ 步骤3：查看任务具体运行日志。不管是执行成功还是失败，都应该去查看一次每个节点的运行日志，如查看真正运行的代码是什么，查看生产的节点实例的SKYNET_BIZDATE是否就是选择的测试业务日期，查看使用的调度参数是否正常替换等。
+
+ 【注意】：由于本示例准备的数据仅仅是2015/04/15—2015/08/15 四个月的数据，而测试的时候只挑了1天的数据来测试，那么除了同步任务能看出具体结果外，3个sql类型节点由于是要加工前3个月或者前7/3天的数据，只跑一天的数据对于sql任务来说只能测试查看代码和调度配置是否正常而已，无法看最终结果表的结果是否符合预期，所以一般情况下工作流配置好后，我们会通过补数据方式把前面已有的数据都导入ODPS表中并进行加工处理，补数据操作请看后面小章节。
+
+
+ 补数据
+ 更新时间：2017-06-07 13:26:11
+
+
+ 补数据可以对工作流/节点操作执行发生在过去的一段时间的调度。如本示例中数据是2015/04/15—2015/08/15 四个月的时间，补数据的时候可以分1次或2次操作把这段时间的工作流实例全部生成好。具体操作如下：
+
+ 进入运维中心>>任务管理>>工作流管理>>定义页面，搜索到本工作流，选择后，在右边的DAG图里对工作流右键->补数据任务。
+
+ 这里分开两次操作，先补2015/04/15—2015/06/15业务日期，点击“运行选择工作流”后会生产补数据实例，页面跳到“补数据”模块，并定位到具体的工作流。
+
+ 生产好补数据实例后接下来就是等待运行结果并查看具体运行情况。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
