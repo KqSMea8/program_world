@@ -1,0 +1,398 @@
+时间序列
+
+目录
+x13_arima
+x13_auto_arima
+目录
+x13_arima
+
+x13_auto_arima
+
+x13_arima
+Arima全称为自回归积分滑动平均模型（Autoregressive Integrated Moving Average Model），是由博克思（Box）和詹金斯（Jenkins）于70年代初提出的著名时间序列预测方法，所以又称为box-jenkins模型、博克思-詹金斯法。
+
+x13-arima是基于开源X-13ARIMA-SEATS（详细介绍请见链接 wiki）封装的针对季节性调整的arima算法。
+
+Arima 详细介绍请见wiki。
+
+PAI 命令
+PAI -name x13_arima
+    -project algo_public
+    -DinputTableName=pai_ft_x13_arima_input
+    -DseqColName=id
+    -DvalueColName=number
+    -Dorder=3,1,1
+    -Dstart=1949.1
+    -Dfrequency=12
+    -Dseasonal=0,1,1
+    -Dperiod=12
+    -DpredictStep=12
+    -DoutputPredictTableName=pai_ft_x13_arima_out_predict
+    -DoutputDetailTableName=pai_ft_x13_arima_out_detail
+参数说明
+参数名称	参数描述	取值范围	是否必选，默认值/行为
+inputTableName	输入表	表名	必选
+inputTablePartitions	输入表中指定哪些分区参与训练，格式为“Partition_name=value”。如果是多级格式为“name1=value1/name2=value2”，如果指定多个分区，中间用“,”隔开	分区表名	可选， 默认选择所有分区
+seqColName	时序列	列名	必选，仅用来对valueColName 排序，具体数值与计算无关
+valueColName	数值列	列名	必选
+groupColNames	分组列，多列用逗号分隔，如“col0,col1”。每个分组会构建一个时间序列	列名	可选
+order	p，d，q 分别表示自回归系数、差分、滑动回归系数	p，d，q均为非负整数，范围为[0, 36]	必选
+start	时序开始日期	字符串，格式为“year.seasonal”，如“1986.1”
+时序格式介绍	可选，默认为1.1
+frequency	时序频率	正整数，范围为(0, 12]
+时序格式介绍	可选，默认为12，表示12月/年
+seasonal	sp，sd，sq 分别表示季节性自回归系数、季节性差分、季节性滑动回归系数	sp，sd，sq 均为非负整数，范围为[0, 36]	可选，默认无seasonal
+period	seasonal周期	数字，范围为(0, 100]	可选，默认为 frequency
+maxiter	最大迭代次数	正整数	可选，默认为 1500
+tol	容忍度	double类型	可选，默认为 1e-5
+predictStep	预测条数	数字，范围为(0, 365]	可选，默认为12
+confidenceLevel	预测置信水平	数字，范围为(0, 1)	可选，默认为 0.95
+outputPredictTableName	预测输出表	表名	必选
+outputDetailTableName	详细信息表	表名	必选
+outputTablePartition	输出分区	分区名	可选，默认不输出到分区
+coreNum	节点个数	与参数memSizePerCore配对使用，正整数	可选，默认自动计算
+memSizePerCore	单个节点内存大小，单位为MB	正整数，范围为[1024, 64 *1024]	可选， 默认自动计算
+lifecycle	可选，指定输出表的生命周期	正整数	没有生命周期
+时序格式介绍
+参数start和frequency规定了数据（valueColName）的两个时间维度ts1、ts2。
+
+frequency：表示单位周期内数据的频率，即单位ts1中ts2的频率。
+start：格式为“n1.n2”，表示开始日期是第n1个ts1中的第n2个ts2。
+单位时间	ts1	ts2	frequency	start
+12月/年	年	月	12	1949.2 表示第1949年中的第2个月
+4季/年	年	季	4	1949.2 表示第1949年中的第2个季度
+7天/周	周	天	7	1949.2 表示第1949周中的第2天
+1	任何时间单位	1	1	1949.1 表示第1949（年、天、时等）
+例如 value=[1,2,3,5,6,7,8,9,10,11,12,13,14,15]
+
+start=1949.3，frequency=12 表示数据是12月/年，预测开始日期是1950.06。
+year	Jan	Feb	Mar	Apr	May	Jun	Jul	Aug	Sep	Oct	Nov	Dec
+1949			1	2	3	4	5	6	7	8	9	10
+1950	11	12	13	14	15
+start=1949.3，frequency=4 表示数据是4季/年，预测开始的日期是1953.02。
+year	Qtr1	Qtr2	Qtr3	Qtr4
+1949			1	2
+1950	3	4	5	6
+1951	7	8	9	10
+1952	11	12	13	14
+1953	14	15
+start=1949.3，frequency=7 表示数据是7天/周，预测开始的日期是1951.04。
+week	Sun	Mon	Tue	Wed	Thu	Fri	Sat
+1949			1	2	3	4	5
+1950	6	7	8	9	10	11	12
+1951	13	14	15
+start=1949.1，frequency=1 可以表示任何时间单位，预测开始日期是1963.00。
+cycle	p1
+1949	1
+1950	2
+1951	3
+1951	4
+1952	5
+1953	6
+1954	7
+1955	8
+1956	9
+1957	10
+1958	11
+1959	12
+1960	13
+1961	14
+1962	15
+具体示例
+测试数据
+
+使用的数据集为 AirPassengers，是1949～1960年每个月国际航空的乘客数量，如下表所示。
+
+id	number
+1	112
+2	118
+3	132
+4	129
+5	121
+…	…
+使用tunnel命令行工具上传数据，命令如下。
+
+create table pai_ft_x13_arima_input(id bigint,number bigint);
+tunnel upload data/airpassengers.csv pai_ft_x13_arima_input -h true;
+PAI 命令
+
+PAI -name x13_arima
+    -project algo_public
+    -DinputTableName=pai_ft_x13_arima_input
+    -DseqColName=id
+    -DvalueColName=number
+    -Dorder=3,1,1
+    -Dseasonal=0,1,1
+    -Dstart=1949.1
+    -Dfrequency=12
+    -Dperiod=12
+    -DpredictStep=12
+    -DoutputPredictTableName=pai_ft_x13_arima_out_predict
+    -DoutputDetailTableName=pai_ft_x13_arima_out_detail
+输出说明
+
+输出表outputPredictTableName
+
+字段说明：
+
+column name	comment
+pdate	预测日期
+forecast	预测结论
+lower	置信度为 confidenceLevel（默认0.95）时，预测结论下界
+upper	置信度为 confidenceLevel（默认0.95）时，预测结论上界
+数据展示：
+
+image
+
+输出表outputDetailTableName
+
+字段说明：
+
+column name	comment
+key
+model表示模型
+evaluation表示评估结果
+parameters表示训练参数
+log表示训练日志
+summary	存储具体信息
+数据展示：
+
+image
+
+PaiWeb展示-模型系数（key=model）：
+
+image
+
+PaiWeb展示-评估指标（key=evaluation）：
+
+image
+
+算法规模
+支持规模
+
+行：单group数据最大1200条
+
+列：1数值列
+
+资源计算方式
+
+不设置groupColNames，默认计算方式
+
+coreNum = 1
+
+memSizePerCore = 4096
+
+设置groupColNames，默认计算方式
+
+coreNum = floor(总数据行数 / 12万)
+
+memSizePerCore = 4096
+
+x13_auto_arima
+x13-auto-arima 包括自动ARIMA模型选择程序，主要基于 TRMO（1996）及后续修订中实施的 Gomez 和 Maravall（1998）的程序。
+
+x13-auto-arima 的选择过程如下。
+
+默认模型预估
+
+当frequency = 1，默认模型是(0,1,1)。
+当frequency > 1，默认模型是(0,1,1)(0,1,1)。
+identication of dierencing orders
+
+如果设置了diff和seasonalDiff，则跳过此步骤。
+
+使用 Unit root test （wiki）确定差分d，和季节性差分D。
+
+Arima模型识别命令
+
+根据BIC（wiki）准则选择最合适的模型， 其参数maxOrder、maxSeasonalOrder在此步骤起作用。
+
+被选择的模型和默认模型的比较
+
+使用Ljung-Box Q statistic（wiki）比较模型，如果两个模型均是不可接受的，则使用(3,d,1)(0,D,1)模型。
+
+最终模型检验
+
+PAI 命令
+PAI -name x13_auto_arima
+    -project algo_public
+    -DinputTableName=pai_ft_x13_arima_input
+    -DseqColName=id
+    -DvalueColName=number
+    -Dstart=1949.1
+    -Dfrequency=12
+    -DpredictStep=12
+    -DoutputPredictTableName=pai_ft_x13_arima_out_predict2
+    -DoutputDetailTableName=pai_ft_x13_arima_out_detail2
+参数说明
+参数名称	参数描述	取值范围	是否必选，默认值/行为
+inputTableName	输入表	表名	必选
+inputTablePartitions	输入表中指定哪些分区参与训练， 格式为“Partition_name=value”。如果是多级格式为“name1=value1/name2=value2”，如果是指定多个分区，中间用“,”分开	分区名	可选，默认选择所有分区
+seqColName	时序列	列名	必选，仅用来对valueColName 排序，具体数值与计算无关
+valueColName	数值列	列名	必选
+groupColNames	分组列，多列已逗号分隔，如“col0,col1”，每个分组会构建一个时间序列	列名	可选
+start	时序开始日期	字符串，格式为“year.seasonal”，如“1986.1”
+时序格式介绍	可选，默认为1.1
+frequency	时序频率	正整数，范围为(0, 12]
+时序格式介绍	可选，默认为12，表示12月/年
+maxOrder	p，q最大值	正整数，范围为[0,4]	可选，默认为2
+maxSeasonalOrder	季节性p，q最大值	正整数，范围为[0,2]	可选，默认为1
+maxDiff	差分d最大值	正整数，范围为[0,2]	可选，默认为2
+maxSeasonalDiff	季节性差分d最大值	正整数，范围为[0,1]	可选，默认为1
+diff	差分d	正整数，范围为[0,2]
+diff与maxDiff同时设置时，maxDiff被忽略
+diff与seasonalDiff要同时设置	可选，默认为-1，表示不指定diff
+seasonalDiff	季节性差分d	正整数，范围为[0,1]
+seasonalDiff与maxSeasonalDiff同时设置时 maxSeasonalDiff被忽略	可选，默认为-1，表示不指定seasonalDiff
+maxiter	最大迭代次数	正整数	可选，默认为1500
+tol	tolerance，容忍度	double类型	可选，默认为 1e-5
+predictStep	预测条数	数字，范围为(0, 365]	可选，默认为12
+confidenceLevel	预测置信水平	数字，范围为(0, 1)开区间	可选，默认为0.95
+outputPredictTableName	预测输出表	表名	必选
+outputDetailTableName	详细信息表	表名	必选
+outputTablePartition	输出分区	分区名	可选，默认不输出到分区
+coreNum	节点个数	与参数memSizePerCore配对使用，正整数	可选，默认自动计算
+memSizePerCore	单个节点内存大小，单位为MB	正整数，范围为[1024, 64 *1024]	可选， 默认自动计算
+lifecycle	指定输出表的生命周期	正整数	可选，默认没有生命周期
+时序格式介绍
+参数start和frequency规定了数据（valueColName）的两个时间维度ts1、ts2。
+
+frequency：表示单位周期内数据的频率，即单位ts1中ts2的频率。
+start：格式为“n1.n2”，表示开始日期是第n1个ts1中的第n2个ts2。
+单位时间	ts1	ts2	frequency	start
+12月/年	年	月	12	1949.2 表示第1949年中的第2个月
+4季/年	年	季	4	1949.2 表示第1949年中的第2个季度
+7天/周	周	天	7	1949.2 表示第1949周中的第2天
+1	任何时间单位	1	1	1949.1 表示第1949（年、天、时等）
+例如 value=[1,2,3,5,6,7,8,9,10,11,12,13,14,15]
+
+start=1949.3，frequency=12 表示数据是12月/年，预测开始的日期是1950.06。
+year	Jan	Feb	Mar	Apr	May	Jun	Jul	Aug	Sep	Oct	Nov	Dec
+1949			1	2	3	4	5	6	7	8	9	10
+1950	11	12	13	14	15
+start=1949.3，frequency=4 表示数据是4季/年，预测开始的日期是1953.02。
+year	Qtr1	Qtr2	Qtr3	Qtr4
+1949			1	2
+1950	3	4	5	6
+1951	7	8	9	10
+1952	11	12	13	14
+1953	14	15
+start=1949.3，frequency=7 表示数据是7天/周，预测开始的日期是1951.04。
+week	Sun	Mon	Tue	Wed	Thu	Fri	Sat
+1949			1	2	3	4	5
+1950	6	7	8	9	10	11	12
+1951	13	14	15
+start=1949.1，frequency=1 可以表示任何时间单位，预测开始日期是1963.00。
+cycle	p1
+1949	1
+1950	2
+1951	3
+1951	4
+1952	5
+1953	6
+1954	7
+1955	8
+1956	9
+1957	10
+1958	11
+1959	12
+1960	13
+1961	14
+1962	15
+具体示例
+测试数据
+
+使用的数据集为 AirPassengers，是1949～1960年每个月国际航空的乘客数量，如下表所示。
+
+id	number
+1	112
+2	118
+3	132
+4	129
+5	121
+…	…
+使用tunnel命令行工具上传数据，命令如下。
+
+create table pai_ft_x13_arima_input(id bigint,number bigint);
+tunnel upload data/airpassengers.csv pai_ft_x13_arima_input -h true;
+PAI 命令
+
+PAI -name x13_auto_arima
+    -project algo_public
+    -DinputTableName=pai_ft_x13_arima_input
+    -DseqColName=id
+    -DvalueColName=number
+    -Dstart=1949.1
+    -Dfrequency=12
+    -DmaxOrder=4
+    -DmaxSeasonalOrder=2
+    -DmaxDiff=2
+    -DmaxSeasonalDiff=1
+    -DpredictStep=12
+    -DoutputPredictTableName=pai_ft_x13_arima_auto_out_predict
+    -DoutputDetailTableName=pai_ft_x13_arima_auto_out_detail
+输出说明
+
+输出表outputPredictTableName
+
+字段说明：
+
+column name	comment
+pdate	预测日期
+forecast	预测结论
+lower	置信度为 confidenceLevel（默认0.95）时，预测结论下界
+upper	置信度为 confidenceLevel（默认0.95）时，预测结论上界
+数据展示：
+
+image
+
+输出表outputDetailTableName
+
+字段说明：
+
+column name	comment
+key
+model表示模型
+evaluation表示评估结果
+parameters表示训练参数
+log表示训练日志
+summary	存储具体信息
+数据展示：
+
+image
+
+PaiWeb展示-模型系数（key=model）：
+
+image
+
+PaiWeb展示-评估指标（key=evaluation）：
+
+image
+
+算法规模
+支持规模
+
+行：单group数据最大1200条
+
+列：1数值列
+
+资源计算方式
+
+不设置groupColNames, 默认计算方式
+
+coreNum = 1
+
+memSizePerCore = 4096
+
+设置groupColNames，默认计算方式
+
+coreNum = floor(总数据行数 / 12万)
+
+memSizePerCore = 4096
+
+常见问题
+为什么预测结果都一样？
+
+在模型训练异常时，会调用均值模型，则所有预测结果都是训练数据的均值。
+常见的异常包括“时序差分diff后不稳定”、“训练没有收敛”、“方差为0”等，可以在logview中查看单独节点的stderr文件，获取具体的异常信息。
+

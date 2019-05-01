@@ -1,0 +1,1064 @@
+
+采样与过滤
+
+随机采样
+
+加权采样
+
+过滤与映射
+
+分层采样
+
+数据合并
+
+join
+
+合并列
+
+合并行（UNION）
+
+增加序号列
+
+拆分
+
+缺失值填充
+
+归一化
+
+标准化
+
+类型转换
+
+KV2Table
+
+Table2KV
+
+
+
+------------------------------------------------------------------------------------------------------
+
+采样与过滤
+随机采样
+以随机方式生成采样数据，每次采样是各自独立的。
+
+参数设置
+random_sample_param_setting random_sample_opt
+
+可手动输入采样个数（或者采样比例）。
+可以选择放回采样或者不放回采样，默认为不放回，勾选后变为放回。
+可配置随机数种子，默认系统自动分配。
+可以配置并发计算核心数目与内存，默认系统自动分配。
+PAI命令
+PAI -name RandomSample
+    -project algo_public \
+    -Dlifecycle="28"\
+    -DrandomSeed=1007\
+    -DoutputTableName=wpbc_sample \
+    -Dreplace=false \
+    -DsampleSize=100 \
+    -DinputTableName=wbpc;
+算法参数
+参数名称	参数描述	参数值可选项	默认值
+inputTableName	必选，输入表的表名	NA	NA
+inputTablePartitions	可选，输入表中指定哪些分区参与训练，格式为： partition_name = value。
+如果是多级，格式为name1 = value1/name2 = value2。
+如果指定多个分区，中间用“,”分开。
+NA	输入表的所有partition
+outputTableName	必选，输出结果表	NA	NA
+sampleSize	可选，采样个数	正整数	默认为空
+sampleRatio	可选，采样比例	浮点数，范围(0,1)	默认为空
+replace	可选，是否放回，boolean类型	true / false	false（默认不放回）
+randomSeed	可选，随机数种子	正整数	默认系统自动生成
+lifecycle	可选，指定输出表生命周期	正整数，[1,3650]	输出表没有生命周期
+coreNum	可选，计算的核心数目	正整数	系统自动分配
+memSizePerCore	可选，每个核心的内存（单位是MB）	正整数，(1, 65536)	系统自动分配
+注意
+
+当sampleSize与sampleRatio都为空时，系统会报错。
+当sampleSize与sampleRatio都不为空时，以sampleSize为准。
+加权采样
+以加权方式生成采样数据。权重列必须为double或bigint类型，按照该列值的大小采样。比如所选权重列的值是1.2和1.0，则值为1.2所属样本的被采样的概率就大一些。
+
+参数设置
+weighted_sample_param
+
+可手动输入采样个数（或者采样比例）。
+可以选择放回采样或者不放回采样，默认为不放回，勾选后变为放回。
+下拉框选择加权列，加权列支持double型和bigint型。
+可配置随机数种子，默认系统自动分配。
+PAI命令
+PAI -name WeightedSample
+    -project algo_public \
+    -Dlifecycle="28" \
+    -DoutputTableName="test2" \
+    -DprobCol="previous" \
+    -Dreplace="false" \
+    -DsampleSize="500" \
+    -DinputPartitions="pt=20150501" \
+    -DinputTableName="bank_data_partition";
+算法参数
+参数名称	参数描述	参数值可选项	默认值
+inputTableName	必选，输入表的表名	NA	NA
+inputTablePartitions	可选，输入表中指定哪些分区参与训练，格式为： partition_name = value。
+如果是多级，格式为name1 = value1/name2 = value2。
+如果指定多个分区，中间用“,”分开。
+NA	输入表的所有partition
+outputTableName	必选，输出结果表	NA	NA
+sampleSize	可选，采样个数	正整数	默认为空
+sampleRatio	可选，采样比例	浮点数，范围(0,1)	默认为空
+probCol	必选，选择的要加权的列。每个值代表所在记录出现的权重，不需要归一化	double型和bigint型	NA
+replace	可选，是否放回，boolean类型	true / false	false(默认不放回)
+randomSeed	可选，随机数种子	正整数	默认系统自动生成
+lifecycle	可选，指定输出表生命周期	正整数，[1,3650]	输出表没有生命周期
+coreNum	可选，计算的核心数目	正整数	系统自动分配
+memSizePerCore	可选，每个核心的内存（单位是MB）	正整数，(1, 65536)	系统自动分配
+注意
+
+当sampleSize与sampleRatio都为空时，系统会报错。
+当sampleSize与sampleRatio都不为空时，以sampleSize为准。
+过滤与映射
+对数据按照过滤表达式进行筛选，可以修改输出字段名称。
+
+参数设置
+选择要筛选的列，默认选择全部列。也可以修改输出字段名称。
+dd
+
+通过where条件实现数据过滤，与SQL类似，如下图所示。
+screenshot
+筛选条件：目前操作符支持”=”，”!=”，”>”，”<”，“>=”和“<=”，like，rlike
+
+PAI命令
+PAI -name Filter
+    -project algo_public \
+    -DoutTableName="test_9" \
+    -DinputPartitions="pt=20150501" \
+    -DinputTableName="bank_data_partition" \
+    -Dfilter="age>=40";
+name：组件名字。
+project：工程名字，用于指定算法所在空间。系统默认是algo_public，用户自己更改后系统会报错。
+outTableName：输出表的名字。
+inputPartitions：（可选）训练输入表分区。输入表对应的输入分区，选中全表则为None。
+inputTableName：输入表的名字。
+filter：where筛选条件，目前操作符支持”=”，”!=”，”>”，”<”，“>=”，“<=”,“like”和“rlike”。
+
+
+分层采样
+数据集分层抽取一定比例或者一定数据的随机样本。
+
+参数设置
+
+下拉框选择分组列（最大支持100个分组）。
+可手动输入分组的采样个数（或者采样比例）。
+可配置随机数种子，默认1234567。
+可以自己配置并发计算核心数目与内存，默认系统自动分配。
+PAI命令
+PAI -name StratifiedSample
+    -project algo_public \
+    -DinputTableName="test_input" \
+    -DoutputTableName="test_output" \
+    -DstrataColName="label" \
+    -DsampleSize="A:200,B:300,C:500" \
+    -DrandomSeed=1007 \
+    -Dlifecycle=30;
+算法参数
+参数名称	参数描述	参数值可选项	默认值
+inputTableName	必选，输入表	NA	NA
+inputTablePartitions	可选，训练输入表分区。	NA	默认选中全表
+outputTableName	必选，输出表	NA	NA
+strataColName	必选，层次列，分层就是按照此列作为key分层的	NA	NA
+sampleSize	可选，采样大小
+正整数：表示每个层的采样个数。
+字符串：格式为strata0:n0，strata1:n1，表示每个层分别配置的采样个数。
+正整数或字符串	默认为空
+sampleRatio	可选，采样比例
+数字：范围(0,1)，表示每个stratum的采样比例。
+字符串：格式为strata0:r0,strata1:r1 ，表示每个层分别配置采样比例。
+范围为(0,1)的浮点数或字符串	默认为空
+randomSeed	可选, 随机种子	正整数	默认123456
+lifecycle	可选，输出表生命周期	正整数，[1,3650]	默认不设置
+coreNum	可选，核心个数	正整数	系统自动分配
+memSizePerCore	可选，每个核心的内存（单位是MB）	正整数，(1, 65536)	系统自动分配
+注意
+
+当sampleSize与sampleRatio都为空时，系统会报错。
+当sampleSize与sampleRatio都不为空时，以sampleSize为准。
+示例
+源数据
+id	outlook	temperature	humidity	windy	play
+0	Sunny	85	85	false	No
+1	Sunny	80	90	true	No
+2	Overcast	83	86	false	Yes
+3	Rainy	70	96	false	Yes
+4	Rainy	68	80	false	Yes
+5	Rainy	65	70	true	No
+6	Overcast	64	65	true	Yes
+7	Sunny	72	95	false	No
+8	Sunny	69	70	false	Yes
+9	Rainy	75	80	false	Yes
+10	Sunny	75	70	true	Yes
+11	Overcast	72	90	true	Yes
+12	Overcast	81	75	false	Yes
+13	Rainy	71	91	true	No
+创建实验。
+stratified_sampling_demo_exp
+
+选取分组列。
+stratified_sampling_demo_exp_select_strata_column
+选择play列做为分组列。
+
+配置采样个数。
+stratified_sampling_demo_exp_config_param
+play = Yes的分组采4条，play = No的分组采3条。
+
+采样结果。
+stratified_sampling_demo_exp_result
+
+数据合并
+join
+两张表通过关联信息，合成一张表，并决定输出的字段，与SQL的join语句功能类似。
+
+参数设置
+screenshot
+
+连接类型支持：左连接，内连接，右连接，全连接。
+关联条件目前只支持等式。
+可手动添加或删除关联条件。
+PAI命令
+不提供PAI命令。
+
+合并列
+将两张表的数据按列合并，需要表的行数保持一致。
+
+参数设置
+screenshot
+左表选择输入列
+screenshot
+右表选择输入列
+screenshot
+
+选择的两张表行数需保持一致。
+左表与右表选择的输出列名不能重复。
+选择输出字段列时可手动更改输出字段名。
+若左表右表均不选择输出列，则默认输出全表。此时勾选“是否自动重命名输出列”，会重命名重复列后输出。
+PAI命令
+PAI -name AppendColumns
+   -project algo_public \
+   -DoutputTableColNames="petal_length,petal_width,petal_length2,petal_width2" \
+    -DautoRenameCol="false" \
+    -DoutputTableName="pai_temp_770_6840_1" \
+    -DinputTableNames="iris_twopartition,iris_twopartition" \
+    -DinputPartitionsInfoList="dt=20150125/dp=20150124;dt=20150124/dp=20150123" \
+    -DselectedColNamesList="petal_length,petal_width;sepal_length,sepal_width";
+name：组件名字。
+project：工程名字，用于指定算法所在空间。系统默认是algo_public，用户自己更改后系统会报错。
+outputTableColNames：新表中各列的列名，用逗号分隔。若autoRenameCol为true，则此参数无效。
+autoRenameCol：（可选）输出表是否自动重命名列，true为重命名，false不进行重命名，默认false。
+outputTableName：输出的表名。
+inputTableNames：输入的表名，如果有多个，逗号分隔。
+inputPartitionsInfoList：（可选）输入表对应选择的partition列表，同一个表的各partition按逗号分隔，不同表的partition分号分隔。
+selectedColNamesList：选择输入的列名，同张表之间列名用逗号分隔，不同表之间用分号分隔。
+合并行（UNION）
+将两张表的数据按行合并，左表及右表选择输出的字段个数以及类型应保持一致。整合了union和union all的功能。
+
+参数设置
+调整参数，如下：
+screenshot
+
+进行联合操作时，左右表选择的列数需相同，对应列的类型需保证一致。
+可根据实际情况在条件框中手动输入已选字段的过滤条件，默认情况下全表，目前操作符支持“=”，“!=”，“>”，“<”， “>=”，“<=”，“like” 和 “rlike”。
+系统默认勾选去重，对生成的数据表的重复行进行去重操作。
+左表联合列
+screenshot
+右表联合列
+screenshot
+PAI命令
+不提供PAI命令。
+
+增加序号列
+在数据表第一列追加ID列，并将append id后的内容存为新表，增加的ID列为BigInt类型。
+
+参数设置
+略
+
+PAI命令
+PAI -name AppendId -project algo_public -DIDColName="append_id" -DoutputTableName="test_11" -DinputTableName="bank_data" \
+    -DselectedColNames="age,campaign,cons_conf_idx,cons_price_idx,emp_var_rate,euribor3m,nr_employed,pdays,poutcome,previous,y";
+name：组件名字。
+project：project名字，用于指定算法所在空间。系统默认是algo_public，用户自己更改后系统会报错。
+IDColName：追加的ID列列名，从0开始编号，依次为0,1,2,3…。
+outputTableNames：输出表的名字。
+inputTableNmae：输入表的名字。
+selectedColNames：要保留的字段名，多个用逗号分隔。
+拆分
+背景
+对输入表或分区进行按比例拆分，分别写入两张输出表。
+
+算法组件
+split_icon_intro splig_param_setting
+
+拆分组件，对应两个输出桩。
+如图所示配置0.6，则左边的输出桩对应60%的数据，右边对应40%的数据。
+PAI命令
+pai -name split -project algo_public \
+    -DinputTableName=wbpc \
+    -Doutput1TableName=wpbc_split1 \
+    -Doutput2TableName=wpbc_split2 \
+    -Dfraction=0.25;
+参数设置
+参数名称	参数描述	参数值可选项	默认值
+inputTableName	必选，输入表的表名	-	-
+inputTablePartitions	可选，输入表中指定哪些分区参与训练，格式为：partition_name=value。如果是多级，格式为name1=value1/name2=value2；如果指定多个分区，中间用’,’分开	-	输入表的所有partition
+output1TableName	必选，输出结果表1	-	-
+output1TablePartition	可选，输出结果表1分区名	-	输出表1为非分区表
+output2TableName	必选，输出结果表2	-	-
+output2TablePartition	可选，输出结果表2分区名	-	输出表2为非分区表
+fraction	必选，切分至输出表1的数据比例	(0,1)	-
+lifecycle	可选，指定输出表生命周期	正整数，[1,3650]	输出表没有生命周期
+缺失值填充
+缺失值填充用来将空值或者一个指定的值替换为最大值，最小值，均值或者一个自定义的值。可以通过给定一个缺失值的配置列表，来实现将输入表的缺失值用指定的值来填充。
+
+可以将数值型的空值替换为最大值，最小值，均值或者一个自定义的值。
+可以将字符型的空值，空字符串，空值和空字符串，指定值替换为一个自定义的值。
+待填充的缺失值可以选择空值或空字符，也可以自定义。
+缺失值若选择空字符，则填充的目标列应是string型。
+数值型替换可以自定义，也可以直接选择替换成数值最大值，最小值或者均值。
+缺失值填充界面
+image
+
+两个输入桩依次对应参数为：
+
+inputTableName：输入表，即要填充的表。
+
+inputParaTableName：配置输入表，即缺失值填充节点生成的参数列表，通过此参数，可以将一张表的配置参数应用到一张新的表。
+
+两个输出桩依次对应参数为：
+
+outputTableName：输出表，即填充完成的表。
+
+outputParaTableName：输出配置表，用于应用到其他的数据集上。
+
+缺失值填充参数界面
+image
+
+填充的字段，原值，替换为三个部分组成了config参数，分别对应config参数的三个部分：列名，原值，替换值。
+PAI命令
+PAI -name FillMissingValues -project algo_public -Dconfigs="poutcome,null-empty,testing" \
+    -DoutputTableName="test_3" -DinputPartitions="pt=20150501" -DinputTableName="bank_data_partition";
+算法参数
+参数名称	参数描述	参数值可选项	默认值
+inputTableName	必选，输入表	-	-
+inputTablePartitions	可选，训练输入表分区。	-	默认选中全表
+outputTableName	必选，输出表	-	-
+configs	必选，缺失值填充的配置。格式如 “col1, null, 3.14; col2, empty, hello; col3, empty-null, world”，其中null表示空值，empty表示空字符。缺失值若选择空字符，则填充的目标列应是string型。若采用最大值、最小值、均值，可以采用变量，其命名规范形如：min, max, mean。若用户自定义替换值，则使用user-defined，格式如”col4,user-defined,str,str123”	-	-
+outputParaTableName	必选，配置输出表	-	-
+inputParaTableName	可选，配置输入表	-	默认不输入
+lifecycle	可选，输出表生命周期	-	默认不设置
+coreNum	可选，核心个数	-	默认不设置，系统自动分配
+memSizePerCore	可选，单个核心使用的内存数	-	默认不设置，系统自动分配
+实例
+测试数据
+
+新建数据SQL
+
+drop table if exists fill_missing_values_test_input;
+create table fill_missing_values_test_input(
+    col_string string,
+    col_bigint bigint,
+    col_double double,
+    col_boolean boolean,
+    col_datetime datetime);
+insert overwrite table fill_missing_values_test_input
+select
+    *
+from
+(
+    select
+        '01' as col_string,
+        10 as col_bigint,
+        10.1 as col_double,
+        True as col_boolean,
+        cast('2016-07-01 10:00:00' as datetime) as col_datetime
+    from dual
+    union all
+        select
+            cast(null as string) as col_string,
+            11 as col_bigint,
+            10.2 as col_double,
+            False as col_boolean,
+            cast('2016-07-02 10:00:00' as datetime) as col_datetime
+        from dual
+    union all
+        select
+            '02' as col_string,
+            cast(null as bigint) as col_bigint,
+            10.3 as col_double,
+            True as col_boolean,
+            cast('2016-07-03 10:00:00' as datetime) as col_datetime
+        from dual
+    union all
+        select
+            '03' as col_string,
+            12 as col_bigint,
+            cast(null as double) as col_double,
+            False as col_boolean,
+            cast('2016-07-04 10:00:00' as datetime) as col_datetime
+        from dual
+    union all
+        select
+            '04' as col_string,
+            13 as col_bigint,
+            10.4 as col_double,
+            cast(null as boolean) as col_boolean,
+            cast('2016-07-05 10:00:00' as datetime) as col_datetime
+        from dual
+    union all
+        select
+            '05' as col_string,
+            14 as col_bigint,
+            10.5 as col_double,
+            True as col_boolean,
+            cast(null as datetime) as col_datetime
+        from dual
+) tmp;
+输入数据说明
+
++------------+------------+------------+-------------+--------------+
+| col_string | col_bigint | col_double | col_boolean | col_datetime |
++------------+------------+------------+-------------+--------------+
+| 04         | 13         | 10.4       | NULL        | 2016-07-05 10:00:00 |
+| 02         | NULL       | 10.3       | true        | 2016-07-03 10:00:00 |
+| 03         | 12         | NULL       | false       | 2016-07-04 10:00:00 |
+| NULL       | 11         | 10.2       | false       | 2016-07-02 10:00:00 |
+| 01         | 10         | 10.1       | true        | 2016-07-01 10:00:00 |
+| 05         | 14         | 10.5       | true        | NULL         |
++------------+------------+------------+-------------+--------------+
+运行命令
+
+drop table if exists fill_missing_values_test_input_output;
+drop table if exists fill_missing_values_test_input_model_output;
+PAI -name FillMissingValues
+-project algo_public
+-Dconfigs="col_double,null,mean;col_string,null-empty,str_type_empty;col_bigint,null,max;col_boolean,null,true;col_datetime,null,2016-07-06 10:00:00"
+-DoutputParaTableName="fill_missing_values_test_input_model_output"
+-Dlifecycle="28"
+-DoutputTableName="fill_missing_values_test_input_output"
+-DinputTableName="fill_missing_values_test_input";
+drop table if exists fill_missing_values_test_input_output_using_model;
+drop table if exists fill_missing_values_test_input_output_using_model_model_output;
+PAI -name FillMissingValues
+-project algo_public
+-DoutputParaTableName="fill_missing_values_test_input_output_using_model_model_output"
+-DinputParaTableName="fill_missing_values_test_input_model_output"
+-Dlifecycle="28"
+-DoutputTableName="fill_missing_values_test_input_output_using_model"
+-DinputTableName="fill_missing_values_test_input";
+运行结果
+
+fill_missing_values_test_input_output
+
++------------+------------+------------+-------------+--------------+
+| col_string | col_bigint | col_double | col_boolean | col_datetime |
++------------+------------+------------+-------------+--------------+
+| 04         | 13         | 10.4       | true        | 2016-07-05 10:00:00 |
+| 02         | 14         | 10.3       | true        | 2016-07-03 10:00:00 |
+| 03         | 12         | 10.3       | false       | 2016-07-04 10:00:00 |
+| str_type_empty | 11         | 10.2       | false       | 2016-07-02 10:00:00 |
+| 01         | 10         | 10.1       | true        | 2016-07-01 10:00:00 |
+| 05         | 14         | 10.5       | true        | 2016-07-06 10:00:00 |
++------------+------------+------------+-------------+--------------+
+fill_missing_values_test_input_model_output
+
++------------+------------+
+| feature    | json       |
++------------+------------+
+| col_string | {"name": "fillMissingValues", "type": "string", "paras":{"missing_value_type": "null-empty",  "replaced_value": "str_type_empty"}} |
+| col_bigint | {"name": "fillMissingValues", "type": "bigint", "paras":{"missing_value_type": "null",  "replaced_value": 14}} |
+| col_double | {"name": "fillMissingValues", "type": "double", "paras":{"missing_value_type": "null",  "replaced_value": 10.3}} |
+| col_boolean | {"name": "fillMissingValues", "type": "boolean", "paras":{"missing_value_type": "null",  "replaced_value": 1}} |
+| col_datetime | {"name": "fillMissingValues", "type": "datetime", "paras":{"missing_value_type": "null",  "replaced_value": 1467770400000}} |
++------------+------------+
+fill_missing_values_test_input_output_using_model
+
++------------+------------+------------+-------------+--------------+
+| col_string | col_bigint | col_double | col_boolean | col_datetime |
++------------+------------+------------+-------------+--------------+
+| 04         | 13         | 10.4       | true        | 2016-07-05 10:00:00 |
+| 02         | 14         | 10.3       | true        | 2016-07-03 10:00:00 |
+| 03         | 12         | 10.3       | false       | 2016-07-04 10:00:00 |
+| str_type_empty | 11         | 10.2       | false       | 2016-07-02 10:00:00 |
+| 01         | 10         | 10.1       | true        | 2016-07-01 10:00:00 |
+| 05         | 14         | 10.5       | true        | 2016-07-06 10:00:00 |
++------------+------------+------------+-------------+--------------+
+fill_missing_values_test_input_output_using_model_model_output
+
++------------+------------+
+| feature    | json       |
++------------+------------+
+| col_string | {"name": "fillMissingValues", "type": "string", "paras":{"missing_value_type": "null-empty",  "replaced_value": "str_type_empty"}} |
+| col_bigint | {"name": "fillMissingValues", "type": "bigint", "paras":{"missing_value_type": "null",  "replaced_value": 14}} |
+| col_double | {"name": "fillMissingValues", "type": "double", "paras":{"missing_value_type": "null",  "replaced_value": 10.3}} |
+| col_boolean | {"name": "fillMissingValues", "type": "boolean", "paras":{"missing_value_type": "null",  "replaced_value": 1}} |
+| col_datetime | {"name": "fillMissingValues", "type": "datetime", "paras":{"missing_value_type": "null",  "replaced_value": 1467770400000}} |
++------------+------------+
+归一化
+对一个表的某一列或多列，进行归一化处理，产生的数据存入新表中。
+目前支持的是线性函数转换，表达式如下：y=(x-MinValue)/(MaxValue-MinValue)，MaxValue、MinValue分别为样本的最大值和最小值。
+可以选择是否保留原始列，勾选后原始列会被保留，处理过的列重命名。
+点击选择字段按钮可以选择想要归一化的列，目前支持double类型与bigint类型。
+归一化界面
+image
+
+两个输入桩依次对应参数为：
+
+inputTableName：输入表，即要归一化的表。
+
+inputParaTableName：配置输入表，即归一化节点生成的参数列表，通过此参数，可以将一张表的配置参数应用到一张新的表。
+
+两个输出桩依次对应参数为：
+
+outputTableName：输出表，即归一化完成的表。
+
+outputParaTableName：输出配置表，用于应用到其他的数据集上。
+
+归一化参数界面
+image
+
+保留原始列对应参数keepOriginal。
+PAI命令
+PAI -name Normalize -project algo_public -DkeepOriginal="true" -DoutputTableName="test_4" -DinputPartitions="pt=20150501" \
+    -DinputTableName="bank_data_partition" -DselectedColNames="emp_var_rate,euribor3m";
+算法参数
+参数名称	参数描述	参数值可选项	默认值
+inputTableName	必选，输入表	-	-
+selectedColNames	可选，输入表选择列	-	默认选中全部列
+inputTablePartitions	可选，训练输入表分区	-	默认选中全表
+outputTableName	必选，输出表	-	-
+outputParaTableName	必选，配置输出表	-	-
+inputParaTableName	可选，配置输入表	-	默认不输入
+keepOriginal	可选，是否保留原始列(keepOriginal =true时，处理过的列重命名（”normalized_”前缀），原始列保留，keepOriginal=false时，全部列保留且不重命名)	-	默认为false
+lifecycle	可选，输出表生命周期	-	默认不设置
+coreNum	可选，核心个数	-	默认不设置，系统自动分配
+memSizePerCore	可选，单个核心使用的内存数	-	默认不设置，系统自动分配
+实例
+测试数据
+
+新建数据SQL
+
+drop table if exists normalize_test_input;
+create table normalize_test_input(
+    col_string string,
+    col_bigint bigint,
+    col_double double,
+    col_boolean boolean,
+    col_datetime datetime);
+insert overwrite table normalize_test_input
+select
+    *
+from
+(
+    select
+        '01' as col_string,
+        10 as col_bigint,
+        10.1 as col_double,
+        True as col_boolean,
+        cast('2016-07-01 10:00:00' as datetime) as col_datetime
+    from dual
+    union all
+        select
+            cast(null as string) as col_string,
+            11 as col_bigint,
+            10.2 as col_double,
+            False as col_boolean,
+            cast('2016-07-02 10:00:00' as datetime) as col_datetime
+        from dual
+    union all
+        select
+            '02' as col_string,
+            cast(null as bigint) as col_bigint,
+            10.3 as col_double,
+            True as col_boolean,
+            cast('2016-07-03 10:00:00' as datetime) as col_datetime
+        from dual
+    union all
+        select
+            '03' as col_string,
+            12 as col_bigint,
+            cast(null as double) as col_double,
+            False as col_boolean,
+            cast('2016-07-04 10:00:00' as datetime) as col_datetime
+        from dual
+    union all
+        select
+            '04' as col_string,
+            13 as col_bigint,
+            10.4 as col_double,
+            cast(null as boolean) as col_boolean,
+            cast('2016-07-05 10:00:00' as datetime) as col_datetime
+        from dual
+    union all
+        select
+            '05' as col_string,
+            14 as col_bigint,
+            10.5 as col_double,
+            True as col_boolean,
+            cast(null as datetime) as col_datetime
+        from dual
+) tmp;
+输入数据说明
+
++------------+------------+------------+-------------+--------------+
+| col_string | col_bigint | col_double | col_boolean | col_datetime |
++------------+------------+------------+-------------+--------------+
+| 01         | 10         | 10.1       | true        | 2016-07-01 10:00:00 |
+| NULL       | 11         | 10.2       | false       | 2016-07-02 10:00:00 |
+| 02         | NULL       | 10.3       | true        | 2016-07-03 10:00:00 |
+| 03         | 12         | NULL       | false       | 2016-07-04 10:00:00 |
+| 04         | 13         | 10.4       | NULL        | 2016-07-05 10:00:00 |
+| 05         | 14         | 10.5       | true        | NULL         |
++------------+------------+------------+-------------+--------------+
+运行命令
+
+drop table if exists normalize_test_input_output;
+drop table if exists normalize_test_input_model_output;
+PAI -name Normalize
+-project algo_public
+-DoutputParaTableName="normalize_test_input_model_output"
+-Dlifecycle="28"
+-DoutputTableName="normalize_test_input_output"
+-DinputTableName="normalize_test_input"
+-DselectedColNames="col_double,col_bigint"
+-DkeepOriginal="true";
+drop table if exists normalize_test_input_output_using_model;
+drop table if exists normalize_test_input_output_using_model_model_output;
+PAI -name Normalize
+-project algo_public
+-DoutputParaTableName="normalize_test_input_output_using_model_model_output"
+-DinputParaTableName="normalize_test_input_model_output"
+-Dlifecycle="28"
+-DoutputTableName="normalize_test_input_output_using_model"
+-DinputTableName="normalize_test_input";
+运行结果
+
+normalize_test_input_output
+
++------------+------------+------------+-------------+--------------+-----------------------+-----------------------+
+| col_string | col_bigint | col_double | col_boolean | col_datetime | normalized_col_bigint | normalized_col_double |
++------------+------------+------------+-------------+--------------+-----------------------+-----------------------+
+| 01         | 10         | 10.1       | true        | 2016-07-01 10:00:00 | 0.0                   | 0.0                   |
+| NULL       | 11         | 10.2       | false       | 2016-07-02 10:00:00 | 0.25                  | 0.2499999999999989    |
+| 02         | NULL       | 10.3       | true        | 2016-07-03 10:00:00 | NULL                  | 0.5000000000000022    |
+| 03         | 12         | NULL       | false       | 2016-07-04 10:00:00 | 0.5                   | NULL                  |
+| 04         | 13         | 10.4       | NULL        | 2016-07-05 10:00:00 | 0.75                  | 0.7500000000000011    |
+| 05         | 14         | 10.5       | true        | NULL         | 1.0                   | 1.0                   |
++------------+------------+------------+-------------+--------------+-----------------------+-----------------------+
+normalize_test_input_model_output
+
++------------+------------+
+| feature    | json       |
++------------+------------+
+| col_bigint | {"name": "normalize", "type":"bigint", "paras":{"min":10, "max": 14}} |
+| col_double | {"name": "normalize", "type":"double", "paras":{"min":10.1, "max": 10.5}} |
++------------+------------+
+normalize_test_input_output_using_model
+
++------------+------------+------------+-------------+--------------+
+| col_string | col_bigint | col_double | col_boolean | col_datetime |
++------------+------------+------------+-------------+--------------+
+| 01         | 0.0        | 0.0        | true        | 2016-07-01 10:00:00 |
+| NULL       | 0.25       | 0.2499999999999989 | false       | 2016-07-02 10:00:00 |
+| 02         | NULL       | 0.5000000000000022 | true        | 2016-07-03 10:00:00 |
+| 03         | 0.5        | NULL       | false       | 2016-07-04 10:00:00 |
+| 04         | 0.75       | 0.7500000000000011 | NULL        | 2016-07-05 10:00:00 |
+| 05         | 1.0        | 1.0        | true        | NULL         |
++------------+------------+------------+-------------+--------------+
+normalize_test_input_output_using_model_model_output
+
++------------+------------+
+| feature    | json       |
++------------+------------+
+| col_bigint | {"name": "normalize", "type":"bigint", "paras":{"min":10, "max": 14}} |
+| col_double | {"name": "normalize", "type":"double", "paras":{"min":10.1, "max": 10.5}} |
++------------+------------+
+标准化
+对一个表的某一列或多列，进行标准化处理，产生的数据存入新表中。
+标准化所使用的公式 :（X - Mean）/（standard deviation）。
+Mean：样本平均值。
+standard deviation：样本标准偏差，针对从总体抽样，利用样本来计算总体偏差，为了使算出的值与总体水平更接近，就必须将算出的标准偏差的值适度放大，即 img。
+样本标准偏差公式：img  img 代表所采用的样本X1，X2，…，Xn的均值。
+可以选择是否保留原始列，勾选后原始列会被保留，处理过的列重命名。
+点击选择字段按钮可以选择想要标准化的列，目前支持double类型与bigint类型。
+标准化界面
+image
+
+两个输入桩依次对应参数为：
+
+inputTableName：输入表，即要标准化的表。
+
+inputParaTableName：配置输入表，即标准化节点生成的参数列表，通过此参数，可以将一张表的配置参数应用到一张新的表。
+
+两个输出桩依次对应参数为：
+
+outputTableName：输出表，即标准化完成的表。
+
+outputParaTableName：输出配置表，用于应用到其他的数据集上。
+
+标准化参数界面
+image
+
+保留原始列对应参数keepOriginal。
+PAI命令
+PAI -name Standardize -project algo_public -DkeepOriginal="false" -DoutputTableName="test_5" \
+    -DinputPartitions="pt=20150501" -DinputTableName="bank_data_partition" -DselectedColNames="euribor3m,pdays";
+算法参数
+参数名称	参数描述	参数值可选项	默认值
+inputTableName	必选，输入表	-	-
+selectedColNames	可选，输入表选择列	-	默认选中全部列
+inputTablePartitions	可选，训练输入表分区	-	默认选中全表
+outputTableName	必选，输出表	-	-
+outputParaTableName	必选，配置输出表	-	-
+inputParaTableName	可选，配置输入表	-	默认不输入
+keepOriginal	可选，是否保留原始列(keepOriginal=true时，处理过的列重命名（”stdized_”前缀），原始列保留，keepOriginal=false时，全部列保留且不重命名)	-	默认为false
+lifecycle	可选，输出表生命周期	-	默认不设置
+coreNum	可选，核心个数	-	默认不设置，系统自动分配
+memSizePerCore	可选，单个核心使用的内存数	-	默认不设置，系统自动分配
+实例
+测试数据
+
+新建数据SQL
+
+drop table if exists standardize_test_input;
+create table standardize_test_input(
+    col_string string,
+    col_bigint bigint,
+    col_double double,
+    col_boolean boolean,
+    col_datetime datetime);
+insert overwrite table standardize_test_input
+select
+    *
+from
+(
+    select
+        '01' as col_string,
+        10 as col_bigint,
+        10.1 as col_double,
+        True as col_boolean,
+        cast('2016-07-01 10:00:00' as datetime) as col_datetime
+    from dual
+    union all
+        select
+            cast(null as string) as col_string,
+            11 as col_bigint,
+            10.2 as col_double,
+            False as col_boolean,
+            cast('2016-07-02 10:00:00' as datetime) as col_datetime
+        from dual
+    union all
+        select
+            '02' as col_string,
+            cast(null as bigint) as col_bigint,
+            10.3 as col_double,
+            True as col_boolean,
+            cast('2016-07-03 10:00:00' as datetime) as col_datetime
+        from dual
+    union all
+        select
+            '03' as col_string,
+            12 as col_bigint,
+            cast(null as double) as col_double,
+            False as col_boolean,
+            cast('2016-07-04 10:00:00' as datetime) as col_datetime
+        from dual
+    union all
+        select
+            '04' as col_string,
+            13 as col_bigint,
+            10.4 as col_double,
+            cast(null as boolean) as col_boolean,
+            cast('2016-07-05 10:00:00' as datetime) as col_datetime
+        from dual
+    union all
+        select
+            '05' as col_string,
+            14 as col_bigint,
+            10.5 as col_double,
+            True as col_boolean,
+            cast(null as datetime) as col_datetime
+        from dual
+) tmp;
+输入数据说明
+
++------------+------------+------------+-------------+--------------+
+| col_string | col_bigint | col_double | col_boolean | col_datetime |
++------------+------------+------------+-------------+--------------+
+| 01         | 10         | 10.1       | true        | 2016-07-01 10:00:00 |
+| NULL       | 11         | 10.2       | false       | 2016-07-02 10:00:00 |
+| 02         | NULL       | 10.3       | true        | 2016-07-03 10:00:00 |
+| 03         | 12         | NULL       | false       | 2016-07-04 10:00:00 |
+| 04         | 13         | 10.4       | NULL        | 2016-07-05 10:00:00 |
+| 05         | 14         | 10.5       | true        | NULL         |
++------------+------------+------------+-------------+--------------+
+运行命令
+
+drop table if exists standardize_test_input_output;
+drop table if exists standardize_test_input_model_output;
+PAI -name Standardize
+-project algo_public
+-DoutputParaTableName="standardize_test_input_model_output"
+-Dlifecycle="28"
+-DoutputTableName="standardize_test_input_output"
+-DinputTableName="standardize_test_input"
+-DselectedColNames="col_double,col_bigint"
+-DkeepOriginal="true";
+drop table if exists standardize_test_input_output_using_model;
+drop table if exists standardize_test_input_output_using_model_model_output;
+PAI -name Standardize
+-project algo_public
+-DoutputParaTableName="standardize_test_input_output_using_model_model_output"
+-DinputParaTableName="standardize_test_input_model_output"
+-Dlifecycle="28"
+-DoutputTableName="standardize_test_input_output_using_model"
+-DinputTableName="standardize_test_input";
+运行结果
+
+standardize_test_input_output
+
++------------+------------+------------+-------------+--------------+--------------------+--------------------+
+| col_string | col_bigint | col_double | col_boolean | col_datetime | stdized_col_bigint | stdized_col_double |
++------------+------------+------------+-------------+--------------+--------------------+--------------------+
+| 01         | 10         | 10.1       | true        | 2016-07-01 10:00:00 | -1.2649110640673518 | -1.2649110640683832 |
+| NULL       | 11         | 10.2       | false       | 2016-07-02 10:00:00 | -0.6324555320336759 | -0.6324555320341972 |
+| 02         | NULL       | 10.3       | true        | 2016-07-03 10:00:00 | NULL               | 0.0                |
+| 03         | 12         | NULL       | false       | 2016-07-04 10:00:00 | 0.0                | NULL               |
+| 04         | 13         | 10.4       | NULL        | 2016-07-05 10:00:00 | 0.6324555320336759 | 0.6324555320341859 |
+| 05         | 14         | 10.5       | true        | NULL         | 1.2649110640673518 | 1.2649110640683718 |
++------------+------------+------------+-------------+--------------+--------------------+--------------------+
+standardize_test_input_model_output
+
++------------+------------+
+| feature    | json       |
++------------+------------+
+| col_bigint | {"name": "standardize", "type":"bigint", "paras":{"mean":12, "std": 1.58113883008419}} |
+| col_double | {"name": "standardize", "type":"double", "paras":{"mean":10.3, "std": 0.1581138830082909}} |
++------------+------------+
+standardize_test_input_output_using_model
+
++------------+------------+------------+-------------+--------------+
+| col_string | col_bigint | col_double | col_boolean | col_datetime |
++------------+------------+------------+-------------+--------------+
+| 01         | -1.2649110640673515 | -1.264911064068383 | true        | 2016-07-01 10:00:00 |
+| NULL       | -0.6324555320336758 | -0.6324555320341971 | false       | 2016-07-02 10:00:00 |
+| 02         | NULL       | 0.0        | true        | 2016-07-03 10:00:00 |
+| 03         | 0.0        | NULL       | false       | 2016-07-04 10:00:00 |
+| 04         | 0.6324555320336758 | 0.6324555320341858 | NULL        | 2016-07-05 10:00:00 |
+| 05         | 1.2649110640673515 | 1.2649110640683716 | true        | NULL         |
++------------+------------+------------+-------------+--------------+
+standardize_test_input_output_using_model_model_output
+
++------------+------------+
+| feature    | json       |
++------------+------------+
+| col_bigint | {"name": "standardize", "type":"bigint", "paras":{"mean":12, "std": 1.58113883008419}} |
+| col_double | {"name": "standardize", "type":"double", "paras":{"mean":10.3, "std": 0.1581138830082909}} |
++------------+------------+
+类型转换
+组件功能介绍
+将表的字段类型转成另一个类型。
+
+PAI命令
+PAI -name type_transform
+    -project algo_public
+    -DinputTable="pai_dense"
+    -DselectedCols="gail,loss,work_year"
+    -Dpre_type="double"
+    -Dnew_type="bigint"
+    -DoutputTable="pai_temp_2250_20272_1"
+    -Dlifecycle="28"
+算法参数
+参数名称	参数描述	参数值可选项	默认值
+inputTable	必选，输入表的表名	-	-
+inputTablePartitions	可选，输入表中指定哪些分区参与训练，格式为: partition_name=value。如果是多级，格式为name1=value1/name2=value2；如果指定多个分区，中间用‘,’分开	-	输入表的所有partition
+outputTable	必选，类型转换的结果表	-	-
+selectedCols	必选，需要类型转换特征列，必须是同一个类型	-	-
+pre_type	原字段类型，必须与selectedCols勾选的字段类型一致，否则会报字段类型不一致错误	-	-
+new_type	新的字段类型，用户设置		100
+lifecycle	outputTable结果表生命周期，可选，默认7		7
+使用DEMO
+拖拽一个读数据表组件，配置数据表pai_dense结构如下。
+image
+
+image
+
+拖拽一个类型转换组件, 在右侧参数配置栏中：勾选需要转换的特征，比如下图勾选了3个原数据类型为double的列（主要double类型必须与勾选的字段类型一致），转换成bigint类型。
+image
+
+image
+
+右键点击运行后，可以看到输出结果表字段类型变化如下。
+image
+
+KV2Table
+给定kv（key:value）格式，转成普通表格式，key转换成表的某列名，value转成该列在对应行的值。
+
+kv表格式定义：Key是列名的index，value支持bigint或double，这样能直接作为稀疏格式输入其他包括逻辑回归、线性回归等算法组件，key也支持string类型。在该组件中可以输入用户定义的key_map表，是列名和key的映射，但无论是否输入这张表，该组件都会输出key_map表记录转化后列名和key的映射。
+
+kv
+1:10;2:20;3:30
+KeyMap表格式定义：包含列名和index的映射以及类型信息的三元组表：col_name，col_index，col_datatype，这三列类型要求是string，其中col_datatype缺失时默认值为“double”。
+
+col_name	col_index	col_datatype
+col1	1	bigint
+col2	2	double
+PAI命令
+PAI -name KVToTable
+    -project algo_public
+    -DinputTableName=test
+    -DoutputTableName=test_out
+    -DoutputKeyMapTableName=test_keymap_out
+    -DkvColName=kv;
+参数说明
+参数名称	参数描述	取值范围	是否必选，默认值
+inputTableName	输入表名	-	必选，不能为空表
+kvColName	kv列名	限选一列	必选
+outputTableName	输出表名	-	必选
+outputKeyMapTableName	输出索引表名	-	必选
+inputKeyMapTableName	输入索引表名	-	可选，“”
+appendColName	附加列名	可选多列	可选，“”
+inputTablePartitions	输入表分区	-	可选，””
+kvDelimiter	key和value之间分隔符	-	可选，默认”:”
+itemDelimiter	kv对之间分隔符	-	可选，默认”,”
+top1200	是否只截取前1200列	-	可选，默认true，该选项为false时，超过最大列数会报错
+lifecycle	生命周期	>=-1整数	可选，默认-1，不设生命周期
+coreNum	核数目	>0整数	可选，默认-1，会根据输入数据量计算所起instance的数量
+memSizePerCore	内存数	(100,64*1024)	可选，默认-1，会根据输入数据量计算所需内存大小
+具体示例
+数据生成
+
+    drop table if exists test;
+        create table test as
+          select
+            *
+          from
+          (
+            select '1:1,2:2,3:-3.3' as kv from dual
+            union all
+            select '1:10,2:20,3:-33.3' as kv from dual
+          ) tmp;
+PAI命令行
+
+ PAI -name KVToTable
+    -project algo_public
+    -DinputTableName=test
+    -DoutputTableName=test_out
+    -DoutputKeyMapTableName=test_keymap_out
+    -DkvColName=kv;
+输出说明
+
+输出表
+
++------------+------------+------------+
+| kv_1       | kv_2       | kv_3       |
++------------+------------+------------+
+| 1.0        | 2.0        | -3.3       |
+| 10.0       | 20.0       | -33.3      |
++------------+------------+------------+
+输出映射表
+
++------------+------------+------------+
+| col_name   | col_index  | col_type   |
++------------+------------+------------+
+| kv_1       | 1          | double     |
+| kv_2       | 2          | double     |
+| kv_3       | 3          | double     |
++------------+------------+------------+
+算法规模
+转化后的列包含append列和kv所转化的列，先输出kv列再输出append列，当总列数超过odps最大列数限制，输出top1200选项为True，则输出最大列数，否则报错，目前odps的最大列数为1200列。
+
+数据量不超过1亿条记录。
+
+常见问题
+若有输入key_map表，转化的列是key_map表中的key和kv表中的key的交集。
+
+转化的列类型只支持数值类型。
+
+若有输入key_map表，转化后key列类型和key_map表中一致，若无，类型为double。
+
+没有输入keymap表，转化后key列名的命名规则为：kv列的列名+“”+key， 若key中包含”%&()*+-./;<>=?”中任一字符，都不符合odps的命名规则，会报错。
+
+列名冲突规则：若指定了append列，且append列名和转化后key列名相同，会报错。
+
+同一行有重复key处理：value值相加。
+
+列名长度超过128个字符将被截断成128个字符。
+
+Table2KV
+将普通表（table）转成kv格式的表。原表中的空值不会被表示出来。用户可以指定在生成表中保留某些列，这些列会原样输出。
+
+PAI命令
+PAI -name TableToKV
+    -project algo_public
+    -DinputTableName=maple_tabletokv_basic_input
+    -DoutputTableName=maple_tabletokv_basic_output
+    -DselectedColNames=col0,col1,col2
+    -DappendColNames=rowid;
+参数说明
+参数名称	参数描述	取值范围	是否必选，默认值
+inputTableName	输入表	表名	必选
+inputTablePartitions	输入表中指定哪些分区参与训练， 格式为: Partition_name=value，如果是多级格式为name1=value1/name2=value2; 如果是指定多个分区， 中间用‘,’分开		可选， 默认值选择所有分区
+selectedColNames	选择列名，只能是bigint或double	列名	可选，选择全表
+appendColNames	需要保留的列名，该列会被原样写入到输出表中	列名	可选，无
+outputTableName	输出KV表	表名	必选
+kvDelimiter	key和value的分割符	字符	可选，‘:’
+itemDelimiter	kv间的分割符	字符	可选，‘,’
+convertColToIndexId	指定是否将列转换为编号，1为转换，0为不转换	0或1	可选，0
+inputKeyMapTableName	输入索引表名，只在convertColToIndexId=1时有效，若未指定该参数，程序自动计算一套编号	表名	可选，””
+outputKeyMapTableName	输出索引表名，当且仅当convertColToIndexId=1时必选	表名	由convertColToIndexId决定
+lifecycle	可选，指定输出表的生命周期	正整数	没有生命周期
+coreNum	节点个数	与参数memSizePerCore配对使用，正整数，范围[1, 9999]	可选， 默认自动计算
+memSizePerCore	单个节点内存大小，单位M	正整数，范围[1024, 64*1024]	可选， 默认自动计算
+具体示例1
+数据生成
+
+rowid	kv
+0	col0:1,col1:1.1,col2:2
+1	col0:0,col1:1.2,col2:3
+2	col0:1,col1:2.3
+3	col0:1,col1:0.0,col2:4
+PAI命令行
+
+PAI -name TableToKV
+    -project algo_public
+    -DinputTableName=maple_tabletokv_basic_input
+    -DoutputTableName=maple_tabletokv_basic_output
+    -DselectedColNames=col0,col1,col2
+    -DappendColNames=rowid;
+输入说明输出说明
+
+输出表
+maple_tabletokv_basic_output
+
+rowid:bigint	kv:string
+0	1:1.1,2:2
+1	1:1.2,2:3
+2	1:2.3
+3	1:0.0,2:4
+具体示例2
+PAI -name TableToKV
+    -project projectxlib4 -DinputTableName=maple_tabletokv_basic_input
+    -DoutputTableName=maple_tabletokv_basic_output
+    -DselectedColNames=col0,col1,col2 -DappendColNames=rowid
+    -DconvertColToIndexId=1
+    -DinputKeyMapTableName=maple_test_tabletokv_basic_map_input
+    -DoutputKeyMapTableName=maple_test_tabletokv_basic_map_output;
+输入说明输出说明
+
+输出表
+maple_test_tabletokv_basic_map_output
+
+col_name:string	col_index:string	col_datatype:string
+col1	1	bigint
+col2	2	double
+常见问题
+若有输入key_map表，转化的列是key_map表中的key和kv表中的key的交集。
+若有输入key_map表，且类型与输入表冲突，则新输出的key_map表以用户指定类型为准。
+输入表中要转为kv的列只能为bigint和double类型

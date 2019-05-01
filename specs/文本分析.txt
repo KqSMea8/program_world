@@ -1,0 +1,1225 @@
+词频统计
+功能介绍
+在对文章进行分词的基础上，按行保序输出对应文章ID列（docId）对应的词，统计指定文章ID列对应文章内容（docContent）的词频。
+
+参数设置
+输入参数：经过分词组件生成两列，文档ID列和分词后的文档内容列。
+
+两个输出参数：
+
+第一个输出端：输出表包含id、word、count三个字段，如下图所示。
+
+dd
+
+count表示每个文档中对应“word”词汇出现的次数。
+
+第二个输出端：输出表包含id和word两个字段，如下图所示。
+
+dd
+
+本输出表按词语在文章中出现的顺序依次输出，没有统计词语出现的次数。因此同一文档中某个词汇可能出现多条记录。
+输出表格式主要用于兼容Word2Vec组件使用。
+
+PAI命令
+PAI -name doc_word_stat
+    -project algo_public
+    -DinputTableName=doc_test_split_word
+    -DdocId=id
+    -DdocContent=content
+    -DoutputTableNameMulti=doc_test_stat_multi
+    -DoutputTableNameTriple=doc_test_stat_triple
+    -DinputTablePartitions="region=cctv_news"
+算法参数
+参数名称	参数描述	参数可选项	默认值
+inputTableName	输入表名	表名	不涉及
+docId	标识文章id的列名	仅可指定一列	不涉及
+docContent	标识文章内容的列名	仅可指定一列	不涉及
+outputTableNameMulti	输出保序词语表名	表名	不涉及
+outputTableNameTriple	输出词频统计表名	表名	不涉及
+inputTablePartitions	输入表中指定参与分词的分区名，格式为“partition_name=value”。如果是多级，格式为“name1=value1/name2=value2”，如果指定多个分区，中间用“,”隔开	分区表	输入表的所有分区
+说明：
+
+参数outputTableNameMulti指定的表：docId列及docId列对应的文章内容（docContent）完成分词后，按各个词语在文章中出现的顺序依次输出。
+参数outputTableNameTriple指定的表：docId列及docId列对应的文章内容（docContent）完成分词后，统计得到的各个词语及其在文章中出现的次数。
+实例
+采用阿里分词实例数据，分别将输出表的两个列作为词频统计的输入参数：
+
+id：选择文档ID列。
+text：选择文档内容列。
+经过词频统计运算后，生成的结果如下图所示。
+
+dd
+
+
+
+
+
+
+
+
+
+----------------------
+TF-IDF
+TF-IDF（term frequency–inverse document frequency）是一种用于资讯检索与文本挖掘的常用加权技术。
+TF-IDF是一种统计方法，用以评估一个字词对于一个文件集或一份文件对于一个语料库的重要程度。字词的重要性随着它在文件中出现的次数成正比增加，但同时会随着它在语料库中出现的频率成反比下降。
+TF-IDF加权的各种形式常被搜索引擎应用，作为文件与用户查询之间相关程度的度量或评级。
+本组件是在词频统计输出的基础上，计算各个词语对于各个文章的tfidf值。详细介绍请参考wiki 。
+
+参数设置
+无。
+
+实例
+以词频统计组件实例中的输出表作为TF-IDF组件的输入表，对应的参数设置如下：
+
+选择文档ID列： id
+选择单词列：word
+选择单词计数列：count
+输出表有9列：docid，word，word_count（当前word在当前doc中出现次数），total_word_count（当前doc中总word数），doc_count（包含当前word的总doc数），total_doc_count（全部doc数），tf，idf，tfidf
+
+结果如下图所示。
+
+ddd
+
+PAI命令
+PAI -name tfidf
+    -project algo_public
+    -DinputTableName=rgdoc_split_triple_out
+    -DdocIdCol=id
+    -DwordCol=word
+    -DcountCol=count
+    -DoutputTableName=rg_tfidf_out;
+算法参数
+参数key名称	参数描述	必/选填	默认值
+inputTableName	输入表名	必填	NA
+inputTablePartitions	输入表分区	选填	输入表的所有partition
+docIdCol	标识文章id的列名，仅可指定一列	必填	NA
+wordCol	word列名，仅可指定一列	必填	NA
+countCol	count列名，仅可指定一列	必填	NA
+outputTableName	输出表名	必填	NA
+lifecycle	输出表生命周期（单位：天）	选填	无生命周期限制
+coreNum	核心数，需和memSizePerCore同时设置才起作用	选填	自动计算
+memSizePerCore	内存数，需和coreNum同时设置才起作用	选填	自动计算
+
+
+
+
+
+------------------------------------------------------------------------
+PLDA
+LDA（Latent Dirichlet allocation）是一种主题模型，它可以将每篇文档的主题按照概率分布的形式给出。
+LDA是一种无监督学习算法，在训练时不需要手工标注的训练集，需要的仅仅是文档集以及主题的数量。
+LDA首先由David M. Blei、Andrew Y. Ng和Michael I. Jordan于2003年提出，目前在文本挖掘领域包括文本主题识别、文本分类以及文本相似度计算方面都有应用。
+参数设置
+主题个数：设置LDA输出的主题个数。
+Alpha：P(z/d)的先验狄利克雷分布的参数。
+beta：P(w/z)的先验狄利克雷分布的参数。
+burn In：burn in迭代次数，必须小于总迭代次数，默认值为100。
+总迭代次数：正整数，非必选，默认值为150。
+说明：z代表主题，w代表单词，d代表文档。
+
+输入输出说明
+输入
+
+输入数据必须为稀疏矩阵的格式。目前需要用户自己写一个MR，实现数据的转换。
+
+输入格式如下图所示。
+
+
+
+第一列为docid，第二列为单词和词频对应的kv数据。
+
+输出
+
+输出桩1：词频，算法内部抽样后每个词在主题中出现的次数。
+输出桩2：P(单词|主题)，每个主题下各个单词的概率。
+输出桩3：P(主题|单词)，每个单词对应各个主题的概率。
+输出桩4：P(文档|主题)，每个主题对应各个文档的概率。
+输出桩5：P(主题|文档)，每个文档对应主题的概率。
+输出桩6：P(主题)，每个主题的概率，表明在整个文档中的权重。
+topic-word频率贡献表的输出格式如下：
+
+
+-------------------------------------------------------------
+PAI命令
+PAI -name PLDA
+    -project algo_public
+    -DinputTableName=lda_input
+    -DtopicNum=10
+    -topicWordTableName=lda_output;
+算法参数
+参数名称	参数描述	取值范围	是否必选，默认值/行为
+inputTableName	输入表名	表名	必选
+inputTablePartitions	输入表中指定参与分词的分区名	格式为“partition_name=value”。如果是多级格式为“name1=value1/name2=value2”，如果是指定多个分区，中间用“,”分开	非必选，默认行为：输入表的所有分区
+selectedColNames	输入表中用于LDA的列名	列名，逗号分隔	非必选，默认行为：输入表中所有的列名
+topicNum	topic的数量	[2, 500]	必选
+kvDelimiter	key和value间的分分隔符	空格、逗号、冒号	非必选，默认值：冒号
+itemDelimiter	key和key间的分隔符	空格、逗号、冒号	非必选，默认值：空格
+alpha	P(z/d)的先验狄利克雷分布的参数	(0, ∞)	非必选，默认值：0.1
+beta	P(w/z)的先验狄利克雷分布的参数	(0, ∞)	非必选，默认值：0.01
+topicWordTableName	topic-word频率贡献表	表名	必选
+pwzTableName	P(w/z)输出表	表名	非必选，默认行为：不输出P(w/z)表
+pzwTableName	P(z/w)输出表	表名	非必选，默认行为：不输出P(z/w)表
+pdzTableName	P(d/z)输出表	表名	非必选，默认行为：不输出P(d/z)表
+pzdTableName	P(z/d)输出表	表名	非必选，默认行为：不输出P(z/d)表
+pzTableName	P(z)输出表	表名	非必选，默认行为：不输出P(z)表
+burnInIterations	burn in 迭代次数	正整数	非必选，必须小于totalIterations，默认值：100
+totalIterations	迭代次数	正整数	非必选，默认值：150
+说明：z代表主题，w代表单词，d代表文档。
+
+-----------------------------------------------------
+Word2Vec
+功能介绍
+Word2Vec是一个开源算法，可以将词表转为向量。
+Word2Vec使用神经网络，通过训练，将词映射到K维度空间向量，甚至还能将词向量的操作与语义相对应起来。其简单和高效的特点引起了广泛关注。
+Word2Vec的工具包相关链接：https://code.google.com/p/word2vec/ 。
+参数设置
+算法参数：
+
+单词的特征维度：建议 0～1000。
+向下采样阈值：建议 1e-3～1e-5。
+组件输入：单词列和词汇表。
+
+组件输出：词向量表和词汇表。
+
+PAI命令
+PAI -name Word2Vec
+    -project algo_public
+    -DinputTableName=w2v_input
+    –DwordColName=word
+    -DoutputTableName=w2v_output;
+算法参数
+参数名称	参数描述	取值范围	是否必选，默认值/行为
+inputTableName	输入表名	表名	必选
+inputTablePartitions	输入表中指定参与分词的分区名	格式为“partition_name=value”。如果是多级格式为“name1=value1/name2=value2”，如果是指定多个分区，中间用“,”分开	非必选，默认行为：输入表的所有分区
+wordColName	单词列名，单词列中每行为一个单词，语料中换行符用</s>表示	列名	必选
+inVocabularyTableName	输入词表，该表为inputTableName的 wordcount输出	表名	非必选，默认行为：程序内部会对输出表做wordcount
+inVocabularyPartitions	输入词表分区	分区名	非必选，默认值：inVocabularyTableName对应表的所有分区
+layerSize	单词的特征维度	0～1000	非必选，默认值：100
+cbow	语言模型	值为1：表示cbow模型，值为0：skip-gram模型	非必选，默认值：0
+window	单词窗口大小	正整数	非必选，默认值：5
+minCount	截断的最小词频	正整数	非必选：默认值：5
+hs	是否采用HIERARCHICAL SOFTMAX	值为1：表示采用，值为0：不采用	非必选，默认值：1
+negative	NEGATIVE SAMPLING	值为0不可用，建议值5～10	非必选，默认值：0
+sample	向下采样阈值	值为小于等于0：不采用，建议值为1e-3～1e-5	非必选，默认值：0
+alpha	开始学习速率	大于0	非必选，默认值：0.025
+iterTrain	训练的迭代次数	大于等于1	非必选，默认值：1
+randomWindow	window是否随机	值为1，表示大小在1～5间随机；值为0，表示不随机，其值由window参数指定	非必选，默认值：1
+outVocabularyTableName	输出词表	表名	非必选，默认行为：不输出‘输出词表’
+outVocabularyPartition	输出词表分区	分区名	非必选，默认行为：输出词表为非分区表
+outputTableName	输出表	表名	必选
+outputPartition	输出表分区信息	分区名	非必选，默认行为：输出表为非分区
+使用示例
+可以连接词频统计组件的第二输出桩，输入示范如下图“word”列：
+
+
+
+
+
+-----------------------------------------------
+Doc2Vec
+功能介绍
+Doc2Vec可以将文章映射成向量。
+
+参数设置
+算法参数：
+
+单词的特征维度：建议 0～1000。
+向下采样阈值：建议 1e-3～1e-5。
+输入：单词列和词汇表。
+
+输出：文档向量表、词向量表、词汇表。
+
+PAI命令
+PAI -name pai_doc2vec
+    -project algo_public
+    -DinputTableName=d2v_input
+    -DdocIdColName=docid
+    -DdocColName=text_seg
+    -DoutputWordTableName=d2v_word_output
+    -DoutputDocTableName=d2v_doc_output;;
+算法参数
+参数名称	参数描述	取值范围	是否必选，默认值/行为
+inputTableName	输入表名	表名	必选
+inputTablePartitions	输入表中指定参与分词的分区名	格式为“partition_name=value”。如果是多级格式为“name1=value1/name2=value2”，如果是指定多个分区，中间用“,”分开	非必选，默认行为：输入表的所有partition
+docIdColName	文档id列名	列名	必选
+docColName	文档内容，可以是用分词的结果，空格分割	列名	必选
+layerSize	单词的特征维度	0～1000	非必选，默认值：100
+cbow	语言模型	值为1：cbow模型，值为0：skip-gram模型	非必选，默认值：0
+window	单词窗口大小	正整数	非必选，默认值：5
+minCount	截断的最小词频	正整数	非必选：默认值：5
+hs	是否采用HIERARCHICAL SOFTMAX	值为1：表示采用，值为0：不采用	非必选，默认值：1
+negative	NEGATIVE SAMPLING	值为0不可用，建议值5～10	非必选，默认值：0
+sample	向下采样阈值	值为小于等于0：不采用，建议值为1e-3～1e-5	非必选，默认值：0
+alpha	开始学习速率	大于0	非必选，默认值：0.025
+iterTrain	训练的迭代次数	大于等于1	非必选，默认值：1
+randomWindow	window是否随机	值为1，表示大小在1～5间随机；值为0，表示不随机，其值由window参数指定	非必选，默认值：1
+outVocabularyTableName	输出词表	表名	非必选，默认行为：不输出‘输出词表’
+outputWordTableName	输出词向量表	表名	必选
+outputDocTableName	输出文档向量表	表名	必选
+lifecycle	输出表的生命周期	正整数	可选，默认值无生命周期
+coreNum	核心数，需和memSizePerCore同时设置才起作用	正整数	自动计算
+memSizePerCore	内存数，需和coreNum同时设置才起作用	正整数	自动计算
+Split Word
+基于AliWS(Alibaba Word Segmenter的简称)词法分析系统，对指定列对应的文章内容进行分词，分词后的各个词语间以空格作为分隔符，若用户指定了词性标注或语义标注相关参数，则会将分词结果、词性标注结果和语义标注结果一同输出，其中词性标注分隔符为”/“，语义标注分隔符为”|”。目前仅支持中文淘宝分词和互联网分词。
+
+PAI命令行
+pai -name split_word
+    -project algo_public
+    -DinputTableName=doc_test
+    -DselectedColNames=content1,content2
+    -DoutputTableName=doc_test_split_word
+    -DinputTablePartitions="region=cctv_news"
+    -DoutputTablePartition="region=news"
+    -Dtokenizer=TAOBAO_CHN
+    -DenableDfa=true
+    -DenablePersonNameTagger=false
+    -DenableOrgnizationTagger=false
+    -DenablePosTagger=false
+    -DenableTelephoneRetrievalUnit=true
+    -DenableTimeRetrievalUnit=true
+    -DenableDateRetrievalUnit=true
+    -DenableNumberLetterRetrievalUnit=true
+    -DenableChnNumMerge=false
+    -DenableNumMerge=true
+    -DenableChnTimeMerge=false
+    -DenableChnDateMerge=false
+    -DenableSemanticTagger=true
+参数说明
+参数key名称	参数描述	取值范围	是否必选，默认值
+inputTableName	输入表名	表名b	必选
+inputTablePartitions	输入表中指定参与分词的分区名, 格式为: partition_name=value。如果是多级，格式为name1=value1/name2=value2；如果是指定多个分区，中间用’,’分开	-	可选，默认选所有分区
+selectedColNames	输入表中用于分词的列名	可指定多列，列名间用逗号(,)间隔	必选
+dictTableName	自定义字典表, 只有一列,每一行是一个word	表名	可选，默认没有自定义字典
+tokenizer	分类器类型	TAOBAO_CHN(淘宝中文分词),INTERNET_CHN(互联网中文分词)	可选，默认为TAOBAO_CHN
+enableDfa	简单实体识别	true,false	可选，默认为true
+enablePersonNameTagger	人名识别	true,false	可选，默认为false
+enableOrgnizationTagger	机构名识别	true,false	可选，默认为false
+enablePosTagger	是否词性标注	true,false	可选，默认为false
+enableTelephoneRetrievalUnit	检索单元配置－电话号码识别	true,false	可选，默认为true
+enableTimeRetrievalUnit	检索单元配置－时间号码识别	true,false	可选，默认为true
+enableDateRetrievalUnit	检索单元配置－日期号码识别	true,false	可选，默认为true
+enableNumberLetterRetrievalUnit	检索单元配置－数字字母识别	true,false	可选，默认为true
+enableChnNumMerge	中文数字合并为一个检索单元	true,false	可选，默认为false
+enableNumMerge	普通数字合并为一个检索单元	true,false	可选，默认为true
+enableChnTimeMerge	中文时间合并为一个语意单元	true,false	可选，默认为false
+enableChnDateMerge	中文日期合并为一个语意单元	true,false	可选，默认为false
+enableSemanticTagger	是否语义标准	true,false	可选，默认为false
+outputTableName	输出表名	表名	必选
+outputTablePartition	指定输出表的分区		可选，默认输出表不进行分区
+coreNum	节点个数	与参数memSizePerCore配对使用，正整数，范围[1, 9999]	可选， 默认自动计算
+memSizePerCore	单个节点内存大小，单位M	正整数，范围[1024, 64*1024]	可选， 默认自动计算
+lifecycle	可选，指定输出表的生命周期	正整数	没有生命周期
+自定义资源
+如果为普通表，则不建议设置coreNum和memSizePerCore，由算法自动计算。
+如果在资源有限的情况下可以使用如下代码计算。
+def CalcCoreNumAndMem(row, col, kOneCoreDataSize=1024):
+    """计算节点个数和单个节点内存
+       Args:
+           row：输入表行数
+           col：输入表列数
+           kOneCoreDataSize：单个节点计算的数据量，单位M，正整数，默认1024
+       Return:
+           coreNum, memSizePerCore
+       Example:
+           coreNum, memSizePerCore = CalcCoreNumAndMem(1000,99, 100, kOneCoreDataSize=2048)
+    """
+    kMBytes = 1024.0 * 1024.0
+    #按数量划分，计算节点个数
+    coreNum = max(1, int(row * col * 1000/ kMBytes / kOneCoreDataSize))
+    #单个节点内存 = 数据量大小
+    memSizePerCore = max(1024,  int(kOneCoreDataSize*2))
+    return coreNum,  memSizePerCore
+
+
+
+
+-------------------------------------
+
+自定义词典
+
+自定义词典使用方法如下：
+
+image
+
+若有自定义词典，连接第二个输入桩。格式是一列，每一行是一个词。
+
+界面参数设置：
+
+分词算法：CRF,UNIGRAM
+识别选项：分词中，是否识别特殊意义的名词；
+合并选项：将具有特殊领域的名词作为整体，不进行切分操作
+字符串切分长度：>=0,数字串按指定长度进行截断作为检索单元；默认为0,不对数字串进行长度切分
+使用词频纠错：是否使用纠错词典；
+标注词性：输出结果中，标注词性
+具体示例
+数据生成
+
+create table pai_aliws_test
+as select
+    1 as id,
+    '今天是个好日子，天气好晴朗。' as content
+from  dual;
+PAI命令行
+
+pai -name split_word
+    -project algo_public
+    -DinputTableName=pai_aliws_test
+    -DselectedColNames=content
+    -DoutputTableName=doc_test_split_word
+输入说明
+
+输入包含两列的表，第一列是文档id，第二列是文档内容text,如下：
++------------+------------+
+| id         | content    |
++------------+------------+
+| 1          | 今天 是 个 好日子 ， 天气 好 晴朗 。 |
+输出说明
+
+输出将原表中的分词列分词，其余列原样输出。
+
+自定义词典的格式：自定义词典只有一列，每一行是一个词。
+
+自定义词典分词：分词结果会按照自定义词典和上下文来分，不会完全按照词典分词。
+
+三元组转kv
+功能介绍
+给定三元组（row，col，value）类型为“XXD”或“XXL”，“X”表示任意类型，“D”表示Double，“L”表示bigint，转成kv格式（row,[col_id:value]），其中row和value类型与原始输入数据一致，col_id类型是bigint，并给出col的索引表映射到col_id。
+
+输入输出说明
+输入表形式如下
+
+id	word	count
+01	a	10
+01	b	20
+01	c	30
+输出kv表如下，kv分隔符可以自定义
+
+id	key_value
+01	1:10;2:20;3:30
+输出word的索引表如下
+
+key	key_id
+a	1
+b	2
+c	3
+PAI命令
+PAI -name triple_to_kv
+-project algo_public
+-DinputTableName=test_data
+-DoutputTableName=test_kv_out
+-DindexOutputTableName=test_index_out
+-DidColName=id
+-DkeyColName=word
+-DvalueColName=count
+-DinputTablePartitions=ds=test1
+-DindexInputTableName=test_index_input
+-DindexInputKeyColName=word
+-DindexInputKeyIdColName=word_id
+-DkvDelimiter=:
+-DpairDelimiter=;
+-Dlifecycle=3
+算法参数
+参数名称	参数描述	参数值可选项	默认值	备注
+inputTableName	必选，输入表名	表名	不涉及	不能为空表
+idColName	必选，转成kv表时保持不变的列名	列名	不涉及	无
+keyColName	必选，kv中的key	字符类型	不涉及	无
+valueColName	必选，kv中的value	数值类型	不涉及	无
+outputTableName	必选，输出kv表名	表名	不涉及	无
+indexOutputTableName	必选，输出key的索引表	表名	不涉及	无
+indexInputTableName	可选，输入已有的索引表	表名	“”	不能是空表，可以只有部分key的索引
+indexInputKeyColName	可选，输入索引表key的列名	列名	“”	输入indexInputTableName时必选此项
+indexInputKeyIdColName	可选，输入索引表key索引号的列名	列名	“”	输入indexInputTableName时必选此项
+inputTablePartitions	可选，输入表的分区	分区名	“”	只能输入单个分区
+kvDelimiter	可选，key和value之间分隔符	字符	:	无
+pairDelimiter	可选，kv对之间分隔符	字符	;	-
+lifecycle	可选，输出结果表的生命周期	正整数	不设生命周期	无
+coreNum	可选，指定instance的总数	正整数	-1	默认会根据输入数据大小计算
+memSizePerCore	可选，指定memory大小，范围在100～64*1024之间	正整数	-1	默认会根据输入数据大小计算
+实例
+测试数据
+
+
+-
+新建数据的SQL语句：
+
+drop table if exists triple2kv_test_input;
+create table triple2kv_test_input as
+select
+  *
+from
+(
+  select '01' as id, 'a' as word, 10 as count from dual
+    union all
+      select '01' as id, 'b' as word, 20 as count from dual
+    union all
+      select '01' as id, 'c' as word, 30 as count from dual
+    union all
+      select '02' as id, 'a' as word, 100 as count from dual
+    union all
+      select '02' as id, 'd' as word, 200 as count from dual
+    union all
+      select '02' as id, 'e' as word, 300 as count from dual
+) tmp;
+运行命令
+
+PAI -name triple_to_kv
+-project algo_public
+-DinputTableName=triple2kv_test_input
+-DoutputTableName=triple2kv_test_input_out
+-DindexOutputTableName=triple2kv_test_input_index_out
+-DidColName=id
+-DkeyColName=word
+-DvalueColName=count
+-Dlifecycle=1;
+运行结果
+
+triple2kv_test_input_out
+
++------------+------------+
+| id         | key_value  |
++------------+------------+
+| 02         | 1:100;4:200;5:300 |
+| 01         | 1:10;2:20;3:30 |
++------------+------------+
+triple2kv_test_input_index_out
+
++------------+------------+
+| key        | key_id     |
++------------+------------+
+| a          | 1          |
+| b          | 2          |
+| c          | 3          |
+| d          | 4          |
+| e          | 5          |
++------------+------------+
+
+--------------------
+字符串相似度
+功能介绍
+计算字符串相似度在机器学习领域是一个非常基本的操作，主要用在信息检索，自然语言处理，生物信息学等领域。本算法支持Levenshtein Distance、Longest Common SubString、String Subsequence Kernel、Cosine、simhash_hamming五种相似度计算方式。支持两两计算和top n计算两种输入方式。
+
+Levenshtein（Levenshtein Distance）支持距离和相似度两个参数。
+
+距离在参数中表示为levenshtein。
+相似度等于1-距离，在参数中表示为levenshtein_sim。
+lcs（Longest Common SubString）支持距离和相似度两个参数。
+
+距离在参数中表示为lcs。
+相似度等于1-距离，相似度在参数中表示为lcs_sim。
+ssk（String Subsequence Kernel）支持相似度计算，在参数中表示为ssk。
+
+参考：Lodhi, Huma; Saunders, Craig; Shawe-Taylor, John; Cristianini, Nello; Watkins, Chris (2002). “Text classification using string kernels”. Journal of Machine Learning Research: 419–444.
+
+cosine（Cosine）支持相似度计算，在参数中表示为cosine。
+
+参考：Leslie, C.; Eskin, E.; Noble, W.S. (2002), The spectrum kernel: A string kernel for SVM protein classification 7, pp. 566–575.
+
+simhash_hamming，其中SimHash算法是把原始的文本映射为64位的二进制指纹，HammingDistance则是计算二进制指纹在相同位置上不同的字符的个数，支持距离和相似度两个参数。
+
+距离在参数中表示为simhash_hamming。
+相似度等于1-距离/64.0，相似度在参数中表示为simhash_hamming_sim。
+SimHash详细介绍请参见pdf，HammingDistance详细介绍请参见维基百科wiki。
+
+两两计算
+PAI命令
+PAI -name string_similarity
+    -project algo_public
+    -DinputTableName="pai_test_string_similarity"
+    -DoutputTableName="pai_test_string_similarity_output"
+    -DinputSelectedColName1="col0"
+    -DinputSelectedColName2="col1";
+算法参数
+参数名称	参数描述	参数可选项	参数默认值
+inputTableName	必选，输入表的表名	表名	不涉及
+outputTableName	必选，输出表的表名	表名	不涉及
+inputSelectedColName1	可选，相似度计算中第一列的列名	列名	表中第一个为类型为string的列名
+inputSelectedColName2	可选，相似度计算中第二列的列名	列名	表中第二个为类型为string的列名
+inputAppendColNames	可选，输出表追加的列名	列名	不追加
+inputTablePartitions	可选，输入表选中的分区	分区名	选择全表
+outputColName	可选，输出表中相似度列的列名。列名中不能有特殊字符，只能用英文的a-z，A-Z及数字和下划线_，且以字母开头，名称的长度不超过128字节。	列名	output
+method	可选，相似度计算方法	levenshtein, levenshtein_sim, lcs, lcs_sim, ssk, cosine, simhash_hamming, simhash_hamming_sim	levenshtein_sim
+lambda	可选，匹配字符串的权重，ssk中可用	(0, 1)	0.5
+k	可选，子串的长度，ssk和cosine中可用	(0, 100)	2
+lifecycle	可选，指定输出表的生命周期	正整数	没有生命周期
+coreNum	可选，计算的核心数	正整数	系统自动分配
+memSizePerCore	可选，每个核心的内存（单位为MB）	正整数，范围为(0, 65536)	系统自动分配
+实例
+测试数据
+
+create table pai_ft_string_similarity_input as select * from
+(select 0 as id, "北京" as col0, "北京" as col1 from dual
+union all
+select 1 as id, "北京" as col0, "北京上海" as col1 from dual
+union all
+select 2 as id, "北京" as col0, "北京上海香港" as col1 from dual
+)tmp;
+PAI命令
+
+PAI -name string_similarity
+    -project sre_mpi_algo_dev
+    -DinputTableName=pai_ft_string_similarity_input
+    -DoutputTableName=pai_ft_string_similarity_output
+    -DinputSelectedColName1=col0
+    -DinputSelectedColName2=col1
+    -Dmethod=simhash_hamming
+    -DinputAppendColNames=col0,col1;
+输出说明
+
+simhash_hamming方法的输出结果如下图所示。
+
+image
+
+simhash_hamming_sim方法的输出结果如下图所示。
+
+image
+
+字符串相似度-topN
+PAI命令
+PAI -name string_similarity_topn
+    -project algo_public
+    -DinputTableName="pai_test_string_similarity_topn"
+    -DoutputTableName="pai_test_string_similarity_topn_output"
+    -DmapTableName="pai_test_string_similarity_map_topn"
+    -DinputSelectedColName="col0"
+    -DmapSelectedColName="col1";
+算法参数
+参数名称	参数描述	参数可选项	参数默认值
+inputTableName	必选，输入表的表名	表名	不涉及
+mapTableName	必选，输入的映射表名	表名	不涉及
+outputTableName	必选，输出表的表名	表名	不涉及
+inputSelectedColName	可选，相似度计算中左表的列名	列名	表中第一个为类型为string的列名
+mapSelectedColName	可选，相似度计算中映射表的列名，左表中的每一行都会和映射表中所有的字符串计算出相似度，并最终已top n的方式给出结果	列名	表中第一个为类型为string的列名
+inputAppendColNames	可选，输入表在输出表追加的列名	列名	不追加
+inputAppendRenameColNames	可选，输入表在输出表追加的列名的别名，在inputAppendColNames不为空时有效	列名的别名	不使用别名
+mapAppendColNames	可选，映射表在输出表追加的列名	列名	不追加
+mapAppendRenameColNames	可选，映射表在输出表追加的列名的别名	列名的别名	不使用别名
+inputTablePartitions	可选，输入表选中的分区	分区名	选择全表
+mapTablePartitions	可选，映射表中的分区	分区名	选择全表
+outputColName	可选，输出表中相似度列的列名，列名中不能有特殊字符，只能用英文的a-z，A-Z及数字和下划线_，且以字母开头，名称的长度不超过128字节。	列名	output
+method	可选，相似度计算方法	levenshtein_sim, lcs_sim, ssk, cosine, simhash_hamming_sim	levenshtein_sim
+lambda	可选，匹配字符串的权重，ssk中可用	(0, 1)	0.5
+k	可选，子串的长度，ssk和cosine中可用	(0, 100)	2
+topN	可选，最终给出的相似度最大值的个数	(0, +∞)	10
+lifecycle	可选，指定输出表的生命周期	正整数	没有生命周期
+coreNum	可选，计算的核心数	正整数	系统自动分配
+memSizePerCore	可选，每个核心的内存（单位为MB）	正整数，范围为(0, 65536)	系统自动分配
+实例
+测试数据
+
+create table pai_ft_string_similarity_topn_input as select * from
+(select 0 as id, "北京" as col0 from dual
+union all
+select 1 as id, "北京上海" as col0 from dual
+union all
+select 2 as id, "北京上海香港" as col0 from dual
+)tmp;
+PAI 命令
+
+PAI -name string_similarity_topn
+    -project sre_mpi_algo_dev
+    -DinputTableName=pai_ft_string_similarity_topn_input
+    -DmapTableName=pai_ft_string_similarity_topn_input
+    -DoutputTableName=pai_ft_string_similarity_topn_output
+    -DinputSelectedColName=col0
+    -DmapSelectedColName=col0
+    -DinputAppendColNames=col0
+    -DinputAppendRenameColNames=input_col0
+    -DmapAppendColNames=col0
+    -DmapAppendRenameColNames=map_col0
+    -Dmethod=simhash_hamming_sim;
+输出说明
+
+输出结果如下图所示。
+
+image
+
+
+
+
+-----------------------
+停用词过滤
+功能介绍
+停用词过滤是文本分析中的一个预处理方法。它的功能是过滤分词结果中的噪声（例如：的、是、啊等）。
+
+参数设置
+组件说明
+filter_noise_icon
+
+两个输入桩，从左到右依次为：
+
+输入表，即需要过滤的分词结果表，对应的参数名为inputTableName。
+停用词表，表的格式为一列，每行为一个停用词，对应的参数名为noiseTableName。
+参数界面说明
+filter_noise_select_columns
+
+可以选择需要过渡的列。
+
+执行调化说明
+filter_noise_opt
+
+可以手动配置并发计算核心数目与内存，默认系统自动分配。
+
+PAI命令
+PAI -name FilterNoise -project algo_public \
+    -DinputTableName=”test_input” -DnoiseTableName=”noise_input” \
+    -DoutputTableName=”test_output” \
+    -DselectedColNames=”words_seg1,words_seg2” \
+    -Dlifecycle=30
+算法参数
+参数名称	参数描述	参数可选项	参数默认值
+inputTableName	必选，输入表的表名	表名	不涉及
+inputTablePartitions	可选，输入表中指定参与计算的分区	分区名	输入表的所有partitions
+noiseTableName	必选，停用词表	格式为一列，每一行一个词	不涉及
+noiseTablePartitions	可选，停用词表的分区	分区名	全表
+outputTableName	必选，输出表	表名	不涉及
+selectedColNames	必选，待过滤列，多列时以逗号为分隔	列名	不涉及
+lifecycle	可选，指定输出表的生命周期	正整数	没有生命周期
+coreNum	可选，计算的核心数	正整数	系统自动分配
+memSizePerCore	可选，每个核心的内存（单位为MB）	正整数，范围为(0, 65536)	系统自动分配
+实例
+测试数据
+
+分词的结果表 temp_word_seg_input
+
+filter_noise_demo_seg_input
+
+停用词表 temp_word_noise_input
+
+filter_noise_demo_noise_input
+
+步骤
+
+创建实验
+
+filter_noise_demo
+
+选择待过滤列
+
+选择“seg”字段为待过滤列，如下图所示。
+
+filter_noise_demo_config
+
+filter_noise_demo_select_column
+
+运行结果
+
+实验结果如下图所示。
+
+filter_noise_demo_result
+
+文本摘要
+文本摘要是某一文献中简单连贯的短文，可以全面准确地反映该文献的中心内容。自动文摘是利用计算机自动地从原始文献中提取文摘。
+本算法基于TextRank，通过提取文档中已存在的句子形成摘要，具体可参考TextRank：Bringing Order into Texts。
+
+PAI命令
+PAI -name TextSummarization
+    -project algo_public
+    –DinputTableName="test_input"
+    -DoutputTableName="test_output"
+    -DdocIdCol="doc_id"
+    -DsentenceCol="sentence"
+    -DtopN=2
+    -Dlifecycle=30;
+参数说明
+参数名称	参数描述	参数可选项	默认值
+inputTableName	必选，输入表名	表名	不涉及
+inputTablePartitions	可选，输入表中指定参与计算的分区	分区名	输入表的所有partition
+outputTableName	必选，输出表名	表名	不涉及
+docIdCol	必选，标识文章id的列名	列名	不涉及
+sentenceCol	必选，句子列，仅可指定一列	列名	不涉及
+topN	可选，输出前多个关键句	正整数	3
+similarityType	可选，句子相似度的计算方法	lcs_sim, levenshtein_sim, cosine, ssk	lcs_sim
+lambda	可选，匹配字符串的权重，ssk中可用	(0, 1)	0.5
+k	可选，子串的长度，ssk和cosine中可用	(0, 100)	2
+dampingFactor	可选，阻尼系数	(0, 1)	0.85
+maxIter	可选，最大迭代次数	[1, +]	100
+epsilon	可选，收敛系数	(0, 正无穷)	0.000001
+lifecycle	可选，输入出表的生命周期	正整数	无生命周期
+coreNum	可选，参与计算的核心数	正整数	系统自动计算
+memSizePerCore	可选，每个核心需要的内存	正整数	系统自动计算
+句子相似度（similarityType）的选项如下：（A，B表示两个字符串，len(A)表示字符串A的长度）
+
+lcs_sim: 公式 1.0 - (最长公共子串(Longest Common Subsequence)的长度)/max(len(A), len(B))。
+
+levenshtein_sim: 公式 1.0 - (编辑距离(Levenshtein Distance)) / max(len(A), len(B))。
+
+cosine: 参考Lodhi, Huma; Saunders, Craig; Shawe-Taylor, John; Cristianini, Nello; Watkins, Chris (2002). “Text classification using string kernels”. Journal of Machine Learning Research: 419–444.。
+
+ssk: 参考Leslie, C.; Eskin, E.; Noble, W.S. (2002), The spectrum kernel: A string kernel for SVM protein classification 7, pp. 566–575。
+
+输出说明
+输出表为两列，分别是doc_id和abstract。示例如下：
+
+doc_id	abstract
+1000894	早在2008年，上交所便发布了上市公司社会责任披露相关指引，强制要求三类公司披露社会责任报告，同时鼓励其他有条件的上市公司进行自愿披露。统计显示，2012年，沪市上市公司共计379家披露社会责任报告，包括强制披露公司305家和自愿披露公司74家，合计占沪市全部上市公司的40%。胡汝银表示，下一步上交所将探索扩大社会责任报告的披露范围，修订细化有关社会责任报告披露的指引，并鼓励更多的机构推进社会责任产品创新。
+文章相似度
+文章相似度是在字符串相似度的基础上，基于词，计算两两文章或者句子之间的相似度。文章或者句子需要以空格分割，计算方式和字符串相似度类似。
+
+Levenshtein（Levenshtein Distance）支持距离和相似度两个参数。
+
+距离在参数中表示为levenshtein。
+相似度等于1-距离，在参数中表示为levenshtein_sim。
+lcs（Longest Common SubString）支持距离和相似度两个参数，
+
+距离在参数中表示为lcs。
+相似度等于1-距离，相似度在参数中表示为lcs_sim。
+ssk（String Subsequence Kernel）支持相似度计算，在参数中表示为ssk。
+
+参考：Lodhi, Huma; Saunders, Craig; Shawe-Taylor, John; Cristianini, Nello; Watkins, Chris (2002). “Text classification using string kernels”. Journal of Machine Learning Research: 419–444.
+
+cosine（Cosine）支持相似度计算，在参数中表示为cosine。
+
+参考：Leslie, C.; Eskin, E.; Noble, W.S. (2002), The spectrum kernel: A string kernel for SVM protein classification 7, pp. 566–575
+
+simhash_hamming，其中SimHash算法是把原始的文本映射为64位的二进制指纹，HammingDistance则是计算二进制指纹在相同位置上不同的字符的个数，支持距离和相似度两个参数。
+
+距离在参数中表示为simhash_hamming。
+
+相似度等于1-距离/64.0，相似度在参数中表示为simhash_hamming_sim。
+
+SimHash详细介绍请参见pdf，HammingDistance详细介绍请参见维基百科wiki。
+
+PAI命令
+PAI -name doc_similarity
+    -project algo_public
+    -DinputTableName="pai_test_doc_similarity"
+    -DoutputTableName="pai_test_doc_similarity_output"
+    -DinputSelectedColName1="col0"
+    -DinputSelectedColName2="col1"
+参数说明
+参数名称	参数描述	参数可选项	参数默认值
+inputTableName	必选，输入表的表名	表名	不涉及
+outputTableName	必选，输出表的表名	表名	不涉及
+inputSelectedColName1	可选，相似度计算中第一列的列名	列名	表中第一个为类型为string的列名
+inputSelectedColName2	可选，相似度计算中第二列的列名	列名	表中第二个为类型为string的列名
+inputAppendColNames	可选，输出表追加的列名	列名	不追加
+inputTablePartitions	可选，输入表选中的分区	分区名	选择全表
+outputColName	可选，输出表中相似度列的列名。列名中不能有特殊字符，只能用英文的a-z，A-Z及数字和下划线_，且以字母开头，名称的长度不超过128字节。	列名	output
+method	可选，相似度计算方法	levenshtein, levenshtein_sim, lcs, lcs_sim, ssk, cosine, simhash_hamming, simhash_hamming_sim	levenshtein_sim
+lambda	可选，匹配词组合的权重，ssk中可用	(0, 1)	0.5
+k	可选，子串的长度，ssk和cosine中可用	(0, 100)	2
+lifecycle	可选，指定输出表的生命周期	正整数	没有生命周期
+coreNum	可选，计算的核心数	正整数	系统自动分配
+memSizePerCore	可选，每个核心的内存（单位为MB）	正整数，范围为(0, 65536)	系统自动分配
+实例
+数据生成
+
+drop table if exists pai_doc_similarity_input;
+create table pai_doc_similarity_input as
+select * from
+(
+select 0 as id, "北京 上海" as col0, "北京 上海" as col1 from dual
+union all
+select 1 as id, "北京 上海" as col0, "北京 上海 香港" as col1 from dual
+)tmp
+PAI命令
+
+drop table if exists pai_doc_similarity_output;
+PAI -name doc_similarity
+    -project algo_public
+    -DinputTableName=pai_doc_similarity_input
+    -DoutputTableName=pai_doc_similarity_output
+    -DinputSelectedColName1=col0
+    -DinputSelectedColName2=col1
+    -Dmethod=levenshtein_sim
+    -DinputAppendColNames=id,col0,col1;
+输入说明
+
+输入表为pai_doc_similarity_input，如下：
+
+id	col0	col1
+1	北京 上海	北京 上海 香港
+0	北京 上海	北京 上海
+输出说明
+
+输出表为pai_doc_similarity_output，如下：
+
+id	col0	col1	output
+1	北京 上海	北京 上海 香港	0.6666666666666667
+0	北京 上海	北京 上海	1.0
+常见问题
+相似度计算是基于分词的结果，即以空格分割的每个词作为相似度计算的一个单位。如果是以字符串整体输入，需要使用字符串相似度方法。
+
+参数method中，levenshtein、lcs、simhash_hamming为计算距离。levenshtein_sim、lcs_sim、ssk、cosine、simhash_hamming_sim为计算相似度。距离等于1.0-相似度。
+
+相似度计算方法为cosine或ssk时，存在参数k，表示以k个词作为一个组合，进行相似度计算。如果k大于词的个数，即是两个相同的字符串，相似度输出也为0。此时需要调小k的值，使其小于或等于最小词个数。
+
+句子拆分
+将一段文本按标点进行句子拆分。该组件主要用于文本摘要前的预处理，将一段文本拆分成一句一行的形式。
+
+PAI命令
+PAI -name SplitSentences
+    -project algo_public
+    -DinputTableName="test_input"
+    -DoutputTableName="test_output"
+    -DdocIdCol="doc_id"
+    -DdocContent="content"
+    -Dlifecycle=30
+参数说明
+参数名称	参数描述	参数可选项	默认值
+inputTableName	必选，输入表名	表名	不涉及
+inputTablePartitions	可选，输入表中指定参与计算的分区	分区名	输入表的所有partition
+outputTableName	必选，输出表名	表名	不涉及
+docIdCol	必选，标识文章id的列名	列名	不涉及
+docContent	必选，标示文章内容的列名，仅可指定一列	列名	不涉及
+delimiter	可选，句子的间隔字符集合	字符	。！？
+lifecycle	可选，输入出表的生命周期	正整数	无生命周期
+coreNum	可选，参与计算的核心数	正整数	系统自动计算
+memSizePerCore	可选，每个核心需要的内存	正整数	系统自动计算
+输出说明
+输出表为两列，分别是doc_id和sentence。示例如下：
+
+doc_id	sentence
+1000894	早在2008年，上交所便发布了上市公司社会责任披露相关指引，强制要求三类公司披露社会责任报告，同时鼓励其他有条件的上市公司进行自愿披露。
+1000894	统计显示，2012年，沪市上市公司共计379家披露社会责任报告，包括强制披露公司305家和自愿披露公司74家，合计占沪市全部上市公司的40%。
+
+
+
+
+
+
+
+----------------------
+条件随机场
+条件随机场（conditional random field，简称 CRF）是给定一组输入随机变量条件下，另一组输出随机变量条件的概率分布模型，其特点是假设输出随机变量构成马尔可夫随机场。条件随机场可以用于不同的预测问题，主要应用到标注问题中，其中是最典型的是线性链（linear chain）。详细介绍请参见维基百科wiki。
+
+PAI命令
+PAI -name=linearcrf
+    -project=algo_public
+    -DinputTableName=crf_input_table
+    -DidColName=sentence_id
+    -DfeatureColNames=word,f1
+    -DlabelColName=label
+    -DoutputTableName=crf_model
+    -Dlifecycle=28
+    -DcoreNum=10
+算法参数
+参数名称	参数描述	参数值可选项	默认值
+inputTableName	必选，输入特征数据表	表名	不涉及
+inputTablePartitions	可选，输入特征表选择的分区	分区名	默认选择全表
+featureColNames	可选，输入表选择的特征列	列名	默认选择全部，自动排除label列
+labelColName	必选，目标列	列名	不涉及
+idColName	必选，样本标号列	列名	不涉及
+outputTableName	必选，输出模型表	表名	不涉及
+outputTablePartitions	可选，输出模型表选择的分区	分区名	默认选择全表
+template	可选，算法特征生成的模板	模板定义格式如下所示	模板默认值如下所示
+freq	可选，过滤特征的参数，算法只保留出现次数大于等于freq的特征	正整数	默认为1
+iterations	可选，优化的最大迭代次数	正整数	默认为100
+l1Weight	可选，L1正则的参数权重	无	默认为1.0
+l2Weight	可选，L2正则的参数权重	无	默认为1.0
+epsilon	可选，收敛误差。L-BFGS的终止条件，即两次迭代之间log-likelihood的差	无	默认为0.0001
+lbfgsStep	可选，lbfgs优化过程中的历史长度，仅对lbfgs有效	无	默认为10
+threadNum	可选，模型训练时并行启动线程的数量	正整数	默认为3
+lifecycle	可选，输出表的生命周期	正整数	默认不设置
+coreNum	可选，核心数	正整数	默认自动计算
+memSizePerCore	可选，内存数	正整数	默认自动计算
+特征模板template定义
+<template .=. <template_item,<template_item,...,<template_item
+<template_item .=. [row_offset:col_index]/[row_offset:col_index]/.../[row_offset:col_index]
+row_offset .=. integer
+col_index .=. integer
+算法默认template
+[-2:0],[-1:0],[0:0],[1:0],[2:0],[-1:0]/[0:0],[0:0]/[1:0],[-2:1],[-1:1],[0:1],[1:1],[2:1],[-2:1]/[-1:1],[-1:1]/[0:1],[0:1]/[1:1],[1:1]/[2:1],[-2:1]/[-1:1]/[0:1],[-1:1]/[0:1]/[1:1],[0:1]/[1:1]/[2:1]
+数据示例
+sentence_id	word	f1	label
+1	Rockwell	NNP	B-NP
+1	International	NNP	I-NP
+1	Corp	NNP	I-NP
+1	‘s	POS	B-NP
+…	…	…	…
+823	Ohio	NNP	B-NP
+823	grew	VBD	B-VP
+823	3.8	CD	B-NP
+823	%	NN	I-NP
+823	.	.	O
+预测算法PAI命令
+PAI -name=crf_predict
+    -project=algo_public
+    -DinputTableName=crf_test_input_table
+    -DmodelTableName=crf_model
+    -DidColName=sentence_id
+    -DfeatureColNames=word,f1
+    -DlabelColName=label
+    -DoutputTableName=crf_predict_result
+    -DdetailColName=prediction_detail
+    -Dlifecycle=28
+    -DcoreNum=10
+预测算法参数
+参数名称	参数描述	参数值可选项	默认值
+inputTableName	必选，输入特征数据表	表名	不涉及
+inputTablePartitions	可选，输入特征表选择的分区	分区名	默认选择全表
+featureColNames	可选，输入表选择的特征列	列名	默认选择全部，自动排除label列
+labelColName	可选，目标列	列名	不涉及
+IdColName	必选，样本标号列	列名	不涉及
+resultColName	可选，输出表中result列名	列名	默认为prediction_result
+scoreColName	可选，输出表中score列名	列名	默认为prediction_score
+detailColName	可选，输出表中detail列名	列名	默认为空
+outputTableName	必选，输出预测结果表	表名	不涉及
+outputTablePartitions	可选，输出预测结果表选择的分区	分区名	默认选择全表
+modelTableName	必选，算法模型表	表名	不涉及
+modelTablePartitions	可选，算法模型表选择的分区	分区名	默认选择全表
+lifecycle	可选，输出表的生命周期	正整数	默认不设置
+coreNum	可选，核心数	正整数	默认自动计算
+memSizePerCore	可选，内存数	正整数	默认自动计算
+测试数据
+sentence_id	word	f1	label
+1	Confidence	NN	B-NP
+1	in	IN	B-PP
+1	the	DT	B-NP
+1	pound	NN	I-NP
+…	…	…	…
+77	have	VBP	B-VP
+77	announced	VBN	I-VP
+77	similar	JJ	B-NP
+77	increases	NNS	I-NP
+77	.	.	O
+说明: label列为可选列。
+
+
+--------------------------------------
+关键词抽取
+关键词抽取是自然语言处理中的重要技术之一，具体是指从文本里面把与这篇文章意义最相关的一些词抽取出来。该算法基于TextRank，根据PageRank算法思想，利用局部词汇之间关系（共现窗口）构建网络，并计算单词的重要性，最终选取权重大的作为关键词。
+
+PAI命令
+PAI -name KeywordsExtraction
+    -DinputTableName=maple_test_keywords_basic_input
+    -DdocIdCol=docid -DdocContent=word
+    -DoutputTableName=maple_test_keywords_basic_output
+    -DtopN=19;
+参数说明
+参数名称	参数描述	取值范围	是否必选，默认值
+inputTableName	输入表	表名	必选
+inputTablePartitions	输入表中指定哪些分区参与训练，格式为“Partition_name=value”。如果是多级格式为“name1=value1/name2=value2”，如果是指定多个分区，中间用“,”隔开	分区名	可选，默认选择所有分区
+outputTableName	输出表名	表名	必选
+docIdCol	标识文章id的列名，仅可指定一列	列名	必选
+docContent	Word列，仅可指定一列	列名	必选
+topN	输出前多少个关键词，当关键词个数小于全部词个数时，全部输出	正整数	可选，默认值：5
+windowSize	TextRank算法的窗口大小	无	可选，默认值：2
+dumpingFactor	TextRank算法的阻尼系数	无	可选，默认值：0.85
+maxIter	TextRank算法的最大迭代次数	无	可选，默认值：100
+epsilon	TextRank算法的收敛残差阈值	无	可选，默认值：0.000001
+lifecycle	可选，指定输出表的生命周期	正整数	没有生命周期
+coreNum	节点个数	与参数memSizePerCore配对使用，正整数，范围为[1, 9999] 详细介绍	可选， 默认自动计算
+memSizePerCore	单个节点内存大小，单位为MB	正整数，范围为[1024, 64*1024] 详细介绍	可选， 默认自动计算
+实例
+数据生成
+
+输入表需采用空格分词，并过滤掉停用词（类似“的”、“地”、“得”、“了”、“个”）和所有的标点符号。
+
+docid:string	word:string
+doc0	翼身融合 飞机 是 未来 航空 领域 发展 一个 新 方向 国内外 诸多 研究 机构 已经 开展 对翼身融合 飞机 研究 而 其 全自动 外形 优化 算法 已 成为 新 研究 热点 国内 外 现有 成果 基础 之上 分析 比较 常用 建模 求解 平台 使用 方式 及 特点 设计 编写 翼身融合 飞机 外形 优化 几何 建模 网格 划分 流场 求解 外形 优化 模块 比 较 不同 算法 间 优劣 实现 翼身融合 飞机 概念设计 中 外形 优化 几何 建模 及 网格 生成 模块 实现 基于 超限 插值 网格 生成 算法 基于 样条 曲线 建模 方法 流场 求解 模块 包括 有限 差分 求解器 有限元 求解器和面元法 求解器 其中 有限 差分 求解器 主要 包括 基于 有限 差分法 势流 数学 建模 基于 笛卡尔 网格 变 步长 差分 格式 推导 笛卡尔 网格 生成 索引 算法 基于 笛卡尔 网格 诺 依曼 边界条件 表达 形式 推导 实现 基于 有限 差分 求解器 二维 翼型 气动 参数 计算 算例 有限元 求解器 主要 包括 基于 变分 原理 势流 有限元 理论 建模 二维 有限元 库塔 条件 表达式 推导 基于 最小 二乘 速度 求解 算法 设计 基于 Gmsh 二维 带尾迹 翼型 空间 网格 生成器 开发 实现 基于 有限元 求解器 二维 翼型 气动 参数 计算 算例 面元法 求解器 主要 包括 基于 面元法 势流 理论 建模 自动 尾迹 生成 算法 设计 基于 面元法 三维 翼身融合 体 流场 求解器 开发 基于 布拉 修斯 平板 解 阻力 估算 算法 设计 求解器 Fortran 语言 上 移 植 Python 和 Fortran 代码 混编 基于 OpenMP 和 CUDA 并行 加速 算法 设计 与 开发 实现 基于 面元法 求解器 三维 翼身融合 体 气动 参数 计算 算例 外形 优化 模块 实 现了 基于 自由 形状 变形 网格 变形 算法 遗传算法 差分 进化 算法 飞机 表面积 计算 算法 基于 矩 积分 飞 机 体积 计算 算法 开发 基于 VTK 数据 可视化 格式 工具
+PAI命令
+
+PAI -name KeywordsExtraction
+    -DinputTableName=maple_test_keywords_basic_input
+    -DdocIdCol=docid -DdocContent=word
+    -DoutputTableName=maple_test_keywords_basic_output
+    -DtopN=19;
+输出说明
+
+输出表如下：
+
+docid	keywords	weight
+doc0	基于	0.041306752223538405
+doc0	算法	0.03089845626854151
+doc0	建模	0.021782865850562882
+doc0	网格	0.020669749212693957
+doc0	求解器	0.020245609506360847
+doc0	飞机	0.019850761705313365
+doc0	研究	0.014193732541852615
+doc0	有限元	0.013831122054200538
+doc0	求解	0.012924593244133104
+doc0	模块	0.01280216562287212
+doc0	推导	0.011907588923852495
+doc0	外形	0.011505456605632607
+doc0	差分	0.011477831662367547
+doc0	势流	0.010969269350293957
+doc0	设计	0.010830986516637251
+doc0	实现	0.010747536556701583
+doc0	二维	0.010695570768457084
+doc0	开发	0.010527342662670088
+doc0	新	0.010096978306668461
+
+
+
+
+
+
+
+-------------------------
+ngram-count
+ngram-count是语言模型训练中的其中一个步骤。是在词的基础上生成n-gram，并统计在全部语料集上，对应n-gram的个数。结果是全局的个数，并不是单个文档的个数。具体请参考ngram-count。
+
+PAI命令
+PAI -name ngram_count
+    -project algo_public
+    -DinputTableName=pai_ngram_input
+    -DoutputTableName=pai_ngram_output
+    -DinputSelectedColNames=col0
+    -DweightColName=weight
+    -DcoreNum=2
+    -DmemSizePerCore=1000;
+参数说明
+参数名称	参数描述	参数可选项	默认值
+inputTableName	必选，输入表	表名	不涉及
+outputTableName	必选，输出表	表名	不涉及
+inputSelectedColNames	可选，输入表选择列	列名	第一个字符类型的列
+weightColName	可选，权重列名	列名	默认权重为1
+inputTablePartitions	可选，输入表指定分区	分区名	默认选择全表
+countTableName	可选，ngram-count以往的输出表，最终结果会合并这张表	表名	无
+countWordColName	可选，count表中词所在的列名	列名	默认选择第二列
+countCountColName	可选，count表中count所在的列	列名	默认选择第三列
+countTablePartitions	可选，count表指定分区	分区名	无
+vocabTableName	可选，词袋表，不在词袋中的词在结果中会被标识为\<unk\	表名	无
+vocabSelectedColName	可选，词袋所在的列名	列名	默认选择第一个字符类型的列
+vocabTablePartitions	可选，词袋表指定分区	分区名	无
+order	可选，N-grams的最大长度	无	默认为3
+lifecycle	可选，输出表的生命周期	正整数	无
+coreNum	可选，核心个数	正整数	无
+memSizePerCore	可选，单个核心使用的内存数	正整数	无
+
+
+
+
+
+-------------------------------
+语义向量距离
+基于算法语义向量结果（如word2vec生成的词向量），计算给定的词（或者句子）的扩展词（或者扩展句），即计算其中某一向量距离最近的向量集合。其中一个用法是，基于word2vec生成的词向量结果，根据输入的词返回最为相似的词列表。
+
+PAI命令
+PAI -name SemanticVectorDistance -project algo_public
+    -DinputTableName="test_input"
+    -DoutputTableName="test_output"
+    -DidColName="word"
+    -DvectorColNames="f0,f1,f2,f3,f4,f5"
+    -Dlifecycle=30
+参数说明
+参数名称	参数描述	参数可选项	默认值
+inputTableName	必选，输入表名	表名	不涉及
+inputTablePartitions	可选，输入表中指定参与计算的分区	分区名	输入表的所有分区
+outputTableName	必选，输出表名	表名	不涉及
+idTableName	可选，需要计算相近向量的id的列表所在表名，格式为一列，每一行一个id，默认为空，即input表中的所有向量参与计算	表名	不涉及
+idTablePartitions	可选，id表中参与计算的分区列表，默认为所有分区	分区名	不涉及
+idColName	必选，id所在列名	列名	3
+vectorColNames	可选，向量的列名列表，如f1，f2，…	列名列表	不涉及
+topN	可选，输出的距离最近的向量的数目	[1, 正无穷]	5
+distanceType	可选，距离的计算方式	euclidean、cosine、manhattan	euclidean
+distanceThreshold	可选，距离的阈值，当两个向量的距离小于此值时输出	(0, 正无穷)	正无穷大
+lifecycle	可选，输入出表的生命周期	正整数	无生命周期
+coreNum	可选，参与计算的核心数	正整数	系统自动计算
+memSizePerCore	可选，每个核心需要的内存	正整数	系统自动计算
+输出说明
+输出表为四列，分别是original_id、near_id、distance、rank。示例如下：
+
+original_id	near_id	distance	rank
+hello	hi	0.2	1
+hello	xxx	xx	2
+Man	Woman	0.3	1
+Man	xx	xx	2
+..	…	…	…
+PMI
+互信息（Mutual Information）是信息论里一种有用的信息度量算法，可以看成是一个随机变量中包含的关于另一个随机变量的信息量，或者说是一个随机变量由于已知另一个随机变量而减少的不肯定性。
+
+本算法统计若干文章中所有词的共现情况，计算两两之间的PMI（point mutual information）。PMI定义为：
+
+PMI(x,y)=ln(p(x,y)/(p(x)p(y)))=ln(#(x,y)D/(#x#y))
+
+#(x,y) 为pair(x,y)的count数。
+
+D为pair的总数。
+
+若x、y在同一个窗口出现，那么 #x+=1，#y+=1，#(x,y)+=1。
+
+PAI命令
+PAI -name PointwiseMutualInformation
+    -project algo_public
+    -DinputTableName=maple_test_pmi_basic_input
+    -DdocColName=doc
+    -DoutputTableName=maple_test_pmi_basic_output
+    -DminCount=0
+    -DwindowSize=2
+    -DcoreNum=1
+    -DmemSizePerCore=110;
+参数说明
+参数名称	参数描述	取值范围	是否必选，默认值
+inputTableName	输入表	表名	必选
+outputTableName	输出表	表名	必选
+docColName	分词好的文档列名，分词用空格隔开	列名	必选
+windowSize	窗口大小，例如5指当前词右边相邻的5个词（不包含当前词）。在窗口中出现的词被认为与当前词相关。	[1, 句子长度]	可选，默认整行doc
+minCount	截断的最小词频，出现次数少于该值的词会被过滤掉	[0, 2e63]	可选，默认值：5
+inputTablePartitions	输入表中指定哪些分区参与训练， 格式为“Partition_name=value”。如果是多级格式为“name1=value1/name2=value2”，如果是指定多个分区，中间用“,”分开	分区名	可选，默认选择所有分区
+lifecycle	可选，指定输出表的生命周期	正整数	没有生命周期
+coreNum	节点个数	与参数memSizePerCore配对使用，正整数，范围为[1, 9999]	可选，默认自动计算
+memSizePerCore	单个节点内存大小，单位M	正整数，范围为[1024, 64*1024]	可选，默认自动计算
+实例
+数据生成
+
+doc:string
+w1 w2 w3 w4 w5 w6 w7 w8 w8 w9
+w1 w3 w5 w6 w9
+w0
+w0 w0
+
+w9 w1 w9 w1 w9
+PAI命令
+
+PAI -name PointwiseMutualInformation
+    -project algo_public
+    -DinputTableName=maple_test_pmi_basic_input
+    -DdocColName=doc
+    -DoutputTableName=maple_test_pmi_basic_output
+    -DminCount=0
+    -DwindowSize=2
+    -DcoreNum=1
+    -DmemSizePerCore=110;
+输出说明
+
+输出表如下：
+
+word1	word2	word1_count	word2_count	co_occurrences_count	pmi
+w0	w0	2	2	1	2.0794415416798357
+w1	w1	10	10	1	-1.1394342831883648
+w1	w2	10	3	1	0.06453852113757116
+w1	w3	10	7	2	-0.08961215868968704
+w1	w5	10	8	1	-0.916290731874155
+w1	w9	10	12	4	0.06453852113757116
+w2	w3	3	7	1	0.4212134650763035
+w2	w4	3	4	1	0.9808292530117262
+w3	w4	7	4	1	0.13353139262452257
+w3	w5	7	8	2	0.13353139262452257
+w3	w6	7	7	1	-0.42608439531090014
+w4	w5	4	8	1	0
+w4	w6	4	7	1	0.13353139262452257
+w5	w6	8	7	2	0.13353139262452257
+w5	w7	8	4	1	0
+w5	w9	8	12	1	-1.0986122886681098
+w6	w7	7	4	1	0.13353139262452257
+w6	w8	7	7	1	-0.42608439531090014
+w6	w9	7	12	1	-0.9650808960435872
+w7	w8	4	7	2	0.8266785731844679
+w8	w8	7	7	1	-0.42608439531090014
+w8	w9	7	12	2	-0.2719337154836418
+w9	w9	12	12	2	-0.8109302162163288
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

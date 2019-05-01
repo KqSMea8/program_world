@@ -1,0 +1,973 @@
+主成分分析
+
+特征尺度变换
+
+特征离散
+
+特征异常平滑
+
+随机森林特征重要性
+
+GBDT特征重要性
+
+线性模型特征重要性
+
+偏好计算
+
+基于GBDT的过滤式特征选择
+
+窗口变量统计
+
+特征编码
+
+one-hot编码
+
+异常检测
+
+特征重要性过滤
+
+奇异值分解
+
+主成分分析
+主成分分析（PCA）是使用主成分分析算法，实现降维和降噪的功能，算法原理请参见wiki。
+目前支持稠密数据格式。
+PAI命令
+PAI -name PrinCompAnalysis
+    -project algo_public
+    -DinputTableName=bank_data
+    -DeigOutputTableName=pai_temp_2032_17900_2
+    -DprincompOutputTableName=pai_temp_2032_17900_1
+    -DselectedColNames=pdays,previous,emp_var_rate,cons_price_idx,cons_conf_idx,euribor3m,nr_employed
+    -DtransType=Simple
+    -DcalcuType=CORR
+    -DcontriRate=0.9;
+参数说明
+参数名称	参数描述	参数值可选项	默认值
+inputTableName	必选，进行主成分分析的输入表	表名	不涉及
+eigOutputTableName	必选，特征向量与特征值的输出表	表名	不涉及
+princompOutputTableName	必选，进行主成分降维降噪后的结果输出表	表名	不涉及
+selectedColNames	必选，参与主成分分析运算的特征列	列名	不涉及
+transType	可选，原表转换为主成分表的方式	Simple、Sub-Mean、Normalization	Simple
+calcuType	可选，对原表进行特征分解的方式	CORR、COVAR_SAMP、COVAR_POP	CORR
+contriRate	可选，降维后数据信息保留的百分比	[0,1]	0.9
+remainColumns	可选，降维表保留原表的字段	列名	不涉及
+PCA输出示例
+降维后的数据表
+
+image
+
+特征值和特征向量表
+
+image
+
+特征尺度变换
+支持常见的尺度变化函数包括log2、log10、ln、abs、sqrt。
+支持稠密或稀疏数据格式。
+PAI命令
+PAI -name fe_scale_runner -project algo_public
+    -Dlifecycle=28
+    -DscaleMethod=log2
+    -DscaleCols=nr_employed
+    -DinputTable=pai_dense_10_1
+    -DoutputTable=pai_temp_2262_20380_1;
+算法参数
+参数名称	参数描述	参数值可选项	默认值
+inputTable	必选，输入表的表名	表名	不涉及
+inputTablePartitions	可选，输入表中指定哪些分区参与训练，格式为partition_name=value。如果是多级，格式为name1=value1/name2=value2。如果指定多个分区，中间用“,”分开	分区名	输入表的所有partition
+outputTable	必选，尺度缩放后结果表	表名	NA
+scaleCols	必选，勾选需要缩放的特征，稀疏特征自动化筛选，只能勾选数值类特征	列名	不涉及
+labelCol	可选，标签字段。如果设置了该参数，可视化特征到目标变量的x-y分布直方图	列名	不涉及
+categoryCols	可选，将勾选的字段视作枚举特征处理，不支持缩放	列名	不涉及
+scaleMethod	可选，缩放方法	支持log2、log10、ln、abs、sqrt	log2
+scaleTopN	当scaleCols没有勾选时，自动挑选的TopN个需要缩放特征特征，默认10	正整数	10
+isSparse	是否是k:v的稀疏特征，可选，默认稠密数据	ture/false	false
+itemSpliter	稀疏特征item分隔符，可选，默认逗号	字符	“,”
+kvSpliter	稀疏特征item分隔符，可选，默认冒号	字符	“：”
+lifecycle	结果表生命周期，可选，默认7	正整数	7
+实例
+输入数据
+
+create table if not exists pai_dense_10_1 as
+select
+    nr_employed
+from bank_data limit 10;
+参数配置
+
+尺度变化特征选择nr_employed，只支持数值类特征。
+尺度变化函数选择log2，如下图所示。
+image
+
+运行结果
+
+nr_employed
+12.352071021075528
+12.34313018339218
+12.285286613666395
+12.316026916036957
+12.309533196497519
+12.352071021075528
+12.316026916036957
+12.316026916036957
+12.309533196497519
+12.316026916036957
+特征离散
+支持等距离散、等频离散、基于Gini增益离散、基于熵增益离散，默认为等距离散。
+支持稠密或稀疏数据格式。
+PAI命令
+PAI -name fe_discrete_runner -project algo_public
+   -DdiscreteMethod=Isofrequecy Discretization
+   -Dlifecycle=28
+   -DmaxBins=5
+   -DinputTable=pai_dense_10_1
+   -DdiscreteCols=nr_employed
+   -DoutputTable=pai_temp_2262_20382_1;
+算法参数
+参数名称	参数描述	参数值可选项	默认值
+inputTable	必选，输入表的表名	表名	不涉及
+inputTablePartitions	可选，输入表中指定哪些分区参与训练，格式为partition_name=value。如果是多级，格式为name1=value1/name2=value2，如果指定多个分区，中间用“,”分开	分区名	输入表的所有partition
+outputTable	必选，离散后结果表	表名	不涉及
+discreteCols	必选，勾选需要离散的特征，如果是稀疏特征会自动化筛选	列名	“”
+labelCol	可选，标签字段，如果设置了该标签列，可视化特征到目标变量的x-y分布直方图	列名	不涉及
+categoryCols	可选，将勾选的字段视作枚举特征处理，不支持离散	列名	默认为空
+discreteMethod	可选，离散方法	支持Isometric Discretization（等距离散）、Isofrequecy Discretization（等频离散）、Gini-gain-based Discretization（基于Gini增益离散）、Entropy-gain-based Discretization（基于熵增益离散）	Isometric Discretization
+discreteTopN	当discreteCols没有勾选时，自动挑选的TopN个需要离散特征特征，默认10	正整数	10
+maxBins	离散区间大小，默认100	大于1的正整数	100
+isSparse	是否是k:v的稀疏特征，可选，默认稠密数据	true/false	false
+itemSpliter	稀疏特征item分隔符，可选，默认逗号	字符	“,”
+kvSpliter	稀疏特征item分隔符，可选，默认冒号	字符	“：”
+lifecycle	结果表生命周期，可选，默认7	正整数	7
+实例
+输入数据
+
+create table if not exists pai_dense_10_1 as
+select
+    nr_employed
+from bank_data limit 10;
+参数配置
+
+输入数据为pai_dense_10_1。
+离散的特征选择nr_employed，离散方法选择等距离散，离散区间为5，如下图所示。
+image
+
+运行结果
+nr_employed
+4.0
+3.0
+1.0
+3.0
+2.0
+4.0
+3.0
+3.0
+2.0
+3.0
+特征异常平滑
+该组件可以将输入特征中含有异常的数据平滑到一定区间，支持稀疏和稠密数据格式。
+说明：特征平滑组件只是将异常取值的特征值修正成正常值，本身不过滤或删除任何记录，输入数据维度和条数都不变。
+
+平滑方法包括Zscore平滑、百分位平滑和阈值平滑，功能如下：
+
+Zscore平滑：如果特征分布遵循正态分布，那么噪音一般集中在-3×alpha和3×alpha之外，ZScore是将该范围的数据平滑到[-3×alpha,3×alpha]之间。
+例如某个特征遵循正态分布，均值为0，标准差为3，因此-10的特征值会被识别为异常而修正为-3×3+0，即为-9。同理10会被修正为3×3+0，即为9，如下图所示。
+image
+
+百分位平滑：将分布在[minPer, maxPer]分位之外的数据平滑到minPer和maxPer这两个分位点。
+例如age特征取值0～200，设置minPer为0，maxPer为50%，那么在0～100之外的特征取值都会被修正成0或100。
+
+阈值平滑：将分布在[minThresh, maxThresh]之外的数据平滑到minThresh和maxThresh这两个数据点。
+例如age特征取值0～200，设置minThresh为10，maxThresh为80，那么在0～80之外的特征取值都会被修正成0或80。
+
+PAI命令
+PAI -name fe_soften_runner -project algo_public
+    -DminThresh=5000
+    -Dlifecycle=28
+    -DsoftenMethod=min-max-thresh
+    -DsoftenCols=nr_employed
+    -DmaxThresh=6000
+    -DinputTable=pai_dense_10_1
+    -DoutputTable=pai_temp_2262_20381_1;
+算法参数
+参数名称	参数描述	参数值可选项	默认值
+inputTable	必选，输入表的表名	表名	不涉及
+inputTablePartitions	可选，输入表中指定哪些分区参与训练，格式为partition_name=value。如果是多级，格式为name1=value1/name2=value2，如果指定多个分区，中间用“,”分开	分区名	输入表的所有partition
+outputTable	必选，平滑后结果表	表名	不涉及
+labelCol	可选，标签字段，如果设置了该标签列，可视化特征到目标变量的x-y分布直方图	列名	默认为空
+categoryCols	可选，将勾选的字段视作枚举特征处理	列名	默认为空
+softenCols	必选，勾选需要平滑的特征，但特征是稀疏特征时会自动化筛选	列名	不涉及
+softenMethod	可选，平滑方法	支持ZScore平滑、min-max-thresh（阈值平滑）、min-max-per（百分位平滑）	ZScore
+softenTopN	当softenCols没有勾选时，自动挑选TopN个需要平滑的特征	正整数	10
+cl	置信水平，当平滑方法是ZScore时生效	不涉及	10
+minPer	最低百分位，当平滑方法是min-max-per时生效	不涉及	0.0
+maxPer	最高百分位，当平滑方法是min-max-per时生效	不涉及	1.0
+minThresh	阈值最小值，默认-9999，表示不设置，当平滑方法是min-max-thresh时生效	不涉及	-9999
+maxThresh	阈值最大值，默认-9999，表示不设置，当平滑方法是min-max-thresh时生效	不涉及	-9999
+isSparse	是否是k:v的稀疏特征，可选，默认稠密数据	true/false	false
+itemSpliter	稀疏特征item分隔符，可选，默认逗号	字符	“,”
+kvSpliter	稀疏特征item分隔符，可选，默认冒号	字符	“：”
+lifecycle	结果表生命周期，可选，默认7	正整数	7
+实例
+输入数据
+
+create table if not exists pai_dense_10_1 as
+select
+    nr_employed
+from bank_data limit 10;
+nr_employed
+5228.1
+5195.8
+4991.6
+5099.1
+5076.2
+5228.1
+5099.1
+5099.1
+5076.2
+5099.1
+参数配置
+
+平滑特征列选择nr_employed，参数设置中平滑方法选择阈值平滑，阈值下限为5000，阈值上限为6000，如下图所示。
+image
+
+运行结果
+
+nr_employed
+5228.1
+5195.8
+5000.0
+5099.1
+5076.2
+5228.1
+5099.1
+5099.1
+5076.2
+5099.1
+随机森林特征重要性
+使用原始数据和随机森林模型，计算特征重要性。
+
+PAI命令
+pai -name feature_importance -project algo_public
+    -DinputTableName=pai_dense_10_10
+    -DmodelName=xlab_m_random_forests_1_20318_v0
+    -DoutputTableName=erkang_test_dev.pai_temp_2252_20319_1
+    -DlabelColName=y
+    - DfeatureColNames="pdays,previous,emp_var_rate,cons_price_idx,cons_conf_idx,euribor3m,nr_employed,age,campaign,poutcome"
+    -Dlifecycle=28 ;
+算法参数
+参数名称	参数描述	参数值可选项	默认值
+inputTableName	必选，输入表	表名	不涉及
+outputTableName	必选，输出表	表名	不涉及
+labelColName	必选，label所在的列	列名	不涉及
+modelName	必选，输入的模型名	模型名	不涉及
+featureColNames	可选，输入表选择的特征	列名	默认除label外的其他列
+inputTablePartitions	可选，输入表选择的分区	分区名	默认选择全表
+lifecycle	可选，输出表的生命周期	正整数	默认不设置
+coreNum	可选，核心数	正整数	默认自动计算
+memSizePerCore	可选，内存数	正整数	默认自动计算
+实例
+输入数据
+
+drop table if exists pai_dense_10_10;
+creat table if not exists pai_dense_10_10 as
+select
+    age,campaign,pdays, previous, poutcome, emp_var_rate, cons_price_idx, cons_conf_idx, euribor3m, nr_employed, y
+from  bank_data limit 10;
+参数配置
+
+实验流程图如下图所示，数据源为pai_dense_10_10。y为随机森林的标签列，其他列为特征列。强制转换列选择age和campaign，表示将这两列作为枚举特征处理，其他采用默认参数。
+image
+
+运行结果
+
+colname	gini	entropy
+age	0.06625000000000003	0.13978726292803723
+campaign	0.0017500000000000003	0.004348515545596772
+cons_conf_idx	0.013999999999999999	0.02908409497018851
+cons_price_idx	0.002	0.0049804499913461255
+emp_var_rate	0.014700000000000003	0.026786360680260933
+euribor3m	0.06300000000000003	0.1321936348846039
+nr_employed	0.10499999999999998	0.2203227248076733
+pdays	0.0845	0.17750329234397513
+poutcome	0.03360000000000001	0.07050327193845542
+previous	0.017700000000000004	0.03810381005801592
+运行完成后，在随机森林特征重要性组件上右键单击，选择查看分析报告，结果如下图所示。
+
+image
+
+GBDT特征重要性
+计算梯度渐进决策树（GBDT）特征重要性。
+
+PAI命令
+pai -name gbdt_importance -project algo_public
+    -DmodelName=xlab_m_GBDT_LR_1_20307_v0
+    -Dlifecycle=28
+    -DoutputTableName=pai_temp_2252_20308_1
+    -DlabelColName=y
+    -DfeatureColNames=pdays,previous,emp_var_rate,cons_price_idx,cons_conf_idx,euribor3m,nr_employed,age,campaign
+    -DinputTableName=pai_dense_10_9;
+算法参数
+参数名称	参数描述	参数值可选项	默认值
+inputTableName	必选，输入表	表名	不涉及
+outputTableName	必选，输出表	表名	不涉及
+labelColName	必选，label所在的列	列名	不涉及
+modelName	必选，输入的模型名	模型名	不涉及
+featureColNames	可选，输入表选择的特征	列名	默认除label外的其他列
+inputTablePartitions	可选，输入表选择的分区	分区名	默认选择全表
+lifecycle	可选，输出表的生命周期	正整数	默认不设置
+coreNum	可选，核心数	正整数	默认自动计算
+memSizePerCore	可选，内存数	正整数	默认自动计算
+实例
+输入数据
+
+drop table if exists pai_dense_10_9;
+create table if not exists pai_dense_10_9 as
+select
+    age,campaign,pdays, previous, emp_var_rate, cons_price_idx, cons_conf_idx, euribor3m, nr_employed, y
+from  bank_data limit 10;
+参数配置
+
+实验流程图如下图所示，输入数据为pai_dense_10_9。y为GBDT二分类组件的标签列，其他字段作为特征列，组件参数配置中叶节点最小样本数配置为1。
+
+image
+
+运行结果
+
+colname	feature_importance
+age	0.004667214954427797
+campaign	0.001962038566773853
+cons_conf_idx	0.04857761873887033
+cons_price_idx	0.01925292649801252
+emp_var_rate	0.044881269590771274
+euribor3m	0.025034606434306696
+nr_employed	0.036085457464908766
+pdays	0.639121250405536
+previous	0.18041761734639272
+运行完成后，在GBDT特征重要性组件上右键单击，选择查看分析报告，结果如下图所示。
+
+image
+
+线性模型特征重要性
+计算线性模型的特征重要性，包括线性回归和二分类逻辑回归，支持稀疏和稠密数据格式。
+
+PAI命令
+PAI -name regression_feature_importance -project algo_public
+    -DmodelName=xlab_m_logisticregressi_20317_v0
+    -DoutputTableName=pai_temp_2252_20321_1
+    -DlabelColName=y
+  -DfeatureColNames=pdays,previous,emp_var_rate,cons_price_idx,cons_conf_idx,euribor3m,nr_employed,age,campaign
+    -DenableSparse=false -DinputTableName=pai_dense_10_9;
+算法参数
+参数名称	参数描述	参数值可选项	默认值
+inputTableName	必选，输入表	表名	不涉及
+outputTableName	必选，输出表	表名	不涉及
+modelName	必选，输入的模型名	模型名	不涉及
+labelColName	必选，label所在列	列名	不涉及
+feaureColNames	可选，输入表选择的特征	列名	默认除label外的其他列
+inputTablePartitions	可选，输入表选择的分区	分区名	默认选全表
+enableSparse	可选，输入表数据是否为稀疏格式	true/false	false
+itemDelimiter	可选，当输入表数据为稀疏格式时，kv间的分割符	字符	空格
+kvDelimiter	可选，当输入表数据为稀疏格式时，key和value的分割符	字符	冒号
+lifecycle	可选，输出表的生命周期	正整数	默认不设置
+coreNum	可选，核心数	正整数	默认自动计算
+memSizePerCore	可选，内存数	正整数	默认自动计算
+实例
+输入数据
+
+create table if not exists pai_dense_10_9 as
+select
+    age,campaign,pdays, previous, emp_var_rate, cons_price_idx, cons_conf_idx, euribor3m, nr_employed, y
+from  bank_data limit 10;
+参数配置
+
+实验流程图如下图所示，y为逻辑回归多分类组件的标签列，剩余字段为特征列。其他参数采用默认值。
+
+image
+
+运行结果
+
+colname	weight	importance
+pdays	0.033942600256583334	16.31387797440866
+previous	0.00004248130342485344	0.000030038817725357177
+emp_var_rate	0.00006720242617694611	0.00010554561260753949
+cons_price_idx	0.00012311047229142307	0.00006581255124425219
+cons_conf_idx	0.00017227965471819213	0.0008918770542818432
+euribor3m	0.00006113758212679113	0.00010427128177450988
+nr_employed	0.0034541377310490697	0.26048098230126043
+age	0.00009618162708080744	0.0009267659744232966
+campaign	0.000019142551785274455	0.000041793353660529855
+指标计算公式
+
+列名	公式
+weight	abs(w_)
+importance	abs(w_j) * STD(f_i)
+运行完成后，在线性模型特征重要性组件上右键单击，选择查看分析报告，结果如下图所示。
+
+image
+
+偏好计算
+给定用户明细行为特征数据，自动计算用户对特征值的偏好得分。
+
+输入表包含用户id和用户明细行为特征输入。假设在口碑到店场景，某用户2088xxx1在3个月内吃了两次川菜，一次西式快餐，那么输入表形式如下：
+
+user_id	cate
+2088xxx1	川菜
+2088xxx1	川菜
+2088xxx1	西式快餐
+输出表为用户对川菜和西式快餐的偏好得分，形式如下：
+
+user_id	cate
+2088xxx1	川菜：0.0544694，西式快餐：0.0272347
+PAI命令
+pai -name=preference
+    -project=algo_public
+    -DInputTableName=preference_input_table
+    -DIdColumnName=user_id
+    -DFeatureColNames=cate
+    -DOutputTableName=preference_output_table
+    -DmapInstanceNum=2
+    -DreduceInstanceNum=1;
+算法参数
+参数key名称	参数描述	必/选填	默认值
+InputTableName	输入表名	必填	不涉及
+IdColumnName	用户id列	必填	不涉及
+FeatureColNames	用户特征列	必填	不涉及
+OutputTableName	输出表名	必填	不涉及
+OutputTablePartitions	输出表分区	选填	不涉及
+mapInstanceNum	mapper数量	选填	2
+reduceInstanceNum	reducer数量	选填	1
+实例
+测试数据
+
+新建数据SQL
+
+drop table if exists preference_input_table;
+create table preference_input_table as
+select
+  *
+from
+(
+  select '2088xxx1' as user_id, '川菜' as cate from alipaydw.dual
+    union all
+  select '2088xxx1' as user_id, '川菜' as cate from alipaydw.dual
+    union all
+  select '2088xxx1' as user_id, '西式快餐' cate from alipaydw.dual
+    union all
+  select '2088xxx3' as user_id, '川菜' as cate from alipaydw.dual
+    union all
+  select '2088xxx3' as user_id, '川菜' as cate from alipaydw.dual
+    union all
+  select '2088xxx3' as user_id, '西式快餐' as cate from alipaydw.dual
+) tmp;
+运行结果
+
++------------+------------+
+| user_id    | cate       |
++------------+------------+
+| 2088xxx1          | 川菜：0.0544694，西式快餐：0.0272347          |
+| 2088xxx3          | 川菜：0.0544694，西式快餐：0.0272347          |
++------------+------------+
+基于GBDT的过滤式特征选择
+根据用户不同的特征选择方法，选择并过滤出TopN的特征数据，同时保存所有特征重要性表(右输出)。支持稀疏和稠密数据格式。
+
+PAI命令
+PAI -name fe_select_runner -project algo_public
+     -DfeatImportanceTable=pai_temp_2260_22603_2
+     -DselectMethod=iv
+-DselectedCols=pdays,previous,emp_var_rate,cons_price_idx,cons_conf_idx,euribor3m,nr_employed,age,campaign
+     -DtopN=5
+     -DlabelCol=y
+     -DmaxBins=100
+     -DinputTable=pai_dense_10_9
+     -DoutputTable=pai_temp_2260_22603_1;
+算法参数
+参数名称	参数描述	参数值可选项	默认值
+inputTable	必选，输入表的表名	表名	不涉及
+inputTablePartitions	可选，输入表中指定哪些分区参与训练，格式为partition_name=value。如果是多级，格式为name1=value1/name2=value2，如果指定多个分区，中间用“,”分开	分区名	输入表的所有partition
+outputTable	必选，过滤后的特征结果表	表名	不涉及
+featImportanceTable	必选，存放所有输入特征的重要性权重值	表名	不涉及
+selectedCols	必选，特征列	列名	不涉及
+labelCol	必选,标签列/目标列	列名	不涉及
+categoryCols	Int或者Double字符的枚举特征，可选	不涉及	“”
+maxBins	连续类特征划分最大区间数，可选		100
+selectMethod	特征选择方法，可选	支持 iv(Information Value)，Gini增益，信息增益，Lasso	iv
+topN	挑选的TopN个特征，如果TopN大于输入特征数，则输出所有特征，可选	正整数	10
+isSparse	是否是k:v的稀疏特征，可选，默认稠密数据	true/false	false
+itemSpliter	稀疏特征item分隔符，可选，默认逗号	字符	“,”
+kvSpliter	稀疏特征item分隔符，可选，默认冒号	字符	“：”
+lifecycle	结果表生命周期，可选，默认7	正整数	7
+实例
+输入数据
+
+create table if not exists pai_dense_10_9 as
+select
+    age,campaign,pdays, previous, emp_var_rate, cons_price_idx, cons_conf_idx, euribor3m, nr_employed, y
+from  bank_data limit 10;
+参数配置
+
+y为过滤式特征选择的标签列，其他字段为特征列。特征选择方法为IV，挑选TopN特征为5，表示过滤top5的特征，如下图所示。
+
+imageimage
+
+运行结果
+
+左输出为过滤后的数据，如下表所示。
+
+pdays	nr_employed	emp_var_rate	cons_conf_idx	cons_price_idx	y
+999.0	5228.1	1.4	-36.1	93.444	0.0
+999.0	5195.8	-0.1	-42.0	93.2	0.0
+6.0	4991.6	-1.7	-39.8	94.055	1.0
+999.0	5099.1	-1.8	-47.1	93.075	0.0
+3.0	5076.2	-2.9	-31.4	92.201	1.0
+999.0	5228.1	1.4	-42.7	93.918	0.0
+999.0	5099.1	-1.8	-46.2	92.893	0.0
+999.0	5099.1	-1.8	-46.2	92.893	0.0
+3.0	5076.2	-2.9	-40.8	92.963	1.0
+999.0	5099.1	-1.8	-47.1	93.075	0.0
+右输出是特征重要性表，字段结构如下表所示。featureName表示特征名称，weight表示特征选择方法计算出来的权重。
+
+featname	weight
+pdays	30.675544191232486
+nr_employed	29.08332850085075
+emp_var_rate	29.08332850085075
+cons_conf_idx	28.02710269740324
+cons_price_idx	28.02710269740324
+euribor3m	27.829058450563718
+age	27.829058450563714
+previous	14.319325030742775
+campaign	10.658129656314467
+weight计算公式如下：
+
+选择方法	weght含有
+IV	信息价值
+GiniGain	Gini增益
+InfoGain	信息熵增益
+Lasso	线性模型权重绝对值
+窗口变量统计
+给定时间窗口，计算用户在相应时间窗内的行为次数和金额。例如时间窗口为“1,7,30,90,180”，计算用户相应天数内的行为次数和金额。
+
+PAI命令
+pai -name=rfm
+    -project=algo_public
+    -DinputTableName=window_input_table
+    -DuserName=user_id
+    -DdtName=dt
+    -DcntName=cnt
+    -DamtName=amt
+    -Dwindow=1,7,30,90
+    -DoutputTableName=window_output_table
+    -DmapInstanceNum=2
+    -DreduceInstanceNum=2;
+算法参数
+参数key名称	参数描述	必/选填	默认值
+inputTableName	输入表名	必填	NA
+userName	用户id列	必填	NA
+dtName	时间列（格式“20160101”）	必填	NA
+cntName	次数列	必填	NA
+amtName	金额列	必填	NA
+window	时间窗口（格式为“1,7,30,90…”）	必填	NA
+outputTableName	输出表名	必填	NA
+outputTablePartitions	输出表分区	选填	NA
+mapInstanceNum	mapper数量	选填	2
+reduceInstanceNum	reducer数量	选填	2
+实例
+输入数据
+
+drop table if exists window_input_table;
+create table window_input_table as
+select
+  *
+from
+(
+  select 'a' as user_id, '20151201' as dt, 2 as cnt, 32.0 as amt from dual
+    union all
+  select 'a' as user_id, '20160201' as dt, 3 as cnt, 37.0 as amt from dual
+    union all
+  select 'a' as user_id, '20160223' as dt, 1 as cnt, 22.0 as amt from dual
+    union all
+  select 'b' as user_id, '20151212' as dt, 1 as cnt, 12.0 as amt from dual
+    union all
+  select 'b' as user_id, '20160110' as dt, 2 as cnt, 30.0 as amt from dual
+    union all
+  select 'c' as user_id, '20151001' as dt, 3 as cnt, 60.0 as amt from dual
+    union all
+  select 'c' as user_id, '20151201' as dt, 2 as cnt, 39.0 as amt from dual
+) tmp;
+运行结果
+
++------------+------------+------------+------------+------------+-------------+-------------+-------------+-------------+
+| user_id    | cnt_1d_sum | amt_1d_sum | cnt_7d_sum | amt_7d_sum | cnt_30d_sum | amt_30d_sum | cnt_90d_sum | amt_90d_sum |
++------------+------------+------------+------------+------------+-------------+-------------+-------------+-------------+
+| a          | 1          | 22.0       | 1          | 22.0       | 4           | 59.0        | 6           | 91.0        |
+| c          | 0          | 0.0        | 0          | 0.0        | 0           | 0.0         | 2           | 39.0        |
+| b          | 0          | 0.0        | 0          | 0.0        | 0           | 0.0         | 3           | 42.0        |
++------------+------------+------------+------------+------------+-------------+-------------+-------------+-------------+
+特征编码
+由决策树和Ensemble算法挖掘新特征的一种策略。特征来自一个或多个特征组成的决策树分支。比如下图左边树的分支“节点1->节点2->节点4”形成一个特征。该编码策略可以有效的将非线性特征转换为线性特征。
+
+image
+
+PAI命令
+PAI -name fe_encode_runner -project algo_public
+    -DinputTable="pai_temp_2159_19087_1"
+    -DencodeModel="xlab_m_GBDT_LR_1_19064"
+    -DselectedCols="pdays,previous,emp_var_rate,cons_price_idx,cons_conf_idx,euribor3m,nr_employed,age,campaign"
+    -DlabelCol="y"
+    -DoutputTable="pai_temp_2159_19061_1";
+算法参数
+参数名称	参数描述	参数值可选项	默认值
+inputTable	必选，输入表的表名	表名	不涉及
+inputTablePartitions	可选，输入表中指定哪些分区参与训练，格式为partition_name=value。如果是多级，格式为name1=value1/name2=value2，如果指定多个分区，中间用“,”分开	分区名	输入表的所有partition
+encodeModel	必选，编码输入的GBDT二分类模型	模型名	不涉及
+outputTable	必选，尺度缩放后结果表	表名	不涉及
+selectedCols	必选，勾选GBDT参与编码的特征，一般是GBDT组件的训练特征	列名	不涉及
+labelCol	必选，标签字段	列名	不涉及
+lifecycle	可选，结果表生命周期	正整数	7
+实例
+输入数据
+
+create table if not exists pai_dense_10_9 as
+select
+    age,campaign,pdays, previous, emp_var_rate, cons_price_idx, cons_conf_idx, euribor3m, nr_employed, y
+from  bank_data limit 10;
+参数说明
+
+建模流程如下图所示，一般与GBDT二分类组件配合使用。
+
+image
+
+设置GBDT二分类组件参数，树的数目为5，树最大深度为3，y字段为标签列，其他字段为特征列，运行结果如下。
+
+运行结果
+
+kv	y
+2:1,5:1,8:1,8:1,12:1,15:1,18:1,18:1,28:1,34:1,34:1,41:1,50:1,53:1,53:1,63:1,72:1,72:1	0.0
+2:1,5:1,6:1,6:1,12:1,15:1,16:1,16:1,28:1,34:1,34:1,41:1,50:1,51:1,51:1,63:1,72:1,72:1	0.0
+2:1,3:1,3:1,12:1,13:1,13:1,28:1,34:1,34:1,36:1,39:1,39:1,55:1,61:1,61:1	1.0
+2:1,3:1,3:1,12:1,13:1,13:1,20:1,21:1,22:1,22:1,41:1,42:1,43:1,46:1,46:1,63:1,64:1,67:1,68:1,68:1	0.0
+0:1,0:1,10:1,10:1,28:1,29:1,32:1,32:1,36:1,37:1,37:1,55:1,56:1,59:1,59:1	1.0
+2:1,5:1,8:1,8:1,12:1,15:1,18:1,18:1,20:1,26:1,26:1,41:1,42:1,48:1,48:1,63:1,64:1,67:1,70:1,70:1	0.0
+2:1,3:1,3:1,12:1,13:1,13:1,20:1,21:1,24:1,24:1,41:1,42:1,43:1,44:1,44:1,63:1,64:1,65:1,65:1	0.0
+2:1,3:1,3:1,12:1,13:1,13:1,20:1,21:1,24:1,24:1,41:1,42:1,43:1,44:1,44:1,63:1,64:1,65:1,65:1	0.0
+0:1,0:1,10:1,10:1,28:1,29:1,30:1,30:1,36:1,37:1,37:1,55:1,56:1,57:1,57:1	1.0
+2:1,3:1,3:1,12:1,13:1,13:1,20:1,21:1,22:1,22:1,41:1,42:1,43:1,46:1,46:1,63:1,64:1,67:1,68:1,68:1	0.0
+one-hot编码
+one-hot编码组件训练功能:
+
+输入节点：该组件第一个输入节点（左）是训练数据的输入，训练时右输入节点无需设置。
+输出节点：该组件有两个输出结点，一个是编码后的结果数据表（左），另一个是模型表（右），该模型表用来对同类型的新数据进行one-hot编码。
+one-hot编码组件预测功能:
+
+one-hot组件第二个输入结点（右）是one-hot的模型输入，可以利用已有的one-hot模型来对新数据进行one-hot编码。
+
+PAI命令（训练）
+PAI -name one_hot
+  -project algo_public
+    -DinputTable=one_hot_test
+    -DbinaryCols=f0,f1,f2
+    -DmodelTable=one_hot_model
+    -DoutputTable=one_hot_output
+    -Dlifecycle=28;
+参数说明
+参数名称	参数描述	参数值可选项	默认值
+inputTable	必选，输入表的表名	表名	不涉及
+inputTablePartitions	可选，输入表中指定哪些分区参与训练，格式为partition_name=value。	分区名	输入表的所有partition
+binaryCols	必选，one-hot编码字段，必须是枚举类特征,字段类型可以是任意类型	列名	不涉及
+reserveCols	可选，勾选的字段是当做特征（不做one-hot编码）输出到kv字段中，保留的特征会从0开始编码，该字段必须数double类型	列名	空字符串
+appendCols	可选，勾选的字段是原封不动的输出输入表的字段到输出表中	列名	不涉及
+outputTable	必选，one-hot后的结果表，编码结果保存在kv字段里	表名	不涉及
+inputModelTable	可选，one-hot编码的输入模型表	与outputModelTable必须一个非空	空字符串
+outputModelTable	可选，one-hot编码的输出模型表	与inputModelTable必须一个非空	空字符串
+lifecycle	结果表生命周期，可选，默认7	正整数	7
+dropLast	是否删除最后一个枚举量的编码，该参数为true时，可以保证编码后数据的线性无关性	true／false	false
+outputTableType	输出表的类型，稀疏或稠密表，当离散特征较多时，建议输出kv格式，table仅支持1024列，超出将报错	kv／table	kv
+ignoreNull	是否忽略待编码数据中的空元素，该参数为true是表示不对空元素编码	true／false	false
+coreNum	可选，节点个数	与参数memSizePerCore配对使用，正整数，范围[1, 9999]	默认自动计算
+memSizePerCore	可选，单个结点内存大小，单位M	正整数，范围[2048, 64 *1024]	默认自动计算
+说明
+inputModelTable、outputModelTable 至少一个参数非空，当inputModelTable非空时，其对应的表也应该为非空的模型表。
+编码字段列中离散值个数可以支持到千万量级。
+当训练的模型作为下次编码使用的模型时，编码参数dropLast、ignoreNull、reserveCols无法调节，因为这几个参数的效果已经封装到了模型中，如果需要调整则必须重新训练。
+输出表建议使用kv格式。因为当使用表时，列数最多为1024列，当超出该值则会报错，无法完成编码任务。
+one-hot编码生成的kv表默认从0开始编号。
+当使用模型编码新数据的时候，如果在模型映射表中无法找到数据中的离散量，则忽略该离散量，即不对该离散量编码，如果需要对其编码则需要重新训练模型映射表。
+实例
+测试输入表
+
+f0	f1	f2	f3	f4
+12	prefix1	1970-09-15 12:50:22	0.1	true
+12	prefix3	1971-01-22 03:15:33	0.4	false
+NULL	prefix3	1970-01-01 08:00:00	0.2	NULL
+3	NULL	1970-01-01 08:00:00	0.3	false
+34	NULL	1970-09-15 12:50:22	0.4	NULL
+3	prefix1	1970-09-15 12:50:22	0.2	true
+3	prefix1	1970-09-15 12:50:22	0.3	false
+3	prefix3	1970-01-01 08:00:00	0.2	true
+3	prefix3	1971-01-22 03:15:33	0.1	false
+NULL	prefix3	1970-01-01 08:00:00	0.3	false
+该输入表中f0是bigint型，f1是string型，f2是datetime型，f3是double型，f4是bool型。
+
+测试命令
+
+PAI -project projectxlib4
+  -name one_hot
+  -DinputTable=one_hot_yh
+  -DbinaryCols=f0,f2,f4
+  -DoutputModelTable=one_hot_model_8
+  -DoutputTable=one_hot_in_table_1_output_8
+  -DdropLast=false
+  -DappendCols=f0,f2,f4
+  -DignoreNull=false
+  -DoutputTableType=table
+  -DreserveCols=f3
+  -DcoreNum=4
+  -DmemSizePerCore=2048;
+测试结果
+
+映射模型表
+
+col_name	col_value	mapping
+_reserve_	f3	0
+f0	12	1
+f0	3	2
+f0	34	3
+f0	null	4
+f2	22222222222	5
+f2	33333333333	6
+f2	4	7
+f4	0	8
+f4	1	9
+f4	null	10
+结果表中最上面一行为reserve行，列名值固定为reserve，保存reserve信息。其余的行对应的是编码映射信息。
+
+编码后的表（table）：
+
+f0	f1	f3	f4	_reserve__f3_0	f0_12_1	f0_3_2	f0_34_3	f0_null_4	f2_22222222_5	f2_33333333_6	f2_4_7	f4_0_8	f4_1_9	f4_null_10
+12	prefix1	0.1	true	0.1	1.0	0.0	0.0	0.0	1.0	0.0	0.0	0.0	1.0	0.0
+12	prefix3	0.4	false	0.4	1.0	0.0	0.0	0.0	0.0	1.0	0.0	1.0	0.0	0.0
+NULL	prefix3	0.2	NULL	0.2	0.0	0.0	0.0	1.0	0.0	0.0	1.0	0.0	0.0	1.0
+3	NULL	0.3	false	0.3	0.0	1.0	0.0	0.0	0.0	0.0	1.0	1.0	0.0	0.0
+34	NULL	0.4	NULL	0.4	0.0	0.0	1.0	0.0	1.0	0.0	0.0	0.0	0.0	1.0
+3	prefix1	0.2	true	0.2	0.0	1.0	0.0	0.0	1.0	0.0	0.0	0.0	1.0	0.0
+3	prefix1	0.3	false	0.3	0.0	1.0	0.0	0.0	1.0	0.0	0.0	1.0	0.0	0.0
+3	prefix3	0.2	true	0.2	0.0	1.0	0.0	0.0	0.0	0.0	1.0	0.0	1.0	0.0
+3	prefix3	0.1	false	0.1	0.0	1.0	0.0	0.0	0.0	1.0	0.0	1.0	0.0	0.0
+NULL	prefix3	0.3	false	0.3	0.0	0.0	0.0	1.0	0.0	0.0	1.0	1.0	0.0	0.0
+编码后的表（kv）：
+
+f0	f1	f3	f4	kv
+12	prefix1	0.1	true	0:0.1,1:1,5:1,9:1
+12	prefix3	0.4	false	0:0.4,1:1,6:1,8:1
+NULL	prefix3	0.2	NULL	0:0.2,4:1,7:1,10:1
+3	NULL	0.3	false	0:0.3,2:1,7:1,8:1
+34	NULL	0.4	NULL	0:0.4,3:1,5:1,10:1
+3	prefix1	0.2	true	0:0.2,2:1,5:1,9:1
+3	prefix1	0.3	false	0:0.3,2:1,5:1,8:1
+3	prefix3	0.2	true	0:0.2,2:1,7:1,9:1
+3	prefix3	0.1	false	0:0.1,2:1,6:1,8:1
+NULL	prefix3	0.3	false	0:0.3,4:1,7:1,8:1
+扩展性测试
+测试数据
+
+样本数2亿，枚举量10万。
+
+测试数据表如下：
+
+f0	f1
+94	prefix3689
+9664	prefix5682
+2062	prefix5530
+9075	prefix9854
+9836	prefix1764
+5140	prefix1149
+3455	prefix7272
+2508	prefix7139
+7993	prefix1551
+5602	prefix4606
+3132	prefix5767
+测试结果
+
+core num	train time	predict time	加速比
+5	84s	181s	1/1
+10	60s	93s	1.4/1.95
+20	46s	56s	1.8/3.23
+web端使用说明
+直接使用该组件进行编码，实验流程如下。
+
+train
+
+使用该组件训练模型，然后通过模型对数据编码，实验流程如下。
+
+train
+
+异常检测
+针对连续值特征：按照箱线图最大值和最小值检测异常特征，如下图所示。
+image
+
+针对枚举值特征：按照枚举特征的取值频率，根据阈值过滤异常特征。
+
+PAI命令
+ PAI -name fe_detect_runner -project algo_public
+     -DselectedCols="emp_var_rate,cons_price_rate,cons_conf_idx,euribor3m,nr_employed" \
+     -Dlifecycle="28"
+     -DdetectStrategy="boxPlot"
+     -DmodelTable="pai_temp_2458_23565_2"
+     -DinputTable="pai_bank_data"
+     -DoutputTable="pai_temp_2458_23565_1";
+算法参数
+参数名称	参数描述	参数值可选项	默认值
+inputTable	必选，输入表的表名	表名	不涉及
+inputTablePartitions	可选，输入表中指定哪些分区参与训练，格式为partition_name=value。如果是多级，格式为name1=value1/name2=value2，如果指定多个分区，中间用“,”分开	分区名	输入表的所有partition
+selectedCols	必选，输入特征，字段类型可以是任意类型	列名	不涉及
+detectStrategy	必选，支持boxPlot和avf选项，boxPlot是针对连续特征做检测，avf针对枚举类特征做检测	boxPlot/avf	boxPlot
+outputTable	必选，过滤检测到的异常特征数据集	表名	不涉及
+modelTable	必选，异常检测模型	模型名	不涉及
+lifecycle	结果表生命周期，可选，默认7	正整数	7
+特征重要性过滤
+该组件为线性特征重要性、GBDT特征重要性、随机森林特征重要性等重要性评估组件提供过滤功能，支持过滤TopN的特征。
+
+PAI命令
+PAI -name fe_filter_runner -project algo_public
+    -DselectedCols=pdays,previous,emp_var_rate,cons_price_idx,cons_conf_idx,euribor3m,nr_employed,age,campaign,poutcome
+    -DinputTable=pai_dense_10_10
+    -DweightTable=pai_temp_2252_20319_1
+    -DtopN=5
+    -DmodelTable=pai_temp_2252_20320_2
+    -DoutputTable=pai_temp_2252_20320_1;
+算法参数
+参数名称	参数描述	参数值可选项	默认值
+inputTable	必选，输入原始数据表	表名	不涉及
+inputTablePartitions	可选，输入表中指定哪些分区参与训练，格式为partition_name=value。如果是多级，格式为name1=value1/name2=value2，如果指定多个分区，中间用“,”分开	分区名	输入表的所有partition
+weightTable	必选，特征重要性的权重表（即线性特征重要性、GBDT特征重要性、随机森林特征重要性的输出表）	表名	不涉及
+outputTable	必选，过滤出TopN个特征的输出表	表名	不涉及
+modelTable	必选，特征过滤产出的模型文件	模型表	不涉及
+selectedCols	可选，默认输入表的所有字段	列名	不涉及
+topN	挑选的TopN个特征，默认10	正整数	10
+lifecycle	输出表生命周期，可选，默认7	正整数	7
+实例
+输入数据
+
+特征重要性过滤组件左边输入数据是原始数据表，右边是特征重要性表。
+
+creat table if not exists pai_dense_10_10 as
+select
+    age,campaign,pdays, previous, poutcome, emp_var_rate, cons_price_idx, cons_conf_idx, euribor3m, nr_employed, y
+from  bank_data limit 10;
+特征重要性表为随机森林特征重要性组件的输出表。
+
+参数配置
+
+建模流程图如下图所示。
+
+image
+
+输入数据为pai_dense_10_10。勾选随机森林和随机森林重要性组件，选择y字段为标签列，其他字段为特征列。
+设置特征重要性过滤组件TopN特征为5，表示只过滤top5的特征，如下图所示。
+
+image
+
+运行结果
+
+特征重要性过滤组件的输出结果是过滤后的TopN特征数据。
+
+特征重要性表有一定格式要求。第一字段存储特征名称，第二字段存储该特征对应的权重值，一般为double类型。如下图为随机森林特征重要性的输出表。
+
+Field	Type	Label	Comment
+colname	string
+gini	double
+entropy	double
+左输出数据结果：
+
+nr_employed	pdays	age	euribor3m	poutcome
+5228.1	999.0	44	4.963	nonexistent
+5195.8	999.0	53	4.021	nonexistent
+4991.6	6.0	28	0.729	success
+5099.1	999.0	39	1.405	nonexistent
+5076.2	3.0	55	0.869	success
+5228.1	999.0	30	4.961	nonexistent
+5099.1	999.0	37	1.327	nonexistent
+5099.1	999.0	39	1.313	nonexistent
+5076.2	3.0	36	1.266	success
+5099.1	999.0	27	1.41	failure
+右输出数据为过滤模型，暂无数据。
+
+奇异值分解
+奇异值分解（Singular Value Decomposition）是线性代数中一种重要的矩阵分解，是矩阵分析中正规矩阵求对角化的推广。在信号处理、统计学等领域有重要应用。
+
+X = U S V’
+
+SVD 的详细介绍请见维基百科链接wiki
+
+PAI命令
+PAI -name svd
+    -project algo_public
+    -DinputTableName=bank_data
+    -DselectedColNames=col0
+    -DenableSparse=true
+    -Dk=5
+    -DoutputUTableName=u_table
+    -DoutputVTableName=v_table
+    -DoutputSTableName=s_table;
+参数说明
+参数名称	参数描述	取值范围	是否必选，默认值
+inputTableName	进行主成分分析的输入表	表名	必选
+selectedColNames	输入表中用于分析的列名，以逗号分隔。如果是稀疏矩阵，支持string类型。如果是表，支持int和double类型	列名	可选，默认值选择所有列
+inputTablePartitions	输入表中指定哪些分区参与分析， 格式为 Partition_name=value。如果是多级格式为name1=value1/name2=value2，如果是指定多个分区， 中间用“,”隔开	分区名	可选， 默认值选择所有分区
+outputUTableName	U矩阵的输出表，维度是m * sgNum, 其中m是数据表的行数，sgNum是计算出来的奇异值个数	表名	必选
+outputSTableName	S矩阵的输出表，维度是sgNum * sgNum，其中sgNum是计算出来的奇异值个数	表名	必选
+outputVTableName	V矩阵的输出表，维度是n * sgNum，其中n是矩阵的列数，sgNum是计算出来的奇异值个数	表名	必选
+k	期望的奇异值个数，输出结果有可能比k值小	正整数	必选
+tol	收敛误差	不涉及	可选，默认值1.0e-06
+enableSparse	输入数据是否为稀疏格式	true/false	可选，默认值是false
+itemDelimiter	当输入表数据为稀疏格式时，kv间的分割	符号	可选，空格
+kvDelimiter	当输入表数据为稀疏格式时，key和value的分割符	符号	可选，冒号
+coreNum	节点个数	与参数memSizePerCore配对使用，正整数，范围[1, 9999]
+详细介绍	可选， 默认自动计算
+memSizePerCore	单个节点内存大小，单位M	正整数，范围[1024, 64*1024]
+详细介绍	可选， 默认自动计算
+lifecycle	可选，指定输出表的生命周期	正整数	没有生命周期
+实例
+数据生成
+
+drop table if exists svd_test_input;
+create table svd_test_input
+as
+select
+    *
+from
+(
+  select
+        '0:3.9079 2:0.0009 3:0.0416 4:0.17664 6:0.36460 8:0.091330' as col0
+    from dual
+    union all
+  select
+        '0:0.09229 2:0.4872172 5:0.5267 8:0.4544 9:0.23317' as col0
+    from dual
+    union all
+    select
+    '1:0.8312 3:0.9317 5:0.5680 7:0.5560 9:0.0508' as col0
+    from dual
+    union all
+    select
+    '2:0.767 5:0.01891 8:0.25235 ' as col0
+    from dual
+    union all
+    select
+    '0:0.29819 2:0.87598086 6:0.5315568 ' as col0
+    from dual
+    union all
+    select
+    '0:0.920260 2:0.5154311513 4:0.8104 5:0.188420 8:0.88' as col0
+    from dual
+) a;
+PAI命令
+
+PAI -name svd
+    -project algo_public
+    -DinputTableName=svd_test_input
+    -DselectedColNames=col0
+    -DenableSparse=true
+    -Dk=5
+    -DoutputUTableName=u_table
+    -DoutputVTableName=v_table
+    -DoutputSTableName=s_table;
+算法规模
+10万列

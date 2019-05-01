@@ -485,3 +485,2617 @@ master和worker服务290
 19．1　使用最小二乘回归的多任务学习
 19．2　使用最小二乘概率分类器的多任务学习
 19．3　多次维输出函数的学习
+
+------------------------------
+
+
+机器学习
+更新时间：2019-04-25 16:25:27
+
+
+本页目录
+目录
+线性支持向量机
+逻辑回归
+GBDT二分类
+K近邻
+随机森林
+朴素贝叶斯
+K均值聚类
+线性回归
+GBDT回归
+协同过滤etrec
+混淆矩阵
+多分类评估
+二分类评估
+回归模型评估
+预测
+PS-SMART二分类
+PS-SMART多分类
+PS-SMART回归
+PS线性回归
+聚类模型评估
+目录
+线性支持向量机
+
+逻辑回归
+
+GBDT二分类
+
+K近邻
+
+随机森林
+
+朴素贝叶斯
+
+K均值聚类
+
+线性回归
+
+GBDT回归
+
+协同过滤etrec
+
+混淆矩阵
+
+多分类评估
+
+二分类评估
+
+回归模型评估
+
+聚类模型评估
+
+预测
+
+PS-SMART二分类
+
+PS-SMART多分类
+
+PS-SMART回归
+
+PS线性回归
+
+线性支持向量机
+支持向量机（SVM）是90 年代中期发展起来的基于统计学习理论的一种机器学习方法，通过寻求结构化风险最小来提高学习机泛化能力，实现经验风险和置信范围的最小化，从而达到在统计样本量较少的情况下，亦能获得良好统计规律的目的。算法的详细介绍可以参考wiki。
+本版线性支持向量机不是采用核函数方式实现的，具体实现理论详见http://www.csie.ntu.edu.tw/~cjlin/papers/logistic.pdf 中的“6. Trust Region Method for L2-SVM”。本算法仅支持二分类。
+
+算法组件
+设置组件的字段参数。
+svm_param_col_select
+
+输入列：选择输入列，支持bigint与double类型。
+标签列：支持bigint、double和string类型。
+设置算法参数。
+svm_param_setting
+注意：当不指定目标基准值时，正例权重值和负例权重值必须相同。
+
+惩罚因子：默认为1。
+目标基准值：（可选）正例的值，不指定则随机选一个。建议正负例样本差异大时指定。
+正例权重值：（可选）正例惩罚因子，默认1.0，范围为(0, ~)。
+负例权重值：（可选）负例惩罚因子，默认1.0，范围为(0,~)。
+收敛系数：（可选）收敛误差，默认0.001，范围为(0, 1)。
+PAI 命令
+PAI -name LinearSVM -project algo_public
+    -DnegativeCost="1.0" \
+    -DmodelName="xlab_m_LinearSVM_6143"
+    -DpositiveCost="1.0" \
+    -Depsilon="0.001" -DlabelColName="y" \
+    -DfeatureColNames="pdays,emp_var_rate,cons_conf_idx" \
+    -DinputTableName="bank_data"
+    -DpositiveLabel="0";
+参数说明
+参数名称	参数描述	参数值可选项	默认值
+inputTableName	输入表	NA	NA
+inputTableParitions	可选，输入表中指定哪些分区参与训练，格式为Partition_name=value。如果是多级格式为name1=value1/name2=value2，如果是指定多个分区，中间用“,”分开	NA	输入表的所有分区
+modelName	必选，输出的模型名称	NA	NA
+featureColNames	必选，输入表中用于训练的特征的列名	NA	NA
+labelColName	必选，输入表中标签列的列名	NA	NA
+positiveLabel	可选，正例的值	NA	在label的取值中随机选择一个
+negativeCost	可选，负例权重值，即负例惩罚因子	(0, ∞)	默认1.0
+positiveCost	可选，正例权重值。即正例惩罚因子	(0, ∞)	默认1.0
+∞	可选，收敛系数	(0, 1)	0.001
+实例
+训练数据
+
+id	y	f0	f1	f2	f3	f4	f5	f6	f7
+1	-1	-0.294118	0.487437	0.180328	-0.292929	-1	0.00149028	-0.53117	-0.0333333
+2	+1	-0.882353	-0.145729	0.0819672	-0.414141	-1	-0.207153	-0.766866	-0.666667
+3	-1	-0.0588235	0.839196	0.0491803	-1	-1	-0.305514	-0.492741	-0.633333
+4	+1	-0.882353	-0.105528	0.0819672	-0.535354	-0.777778	-0.162444	-0.923997	-1
+5	-1	-1	0.376884	-0.344262	-0.292929	-0.602837	0.28465	0.887276	-0.6
+6	+1	-0.411765	0.165829	0.213115	-1	-1	-0.23696	-0.894962	-0.7
+7	-1	-0.647059	-0.21608	-0.180328	-0.353535	-0.791962	-0.0760059	-0.854825	-0.833333
+8	+1	0.176471	0.155779	-1	-1	-1	0.052161	-0.952178	-0.733333
+9	-1	-0.764706	0.979899	0.147541	-0.0909091	0.283688	-0.0909091	-0.931682	0.0666667
+10	-1	-0.0588235	0.256281	0.57377	-1	-1	-1	-0.868488	0.1
+测试数据
+
+id	y	f0	f1	f2	f3	f4	f5	f6	f7
+1	+1	-0.882353	0.0854271	0.442623	-0.616162	-1	-0.19225	-0.725021	-0.9
+2	+1	-0.294118	-0.0351759	-1	-1	-1	-0.293592	-0.904355	-0.766667
+3	+1	-0.882353	0.246231	0.213115	-0.272727	-1	-0.171386	-0.981213	-0.7
+4	-1	-0.176471	0.507538	0.278689	-0.414141	-0.702128	0.0491804	-0.475662	0.1
+5	-1	-0.529412	0.839196	-1	-1	-1	-0.153502	-0.885568	-0.5
+6	+1	-0.882353	0.246231	-0.0163934	-0.353535	-1	0.0670641	-0.627669	-1
+7	-1	-0.882353	0.819095	0.278689	-0.151515	-0.307329	0.19225	0.00768574	-0.966667
+8	+1	-0.882353	-0.0753769	0.0163934	-0.494949	-0.903073	-0.418778	-0.654996	-0.866667
+9	+1	-1	0.527638	0.344262	-0.212121	-0.356974	0.23696	-0.836038	-0.8
+10	+1	-0.882353	0.115578	0.0163934	-0.737374	-0.56974	-0.28465	-0.948762	-0.933333
+创建实验svm_example
+ex_svm_demo
+
+选择特征列
+ex_svm_selected_feature
+
+选择标签列
+ex_svm_select_label
+
+配置SVM参数
+ex_svm_set_param
+
+运行实验
+
+生成模型如下：
+ex_svm_model
+
+预测结果如下：
+ex_svm_predict_result
+
+逻辑回归
+经典逻辑回归是一个二分类算法，算法平台的逻辑回归可以支持多分类。
+
+逻辑回归组件支持稀疏、稠密两种数据格式。
+逻辑回归多分类最多支持100类。
+参数设置
+逻辑回归组件的参数如下。
+
+是否支持稀疏矩阵：组件可支持稀疏矩阵格式。
+目标基准值：（可选）二分类时，指定训练系数针对的label值。如果为空，系统会随机选择一个。
+最大迭代数：（可选）L-BFGS的最大迭代次数，默认为100。
+收敛误差：（可选）L-BFGS的终止条件，即两次迭代之间log-likelihood的差，默认为1.0e-06。
+正则化类型：（可选）正则化类型，可以选择“l1”、“l2”、“None”，默认为“l1”。
+正则化系数：（可选）正则项系数，默认为 1.0。当regularizedType为None时，该参数会被忽略。
+PAI 命令（未沿用类型设置节点）
+PAI -name LogisticRegression -project algo_public
+    -DmodelName="xlab_m_logistic_regression_6096" \
+    -DregularizedLevel="1"
+    -DmaxIter="100"
+    -DregularizedType="l1"
+    -Depsilon="0.000001"
+    -DlabelColName="y"\
+    -DfeatureColNames="pdays,emp_var_rate"
+    -DgoodValue="1"
+    -DinputTableName="bank_data";
+name: 组件名字。
+project: 工程名字。用于指定算法所在空间，系统默认是algo_public，用户更改后系统会报错。
+modelName: 输出的模型名。
+regularizedLevel：（可选）正则化系数。默认为 1.0，当regularizedType为None时，该参数会被忽略。
+maxIter：（可选）最大迭代数。指定L-BFGS的最大迭代次数，默认为100。
+regularizedType：（可选）正则化类型，可以选择“l1”、“l2”、“None”，默认为“l1”。
+epsilon：（可选）收敛误差。L-BFGS的终止条件，即两次迭代之间log-likelihood的差，默认为1.0e-06。
+labelColName：输入表标签列列名。
+featureColNames：输入表中选择的用于训练的特征列名。
+goodValue：（可选）目标基准值。二分类时，指定训练系数针对的label值，如果为空，系统会随机选择一个。
+inputTableName：训练输入表的表名。
+实例
+二分类
+测试数据
+
+新建数据SQL
+
+drop table if exists lr_test_input;
+create table lr_test_input
+as
+select
+    *
+from
+(
+    select
+        cast(1 as double) as f0,
+        cast(0 as double) as f1,
+        cast(0 as double) as f2,
+        cast(0 as double) as f3,
+        cast(0 as bigint) as label
+    from dual
+    union all
+        select
+            cast(0 as double) as f0,
+            cast(1 as double) as f1,
+            cast(0 as double) as f2,
+            cast(0 as double) as f3,
+            cast(0 as bigint) as label
+    from dual
+    union all
+        select
+            cast(0 as double) as f0,
+            cast(0 as double) as f1,
+            cast(1 as double) as f2,
+            cast(0 as double) as f3,
+            cast(1 as bigint) as label
+    from dual
+    union all
+        select
+            cast(0 as double) as f0,
+            cast(0 as double) as f1,
+            cast(0 as double) as f2,
+            cast(1 as double) as f3,
+            cast(1 as bigint) as label
+    from dual
+    union all
+        select
+            cast(1 as double) as f0,
+            cast(0 as double) as f1,
+            cast(0 as double) as f2,
+            cast(0 as double) as f3,
+            cast(0 as bigint) as label
+    from dual
+    union all
+        select
+            cast(0 as double) as f0,
+            cast(1 as double) as f1,
+            cast(0 as double) as f2,
+            cast(0 as double) as f3,
+            cast(0 as bigint) as label
+    from dual
+) a;
+输入数据说明
+
++------------+------------+------------+------------+------------+
+| f0         | f1         | f2         | f3         | label      |
++------------+------------+------------+------------+------------+
+| 1.0        | 0.0        | 0.0        | 0.0        | 0          |
+| 0.0        | 0.0        | 1.0        | 0.0        | 1          |
+| 0.0        | 0.0        | 0.0        | 1.0        | 1          |
+| 0.0        | 1.0        | 0.0        | 0.0        | 0          |
+| 1.0        | 0.0        | 0.0        | 0.0        | 0          |
+| 0.0        | 1.0        | 0.0        | 0.0        | 0          |
++------------+------------+------------+------------+------------+
+运行命令
+
+drop offlinemodel if exists lr_test_model;
+drop table if exists lr_test_prediction_result;
+PAI -name logisticregression_binary -project algo_public -DmodelName="lr_test_model" -DitemDelimiter="," -DregularizedLevel="1" -DmaxIter="100" -DregularizedType="None" -Depsilon="0.000001" -DkvDelimiter=":" -DlabelColName="label" -DfeatureColNames="f0,f1,f2,f3" -DenableSparse="false" -DgoodValue="1" -DinputTableName="lr_test_input";
+PAI -name prediction -project algo_public -DdetailColName="prediction_detail" -DmodelName="lr_test_model" -DitemDelimiter="," -DresultColName="prediction_result" -Dlifecycle="28" -DoutputTableName="lr_test_prediction_result" -DscoreColName="prediction_score" -DkvDelimiter=":" -DinputTableName="lr_test_input" -DenableSparse="false" -DappendColNames="label";
+运行结果
+
+lr_test_prediction_result
+
++------------+-------------------+------------------+-------------------+
+| label      | prediction_result | prediction_score | prediction_detail |
++------------+-------------------+------------------+-------------------+
+| 0          | 0                 | 0.9999998793434426 | {
+    "0": 0.9999998793434426,
+        "1": 1.206565574533681e-07} |
+        | 1          | 1                 | 0.999999799574135 | {
+            "0": 2.004258650156743e-07,
+                "1": 0.999999799574135} |
+                | 1          | 1                 | 0.999999799574135 | {
+                    "0": 2.004258650156743e-07,
+                        "1": 0.999999799574135} |
+                        | 0          | 0                 | 0.9999998793434426 | {
+                            "0": 0.9999998793434426,
+                                "1": 1.206565574533681e-07} |
+                                | 0          | 0                 | 0.9999998793434426 | {
+                                    "0": 0.9999998793434426,
+                                        "1": 1.206565574533681e-07} |
+                                        | 0          | 0                 | 0.9999998793434426 | {
+                                            "0": 0.9999998793434426,
+                                                "1": 1.206565574533681e-07} |
+                                                +------------+-------------------+------------------+-------------------+
+多分类
+测试数据
+
+新建数据SQL
+
+drop table if exists multi_lr_test_input;
+create table multi_lr_test_input
+as
+select
+    *
+from
+(
+    select
+        cast(1 as double) as f0,
+        cast(0 as double) as f1,
+        cast(0 as double) as f2,
+        cast(0 as double) as f3,
+        cast(0 as bigint) as label
+    from dual
+    union all
+        select
+            cast(0 as double) as f0,
+            cast(1 as double) as f1,
+            cast(0 as double) as f2,
+            cast(0 as double) as f3,
+            cast(0 as bigint) as label
+    from dual
+    union all
+        select
+            cast(0 as double) as f0,
+            cast(0 as double) as f1,
+            cast(1 as double) as f2,
+            cast(0 as double) as f3,
+            cast(2 as bigint) as label
+    from dual
+    union all
+        select
+            cast(0 as double) as f0,
+            cast(0 as double) as f1,
+            cast(0 as double) as f2,
+            cast(1 as double) as f3,
+            cast(1 as bigint) as label
+    from dual
+) a;
+输入数据说明
+
++------------+------------+------------+------------+------------+
+| f0         | f1         | f2         | f3         | label      |
++------------+------------+------------+------------+------------+
+| 1.0        | 0.0        | 0.0        | 0.0        | 0          |
+| 0.0        | 0.0        | 1.0        | 0.0        | 2          |
+| 0.0        | 0.0        | 0.0        | 1.0        | 1          |
+| 0.0        | 1.0        | 0.0        | 0.0        | 0          |
++------------+------------+------------+------------+------------+
+运行命令
+
+drop offlinemodel if exists multi_lr_test_model;
+drop table if exists multi_lr_test_prediction_result;
+PAI -name logisticregression_multi -project algo_public -DmodelName="multi_lr_test_model" -DitemDelimiter="," -DregularizedLevel="1" -DmaxIter="100" -DregularizedType="None" -Depsilon="0.000001" -DkvDelimiter=":" -DlabelColName="label" -DfeatureColNames="f0,f1,f2,f3" -DenableSparse="false" -DinputTableName="multi_lr_test_input";
+PAI -name prediction -project algo_public -DdetailColName="prediction_detail" -DmodelName="multi_lr_test_model" -DitemDelimiter="," -DresultColName="prediction_result" -Dlifecycle="28" -DoutputTableName="multi_lr_test_prediction_result" -DscoreColName="prediction_score" -DkvDelimiter=":" -DinputTableName="multi_lr_test_input" -DenableSparse="false" -DappendColNames="label";
+运行结果
+
+multi_lr_test_prediction_result
+
++------------+-------------------+------------------+-------------------+
+| label      | prediction_result | prediction_score | prediction_detail |
++------------+-------------------+------------------+-------------------+
+| 0          | 0                 | 0.9999997274902165 | {
+    "0": 0.9999997274902165,
+        "1": 2.324679066261573e-07,
+            "2": 2.324679066261569e-07} |
+            | 0          | 0                 | 0.9999997274902165 | {
+                "0": 0.9999997274902165,
+                    "1": 2.324679066261573e-07,
+                        "2": 2.324679066261569e-07} |
+                        | 2          | 2                 | 0.9999999155958832 | {
+                            "0": 2.018833979850994e-07,
+                                "1": 2.324679066261573e-07,
+                                    "2": 0.9999999155958832} |
+                                    | 1          | 1                 | 0.9999999155958832 | {
+                                        "0": 2.018833979850994e-07,
+                                            "1": 0.9999999155958832,
+                                                "2": 2.324679066261569e-07} |
+                                                +------------+-------------------+------------------+-------------------+
+GBDT二分类
+在GBDT回归与排序的基础上，用于二分类问题，即设定阈值，大于阈值为正例，反之为负例。
+
+PAI 命令
+PAI -name gbdt_lr
+    -project algo_public
+    -DfeatureSplitValueMaxSize="500"
+    -DrandSeed="0"
+    -Dshrinkage="0.5"
+    -DmaxLeafCount="32"
+    -DlabelColName="y"
+    -DinputTableName="bank_data_partition"
+    -DminLeafSampleCount="500"
+    -DgroupIDColName="nr_employed"
+    -DsampleRatio="0.6"
+    -DmaxDepth="11"
+    -DmodelName="xlab_m_GBDT_LR_21208"
+    -DmetricType="2"
+    -DfeatureRatio="0.6"
+    -DinputTablePartitions="pt=20150501"
+    -DtestRatio="0.0"
+    -DfeatureColNames="age,previous,cons_conf_idx,euribor3m"
+    -DtreeCount="500"
+参数说明
+参数名称	参数描述	取值范围	是否必选，默认值
+inputTableName	输入表	表名	必选
+featureColNames	输入表中选择的用于训练的特征列名	列名	可选，默认值选择所有数值列
+labelColName	输入表标签列列名	列名	必选
+inputTablePartitions	可选，输入表中指定哪些分区参与训练，格式为Partition_name=value。如果是多级格式为name1=value1/name2=value2，如果是指定多个分区，中间用“,”分开	NA	可选， 默认值选择所有分区
+modelName	输出模型名	NA	必选
+outputImportanceTableName	输出特征重要性表名	NA	可选
+groupIDColName	数据分组列	列名	可选，默认值整表
+lossType	损失函数类型，0:GBRANK，1:LAMBDAMART_DCG，2:LAMBDAMART_NDCG，3:LEAST_SQUARE，4:LOG_LIKELIHOOD	0,1,2,3,4	可选，默认为 0
+metricType	metric类型，0(NDCG)-：normalized discounted cumulative gain；1(DCG) : discounted cumulative gain；2 (AUC) 只适应0/1 label	0,1,2	可选，默认值2
+treeCount	树数量	[1,10000]	可选，默认值500
+shrinkage	学习速率	(0,1]	可选，默认0.05
+maxLeafCount	最大叶子数，必须为整数	[2,1000]	可选，默认32
+maxDepth	一棵树的最大深度，必须为整数	[1,11]	可选，默认11
+minLeafSampleCount	叶子节点容纳的最少样本数，必须为整数	[100,1000]	可选，默认500
+sampleRatio	训练采集样本比例	(0,1]	可选，默认0.6
+featureRatio	训练中采集的特征比例	(0,1]	可选，默认0.6
+tau	gbrank loss中的Tau参数	[0,1]	可选，默认0.6
+p	gbrank loss中的p参数	[1,10]	可选，默认1
+randSeed	随机数种子	[0,10]	可选，默认0
+newtonStep	是否使用newton法	0,1	可选，默认1
+featureSplitValueMaxSize	一个特征分裂的最大数量	[1,1000]	可选，默认500
+lifecycle	输出表的生命周期	NA	可选，默认不设置
+实例
+数据生成
+
+drop table if exists gbdt_lr_test_input;
+create table gbdt_lr_test_input
+as
+select
+    *
+from
+(
+    select
+        cast(1 as double) as f0,
+        cast(0 as double) as f1,
+        cast(0 as double) as f2,
+        cast(0 as double) as f3,
+        cast(0 as bigint) as label
+    from dual
+    union all
+        select
+            cast(0 as double) as f0,
+            cast(1 as double) as f1,
+            cast(0 as double) as f2,
+            cast(0 as double) as f3,
+            cast(0 as bigint) as label
+    from dual
+    union all
+        select
+            cast(0 as double) as f0,
+            cast(0 as double) as f1,
+            cast(1 as double) as f2,
+            cast(0 as double) as f3,
+            cast(1 as bigint) as label
+    from dual
+    union all
+        select
+            cast(0 as double) as f0,
+            cast(0 as double) as f1,
+            cast(0 as double) as f2,
+            cast(1 as double) as f3,
+            cast(1 as bigint) as label
+    from dual
+    union all
+        select
+            cast(1 as double) as f0,
+            cast(0 as double) as f1,
+            cast(0 as double) as f2,
+            cast(0 as double) as f3,
+            cast(0 as bigint) as label
+    from dual
+    union all
+        select
+            cast(0 as double) as f0,
+            cast(1 as double) as f1,
+            cast(0 as double) as f2,
+            cast(0 as double) as f3,
+            cast(0 as bigint) as label
+    from dual
+) a;
+PAI命令
+
+训练
+
+drop offlinemodel if exists gbdt_lr_test_model;
+PAI -name gbdt_lr
+    -project algo_public
+    -DfeatureSplitValueMaxSize="500"
+    -DrandSeed="1"
+    -Dshrinkage="1"
+    -DmaxLeafCount="30"
+    -DlabelColName="label"
+    -DinputTableName="gbdt_lr_test_input"
+    -DminLeafSampleCount="1"
+    -DsampleRatio="1"
+    -DmaxDepth="10"
+    -DmodelName="gbdt_lr_test_model"
+    -DmetricType="0"
+    -DfeatureRatio="1"
+    -DtestRatio="0"
+    -DfeatureColNames="f0,f1,f2,f3"
+    -DtreeCount="5"
+预测
+
+drop table if exists gbdt_lr_test_prediction_result;
+PAI -name prediction
+    -project algo_public
+    -DdetailColName="prediction_detail"
+    -DmodelName="gbdt_lr_test_model"
+    -DitemDelimiter=","
+    -DresultColName="prediction_result"
+    -Dlifecycle="28"
+    -DoutputTableName="gbdt_lr_test_prediction_result"
+    -DscoreColName="prediction_score"
+    -DkvDelimiter=":"
+    -DinputTableName="gbdt_lr_test_input"
+    -DenableSparse="false"
+    -DappendColNames="label";
+输入说明
+
+gbdt_lr_test_input
+
+f0	f1	f2	f3	label
+1.0	0.0	0.0	0.0	0
+0.0	0.0	1.0	0.0	1
+0.0	0.0	0.0	1.0	1
+0.0	1.0	0.0	0.0	0
+1.0	0.0	0.0	0.0	0
+0.0	1.0	0.0	0.0	0
+输出说明
+
+gbdt_lr_test_prediction_result
+
+label	prediction_result	prediction_score	prediction_detail
+0	0	0.9984308925552831	{“0”: 0.9984308925552831, “1”: 0.001569107444716943}
+0	0	0.9984308925552831	{“0”: 0.9984308925552831, “1”: 0.001569107444716943}
+1	1	0.9982721832240973	{“0”: 0.001727816775902724, “1”: 0.9982721832240973}
+1	1	0.9982721832240973	{“0”: 0.001727816775902724, “1”: 0.9982721832240973}
+0	0	0.9984308925552831	{“0”: 0.9984308925552831, “1”: 0.001569107444716943}
+0	0	0.9984308925552831	{“0”: 0.9984308925552831, “1”: 0.001569107444716943}
+常见问题
+GBDT与GBDT_LR默认损失函数类型不一致。GBDT 默认为“regression loss:mean squared error loss”，GBDT_LR默认为“logistic regression loss”。其中GBDT_LR不需要用户设置损失函数类型，系统直接写入默认损失函数。
+GBDT的列类型目前只支持数值，包括特征列，标签列和group列
+连接ROC曲线时预测组件应该选择自定义并选择目标基准值。
+K近邻
+该算法解决分类问题。对于预测表的每一行，从训练表中选出距离该行最近的K条记录，K条记录中类别数最多的那一类作为该行的类别。
+
+PAI 命令
+PAI -name knn
+    -DtrainTableName=pai_knn_test_input
+    -DtrainFeatureColNames=f0,f1
+    -DtrainLabelColName=class
+    -DpredictTableName=pai_knn_test_input
+    -DpredictFeatureColNames=f0,f1
+    -DoutputTableName=pai_knn_test_output
+    -Dk=2;
+参数说明
+参数名称	参数描述	参数值可选项	参数默认值
+trainTableName	必选，训练表的表名	NA	NA
+trainFeatureColNames	必选，训练表中的特征列名	NA	NA
+trainLabelColName	必选，训练表中标签列的列名	NA	NA
+trainTablePartitions	可选，训练表中指定哪些分区参与训练	NA	所有partitions
+predictTableName	必选，预测表的表名	NA	NA
+outputTableName	必选，输出表的表名	NA	NA
+predictFeatureColNames	可选，预测表中特征列名	NA	默认与trainFeatureColNames相同
+predictTablePartitions	可选，预测表中指定哪些分区参与预测	NA	所有partitions
+appendColNames	可选，输出表中附加预测表的列名	NA	默认与predictFeatureColNames相同
+outputTablePartition	可选，输出表分区	NA	输出表不分区
+k	可选，最近邻个数	正整数，[1,1000]	100
+enableSparse	输入表数据是否为稀疏格式	true， false	可选， 默认值false
+itemDelimiter	当输入表数据为稀疏格式时，kv间的分割符	字符	可选， 默认值为空格
+kvDelimiter	当输入表数据为稀疏格式时，key和value的分割符	字符	可选， 默认值冒号
+coreNum	节点个数	与参数memSizePerCore配对使用，正整数，范围[1, 20000]	可选， 默认自动计算
+memSizePerCore	单个节点内存大小，单位为MB	正整数，范围[1024, 64*1024]	可选， 默认自动计算
+lifecycle	可选，指定输出表的生命周期	正整数	没有生命周期
+实例
+测试数据
+
+create table pai_knn_test_input as
+select * from
+(
+  select 1 as f0,2 as f1, 'good' as class from dual
+  union all
+  select 1 as f0,3 as f1, 'good' as class from dual
+  union all
+  select 1 as f0,4 as f1, 'bad' as class from dual
+  union all
+  select 0 as f0,3 as f1, 'good' as class from dual
+  union all
+  select 0 as f0,4 as f1, 'bad' as class from dual
+)tmp;
+PAI 命令
+
+pai -name knn
+    -DtrainTableName=pai_knn_test_input
+    -DtrainFeatureColNames=f0,f1
+    -DtrainLabelColName=class
+    -DpredictTableName=pai_knn_test_input
+    -DpredictFeatureColNames=f0,f1
+    -DoutputTableName=pai_knn_test_output
+    -Dk=2;
+输出说明
+
+image
+
+f0，f1：结果附件列。
+prediction_result：分类结果。
+prediction_score: 分类结果对应概率。
+prediction_detail: 最近K个结论以及对应的概率。
+随机森林
+随机森林是一个包含多个决策树的分类器，并且其输出的类别是由单棵树输出的类别的众数而定。单棵树算法可以选择id3，c4.5，cart。更多详细介绍请参见wiki。
+
+PAI 命令
+ PAI -name randomforests
+     -project algo_public
+     -DinputTableName="pai_rf_test_input"
+     -DmodelName="pai_rf_test_model"
+     -DforceCategorical="f1"
+     -DlabelColName="class"
+     -DfeatureColNames="f0,f1"
+     -DmaxRecordSize="100000"
+     -DminNumPer="0"
+     -DminNumObj="2"
+     -DtreeNum="3";
+参数说明
+参数名称	参数描述	取值范围	是否必选，默认值/行为
+inputTableName	输入表	表名	必选
+inputTablePartitions	输入表中指定哪些分区参与训练，格式为Partition_name=value。如果是多级格式为name1=value1/name2=value2，如果是指定多个分区，中间用“,”分开	NA	可选， 默认值选择所有分区
+labelColName	输入表中标签列的列名	列名	必选
+modelName	输出的模型名	NA	必选
+treeNum	森林中树的个数	正整数，(0, 1000]	必选
+weightColName	输入表中权重列的列名	NA	可选，默认无权重列
+featureColNames	输入表中用于训练的特征的列名	NA	可选，默认除labelColName、weightColName外其他所有列
+excludedColNames	用于反选特征列，该参数不可以与featureColNames并存	NA	可选， 默认为空
+forceCategorical	feature默认解析规则为string、boolean、datetime类型的列解析为离散类型，double、bigint类型的列解析为连续类型。若要将bigint解析为categorical，则需通过参数forceCategorical指定	NA	可选，默认int为连续类型
+algorithmTypes	单颗树的算法在森林中的位置	如果有则长度为2。比如有n棵树，algorithmTypes=[a,b]，则[0,a) 是 id3， [a,b) 是cart， [b,n) 是c4.5。例如在一个拥有5棵树的森林中，[2, 4]表示0，1为id3算法，2, 3为cart算法，4为c4.5算法。如果输入为None，则算法在森林中均分	可选，默认算法在森林中均分
+randomColNum	单颗树在生成时，每次分裂选择的随机的特征个数	[1-N]，其中N为feature个数	可选，默认log2N
+minNumObj	叶节点数据的最小个数	正整数	可选，默认2
+minNumPer	叶节点数据个数占父节点的最小比例	[0,1]	可选，默认0.0
+maxTreeDeep	单颗树的最大深度	[1, ∞)	可选，默认∞
+maxRecordSize	森林中单颗树输入的随机数据的个数	(1000, 1000000]	可选，默认100000
+实例
+测试数据
+
+create table pai_rf_test_input as
+select * from
+(
+  select 1 as f0,2 as f1, "good" as class from dual
+  union all
+  select 1 as f0,3 as f1, "good" as class from dual
+  union all
+  select 1 as f0,4 as f1, "bad" as class from dual
+  union all
+  select 0 as f0,3 as f1, "good" as class from dual
+  union all
+  select 0 as f0,4 as f1, "bad" as class from dual
+)tmp;
+PAI命令
+
+ PAI -name randomforests
+     -project algo_public
+     -DinputTableName="pai_rf_test_input"
+     -Dmodelbashame="pai_rf_test_model"
+     -DforceCategorical="f1"
+     -DlabelColName="class"
+     -DfeatureColNames="f0,f1"
+     -DmaxRecordSize="100000"
+     -DminNumPer="0"
+     -DminNumObj="2"
+     -DtreeNum="3";
+输出说明
+
+模型PMML：
+
+<?xml version="1.0" encoding="utf-8"?
+<PMML xmlns="http://www.dmg.org/PMML-4_2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="4.2" xsi:schemaLocation="http://www.dmg.org/PMML-4_2 http://www.dmg.org/v4-2/pmml-4-2.xsd"
+  <Header copyright="Copyright (c) 2014, Alibaba Inc." description=""
+    <Application name="ODPS/PMML" version="0.1.0"/
+    <TimestampTue, 12 Jul 2016 07:04:48 GMT</Timestamp
+  </Header
+  <DataDictionary numberOfFields="2"
+    <DataField name="f0" optype="continuous" dataType="integer"/
+    <DataField name="f1" optype="continuous" dataType="integer"/
+    <DataField name="class" optype="categorical" dataType="string"
+      <Value value="bad"/
+      <Value value="good"/
+    </DataField
+  </DataDictionary
+  <MiningModel modelName="xlab_m_random_forests_1_75078_v0" functionName="classification" algorithmName="RandomForests"
+    <MiningSchema
+      <MiningField name="f0" usageType="active"/
+      <MiningField name="f1" usageType="active"/
+      <MiningField name="class" usageType="target"/
+    </MiningSchema
+    <Segmentation multipleModelMethod="majorityVote"
+      <Segment id="0"
+        <True/
+        <TreeModel modelName="xlab_m_random_forests_1_75078_v0" functionName="classification" algorithmName="RandomForests"
+          <MiningSchema
+            <MiningField name="f0" usageType="active"/
+            <MiningField name="f1" usageType="active"/
+            <MiningField name="class" usageType="target"/
+          </MiningSchema
+          <Node id="1"
+            <True/
+            <ScoreDistribution value="bad" recordCount="2"/
+            <ScoreDistribution value="good" recordCount="3"/
+            <Node id="2" score="good"
+              <SimplePredicate field="f1" operator="equal" value="2"/
+              <ScoreDistribution value="good" recordCount="1"/
+            </Node
+            <Node id="3" score="good"
+              <SimplePredicate field="f1" operator="equal" value="3"/
+              <ScoreDistribution value="good" recordCount="2"/
+            </Node
+            <Node id="4" score="bad"
+              <SimplePredicate field="f1" operator="equal" value="4"/
+              <ScoreDistribution value="bad" recordCount="2"/
+            </Node
+          </Node
+        </TreeModel
+      </Segment
+      <Segment id="1"
+        <True/
+        <TreeModel modelName="xlab_m_random_forests_1_75078_v0" functionName="classification" algorithmName="RandomForests"
+          <MiningSchema
+            <MiningField name="f0" usageType="active"/
+            <MiningField name="f1" usageType="active"/
+            <MiningField name="class" usageType="target"/
+          </MiningSchema
+          <Node id="1"
+            <True/
+            <ScoreDistribution value="bad" recordCount="2"/
+            <ScoreDistribution value="good" recordCount="3"/
+            <Node id="2" score="good"
+              <SimpleSetPredicate field="f1" booleanOperator="isIn"
+                <Array n="2" type="integer"2 3</Array
+              </SimpleSetPredicate
+              <ScoreDistribution value="good" recordCount="3"/
+            </Node
+            <Node id="3" score="bad"
+              <SimpleSetPredicate field="f1" booleanOperator="isNotIn"
+                <Array n="2" type="integer"2 3</Array
+              </SimpleSetPredicate
+              <ScoreDistribution value="bad" recordCount="2"/
+            </Node
+          </Node
+        </TreeModel
+      </Segment
+      <Segment id="2"
+        <True/
+        <TreeModel modelName="xlab_m_random_forests_1_75078_v0" functionName="classification" algorithmName="RandomForests"
+          <MiningSchema
+            <MiningField name="f0" usageType="active"/
+            <MiningField name="f1" usageType="active"/
+            <MiningField name="class" usageType="target"/
+          </MiningSchema
+          <Node id="1"
+            <True/
+            <ScoreDistribution value="bad" recordCount="2"/
+            <ScoreDistribution value="good" recordCount="3"/
+            <Node id="2" score="bad"
+              <SimplePredicate field="f0" operator="lessOrEqual" value="0.5"/
+              <ScoreDistribution value="bad" recordCount="1"/
+              <ScoreDistribution value="good" recordCount="1"/
+            </Node
+            <Node id="3" score="good"
+              <SimplePredicate field="f0" operator="greaterThan" value="0.5"/
+              <ScoreDistribution value="bad" recordCount="1"/
+              <ScoreDistribution value="good" recordCount="2"/
+            </Node
+          </Node
+        </TreeModel
+      </Segment
+    </Segmentation
+  </MiningModel
+</PMML
+模型可视化：
+
+image
+
+朴素贝叶斯
+朴素贝叶斯分类是一种基于独立假设的贝叶斯定理的简单概率分类算法，更精确的描述这种潜在的概率模型为独立特征模型。 算法详见Naive Bayes classifier。
+
+算法组件
+
+naive_bayes_param_show
+
+特征列：支持double、string与bigint数据类型。
+标签列：只能选择非特征列的其它列，支持double、string与bigint数据类型。
+PAI 命令
+PAI -name NaiveBayes -project algo_public
+    -DmodelName="xlab_m_NaiveBayes_23772" \
+    -DinputTablePartitions="pt=20150501"
+    -DlabelColName="poutcome" \
+    -DfeatureColNames="age,previous,cons_conf_idx,euribor3m" \
+    -DisFeatureContinuous="1,1,1,1" \
+    -DinputTableName="bank_data_partition";
+参数说明
+参数名称	参数描述	参数值可选项	默认值
+inputTableName	必选，输入表的表名	NA	NA
+inputTablePartitions	可选，输入表中指定哪些分区参与训练	格式为 Partition_name=value。如果是多级格式为name1=value1/name2=value2，如果是指定多个分区，中间用“,”分开	输入表的所有partition
+modelName	必选，输出的模型名	NA	NA
+labelColName	必选，输入表中标签列的列名	NA	NA
+featureColNames	可选，输入表中用于训练的特征的列名	NA	除label列外其他所有列
+excludedColNames	可选，用于反选特征列，该参数不可以与featureColNames并存	NA	空列
+forceCategorical	可选，feature默认解析规则为string、boolean、datetime类型的列解析为离散类型，double、bigint类型的列解析为连续类型。若要将bigint解析为categorical，则需要通过参数forceCategorical指定	NA	int为连续类型
+实例
+训练数据
+
+id	y	f0	f1	f2	f3	f4	f5	f6	f7
+1	-1	-0.294118	0.487437	0.180328	-0.292929	-1	0.00149028	-0.53117	-0.0333333
+2	+1	-0.882353	-0.145729	0.0819672	-0.414141	-1	-0.207153	-0.766866	-0.666667
+3	-1	-0.0588235	0.839196	0.0491803	-1	-1	-0.305514	-0.492741	-0.633333
+4	+1	-0.882353	-0.105528	0.0819672	-0.535354	-0.777778	-0.162444	-0.923997	-1
+5	-1	-1	0.376884	-0.344262	-0.292929	-0.602837	0.28465	0.887276	-0.6
+6	+1	-0.411765	0.165829	0.213115	-1	-1	-0.23696	-0.894962	-0.7
+7	-1	-0.647059	-0.21608	-0.180328	-0.353535	-0.791962	-0.0760059	-0.854825	-0.833333
+8	+1	0.176471	0.155779	-1	-1	-1	0.052161	-0.952178	-0.733333
+9	-1	-0.764706	0.979899	0.147541	-0.0909091	0.283688	-0.0909091	-0.931682	0.0666667
+10	-1	-0.0588235	0.256281	0.57377	-1	-1	-1	-0.868488	0.1
+测试数据
+
+id	y	f0	f1	f2	f3	f4	f5	f6	f7
+1	+1	-0.882353	0.0854271	0.442623	-0.616162	-1	-0.19225	-0.725021	-0.9
+2	+1	-0.294118	-0.0351759	-1	-1	-1	-0.293592	-0.904355	-0.766667
+3	+1	-0.882353	0.246231	0.213115	-0.272727	-1	-0.171386	-0.981213	-0.7
+4	-1	-0.176471	0.507538	0.278689	-0.414141	-0.702128	0.0491804	-0.475662	0.1
+5	-1	-0.529412	0.839196	-1	-1	-1	-0.153502	-0.885568	-0.5
+6	+1	-0.882353	0.246231	-0.0163934	-0.353535	-1	0.0670641	-0.627669	-1
+7	-1	-0.882353	0.819095	0.278689	-0.151515	-0.307329	0.19225	0.00768574	-0.966667
+8	+1	-0.882353	-0.0753769	0.0163934	-0.494949	-0.903073	-0.418778	-0.654996	-0.866667
+9	+1	-1	0.527638	0.344262	-0.212121	-0.356974	0.23696	-0.836038	-0.8
+10	+1	-0.882353	0.115578	0.0163934	-0.737374	-0.56974	-0.28465	-0.948762	-0.933333
+创建实验
+ex_naive_bayes_demo
+
+选择特征列
+ex_naive_bayes_select_features
+
+选择标签列
+ex_naive_bayes_select_label
+
+运行实验
+
+生成的模型如下：
+ex_naive_bayes_model
+
+预测结果如下：
+ex_naive_bayes_prediction
+
+K均值聚类
+K均值聚类是一种得到最广泛使用的聚类算法，把n个对象分为k个簇，使簇内具有较高的相似度。相似度根据一个簇中对象的平均值来计算。
+算法首先随机地选择k个对象，每个对象初始地代表了一个簇的平均值或中心。对剩余的每个对象根据其与各个簇中心的距离，将它赋给最近的簇，然后重新计算每个簇的平均值。这个过程不断重复，直到准则函数收敛。
+它假设对象属性来自于空间向量，并且目标是使各个群组内部的均方误差总和最小。
+KMeans的详细介绍请见维基百科链接 wiki。
+
+PAI 命令
+pai -name kmeans
+    -project algo_public
+    -DinputTableName=pai_kmeans_test_input
+    -DselectedColNames=f0,f1
+    -DcenterCount=3
+    -Dloop=10
+    -Daccuracy=0.00001
+    -DdistanceType=euclidean
+    -DinitCenterMethod=random
+    -Dseed=1
+    -DmodelName=pai_kmeans_test_input_output_model
+    -DidxTableName=pai_kmeans_test_input_output_idx
+    -DclusterCountTableName=pai_kmeans_test_input_output_cc
+参数说明
+参数名称	参数描述	取值范围	是否必选，默认值/行为
+inputTableName	输入表	表名	必选
+selectedColNames	输入表中用于训练的列名，以逗号分隔，支持int和double类型	列名	可选，默认值选择所有列
+inputTablePartitions	输入表中指定哪些分区参与训练，格式为Partition_name=value。如果是多级格式为name1=value1/name2=value2，如果是指定多个分区，中间用“,”分开	NA	可选， 默认值选择所有分区
+centerCount	聚类数	正整数， [1, 1000]	必选
+loop	最大迭代次数	正整数， [1, 1000]	可选，默认值100
+accuracy	算法终止条件，如果两次迭代之间变化低于该值， 算法终止	NA	可选， 默认值0.0
+distanceType	距离度量方式	euclidean（欧式距离）， cosine（夹角余弦）， cityblock（曼哈顿距离）	可选， 默认值euclidean
+initCenterMethod	质心初始化方法	random（随机采样），topk（输入表前k行），uniform（均匀分布），kmpp（kmeans++），external（指定初始质心表）	可选，默认值random
+initCenterTableName	初始质心表名	表名	当initCenterMethod为external时生效
+seed	初始随机种子	正整数	可选，默认值为当前时间。seed设置为固定值，每次聚类结果是稳定的
+enableSparse	输入表数据是否为稀疏格式	true， false	可选， 默认值false
+itemDelimiter	当输入表数据为稀疏格式时，kv间的分割符	字符	可选， 默认值为空格
+kvDelimiter	当输入表数据为稀疏格式时，key和value的分割符	字符	可选， 默认值冒号
+appendColNames	inputTableName表的哪些列附加输出到idxTableName表，列名以逗号分隔	NA	可选，默认值无附件列
+modelName	输出模型	模型名	必选
+idxTableName	输出聚类结果表，和输入表对应，并指明聚类后每条record所属的类号	表名	必选
+idxTablePartition	输出聚类结果表的分区	表名	可选，默认不输出分区
+clusterCountTableName	输出聚类统计表，统计各个聚类包含的点的数目	NA	可选， 模型不输出
+centerTableName	输出聚类中心表	NA	可选， 即将下线，建议使用参数modelName
+距离度量方式
+
+参数名称	参数描述
+euclidean	image
+cosine	image
+cityblock	image
+质心初始化方法
+
+参数名称	参数描述
+random	从输入数据表中随机采样出K个初始中心点，初始随机种子可以有参数seed指定
+topk	从输入表中读取前K行作为初始中心点
+uniform	从输入数据表，按最小到最大值，均匀计算出K个初始中心点
+kmpp	使用k-means++算法选出K个初始中心点，详细介绍请见维基百科链接wiki
+external	指定额外的初始中心表
+实例
+测试数据
+
+create table pai_kmeans_test_input as
+select * from
+(
+  select 1 as f0,2 as f1 from dual
+  union all
+  select 1 as f0,3 as f1 from dual
+  union all
+  select 1 as f0,4 as f1 from dual
+  union all
+  select 0 as f0,3 as f1 from dual
+  union all
+  select 0 as f0,4 as f1 from dual
+)tmp;
+PAI命令
+
+PAI -name kmeans
+    -project algo_public
+    -DinputTableName=pai_kmeans_test_input
+    -DselectedColNames=f0,f1
+    -DcenterCount=3
+    -Dloop=10
+    -Daccuracy=0.00001
+    -DdistanceType=euclidean
+    -DinitCenterMethod=random
+    -Dseed=1
+    -DmodelName=pai_kmeans_test_input_output_model
+    -DidxTableName=pai_kmeans_test_input_output_idx
+    -DclusterCountTableName=pai_kmeans_test_input_output_cc
+输出说明
+
+模型PMML：
+
+<?xml version="1.0" encoding="utf-8"?
+<PMML xmlns="http://www.dmg.org/PMML-4_2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="4.2" xsi:schemaLocation="http://www.dmg.org/PMML-4_2 http://www.dmg.org/v4-2/pmml-4-2.xsd"
+  <Header copyright="Copyright (c) 2014, Alibaba Inc." description=""
+    <Application name="ODPS/PMML" version="0.1.0"/
+    <TimestampFri, 15 Jul 2016 03:09:38 GMT</Timestamp
+  </Header
+  <DataDictionary numberOfFields="2"
+    <DataField name="f0" optype="continuous" dataType="integer"/
+    <DataField name="f1" optype="continuous" dataType="integer"/
+    <DataField name="cluster_index" optype="continuous" dataType="integer"/
+  </DataDictionary
+  <ClusteringModel modelName="xlab_m_KMeans_2_76889_v0" functionName="clustering" algorithmName="kmeans" modelClass="centerBased" numberOfClusters="3"
+    <MiningSchema
+      <MiningField name="f0" usageType="active"/
+      <MiningField name="f1" usageType="active"/
+    </MiningSchema
+    <ComparisonMeasure kind="distance" compareFunction="absDiff"
+      <squaredEuclidean/
+    </ComparisonMeasure
+    <ClusteringField field="f0" compareFunction="absDiff"/
+    <ClusteringField field="f1" compareFunction="absDiff"/
+    <Cluster
+      <Array n="2" type="real"0 3.5</Array
+    </Cluster
+    <Cluster
+      <Array n="2" type="real"1 4</Array
+    </Cluster
+    <Cluster
+      <Array n="2" type="real"1 2.5</Array
+    </Cluster
+  </ClusteringModel
+</PMML
+模型可视化：
+image
+
+聚类结果表：行数等于输入表总行数，每行的值表示输入表对应行表示的点的聚类编号。
+image
+
+聚类统计表：行数据等于聚类个数，每行的值表示当前聚类包含的点个数。
+image
+
+线性回归
+线性回归是分析因变量和多个自变量之间线性关系的模型。详细请见wiki。
+
+PAI 命令
+PAI -name linearregression
+    -project algo_public
+    -DinputTableName=lm_test_input
+    -DfeatureColNames=x
+    -DlabelColName=y
+    -DmodelName=lm_test_input_model_out;
+参数说明
+参数名称	参数描述	参数值可选项	默认值
+inputTableName	必选，输入表名	NA	NA
+modelName	必选，输出的模型名	NA	NA
+outputTableName	可选，输出的模型评估表名	enableFitGoodness为true时必须指定outputTableName	“ ”
+labelColName	必选，因变量	double或者bigint类型，限选一列	NA
+featureColNames	必选，自变量	非稀疏格式下double或者bigint类型，稀疏格式下string类型，可选多列	NA
+inputTablePartitions	可选，输入表的分区	NA	“ ”
+maxIter	可选，最大迭代次数	NA	100
+epsilon	可选，最小似然误差	NA	0.000001
+enableSparse	可选，是否是稀疏格式	true， false	false
+enableFitGoodness	可选，是否是要做模型评估，指标包括R-squared、AdjustedR-Squared、AIC、自由度、残差的标准差、偏差	true，false	false
+enableCoefficientEstimate	可选，是否要做回归系数评估。指标包括t值、p值、置信区间[2.5%, 97.5%]，只在enableFitGoodness为true时才会生效，否则该参数都处理为false	true，false	false
+itemDelimiter	可选，稀疏格式kv对之间的分隔符，只有在enableSparse为true时生效	字符	命令行默认值为空格, web页面默认值为”,”
+kvDelimiter	可选，稀疏格式key和value之间的分隔符，只有在enableSparse为true时生效	字符	默认值为”:”
+lifecycle	可选，模型评估输出表的生命周期	0	-1
+coreNum	可选，指定instance的总数	[1, 800)	默认自动计算
+memSizePerCore	可选，指定memory大小	[1024, 20*1024]	默认自动计算
+实例
+测试数据
+
+新建数据SQL
+
+  drop table if exists lm_test_input;
+  create table lm_test_input as
+  select
+    *
+  from
+  (
+    select 10 as y, 1.84 as x1, 1 as x2, '0:1.84 1:1' as sparsecol1 from dual
+      union all
+    select 20 as y, 2.13 as x1, 0 as x2, '0:2.13' as sparsecol1 from dual
+      union all
+    select 30 as y, 3.89 as x1, 0 as x2, '0:3.89' as sparsecol1 from dual
+      union all
+    select 40 as y, 4.19 as x1, 0 as x2, '0:4.19' as sparsecol1 from dual
+      union all
+    select 50 as y, 5.76 as x1, 0 as x2, '0:5.76' as sparsecol1 from dual
+      union all
+    select 60 as y, 6.68 as x1, 2 as x2, '0:6.68 1:2' as sparsecol1 from dual
+      union all
+    select 70 as y, 7.58 as x1, 0 as x2, '0:7.58' as sparsecol1 from dual
+      union all
+    select 80 as y, 8.01 as x1, 0 as x2, '0:8.01' as sparsecol1 from dual
+      union all
+    select 90 as y, 9.02 as x1, 3 as x2, '0:9.02 1:3' as sparsecol1 from dual
+      union all
+    select 100 as y, 10.56 as x1, 0 as x2, '0:10.56' as sparsecol1 from dual
+  ) tmp;
+运行命令
+
+PAI -name linearregression
+    -project algo_public
+    -DinputTableName=lm_test_input
+    -DlabelColName=y
+    -DfeatureColNames=x1,x2
+    -DmodelName=lm_test_input_model_out
+    -DoutputTableName=lm_test_input_conf_out
+    -DenableCoefficientEstimate=true
+    -DenableFitGoodness=true
+    -Dlifecycle=1;
+pai -name prediction
+    -project algo_public
+    -DmodelName=lm_test_input_model_out
+    -DinputTableName=lm_test_input
+    -DoutputTableName=lm_test_input_predict_out
+    -DappendColNames=y;
+运行结果
+
+lm_test_input_conf_out
+
++------------+------------+------------+------------+--------------------+------------+
+| colname    | value      | tscore     | pvalue     | confidenceinterval | p          |
++------------+------------+------------+------------+--------------------+------------+
+| Intercept  | -6.42378496687763 | -2.2725755951390028 | 0.06       | {"2.5%": -11.964027, "97.5%": -0.883543} | coefficient |
+| x1         | 10.260063429838898 | 23.270944360826963 | 0.0        | {"2.5%": 9.395908, "97.5%": 11.124219} | coefficient |
+| x2         | 0.35374498323846265 | 0.2949247320997519 | 0.81       | {"2.5%": -1.997160, "97.5%": 2.704650} | coefficient |
+| rsquared   | 0.9879675667384592 | NULL       | NULL       | NULL               | goodness   |
+| adjusted_rsquared | 0.9845297286637332 | NULL       | NULL       | NULL               | goodness   |
+| aic        | 59.331109494251805 | NULL       | NULL       | NULL               | goodness   |
+| degree_of_freedom | 7.0        | NULL       | NULL       | NULL               | goodness   |
+| standardErr_residual | 3.765777749448906 | NULL       | NULL       | NULL               | goodness   |
+| deviance   | 99.26757440771128 | NULL       | NULL       | NULL               | goodness   |
++------------+------------+------------+------------+--------------------+------------+
+lm_test_input_predict_out
+
++------------+-------------------+------------------+-------------------+
+| y          | prediction_result | prediction_score | prediction_detail |
++------------+-------------------+------------------+-------------------+
+| 10         | NULL              | 12.808476727264404 | {"y": 12.8084767272644} |
+| 20         | NULL              | 15.43015013867922 | {"y": 15.43015013867922} |
+| 30         | NULL              | 33.48786177519568 | {"y": 33.48786177519568} |
+| 40         | NULL              | 36.565880804147355 | {"y": 36.56588080414735} |
+| 50         | NULL              | 52.674180388994415 | {"y": 52.67418038899442} |
+| 60         | NULL              | 62.82092871092313 | {"y": 62.82092871092313} |
+| 70         | NULL              | 71.34749583130122 | {"y": 71.34749583130122} |
+| 80         | NULL              | 75.75932310613193 | {"y": 75.75932310613193} |
+| 90         | NULL              | 87.1832221199846 | {"y": 87.18322211998461} |
+| 100        | NULL              | 101.92248485222113 | {"y": 101.9224848522211} |
++------------+-------------------+------------------+-------------------+
+GBDT回归
+GBDT也叫梯度渐进回归树，是一种迭代的决策树算法，该算法由多棵决策树组成，所有树的结论累加起来做最终答案。GBDT几乎可用于所有回归问题（线性/非线性），相对逻辑回归仅能用于线性回归，GBDT的适用面非常广。详细请参考论文 (a) A Regression Framework for Learning Ranking Functions Using Relative Relevance Judgments，(b) From RankNet to LambdaRank to LambdaMART: An Overview。
+
+PAI 命令
+PAI -name gbdt
+    -project algo_public
+    -DfeatureSplitValueMaxSize="500"
+    -DlossType="0"
+    -DrandSeed="0"
+    -DnewtonStep="0"
+    -Dshrinkage="0.05"
+    -DmaxLeafCount="32"
+    -DlabelColName="campaign"
+    -DinputTableName="bank_data_partition"
+    -DminLeafSampleCount="500"
+    -DsampleRatio="0.6"
+    -DgroupIDColName="age"
+    -DmaxDepth="11"
+    -DmodelName="xlab_m_GBDT_83602"
+    -DmetricType="2"
+    -DfeatureRatio="0.6"
+    -DinputTablePartitions="pt=20150501"
+    -Dtau="0.6"
+    -Dp="1"
+    -DtestRatio="0.0"
+    -DfeatureColNames="previous,cons_conf_idx,euribor3m"
+    -DtreeCount="500"
+参数说明
+参数名称	参数描述	取值范围	是否必选，默认值
+inputTableName	输入表	表名	必选
+featureColNames	输入表中选择的用于训练的特征列名	列名	可选，默认值选择所有数值列
+labelColName	输入表标签列列名	列名	必选
+inputTablePartitions	输入表中指定哪些分区参与训练，格式为partition_name=value。如果是多级格式为name1=value1/name2=value2，如果是指定多个分区， 中间用“,”分开	NA	可选， 默认值选择所有分区
+modelName	输出模型名	NA	必选
+outputImportanceTableName	输出特征重要性表名	NA	可选
+groupIDColName	数据分组列	列名	可选，默认值整表
+lossType	损失函数类型，0:GBRANK，1:LAMBDAMART_DCG，2:LAMBDAMART_NDCG，3:LEAST_SQUARE，4:LOG_LIKELIHOOD	0,1,2,3,4	可选，默认为 0
+metricType	metric类型，0(NDCG)-：normalized discounted cumulative gain；1(DCG) : discounted cumulative gain；2 (AUC) 只适应0/1 label	0,1,2	可选，默认值2
+treeCount	树数量	[1,10000]	可选，默认值500
+shrinkage	学习速率	(0,1]	可选，默认0.05
+maxLeafCount	最大叶子数，必须为整数	[2,1000]	可选，默认32
+maxDepth	一棵树的最大深度，必须为整数	[1,11]	可选，默认11
+minLeafSampleCount	叶子节点容纳的最少样本数，必须为整数	[100,1000]	可选，默认500
+sampleRatio	训练采集样本比例	(0,1]	可选，默认0.6
+featureRatio	训练中采集的特征比例	(0,1]	可选，默认0.6
+tau	gbrank loss中的Tau参数	[0,1]	可选，默认0.6
+p	gbrank loss中的p参数	[1,10]	可选，默认1
+randSeed	随机数种子	[0,10]	可选，默认0
+newtonStep	是否使用newton法	0,1	可选，默认1
+featureSplitValueMaxSize	一个特征分裂的最大数量	[1,1000]	可选，默认500
+lifecycle	输出表的生命周期	NA	可选，默认不设置
+实例
+数据生成
+
+drop table if exists gbdt_ls_test_input;
+create table gbdt_ls_test_input
+as
+select
+    *
+from
+(
+    select
+        cast(1 as double) as f0,
+        cast(0 as double) as f1,
+        cast(0 as double) as f2,
+        cast(0 as double) as f3,
+        cast(0 as bigint) as label
+    from dual
+    union all
+        select
+            cast(0 as double) as f0,
+            cast(1 as double) as f1,
+            cast(0 as double) as f2,
+            cast(0 as double) as f3,
+            cast(0 as bigint) as label
+    from dual
+    union all
+        select
+            cast(0 as double) as f0,
+            cast(0 as double) as f1,
+            cast(1 as double) as f2,
+            cast(0 as double) as f3,
+            cast(1 as bigint) as label
+    from dual
+    union all
+        select
+            cast(0 as double) as f0,
+            cast(0 as double) as f1,
+            cast(0 as double) as f2,
+            cast(1 as double) as f3,
+            cast(1 as bigint) as label
+    from dual
+    union all
+        select
+            cast(1 as double) as f0,
+            cast(0 as double) as f1,
+            cast(0 as double) as f2,
+            cast(0 as double) as f3,
+            cast(0 as bigint) as label
+    from dual
+    union all
+        select
+            cast(0 as double) as f0,
+            cast(1 as double) as f1,
+            cast(0 as double) as f2,
+            cast(0 as double) as f3,
+            cast(0 as bigint) as label
+    from dual
+) a;
+PAI命令
+
+训练
+
+drop offlinemodel if exists gbdt_ls_test_model;
+PAI -name gbdt
+    -project algo_public
+    -DfeatureSplitValueMaxSize="500"
+    -DlossType="3"
+    -DrandSeed="0"
+    -DnewtonStep="1"
+    -Dshrinkage="0.5"
+    -DmaxLeafCount="32"
+    -DlabelColName="label"
+    -DinputTableName="gbdt_ls_test_input"
+    -DminLeafSampleCount="1"
+    -DsampleRatio="1"
+    -DmaxDepth="10"
+    -DmetricType="0"
+    -DmodelName="gbdt_ls_test_model"
+    -DfeatureRatio="1"
+    -Dp="1"
+    -Dtau="0.6"
+    -DtestRatio="0"
+    -DfeatureColNames="f0,f1,f2,f3"
+    -DtreeCount="10"
+预测
+
+drop table if exists gbdt_ls_test_prediction_result;
+PAI -name prediction
+    -project algo_public
+    -DdetailColName="prediction_detail"
+    -DmodelName="gbdt_ls_test_model"
+    -DitemDelimiter=","
+    -DresultColName="prediction_result"
+    -Dlifecycle="28"
+    -DoutputTableName="gbdt_ls_test_prediction_result"
+    -DscoreColName="prediction_score"
+    -DkvDelimiter=":"
+    -DinputTableName="gbdt_ls_test_input"
+    -DenableSparse="false"
+    -DappendColNames="label"
+输入说明
+
+gbdt_ls_test_input
+
+f0	f1	f2	f3	label
+1.0	0.0	0.0	0.0	0
+0.0	0.0	1.0	0.0	1
+0.0	0.0	0.0	1.0	1
+0.0	1.0	0.0	0.0	0
+1.0	0.0	0.0	0.0	0
+0.0	1.0	0.0	0.0	0
+输出说明
+
+gbdt_ls_test_prediction_result
+
+label	prediction_result	prediction_score	prediction_detail
+0	NULL	0.0	{“label”: 0}
+0	NULL	0.0	{“label”: 0}
+1	NULL	0.9990234375	{“label”: 0.9990234375}
+1	NULL	0.9990234375	{“label”: 0.9990234375}
+0	NULL	0.0	{“label”: 0}
+0	NULL	0.0	{“label”: 0}
+常见问题
+gbdt的列类型目前只支持数值，包括特征列，标签列和group列
+协同过滤etrec
+etrec是一个item base的协同过滤算法，输入为两列，输出为item之间相似度topK。
+jaccard参考：Jaccard_index。
+PAI 命令
+PAI -name pai_etrec
+    -project algo_public
+    -DsimilarityType="wbcosine"
+    -Dweight="1"
+    -DminUserBehavior="2"
+    -Dlifecycle="28"
+    -DtopN="2000"
+    -Dalpha="0.5"
+    -DoutputTableName="etrec_test_result"
+    -DmaxUserBehavior="500"
+    -DinputTableName="etrec_test_input"
+    -Doperator="add"
+    -DuserColName="user"
+    -DitemColName="item"
+参数说明
+参数名称	参数描述	参数值可选项	默认值
+inputTableName	必选，输入表名	NA	NA
+userColName	必选，输入表选择的user列名	NA	NA
+itemColName	必选，输入表选择的item列名	NA	NA
+payloadColName	可选，输入表选择的payload列名	NA	默认无payload列
+inputTablePartitions	可选，输入表选择的分区名	NA	默认选择全表
+outputTableName	必选，输出表名	NA	NA
+outputTablePartition	可选，输出表的partition	NA	无partition
+similarityType	可选，相似度类型	wbcosine，asymcosine，jaccard	wbcosine
+topN	可选，相似度最大的N个item	[1,10000]	2000
+minUserBehavior	可选，最小用户行为	[2,)	2
+maxUserBehavior	可选，最大用户行为	[2,100000]	500
+itemDelimiter	可选，输出表中item之间的分隔符	字符	“ “
+kvDelimiter	可选，输出表中kv之间的分隔符	字符	“:”
+alpha	可选，asymcosine的平滑因子的值	NA	0.5
+weight	可选，asymcosine的权重指数	NA	1.0
+operator	可选，当同一个user对应出现相同的item时发生的行为	add，mul，min，max	add
+lifecycle	可选，输出结果表的生命周期	NA	1
+实例
+数据生成
+
+drop table if exists etrec_test_input;
+create table etrec_test_input
+as
+select
+    *
+from
+(
+    select
+        cast(0 as string) as user,
+        cast(0 as string) as item
+    from dual
+    union all
+        select
+            cast(0 as string) as user,
+            cast(1 as string) as item
+        from dual
+    union all
+        select
+            cast(1 as string) as user,
+            cast(0 as string) as item
+        from dual
+    union all
+        select
+            cast(1 as string) as user,
+            cast(1 as string) as item
+        from dual
+) a;
+PAI命令
+
+drop table if exists etrec_test_result;
+PAI -name pai_etrec
+    -project algo_public
+    -DsimilarityType="wbcosine"
+    -Dweight="1"
+    -DminUserBehavior="2"
+    -Dlifecycle="28"
+    -DtopN="2000"
+    -Dalpha="0.5"
+    -DoutputTableName="etrec_test_result"
+    -DmaxUserBehavior="500"
+    -DinputTableName="etrec_test_input"
+    -Doperator="add"
+    -DuserColName="user"
+    -DitemColName="item";
+输入说明
+
+etrec_test_input
+
+user	item
+0	0
+0	1
+1	0
+1	1
+输出说明
+
+etrec_test_result
+
+itemid	similarity
+0	1:1
+1	0:1
+混淆矩阵
+混淆矩阵（confusion matrix）是可视化工具，特别用于监督学习，在无监督学习一般叫做匹配矩阵，主要用于比较分类结果和实际测得值，可以把分类结果的精度显示在一个混淆矩阵里面。详细定义可以参考ConfusionMatrix。
+
+组件的连接方式，一般上层组件为分类预测，如下图所示。
+
+confusion_matrix_general_connection
+
+参数设置
+注意：预测结果的标签列与详细列这两个参数不能共存，只能填一个。
+
+ex_confusion_matrix_setting
+
+PAI 命令
+不指定阈值的示例
+PAI -name confusionmatrix -project algo_public \
+    -DinputTableName=wpbc_pred \
+    -DlabelColName=label \
+    -DpredictionColName=prediction_result \
+    -DoutputTableName=wpbc_confu;
+指定阈值的示例
+PAI -name confusionmatrix -project algo_public \
+    -DinputTableName=wpbc_pred \
+    -DlabelColName=label \
+    -DpredictionDetailColName=prediction_detail \
+    -DgoodValue=N \
+    -Dthreshold=0.8 \
+    -DoutputTableName=wpbc_confu;
+参数说明
+参数key名称	参数描述	参数value可选项	默认值
+inputTableName	必选，输入表的表名，即预测输出表	NA	NA
+labelColName	必选，原始label列名	NA	NA
+outputTableName	必选，输出表名，存储混淆矩阵	NA	NA
+inputTablePartition	可选，输入表的partition	NA	输入表的所有partition
+predictionColName	可选，预测结果label列名，当不需要指定阈值时，该参数必须	NA	NA
+predictionDetailColName	可选，预测结果表detail列名，当指定阈值时，该参数必须	NA	-
+threshold	可选，划分为goodValue的阈值	NA	0.5
+goodValue	可选，二分类时，指定训练系数针对的label值，当指定阈值时，该参数必须	NA	NA
+lifecycle	可选，指定输出表的生命周期	正整数	没有生命周期
+实例
+测试数据
+
+id	label	prediction_result
+0	A	A
+1	A	B
+2	A	A
+3	A	A
+4	B	B
+5	B	B
+6	B	A
+7	B	B
+8	B	A
+9	A	A
+创建实验
+ex_confusion_matrix_demo
+
+配置参数
+ex_confusion_matrix_setting
+
+运行实验
+右键单击混淆矩阵组件可以查看评估报告。
+
+混淆矩阵如下：
+ex_confusion_matrix_demo_report
+
+每个Label的准确率、召回率等统计信息如下：
+ex_confusion_matrix_demo_report_each
+
+多分类评估
+基于分类模型的预测结果和原始结果，评价多分类算法模型的优劣，指标包括Accuracy、kappa、F1-Score等。
+
+组件的连接方式：多分类评估组件需连接预测组件，不支持回归模型，如下图所示。
+
+mc_eval_demo
+
+参数设置
+mc_eval_intro_param
+
+通过原始分类结果列，可以下拉选择“原始Label”列。
+注意：支持的最大分类数为1000。
+通过预测分类结果列，可以选择“预测Label”列，这个值一般默认为prediction_result。
+通过预测结果概率列，可以选择“预测Label的概率列”。一般情况下，该字段的名为prediction_detail。
+注意：此参数仅支持随机森林预测。
+PAI 命令
+PAI -name MultiClassEvaluation -project algo_public \
+    –DinputTableName="test_input" \
+    -DoutputTableName="test_output" \
+    -DlabelColName="label" \
+    -DpredictionColName="prediction_result" \
+    -Dlifecycle=30;
+参数说明
+参数名称	参数描述	参数可选项	参数默认值
+inputTableName	必选，输入表的表名	NA	NA
+inputTablePartitions	可选，输入表中指定参与计算的分区	NA	输入表的所有partitions
+outputTableName	必选，输出表表名	NA	NA
+labelColName	必选，输入表原始label列名	NA	NA
+predictionColName	必选，预测结果label列名	NA	NA
+predictionDetailColName	可选，预测结果的概率列，格式如：{“A”:0.2, “B”:0.3, “C”, 0.5}	NA	默认为空
+lifecycle	可选，指定输出表的生命周期	正整数	没有生命周期
+coreNum	可选，计算的核心数	正整数	系统自动分配
+memSizePerCore	可选，每个核心的内存，单位为MB	正整数，范围(0, 65536)	系统自动分配
+结果说明
+评估报告说明
+按照one-vs-all的方式计算每个label的指标。
+mc_eval_sample_report_each
+
+下图是汇总的指标，其中MacroAveraged是每个Label指标的平均值。
+mc_eval_sample_report_overall
+
+混淆矩阵。
+mc_eval_sample_report_confusion_matrix
+
+结果表的JSON格式说明
+{
+    "LabelNumber": 3,
+    "LabelList": ["A", "B", "C"],
+    "ConfusionMatrix": [ // 混淆矩阵 [actual][predict]
+        [100, 10, 20],
+        [30, 50, 9],
+        [7, 40, 90] ],
+    "ProportionMatrix": [ // 按行的占比 [actual][predict]
+        [0.6, 0.2, 0.2],
+        [0.3, 0.6, 0.1],
+        [0.1, 0.4, 0.5] ],
+    "ActualLabelFrequencyList": [ // 每个label的真实的数目
+        200, 300, 600],
+    "ActualLabelProportionList": [ // 每个label的真实的占比
+        0.1, 0.2, 0.7],
+    "PredictedLabelFrequencyList": [ // 预测的每个label的数目
+        300, 400, 400],
+    "PredictedLabelProportionList": [ // 预测的每个label的占比
+        0.2, 0.1, 0.7],
+    "OverallMeasures": {        // 汇总的指标
+        "Accuracy": 0.70,
+        "Kappa" : 0.3,
+        "MacroList": {       // 每个label的指标的均值
+            "Sensitivity": 0.4,
+            "Specificity": 0.3,
+        },
+        "MicroList": {      // 根据每个label的TP, TN, FP, FN的和，计算的指标
+            "Sensitivity": 0.4,
+            "Specificity": 0.3,
+        },
+        "LabelFrequencyBasedMicro": { // 每个label的指标的按频率的加权平均值
+            "Sensitivity": 0.4,
+            "Specificity": 0.3,
+        },
+    },
+    "LabelMeasuresList": [      // 每个label的指标
+        {
+            "Accuracy": 0.6,
+            "Sensitivity": 0.4,
+            "Specificity": 0.3,
+            "Kappa": 0.3
+        },
+        {
+            "Accuracy": 0.6,
+            "Sensitivity": 0.4,
+            "Specificity": 0.3,
+            "Kappa": 0.3
+        },
+    ]
+}
+实例
+测试数据
+
+数据表example_input_mc_eval
+
+id	label	prediction	detail
+0	A	A	{“A”: 0.6, “B”: 0.4}
+1	A	B	{“A”: 0.45, “B”: 0.55}
+2	A	A	{“A”: 0.7, “B”: 0.3}
+3	A	A	{“A”: 0.9, “B”: 0.1}
+4	B	B	{“A”: 0.2, “B”: 0.8}
+5	B	B	{“A”: 0.1, “B”: 0.9}
+6	B	A	{“A”: 0.52, “B”: 0.48}
+7	B	B	{“A”: 0.4, “B”: 0.6}
+8	B	A	{“A”: 0.6, “B”: 0.4}
+9	A	A	{“A”: 0.75, “B”: 0.25}
+创建实验
+mc_eval_demo
+
+配置参数
+ex_mc_eval_setting
+
+运行实验
+
+汇总报告如下：
+ex_mc_eval_report
+
+每个label的统计信息如下：
+ex_mc_eval_report_each
+
+具体输出JSON如下：
+{
+    "ActualLabelFrequencyList": [5,
+        5],
+    "ActualLabelProportionList": [0.5,
+        0.5],
+    "ConfusionMatrix": [[4,
+            1],
+        [2,
+            3]],
+    "LabelList": ["A",
+        "B"],
+    "LabelMeasureList": [{
+            "Accuracy": 0.7,
+            "Auc": 0.9,
+            "F1": 0.7272727272727273,
+            "FalseDiscoveryRate": 0.3333333333333333,
+            "FalseNegative": 1,
+            "FalseNegativeRate": 0.2,
+            "FalsePositive": 2,
+            "FalsePositiveRate": 0.4,
+            "Kappa": 0.3999999999999999,
+            "NegativePredictiveValue": 0.75,
+            "Precision": 0.6666666666666666,
+            "Sensitivity": 0.8,
+            "Specificity": 0.6,
+            "TrueNegative": 3,
+            "TruePositive": 4},
+        {
+            "Accuracy": 0.7,
+            "Auc": 0.9,
+            "F1": 0.6666666666666666,
+            "FalseDiscoveryRate": 0.25,
+            "FalseNegative": 2,
+            "FalseNegativeRate": 0.4,
+            "FalsePositive": 1,
+            "FalsePositiveRate": 0.2,
+            "Kappa": 0.3999999999999999,
+            "NegativePredictiveValue": 0.6666666666666666,
+            "Precision": 0.75,
+            "Sensitivity": 0.6,
+            "Specificity": 0.8,
+            "TrueNegative": 4,
+            "TruePositive": 3}],
+    "LabelNumber": 2,
+    "OverallMeasures": {
+        "Accuracy": 0.7,
+        "Kappa": 0.3999999999999999,
+        "LabelFrequencyBasedMicro": {
+            "Accuracy": 0.7,
+            "F1": 0.696969696969697,
+            "FalseDiscoveryRate": 0.2916666666666666,
+            "FalseNegative": 1.5,
+            "FalseNegativeRate": 0.3,
+            "FalsePositive": 1.5,
+            "FalsePositiveRate": 0.3,
+            "Kappa": 0.3999999999999999,
+            "NegativePredictiveValue": 0.7083333333333333,
+            "Precision": 0.7083333333333333,
+            "Sensitivity": 0.7,
+            "Specificity": 0.7,
+            "TrueNegative": 3.5,
+            "TruePositive": 3.5},
+        "LogLoss": 0.4548640449724484,
+        "MacroAveraged": {
+            "Accuracy": 0.7,
+            "F1": 0.696969696969697,
+            "FalseDiscoveryRate": 0.2916666666666666,
+            "FalseNegative": 1.5,
+            "FalseNegativeRate": 0.3,
+            "FalsePositive": 1.5,
+            "FalsePositiveRate": 0.3,
+            "Kappa": 0.3999999999999999,
+            "NegativePredictiveValue": 0.7083333333333333,
+            "Precision": 0.7083333333333333,
+            "Sensitivity": 0.7,
+            "Specificity": 0.7,
+            "TrueNegative": 3.5,
+            "TruePositive": 3.5},
+        "MicroAveraged": {
+            "Accuracy": 0.7,
+            "F1": 0.7,
+            "FalseDiscoveryRate": 0.3,
+            "FalseNegative": 3,
+            "FalseNegativeRate": 0.3,
+            "FalsePositive": 3,
+            "FalsePositiveRate": 0.3,
+            "Kappa": 0.3999999999999999,
+            "NegativePredictiveValue": 0.7,
+            "Precision": 0.7,
+            "Sensitivity": 0.7,
+            "Specificity": 0.7,
+            "TrueNegative": 7,
+            "TruePositive": 7}},
+    "PredictedLabelFrequencyList": [6,
+        4],
+    "PredictedLabelProportionList": [0.6,
+        0.4],
+    "ProportionMatrix": [[0.8,
+            0.2],
+        [0.4,
+            0.6]]}
+二分类评估
+评估模块支持计算AUC、KS及F1 score，同时输出数据用于画KS曲线、PR曲线、ROC曲线、LIFT chart、Gain chart，同时也支持分组评估。
+
+PAI 命令
+PAI -name=evaluate -project=algo_public
+    -DoutputMetricTableName=output_metric_table
+    -DoutputDetailTableName=output_detail_table
+    -DinputTableName=input_data_table
+    -DlabelColName=label
+    -DscoreColName=score
+参数说明
+参数名称	参数描述	参数值可选项	默认值
+inputTableName	必选，输入表名	NA	NA
+inputTablePartitions	可选，输入表分区	NA	默认选择全表
+labelColName	必选，目标列的列名	NA	NA
+scoreColName	必选，score列的列名	NA	NA
+groupColName	可选，分组列的列名，用于分组评估场景	NA	NA
+binCount	可选，计算KS，PR等指标时按等频分成多少个桶	NA	默认1000
+outputMetricTableName	必选，输出的指标表，包含指标名和指标值两列，AUC、KS、F1 Score三行	NA	NA
+outputDetailTableName	可选，输出用于画图的详细数据表	NA	NA
+positiveLabel	可选，正样本的分类	NA	默认为“1”
+lifecycle	可选，输出表的生命周期	NA	默认不设置
+coreNum	可选，核心数	NA	默认自动计算
+memSizePerCore	可选，内存数	NA	默认自动计算
+参数设置
+_E5_B1_8F_E5_B9_95_E5_BF_AB_E7_85_A7_2016-07-13__E4_B8_8A_E5_8D_889.39.43
+
+通过原始标签列列名，可以下拉选择“原始Label”列。
+通过分数列列名，可以选择“预测分数”列，这个值一般默认为prediction_score。
+通过正样本的标签值，可以选择正样本所对应的标签值。
+通过计算KS,PR等指标时按等频分成多少个桶，可选择将数据等频划分多少个桶，默认为1000。
+通过分组列列名，选择进行分组评估时用于划分分组数据的分组列。
+结果展示
+右键单击“二分类评估”组件，选择查看评估报告可以查看可视化评估结果，如下图所示。
+
+_E5_B1_8F_E5_B9_95_E5_BF_AB_E7_85_A7_2016-07-13__E4_B8_8A_E5_8D_889.52.42
+
+_E5_B1_8F_E5_B9_95_E5_BF_AB_E7_85_A7_2016-07-13__E4_B8_8A_E5_8D_8810.08.05
+
+回归模型评估
+基于预测结果和原始结果，评价回归算法模型的优劣，包含指标和残差直返图。其中指标包括SST、SSE、SSR、R2、R、 MSE、RMSE、MAE、MAD、MAPE、count、yMean和predictMean。
+
+PAI 命令
+PAI -name regression_evaluation -project algo_public
+    -DinputTableName=input_table
+    -DyColName=y_col
+    -DpredictionColName=prediction_col
+    -DindexOutputTableName=index_output_table
+    -DresidualOutputTableName=residual_output_table;
+算法说明
+参数名称	参数描述	参数值可选项	默认值
+inputTableName	必选，输入表的表名	NA	NA
+inputTablePartitions	可选，输入表中指定参与计算的分区	NA	输入表的所有partitions
+yColName	必选，输入表原始因变量列名，数值类型	NA	NA
+predictionColName	必选，预测结果因变量列名，数值类型	NA	NA
+indexOutputTableName	必选，回归指标输出表表名	NA	NA
+residualOutputTableName	必选，残差直方图输出表表名	NA	NA
+intervalNum	可选，直方图区间个数	NA	100
+lifecycle	可选，指定输出表的生命周期	正整数	没有生命周期
+coreNum	可选，指定instance个数	正整数	不设置
+memSizePerCore	可选，每个核的内存大小，单位为MB	正整数	不设置
+输出结果
+回归指标输出表
+
+输出结果是json格式。各字段描述如下表。
+
+字段名称	描述
+SST	总平方和
+SSE	误差平方和
+SSR	回归平方和
+R2	判定系数
+R	多重相关系数
+MSE	均方误差
+RMSE	均方根误差
+MAE	平均绝对误差
+MAD	平均误差
+MAPE	平均绝对百分误差
+count	行数
+yMean	原始因变量的均值
+predictionMean	预测结果的均值
+预测
+预测组件是专门用于模型预测的组件。两个输入为训练模型和预测数据，输出为预测结果。传统的数据挖掘算法一般都采用该组件进行预测操作。
+
+PAI 命令
+pai -name prediction
+    -DmodelName=nb_model
+    -DinputTableName=wpbc
+    -DoutputTableName=wpbc_pred
+    -DappendColNames=label;
+算法参数
+参数名称	参数描述	取值范围	是否必选，默认值/行为
+inputTableName	数据输入表	表名	必选
+modelName	模型	模型名字	必选
+outputTableName	输出表	表名	必选
+featureColNames	输入表中哪些列作为预测的feature，多列以逗号分隔	列名	可选，默认选择所有列
+appendColNames	输出表中需要附加的预测输入表的列	NA	可选，默认无附加列
+inputTablePartitions	输入表中指定哪些分区参与预测，格式为Partition_name=value。如果是多级格式为name1=value1/name2=value2，如果是指定多个分区，中间用“,”分开	NA	可选，默认选择输入表的所有partition
+outputTablePartition	输出到输出表的分区	NA	可选，默认输出表不进行分区
+resultColName	输出表中result列名	NA	可选，默认prediction_result
+scoreColName	输出表中score列名	NA	可选，默认prediction_score
+detailColName	输出表中detail列名	NA	可选，默认prediction_detail
+enableSparse	输入表数据是否为稀疏格式	true，false	可选，默认false
+itemDelimiter	当输入表数据为稀疏格式时，kv间的分割符	字符	可选，默认空格
+kvDelimiter	当输入表数据为稀疏格式时，key和value的分割符	字符	可选，默认冒号
+lifecycle	指定输出表的生命周期	正整数	可选，默认没有生命周期
+预测公式
+朴素贝叶斯(NaiveBayes)
+prediction_result 公式：image
+
+prediction_score 公式：image
+
+分类变量：image
+
+连续变量：image
+
+K均值(KMeans)
+prediction_result 公式：image
+
+prediction_score 公式:
+
+euclidean: image
+
+cosine: image
+
+cityblock: image
+
+输出说明
+分类	模型	prediction_result	prediction_score	prediction_detail
+二分类	LogisticRegression模型	预测的label	预测label的概率	每个label及其对应的概率
+LinearSVM模型	预测的label	预测label的概率	每个label及其对应的概率
+RandomForests模型	预测的label	预测label的概率	每个label及其对应的概率
+GBDT_LR模型	预测的label	预测label的概率	每个label及其对应的概率
+NaiveBayes模型	预测的label	log（预测label的概率）	每个label及其对应的 log（概率）
+xgboost模型	预测的label	预测label的概率	每个label及其对应的概率
+多分类	LogisticRegression模型	预测的label	预测label的概率	每个label及其对应的概率
+RandomForests模型	预测的label	预测label的概率	叶子节点存在的label及其概率
+NaiveBayes模型	预测的label	log（预测label的概率）	每个label及其对应的 log（概率）
+回归	LinearRegression模型	空	回归值	label列名：回归值
+GBDT模型	空	回归值	label列名：回归值
+xgboost模型	空	回归值	label列名：回归值
+聚类	KMeans模型	预测的中心点序号	到预测中心点的距离	到每个中心点的距离
+实例
+测试数据
+
+create table pai_rf_test_input as
+select * from
+(
+  select 1 as f0,2 as f1, "good" as class from dual
+  union all
+  select 1 as f0,3 as f1, "good" as class from dual
+  union all
+  select 1 as f0,4 as f1, "bad" as class from dual
+  union all
+  select 0 as f0,3 as f1, "good" as class from dual
+  union all
+  select 0 as f0,4 as f1, "bad" as class from dual
+)tmp;
+构建模型
+
+ PAI -name randomforests
+     -project algo_public
+     -DinputTableName="pai_rf_test_input"
+     -Dmodelbashame="pai_rf_test_model"
+     -DforceCategorical="f1"
+     -DlabelColName="class"
+     -DfeatureColNames="f0,f1"
+     -DmaxRecordSize="100000"
+     -DminNumPer="0"
+     -DminNumObj="2"
+     -DtreeNum="3";
+预测
+
+PAI -name prediction
+    -project algo_public
+    -DinputTableName=pai_rf_test_input
+    -DmodelName=pai_rf_test_model
+    -DresultColName=predict
+PS-SMART二分类
+PS是参数服务器（Parameter server）的简称。PS致力于解决大规模模型的离线、在线训练任务。SMART是Scalable Multiple Additive Regression Tree的缩写，是Gradient boosting decesion tree (GBDT)在PS上的一个实现。基于PS的Smart实现可以支持百亿样本、几十万特征的训练任务，可以在上千个节点上运行，且有failover功能，稳定性好。同时，PS-Smart支持多种数据格式、训练目标和评估目标，以及输出特征重要性，并包含直方图近似等加速训练的优化。
+
+快速上手
+image
+
+图中我们使用训练数据学习了一个PS-SMART二分类模型。输出桩有3个，依次为：
+
+输出模型：offlinemodel，连接统一的预测组件，目前不支持输出叶子节点编号。
+输出模型表：二进制格式，不可读，是为了兼容已有PS-SMART预测组件，支持输出叶子节点编号、评估指标等数据。但对数据格式有较多要求，体验不佳，会逐渐改良或用其他组件代替。
+输出特征重要性表：特征的重要性，有三种重要性类型可选（详见参数说明）。
+PAI 命令
+训练
+
+PAI -name ps_smart
+    -project algo_public
+    -DinputTableName="smart_binary_input"
+    -DmodelName="xlab_m_pai_ps_smart_bi_545859_v0"
+    -DoutputTableName="pai_temp_24515_545859_2"
+    -DoutputImportanceTableName="pai_temp_24515_545859_3"
+    -DlabelColName="label"
+    -DfeatureColNames="f0,f1,f2,f3,f4,f5"
+    -DenableSparse="false"
+    -Dobjective="binary:logistic"
+    -Dmetric="error"
+    -DfeatureImportanceType="gain"
+    -DtreeCount="5";
+    -DmaxDepth="5"
+    -Dshrinkage="0.3"
+    -Dl2="1.0"
+    -Dl1="0"
+    -Dlifecycle="3"
+    -DsketchEps="0.03"
+    -DsampleRatio="1.0"
+    -DfeatureRatio="1.0"
+    -DbaseScore="0.5"
+    -DminSplitLoss="0"
+预测
+
+PAI -name prediction
+    -project algo_public
+    -DinputTableName="smart_binary_input";
+    -DmodelName="xlab_m_pai_ps_smart_bi_545859_v0"
+    -DoutputTableName="pai_temp_24515_545860_1"
+    -DfeatureColNames="f0,f1,f2,f3,f4,f5"
+    -DappendColNames="label,qid,f0,f1,f2,f3,f4,f5"
+    -DenableSparse="false"
+    -Dlifecycle="28"
+参数说明
+数据参数
+
+命令选项	参数名称	参数描述	取值范围	是否必选，默认值
+featureColNames	选择特征列	输入表中选择的用于训练的特征列名	列名，Dense格式只能选择数值类型（bigint或double），Sparse KV格式只能选择string类型，kv格式中key和value都必须是数值，不能是字符串。	必选
+labelColName	选择标签列	输入表标签列列名	列名，支持string格式和数值格式的列，但内部存储的只能是数值类型，比如二分类时为0,1	必选
+weightCol	选择权重列	可以给每行样本单独给出权重	列名，支持数值类型	可选，默认为空
+enableSparse	是否稀疏格式	是否为稀疏格式，稀疏格式kv间分隔符为空格，key与value分隔符为冒号，比如1:0.3 3:0.9	[true, false]	可选，默认false
+inputTableName	输入表名	NA	NA	必选
+modelName	输出模型名	NA	NA	必选
+outputImportanceTableName	输出特征重要性表名	NA	NA	可选，默认为空
+inputTablePartitions	输入表分区	NA	NA	可选，格式如ds=1/pt=1
+outputTableName	输出模型表名	输出到MaxCompute表，也是二进制格式，不可读，可以使用Smart自带的预测组件，支持输出叶子节点编号	字符串	可选
+lifecycle	输出表生命周期	NA	正整数	可选，默认3
+算法参数
+
+命令选项	参数名称	参数描述	取值范围	是否必选，默认值
+objective	目标函数类型	目标函数类型直接决定了学习问题，需要正确选择。二分类时为“binary:logistic”	NA	必选
+metric	评估指标类型	训练集上的评估指标类型，输出在logview里coordinator的stdout中	logloss，error，auc	可选，默认为空
+treeCount	树数量	树的棵树，训练时间与树的棵树呈正比	正整数	可选，默认为1
+maxDepth	树最大深度	一棵树的最大深度，建议取5（即最多32个叶子节点）	正整数，[1,20]	可选，默认为5
+sampleRatio	数据采样比例	构建每棵树时只采样一部分数据来学习，构建弱学习器，加快训练	(0,1]	可选，默认为1.0，不采样
+featureRatio	特征采样比例	构建每棵树时只采样一部分特征来学习，构建弱学习器，加快训练	(0,1]	可选，默认为1.0，不采样
+l1	L1惩罚项系数	控制叶子节点个数，该项越大，叶子节点数越少。过拟合时可以加大该项。	非负实数	可选，默认为0
+l2	L2惩罚项系数	控制叶子节点大小，该项越大，叶子节点规模分布越均匀。过拟合时可以加大该项。	非负实数	可选，默认为1.0
+shrinkage	学习速率	NA	(0,1]	可选，默认为0.3
+sketchEps	近似Sketch精度	构造sketch时切割分位点的阈值，桶数为O(1.0/sketchEps)。这个值越小，切出来桶越多，一般不需要调整。	(0,1)	可选，默认为0.03
+minSplitLoss	最小分裂损失变化	分裂节点所需要的最小损失变化，该值越大，分裂越保守	非负实数	可选，默认值0
+featureNum	特征数量	特征的个数，或最大特征ID。当需要估计使用资源时需要填写	正整数	可选
+baseScore	全局偏置项	所以样本的初始预测值	实数	可选，默认值0.5
+featureImportanceType	特征重要性类型	计算特征重要性的类型。“weight”表示在模型中，该特征作为分裂特征的次数，“gain”表示在模型中，该特征带来的信息增益，“cover”表示在模型中，该特征在分裂节点覆盖的样本数。	可选的有“weight”、“gain”、“cover”	可选，默认“gain”
+注意事项
+
+objective在不同的学习问题中需要指定不同的值，二分类的web界面直接帮用户指定，不暴露给用户，命令行中需指定为“binary:logistic”。
+metric的对应关系为：“logloss”对应“negative loglikelihood for logistic regression”，“error”对应“binary classification error”，“auc”对应“Area under curve for classification”。
+执行调优
+命令选项	参数名称	参数描述	取值范围	是否必选，默认值
+coreNum	核心数	核心个数，越多算法运行越快	正整数	可选，默认自动分配
+memSizePerCore	每个核的内存大小（MB）	单个核心使用的内存数，1024代表1GB内存	正整数	可选，默认自动分配
+实例
+数据生成
+
+以Dense格式数据为例：
+
+drop table if exists smart_binary_input;
+create table smart_binary_input lifecycle 3 as
+select
+*
+from
+(
+select 0.72 as f0, 0.42 as f1, 0.55 as f2, -0.09 as f3, 1.79 as f4, -1.2 as f5, 0 as label from dual
+union all
+select 1.23 as f0, -0.33 as f1, -1.55 as f2, 0.92 as f3, -0.04 as f4, -0.1 as f5, 1 as label from dual
+union all
+select -0.2 as f0, -0.55 as f1, -1.28 as f2, 0.48 as f3, -1.7 as f4, 1.13 as f5, 1 as label from dual
+union all
+select 1.24 as f0, -0.68 as f1, 1.82 as f2, 1.57 as f3, 1.18 as f4, 0.2 as f5, 0 as label from dual
+union all
+select -0.85 as f0, 0.19 as f1, -0.06 as f2, -0.55 as f3, 0.31 as f4, 0.08 as f5, 1 as label from dual
+union all
+select 0.58 as f0, -1.39 as f1, 0.05 as f2, 2.18 as f3, -0.02 as f4, 1.71 as f5, 0 as label from dual
+union all
+select -0.48 as f0, 0.79 as f1, 2.52 as f2, -1.19 as f3, 0.9 as f4, -1.04 as f5, 1 as label from dual
+union all
+select 1.02 as f0, -0.88 as f1, 0.82 as f2, 1.82 as f3, 1.55 as f4, 0.53 as f5, 0 as label from dual
+union all
+select 1.19 as f0, -1.18 as f1, -1.1 as f2, 2.26 as f3, 1.22 as f4, 0.92 as f5, 0 as label from dual
+union all
+select -2.78 as f0, 2.33 as f1, 1.18 as f2, -4.5 as f3, -1.31 as f4, -1.8 as f5, 1 as label from dual
+) tmp;
+数据内容如下图所示，数据中有6列特征。
+
+binary_data
+
+训练
+
+如快速上手中所示，配置训练数据和训练组件。选择label为目标列，“f0,f1,f2,f3,f4,f5”为特征列。算法参数设置页面如下图所示。
+
+image
+
+特征数量可以不填，算法会自动计算。如果特征数量较大，且需要算法精准地估计使用的资源，请给出实际的值。
+如果要加速训练，可以通过执行调优页面设置核数目，核数目越多，算法运行越快。核内存一般不需要用户填写，算法可以较为精确地估计。另外，PS算法需要所有机器申请到资源才开始运行，当集群较忙时，申请较多资源可能会增加等待时间。
+image
+
+可以通过Logview（日志中以“ http://logview.odps.aliyun-inc.com:8080/logview ”开头的http链接）中Coordinator的stdout查看metric输出值。一个PS-Smart训练任务会有多个task，因而有多个logview，需要选取紧接着是PS开头输出的logview。如下图所示红框中就是PS任务的logview，可以通过绿色圆形中的显示来区分。
+image
+
+有了logview之后具体操作方式如下图所示。
+
+metric
+
+预测
+
+使用统一预测组件预测
+
+训练得到的输出模型以二进制方式存储，可以用来做预测。如快速上手中所示，配置预测组件的输入，也就是模型和测试数据，并正确配置参数如下图所示。
+image
+
+Dense格式选择特征列（默认全选，多余的列不影响预测）即可。如果是KV格式，需要选择稀疏格式并正确配置分隔符。Smart的kv对之间的分隔符是空格，需要将其置为空格或配置为“\u0020”（空格的转义表达形式）。
+
+预测结果如下图所示。
+
+image
+
+“prediction_detail”列中1是正例，0是负例，后面是属于该类别的概率。
+
+使用PS-Smart预测组件预测
+
+训练得到的输出模型表以二进制形式存储，可以兼容原PS-Smart预测组件来做预测。如快速上手中所示，配置预测组件的输入，也就是模型和测试数据，并正确配置参数。包括数据格式、特征列、目标列以及类别数，ID列只能选择除特征列和目标列以外的string格式的列。参数设置中的损失函数必须显式选择为binary:logistic。 预测结果如下图所示。
+
+image
+
+其中“prediction_score”是预测的正例的概率，该值大于0.5，可以认为预测为正例，否则预测为负例。“leaf_index”列为预测的叶子节点编号，每个样本有N个数，N为树的棵树。每棵树对应一个数字，该数字表示样本落在这棵树上的叶子节点的编号。
+
+注意：
+
+此处使用的输出模型表是二进制格式，不可读，是为了兼容已有PS-SMART预测组件，支持输出叶子节点编号、评估指标等功能。但对数据格式有较多要求，体验不佳，会逐渐改良或用其他组件代替。
+此处要求必须给一列string格式的列作为label，可以填充一列字符串，不能为空或者NULL，可以将一列特征通过类型转换组件转换为string格式传入。
+参数设置中的损失函数必须显式选择为binary:logistic， 默认继承不work。
+查看特征重要性
+
+可以将第三个输出桩输出到表来查看，或者右键单击PS-Smart训练组件，选择查看数据 -> 输出特征重要性表，查看重要性表内容，如下图所示。
+
+image
+
+其中的id是传入的特征的序号，这里是稠密数据格式。传入的特征是“f0,f1,f2,f3,f4,f5”，因此id为0指的就是f0，id为4指的就是f4。如果是kv格式，那么id就是Key-value pair中的key。value对应特征重要性类型，默认是“gain”，也就是模型中，该特征带来的信息增益的和。这里只出现了3个特征，是因为在树的分裂过程中只用到了这3个特征，可以认为没有出现的特征重要性为0。
+
+常见问题
+PS-SMART二分类的目标列只支持数值类型（0代表负例，1代表正例），即使MaxCompute表是string类型，也必须存储的是数值。如果分类目标是“Good”、“Bad”这样的类别字符串，请用户将分类目标自行转换成1，0。
+当数据是kv格式时，特征的ID必须是正整数，特征的值必须是实数。如果特征ID为字符串，需要使用序列化组件进行序列化操作。如果特征的值是类别型的字符串，需要进行特征离散化等特征工程处理。
+虽然PS-SMART支持数十万特征的任务，但消耗资源较大且运行速度较慢，不建议使用太大的特征规模。GBDT类算法适合直接使用连续特征进行训练，除了类别特征需要做one-hot编码（可以筛掉低频特征）外，其他连续型数值特征不建议做离散化，可以直接用于GBDT类算法的训练。
+PS-SMART算法有很多地方会引入随机性，比如data_sample_ratio、fea_sample_ratio选项分别对数据或特征做采样。除此之外，PS-SMART算法本身使用直方图做近似，当集群上多个worker分布式执行时，由于局部sketch归并成全局sketch的顺序会有随机性，会导致树结构的不同。但从理论上可以保证模型效果相差不大，请您放心使用。因此同样数据同样参数多次跑，结果不一致属于正常现象。
+PS-SMART多分类
+PS是参数服务器（Parameter server）的简称。PS致力于解决大规模模型的离线、在线训练任务。SMART是Scalable Multiple Additive Regression Tree的缩写，是Gradient boosting decesion tree (GBDT)在PS上的一个实现。基于PS的Smart实现可以支持百亿样本、几十万特征的训练任务，可以在上千个节点上运行，且有failover功能，稳定性好。同时，PS-Smart支持多种数据格式、训练目标和评估目标，以及输出特征重要性，并包含直方图近似等加速训练的优化。
+
+快速上手
+image
+
+图中我们使用训练数据学习了一个PS-SMART多分类模型。输出桩有3个，依次为：
+
+输出模型：offlinemodel，连接统一的预测组件，目前不支持输出叶子节点编号。
+输出模型表：二进制格式，不可读，是为了兼容已有PS-SMART预测组件，支持输出叶子节点编号、评估指标等功能。但对数据格式有较多要求，体验不佳，会逐渐改良或用其他组件代替。
+输出特征重要性表：特征的重要性，有三种重要性类型可选（详见参数说明）。
+PAI 命令
+训练
+
+PAI -name ps_smart
+    -project algo_public
+    -DinputTableName="smart_multiclass_input"
+    -DmodelName="xlab_m_pai_ps_smart_bi_545859_v0"
+    -DoutputTableName="pai_temp_24515_545859_2"
+    -DoutputImportanceTableName="pai_temp_24515_545859_3"
+    -DlabelColName="label"
+    -DfeatureColNames="features"
+    -DenableSparse="true"
+    -Dobjective="multi:softprob"
+    -Dmetric="mlogloss"
+    -DfeatureImportanceType="gain"
+    -DtreeCount="5";
+    -DmaxDepth="5"
+    -Dshrinkage="0.3"
+    -Dl2="1.0"
+    -Dl1="0"
+    -Dlifecycle="3"
+    -DsketchEps="0.03"
+    -DsampleRatio="1.0"
+    -DfeatureRatio="1.0"
+    -DbaseScore="0.5"
+    -DminSplitLoss="0"
+预测
+
+PAI -name prediction
+    -project algo_public
+    -DinputTableName="smart_multiclass_input";
+    -DmodelName="xlab_m_pai_ps_smart_bi_545859_v0"
+    -DoutputTableName="pai_temp_24515_545860_1"
+    -DfeatureColNames="features"
+    -DappendColNames="label,features"
+    -DenableSparse="true"
+    -DkvDelimiter=":"
+    -Dlifecycle="28"
+参数说明
+数据参数
+
+命令选项	参数名称	参数描述	取值范围	是否必选，默认值
+featureColNames	选择特征列	输入表中选择的用于训练的特征列名	列名，Dense格式只能选择数值类型（bigint或double），Sparse kv格式只能选择string类型，kv格式中key和value都必须是数值，不能是字符串。	必选
+labelColName	选择标签列	输入表标签列列名	列名，支持string格式和数值格式的列，但内部存储的只能是数值类型，多分类时为 0,1,2,…,n-1，n为类别数	必选
+weightCol	选择权重列	可以给每行样本单独给出权重	列名，支持数值类型	可选，默认为空
+enableSparse	是否稀疏格式	是否为稀疏格式，稀疏格式kv间分隔符为空格，key与value分隔符为冒号，比如“1:0.3 3:0.9”	true，false	可选，默认false
+inputTableName	输入表名	NA	NA	必选
+modelName	输出模型名	NA	NA	必选
+outputImportanceTableName	输出特征重要性表名	NA	NA	可选，默认为空
+inputTablePartitions	输入表分区	NA	NA	可选，格式如ds=1/pt=1
+outputTableName	输出模型表名	输出到MaxCompute表，也是二进制格式，不可读，可以使用Smart自带的预测组件，支持输出叶子节点编号	字符串	可选
+lifecycle	输出表生命周期	NA	正整数	可选，默认3
+算法参数
+
+命令选项	参数名称	参数描述	取值范围	是否必选，默认值
+classNum	类别数	多分类的类别数，如类别数为n，则标签列取值为0,1,2,…,n-1	非负整数，大于等于3	必选
+objective	目标函数类型	目标函数类型直接决定了学习问题，需要正确选择。多分类时为“multi:softprob”	NA	必选
+metric	评估指标类型	训练集上的评估指标类型，输出在logview里coordinator的stdout中	“mlogloss” ，“merror”	可选，默认为空
+treeCount	树数量	树的棵树，训练时间与树的棵树呈正比	正整数	可选，默认为1
+maxDepth	树最大深度	一棵树的最大深度，建议取5（即最多32个叶子节点）	正整数，[1,20]	可选，默认为5
+sampleRatio	数据采样比例	构建每棵树时只采样一部分数据来学习，构建弱学习器，加快训练	(0,1]	可选，默认为1.0，不采样
+featureRatio	特征采样比例	构建每棵树时只采样一部分特征来学习，构建弱学习器，加快训练	(0,1]	可选，默认为1.0，不采样
+l1	L1惩罚项系数	控制叶子节点个数，该项越大，叶子节点数越少。过拟合时可以加大该项。	非负实数	可选，默认为0
+l2	L2惩罚项系数	控制叶子节点大小，该项越大，叶子节点规模分布越均匀。过拟合时可以加大该项。	非负实数	可选，默认为1.0
+shrinkage	学习速率	NA	(0,1]	可选，默认为0.3
+sketchEps	近似Sketch精度	构造sketch时切割分位点的阈值，桶数为O(1.0/sketchEps)。这个值越小，切出来桶越多，一般不需要调整。	(0,1)	可选，默认为0.03
+minSplitLoss	最小分裂损失变化	分裂节点所需要的最小损失变化，该值越大，分裂越保守	非负实数	可选，默认值0
+featureNum	特征数量	特征的个数，或最大特征ID。当需要估计使用资源时需要填写	正整数	可选
+baseScore	全局偏置项	所以样本的初始预测值	实数	可选，默认值0.5
+featureImportanceType	特征重要性类型	计算特征重要性的类型。“weight”表示在模型中，该特征做为分裂特征的次数，“gain”表示在模型中，该特征带来的信息增益，“cover”表示在模型中，该特征在分裂节点覆盖的样本数。	可选的有“weight”，“gain”，“cover”	可选，默认“gain”
+注意事项
+
+objective在不同的学习问题中需要指定不同的值，多分类的web界面直接帮用户指定，不暴露给用户，命令行中需指定为“multi:softprob”。
+metric的对应关系为：“mlogloss”对应“multiclass negative log likelihood”，“merror”对应“multiclass classification error”。
+执行调优
+
+命令选项	参数名称	参数描述	取值范围	是否必选，默认值
+coreNum	核心数	核心个数，越多算法运行越快	正整数	可选，默认自动分配
+memSizePerCore	每个核的内存大小（MB）	单个核心使用的内存数，1024代表1GB内存	正整数	可选，默认自动分配
+实例
+数据生成
+
+以kv格式数据为例：
+
+drop table if exists smart_multiclass_input;
+create table smart_multiclass_input lifecycle 3 as
+select
+*
+from
+(
+select 2 as label, '1:0.55 2:-0.15 3:0.82 4:-0.99 5:0.17' as features from dual
+    union all
+select 1 as label, '1:-1.26 2:1.36 3:-0.13 4:-2.82 5:-0.41' as features from dual
+    union all
+select 1 as label, '1:-0.77 2:0.91 3:-0.23 4:-4.46 5:0.91' as features from dual
+    union all
+select 2 as label, '1:0.86 2:-0.22 3:-0.46 4:0.08 5:-0.60' as features from dual
+    union all
+select 1 as label, '1:-0.76 2:0.89 3:1.02 4:-0.78 5:-0.86' as features from dual
+    union all
+select 1 as label, '1:2.22 2:-0.46 3:0.49 4:0.31 5:-1.84' as features from dual
+    union all
+select 0 as label, '1:-1.21 2:0.09 3:0.23 4:2.04 5:0.30' as features from dual
+    union all
+select 1 as label, '1:2.17 2:-0.45 3:-1.22 4:-0.48 5:-1.41' as features from dual
+    union all
+select 0 as label, '1:-0.40 2:0.63 3:0.56 4:0.74 5:-1.44' as features from dual
+    union all
+select 1 as label, '1:0.17 2:0.49 3:-1.50 4:-2.20 5:-0.35' as features from dual
+) tmp;
+数据内容如下图所示，数据中有5维特征。
+
+multiclass_data
+
+训练
+
+如快速上手中所示，配置训练数据和训练组件。选择label为目标列，features为特征列。数据参数和算法参数设置页面如下图所示。
+
+image
+
+image
+
+特征数量可以不填，算法会自动计算。如果特征数量较大，且需要算法精准地估计使用的资源，请给出实际值。
+如果需要加速训练，可以通过执行调优页面设置核数目，核数目越多，算法运行越快。核内存一般不需要用户填写，算法可以较为精确地估计。另外，PS算法需要所有机器申请到资源才开始运行，当集群较忙时，申请较多资源可能会增加等待时间。
+image
+
+可以通过Logview（日志中以“ http://logview.odps.aliyun-inc.com:8080/logview ”开头的http链接）中Coordinator的stdout查看metric输出值。一个PS-Smart训练任务会有多个task，因而有多个logview，需要选取紧接着是PS开头输出的logview，如下图所示红框中就是我们想要的PS任务的logview，可以通过绿色圆形中的显示来区分。
+image
+
+有了logview之后具体操作方式如下图所示。
+metric
+
+预测
+
+使用统一预测组件预测
+
+训练得到的输出模型以二进制方式存储，可以用来做预测。如快速上手中所示，配置预测组件的输入，也就是模型和测试数据，并正确配置参数如下图所示。
+
+image
+
+Dense格式选择特征列（默认全选，多的列不影响预测）即可。如果是kv格式，需要选择稀疏格式并正确配置分隔符。Smart的kv对之间的分隔符是空格，需要将其置为空格或配置为“\u0020”（空格的转义表达形式）。
+
+预测结果如下图所示。
+
+image
+
+“prediction_detail”列中0,1,2是对应的类别，后面是属于该类别的概率。“predict_result”是挑选的概率最大的类，“predict_score”是属于该类的概率。
+
+使用PS-Smart预测组件预测
+
+训练得到的输出模型表以二进制存储，可以兼容原PS-Smart预测组件来做预测。如快速上手中所示，配置预测组件的输入，也就是模型和测试数据，并正确配置参数。包括数据格式、特征列、目标列以及类别数，ID列只能选择string格式的除特征列和目标列以外的列。参数设置中的损失函数必须显式选择为“multi:softprob”。预测结果如下图所示。
+
+image
+
+其中“score_class_k”是预测的编号为k的类别的概率，取概率最大的类就可以作为预测的类别。“leaf_index”列为预测的叶子节点编号，每个样本有N*M个数，N为树的棵树，M为类别数，例子里是5*3=15个数。每棵树对应一个数字，该数字表示样本落在这棵树上的叶子节点的编号。
+
+注意：
+
+此处使用的输出模型表是二进制格式，不可读，是为了兼容已有PS-SMART预测组件，支持输出叶子节点编号、评估指标等功能。但对数据格式有较多要求，体验不佳，会逐渐改良或用其他组件代替。
+此处要求必须给一列string格式的列作为label，可以填充一列字符串，不能为空或者NULL，可以将一列特征通过类型转换组件转换为string格式传入。
+参数设置中的损失函数必须显式选择为“multi:softprob”，默认继承不work。
+查看特征重要性
+
+可以将第三个输出桩输出到表来查看，或者右键单击PS-Smart训练组件，选择查看数据 -> 输出特征重要性表，查看重要性表内容，如下图所示。
+
+image
+
+其中的id是传入的特征的序号，这里是kv格式，那么id就是Key-value pair中的key。如果数据为稠密格式，传入的特征是“f0,f1,f2,f3,f4,f5”，那么id为0指的就是f0，id为4指的就是f4。value对应特征重要性类型，默认是“gain”，也就是模型中，该特征带来的信息增益的和。这里只出现了4个特征，是因为在树的分裂过程中只用到了这4个特征，可以认为没有出现的特征重要性为0。
+
+常见问题
+PS-SMART多分类的目标列只支持正整数ID（分类数为n时，类别为0,1,2,…,n-1），即使MaxCompute表这里是string类型，也必须存储的是数值。如果分类目标是“Good”，“Medium”，“Bad”这样的类别字符串，请用户将分类目标自行转换成0,1,2,…,n-1。
+kv格式时特征的ID必须是正整数，特征的值必须是实数。如果特征ID为字符串，需要使用序列化组件进行序列化操作。如果特征的值是类别型的字符串，需要进行特征离散化等特征工程处理。
+虽然PS-SMART支持数十万特征的任务，但消耗资源较大且运行速度较慢，不建议使用太大的特征规模。GBDT类算法适合直接使用连续特征进行训练，除了类别特征需要做one-hot编码（可以筛掉低频特征）外，其他连续型数值特征不建议做离散化，可以直接用于GBDT类算法的训练。
+PS-SMART算法有很多地方会引入随机性，比如data_sample_ratio、fea_sample_ratio选项分别对数据或特征做采样。除此之外，PS-SMART算法本身使用直方图做近似，当在集群上多个worker分布式执行时，由于局部sketch归并成全局sketch的顺序会有随机性，顺序不同会导致树结构的不同，但从理论上可以保证模型效果相差不大，请您放心使用。因此同样数据同样参数多次实验，结果不一致是正常的。
+PS-SMART回归
+PS是参数服务器（Parameter server）的简称。PS致力于解决大规模模型的离线、在线训练任务。SMART是Scalable Multiple Additive Regression Tree的缩写，是Gradient boosting decesion tree (GBDT)在PS上的一个实现。基于PS的Smart实现可以支持百亿样本、几十万特征的训练任务，可以在上千个节点上运行，且有failover功能，稳定性好。同时，PS-Smart支持多种数据格式、训练目标和评估目标，以及输出特征重要性，并包含直方图近似等加速训练的优化。
+
+快速上手
+image
+
+图中我们使用训练数据学习了一个PS-SMART回归模型。输出桩有3个，依次为：
+
+输出模型：offlinemodel，接统一的预测组件，目前不支持输出叶子节点编号。
+输出模型表：二进制格式，不可读，是为了兼容已有PS-SMART预测组件，支持输出叶子节点编号、评估指标等功能。但对数据格式有较多要求，体验不佳，会逐渐改良或用其他组件代替。
+输出特征重要性表：特征的重要性，有三种重要性类型可选（详见参数说明）。
+PAI 命令
+训练
+
+PAI -name ps_smart
+    -project algo_public
+    -DinputTableName="smart_regression_input"
+    -DmodelName="xlab_m_pai_ps_smart_bi_545859_v0"
+    -DoutputTableName="pai_temp_24515_545859_2"
+    -DoutputImportanceTableName="pai_temp_24515_545859_3"
+    -DlabelColName="label"
+    -DfeatureColNames="features"
+    -DenableSparse="true"
+    -Dobjective="reg:linear"
+    -Dmetric="rmse"
+    -DfeatureImportanceType="gain"
+    -DtreeCount="5";
+    -DmaxDepth="5"
+    -Dshrinkage="0.3"
+    -Dl2="1.0"
+    -Dl1="0"
+    -Dlifecycle="3"
+    -DsketchEps="0.03"
+    -DsampleRatio="1.0"
+    -DfeatureRatio="1.0"
+    -DbaseScore="0.5"
+    -DminSplitLoss="0"
+预测
+
+PAI -name prediction
+    -project algo_public
+    -DinputTableName="smart_regression_input";
+    -DmodelName="xlab_m_pai_ps_smart_bi_545859_v0"
+    -DoutputTableName="pai_temp_24515_545860_1"
+    -DfeatureColNames="features"
+    -DappendColNames="label,features"
+    -DenableSparse="true"
+    -Dlifecycle="28"
+参数说明
+数据参数
+
+命令选项	参数名称	参数描述	取值范围	是否必选，默认值
+featureColNames	选择特征列	输入表中选择的用于训练的特征列名	列名，Dense格式只能选择数值类型（bigint或double），Sparse KV格式只能选择string类型，kv格式中key和value都必须是数值，不能是字符串。	必选
+labelColName	选择标签列	输入表标签列列名	列名，支持string格式和数值格式的列，但内部存储的只能是数值类型，比如回归时为0,1	必选
+weightCol	选择权重列	可以给每行样本单独给出权重	列名，支持数值类型	可选，默认为空
+enableSparse	是否稀疏格式	是否为稀疏格式，稀疏格式kv间分隔符为空格，key与value分隔符为冒号，比如“1:0.3 3:0.9”	true，false	可选，默认false
+inputTableName	输入表名	NA	NA	必选
+modelName	输出模型名	NA	NA	必选
+outputImportanceTableName	输出特征重要性表名	NA	NA	可选，默认为空
+inputTablePartitions	输入表分区	NA	NA	可选，格式如ds=1/pt=1
+outputTableName	输出模型表名	输出到MaxCompute表，也是二进制格式，不可读，可以使用Smart自带的预测组件，支持输出叶子节点编号	字符串	可选
+lifecycle	输出表生命周期	NA	正整数	可选，默认3
+算法参数
+
+命令选项	参数名称	参数描述	取值范围	是否必选，默认值
+objective	目标函数类型	目标函数类型直接决定了学习问题，需要正确选择。回归时有多种损失函数供选择，详见注意事项		必选，默认为Linear regression
+metric	评估指标类型	训练集上的评估指标类型，需要与目标函数类型对应，输出在logview里coordinator的stdout中，详见注意事项及示例		可选，默认为空
+treeCount	树数量	树的棵树，训练时间与树的棵树呈正比	正整数	可选，默认为1
+maxDepth	树最大深度	一棵树的最大深度，建议取5（即最多32个叶子节点）	正整数，[1,20]	可选，默认为5
+sampleRatio	数据采样比例	构建每棵树时只采样一部分数据来学习，构建弱学习器，加快训练	(0,1]	可选，默认为1.0，不采样
+featureRatio	特征采样比例	构建每棵树时只采样一部分特征来学习，构建弱学习器，加快训练	(0,1]	可选，默认为1.0，不采样
+l1	L1惩罚项系数	控制叶子节点个数，该项越大，叶子节点数越少。过拟合时可以加大该项。	非负实数	可选，默认为0
+l2	L2惩罚项系数	控制叶子节点大小，该项越大，叶子节点规模分布越均匀。过拟合时可以加大该项。	非负实数	可选，默认为1.0
+shrinkage	学习速率	NA	(0,1]	可选，默认为0.3
+sketchEps	近似Sketch精度	构造sketch时切割分位点的阈值，桶数为O(1.0/sketchEps)。这个值越小，切出来桶越多，一般不需要调整。	(0,1)	可选，默认为0.03
+minSplitLoss	最小分裂损失变化	分裂节点所需要的最小损失变化，该值越大，分裂越保守	非负实数	可选，默认值0
+featureNum	特征数量	特征的个数，或最大特征ID。当需要估计使用资源时需要填写	正整数	可选
+baseScore	全局偏置项	所以样本的初始预测值	实数	可选，默认值0.5
+featureImportanceType	特征重要性类型	计算特征重要性的类型。“weight”表示在模型中，该特征做为分裂特征的次数，“gain”表示在模型中，该特征带来的信息增益，“cover”表示在模型中，该特征在分裂节点覆盖的样本数。	可选的有“weight”，“gain”，“cover”	可选，默认“gain”
+tweedieVarPower	Tweedie分布指数	Tweedie分布的方差和均值关系的指数$Var(y) ~ E(y)^tweedie_variance_power$	(1,2)	可选，默认1.5
+注意事项
+
+objective在不同的学习问题中需要指定不同的值，回归的web界面提供多种目标函数供选择，具体介绍如下：
+reg:linear（Linear regression） 注：label范围(-∞, +∞)
+reg:logistic（Logistic regression） 注：label范围[0,1]
+count:poisson（Poisson regression for count data, output mean of poisson distribution）注：label范围大于等于0
+reg:gamma (Gamma regression for for modeling insurance claims severity, or for any outcome that might be [gamma-distributed](https://en.wikipedia.org/wiki/Gamma_distribution#Applications)) 注：label范围大于等于0
+reg:tweedie (Tweedie regression for modeling total loss in insurance, or for any outcome that might be [Tweedie-distributed](https://en.wikipedia.org/wiki/Tweedie_distribution#Applications).) 注：label范围大于等于0
+对应的metric为：
+rmse(rooted mean square error，对应objective reg:linear)
+mae(mean absolute error，对应objective reg:linear)
+poisson-nloglik(negative loglikelihood for poisson regression，对应objective count:poisson)
+gamma-deviance(Residual deviance for gamma regression，对应objective reg:gamma)
+gamma-nloglik(Negative log-likelihood for gamma regression，对应objective reg:gamma)
+tweedie-nloglik(tweedie-nloglik@1.5，negative log-likelihood for Tweedie regression, at a specified value of the tweedie_variance_power parameter)
+执行调优
+
+命令选项	参数名称	参数描述	取值范围	是否必选，默认值
+coreNum	核心数	核心个数，越多算法运行越快	正整数	可选，默认自动分配
+memSizePerCore	每个核的内存大小（MB）	单个核心使用的内存数，1024代表1GB内存	正整数	可选，默认自动分配
+实例
+数据生成
+
+以Sparse KV格式数据为例
+
+drop table if exists smart_regression_input;
+create table smart_regression_input as
+select
+*
+from
+(
+select 2.0 as label, '1:0.55 2:-0.15 3:0.82 4:-0.99 5:0.17' as features from dual
+    union all
+select 1.0 as label, '1:-1.26 2:1.36 3:-0.13 4:-2.82 5:-0.41' as features from dual
+    union all
+select 1.0 as label, '1:-0.77 2:0.91 3:-0.23 4:-4.46 5:0.91' as features from dual
+    union all
+select 2.0 as label, '1:0.86 2:-0.22 3:-0.46 4:0.08 5:-0.60' as features from dual
+    union all
+select 1.0 as label, '1:-0.76 2:0.89 3:1.02 4:-0.78 5:-0.86' as features from dual
+    union all
+select 1.0 as label, '1:2.22 2:-0.46 3:0.49 4:0.31 5:-1.84' as features from dual
+    union all
+select 0.0 as label, '1:-1.21 2:0.09 3:0.23 4:2.04 5:0.30' as features from dual
+    union all
+select 1.0 as label, '1:2.17 2:-0.45 3:-1.22 4:-0.48 5:-1.41' as features from dual
+    union all
+select 0.0 as label, '1:-0.40 2:0.63 3:0.56 4:0.74 5:-1.44' as features from dual
+    union all
+select 1.0 as label, '1:0.17 2:0.49 3:-1.50 4:-2.20 5:-0.35' as features from dual
+) tmp;
+数据内容如下图所示，数据中特征ID从1开始编号，最大特征ID为5。
+
+regression_data
+
+训练
+
+选择label为目标列，features为特征列。以Linear regression为例，算法参数设置页面如下图所示。
+
+image
+
+特征数量可以不填，算法会自动计算。如果您的特征数量较大，且需要算法较为精准地估计使用的资源，请在这里给出实际的值。
+
+如果您想加速训练，可以通过执行调优页面设置核数目，核数目越多，算法运行越快。核内存一般不需要用户填写，算法可以较为精确地估计。另外，PS算法需要所有机器申请到资源才开始运行，当集群较忙时，申请较多资源可能会增加等待时间。
+image
+
+可以通过Logview（日志中以“ http://logview.odps.aliyun-inc.com:8080/logview ”开头的http链接）中Coordinator的stdout查看metric输出值。一个PS-Smart训练任务会有多个task，因而有多个logview，需要选取紧接着是PS开头输出的logview，如下图所示红框中就是我们想要的PS任务的logview，可以通过绿色圆形中的显示来区分。
+image
+
+有了logview之后具体操作方式如下图所示。
+metric
+
+预测
+
+使用统一预测组件预测
+
+训练得到的输出模型以二进制方式存储，可以用来做预测。如快速上手中所示，配置预测组件的输入，也就是模型和测试数据，并正确配置参数如下图所示。
+
+image
+
+Dense格式选择特征列（默认全选，多的列不影响预测）即可。如果是kv格式，需要选择稀疏格式并正确配置分隔符。Smart的kv对之间的分隔符是空格，需要将其置为空格或配置为“\u0020”（空格的转义表达形式）。
+
+预测结果如下图所示，“predict_result”为预测值。
+
+image
+
+使用PS-Smart预测组件预测
+
+训练得到的输出模型表以二进制形式存储，可以兼容原PS-Smart预测组件来做预测。如快速上手中所示，配置预测组件的输入，也就是模型和测试数据，并正确配置参数。包括数据格式，特征列和目标列以及类别数，ID列只能选择string格式的除特征列和目标列以外的列。参数设置中的损失函数必须显式选择与训练时objective一致的损失函数。预测结果如下图所示。
+
+image
+
+其中“prediction_score”是预测值。“leaf_index”列为预测的叶子节点编号，每个样本有N个数，N为树的棵树。每棵树对应一个数字，该数字表示样本落在这棵树上的叶子节点的编号。
+
+注意：
+
+此处使用的输出模型表是二进制格式，不可读，是为了兼容已有PS-SMART预测组件，支持输出叶子节点编号、评估指标等功能。但对数据格式有较多要求，体验不佳，会逐渐改良或用其他组件代替。
+此处要求必须给一列string格式的列作为label，可以填充一列字符串，不能为空或者NULL，可以将一列特征通过类型转换组件转换为string格式传入。
+参数设置中的损失函数必须显式选择与训练时objective一致的损失函数，默认继承不work。
+查看特征重要性
+
+可以将第三个输出桩输出到表来查看，或者右键单击PS-Smart训练组件，选择查看数据 -> 输出特征重要性表，查看重要性表内容，如下图所示。
+
+image
+
+其中的id是传入的特征的序号，这里是kv格式，那么id就是Key-value pair中的key。如果是稠密格式，假设传入的特征是“f0,f1,f2,f3,f4,f5”，那么id为0指的就是f0, id为4指的就是f4。value对应特征重要性类型，默认是“gain”，也就是模型中，该特征带来的信息增益的和。这里只出现了2个特征，是因为在树的分裂过程中只用到了这2个特征，可以认为没有出现的特征重要性为0。
+
+常见问题
+PS-SMART回归的目标列只支持数值类型，即使MaxCompute表是string类型，也必须存储的是数值。
+kv格式时特征的ID必须是正整数，特征的值必须是实数。如果特征ID为字符串，需要使用序列化组件进行序列化操作。如果特征的值是类别型的字符串，需要进行特征离散化等特征工程处理。
+虽然PS-SMART支持数十万特征的任务，但消耗资源较大且运行速度较慢，不建议使用太大的特征规模。GBDT类算法适合直接使用连续特征进行训练，除了类别特征需要做one-hot编码（可以筛掉低频特征）外，其他连续型数值特征不建议做离散化，可以直接用于GBDT类算法的训练。
+PS-SMART算法有很多地方会引入随机性，比如data_sample_ratio、fea_sample_ratio选项分别对数据或特征做采样。除此之外，PS-SMART算法本身使用直方图做近似，当在集群上多个worker分布式执行时，由于局部sketch归并成全局sketch的顺序会有随机性，顺序不同会导致树结构的不同，但从理论上可以保证模型效果相差不大，请您放心使用。因此同样数据同样参数多次跑，结果不一致是正常的。
+PS线性回归
+线性回归（Linear regression）是经典的回归算法，分析因变量和多个自变量之间的线性关系。PS是参数服务器（Parameter server）的简称，致力于解决大规模模型的离线、在线训练任务，能够使用千亿行数样本训练，百亿特征模型并高效产出。PS线性回归支持千亿样本，十亿特征的训练任务，且支持L1，L2正则项。
+
+快速上手
+ps_linear_regression
+
+PAI 命令
+训练
+
+PAI -name ps_linearregression
+    -project algo_public
+    -DinputTableName="lm_test_input"
+    -DmodelName="linear_regression_model"
+    -DlabelColName="label"
+    -DfeatureColNames="features"
+    -Dl1Weight=1.0
+    -Dl2Weight=0.0
+    -DmaxIter=100
+    -Depsilon=1e-6
+    -DenableSparse=true
+预测
+
+drop table if exists logistic_regression_predict;
+PAI -name prediction
+    -DmodelName="linear_regression_model"
+    -DoutputTableName="linear_regression_predict"
+    -DinputTableName="lm_test_input"
+    -DappendColNames="label,features"
+    -DfeatureColNames="features"
+    -DenableSparse=true
+参数说明
+数据参数
+
+命令选项	参数名称	参数描述	取值范围	是否必选，默认值
+featureColNames	选择特征列	输入表中选择的用于训练的特征列名	列名，Dense格式只能选择数值类型（bigint或double），Sparse KV格式只能选择string类型	必选
+labelColName	选择标签列	输入表标签列列名	列名，必须为数值类型（bigint或double）	必选
+enableSparse	是否稀疏格式	当选择Sparse KV格式时，请不要使用0号特征id，建议您从1开始给特征编号。	true，false	可选，默认false
+itemDelimiter	kv间的分隔符	当输入表数据为稀疏格式时，kv间的分隔符，默认为空格	NA	可选，默认空格
+kvDelimiter	key与value的分隔符	当输入表数据为稀疏格式时，key与value的分隔符	NA	可选，默认冒号
+inputTableName	输入表名	NA	NA	必选
+modelName	输出模型名	NA	NA	必选
+inputTablePartitions	输入表分区	NA	NA	可选，格式如ds=1/pt=1
+enableModelIo	是否输出到OfflineModel	为false时，输出到MaxCompute表，可以查看模型权重	true，false	可选，默认true
+算法参数
+
+命令选项	参数名称	参数描述	取值范围	是否必选，默认值
+l1Weight	L1 weight	L1正则化系数。该项越大，模型非零元越少。过拟合时可以加大该项。	非负实数	可选，默认为 1.0
+l2Weight	L2 weight	L2正则化系数。该项越大，模型参数绝对值越小。过拟合时可以加大该项。	非负实数	可选，默认为 0
+maxIter	最大迭代次数	最大迭代数，指定L-BFGS/OWL-QN的最大迭代次数，0代表不限制迭代次数	非负整数	可选，默认值100
+epsilon	最小收敛误差	收敛误差，优化算法终止条件，为10次迭代Loss相对变化率均值，越小要求越严格，算法执行时间越长	0到1之间实数	可选，默认值1.0e-06
+modelSize	最大特征ID	特征中最大的特征ID，特征维度。可以比实际值大，数值越大，内存占用越大。不填写时会启动SQL任务自动计算。	非负整数	可选，默认值0
+最大迭代次数和最小收敛误差都对算法终止起作用，同时配置时，无论哪个终止条件触发，算法都会终止。
+
+执行调优
+
+命令选项	参数名称	参数描述	取值范围	是否必选，默认值
+coreNum	核心数	核心个数，越多算法运行越快	正整数	可选，默认自动分配
+memSizePerCore	每个核的内存大小（MB）	单个核心使用的内存数，1024代表1GB内存	正整数	可选，默认自动分配，一般不需要配置，算法会精确估算出来
+实例
+数据生成
+
+以Sparse KV格式数据为例：
+
+drop table if exists lm_test_input;
+create table lm_test_input as
+select
+*
+from
+(
+select 2 as label, '1:0.55 2:-0.15 3:0.82 4:-0.99 5:0.17' as features from dual
+    union all
+select 1 as label, '1:-1.26 2:1.36 3:-0.13 4:-2.82 5:-0.41' as features from dual
+    union all
+select 1 as label, '1:-0.77 2:0.91 3:-0.23 4:-4.46 5:0.91' as features from dual
+    union all
+select 2 as label, '1:0.86 2:-0.22 3:-0.46 4:0.08 5:-0.60' as features from dual
+    union all
+select 1 as label, '1:-0.76 2:0.89 3:1.02 4:-0.78 5:-0.86' as features from dual
+    union all
+select 1 as label, '1:2.22 2:-0.46 3:0.49 4:0.31 5:-1.84' as features from dual
+    union all
+select 0 as label, '1:-1.21 2:0.09 3:0.23 4:2.04 5:0.30' as features from dual
+    union all
+select 1 as label, '1:2.17 2:-0.45 3:-1.22 4:-0.48 5:-1.41' as features from dual
+    union all
+select 0 as label, '1:-0.40 2:0.63 3:0.56 4:0.74 5:-1.44' as features from dual
+    union all
+select 1 as label, '1:0.17 2:0.49 3:-1.50 4:-2.20 5:-0.35' as features from dual
+) tmp;
+数据内容如下图所示，数据中特征ID从1开始编号，最大特征ID为5。
+
+ps_linear_regression_data
+
+训练
+
+如快速上手中所示，配置训练数据和训练组件。选择label为目标列，features为特征列，注意选择数据格式为稀疏格式。算法参数设置页面如下图所示。
+
+ps_linear_regression_settings
+
+最大特征ID可以不填，默认0，算法会启动sql来自动计算。如果想避免启动sql任务来计算，这里可以填大于等于5的数，Dense格式时也就是特征列数，kv格式时为最大的特征ID编号。
+如果需要加速训练，可以通过执行调优页面设置核数目，核数目越多，算法运行越快。核内存一般不需要用户填写，算法可以较为精确地估计。另外，PS算法需要所有机器申请到资源才开始运行，当集群较忙时，申请较多资源可能会增加等待时间。
+ps_lr_resource_settings
+
+预测
+
+训练得到的模型以二进制方式存储，可以用来做预测。如快速上手中所示，配置预测组件的输入，也就是模型和测试数据，并正确配置参数如下图所示。
+
+ps_linear_regression_prediction_settings
+
+数据格式需要与训练时保持一致，仍然选择kv格式，并正确配置分隔符。kv对之间的分隔符为空格，需要置为空格或配置为“\u0020”（空格的转义表达形式）。
+
+预测结果如下图所示，只需要查看predict_result一列内容。
+
+ps_linear_regression_prediction_results
+
+常见问题
+kv格式时特征的ID必须是正整数（不包含0），特征的值必须是实数。如果特征ID为字符串，需要使用序列化组件进行序列化操作。如果特征的值是类别型的字符串，需要进行特征离散化等特征工程处理。
+
+聚类模型评估
+基于原始数据和聚类模型，评价聚类模型的优劣，包含指标和图标。
+
+PAI 命令
+PAI
+    -name cluster_evaluation
+    -project algo_public
+    -DinputTableName=pai_cluster_evaluation_test_input
+    -DselectedColNames=f0,f3
+    -DmodelName=pai_kmeans_test_model
+    -DoutputTableName=pai_ft_cluster_evaluation_out;
+参数说明
+参数名称	参数描述	取值范围	是否必选，默认值/行为
+inputTableName	输入表	表名	必选
+selectedColNames	输入表中用于评估的列名，以逗号分隔，必须与模型存储的特征名一致	列名	可选，默认值选择所有列
+inputTablePartitions	输入表中指定哪些分区参与训练，格式为Partition_name=value。如果是多级格式为name1=value1/name2=value2，如果是指定多个分区，中间用“,”分开		可选， 默认值选择所有分区
+enableSparse	输入表数据是否为稀疏格式	true，false	可选， 默认值false
+itemDelimiter	当输入表数据为稀疏格式时，kv间的分割符	字符	可选， 默认值为空格
+kvDelimiter	当输入表数据为稀疏格式时，key和value的分割符	字符	可选， 默认值冒号
+modelName	输入聚类模型	模型名	必选
+outputTableName	输出表	表名	必选
+lifecycle	可选，指定输出表的生命周期	正整数	没有生命周期
+评估公式
+Calinski-Harabasz指标又称VRC(variance ratio criterion)定义为image
+
+image 是整个聚类间的方差。
+image是整个聚类内的方差。
+N是记录总数，k是聚类中心点个数。
+image 定义为image
+
+k是聚类中心点个数。
+image是聚类i的中心点。
+m是输入数据的均值。
+image 定义为image
+
+k是聚类中心点个数。
+x是数据点。
+image是第i个聚类。
+image是聚类i的中心点。
+实例
+测试数据
+
+create table if not exists pai_cluster_evaluation_test_input  as
+select * from
+(
+  select 1 as id, 1 as f0,2 as f3 from dual
+  union all
+  select 2 as id, 1 as f0,3 as f3 from dual
+  union all
+  select 3 as id, 1 as f0,4 as f3 from dual
+  union all
+  select 4 as id, 0 as f0,3 as f3 from dual
+  union all
+  select 5 as id, 0 as f0,4 as f3 from dual
+)tmp;
+构造聚类模型
+
+PAI -name kmeans
+    -project algo_public
+    -DinputTableName=pai_cluster_evaluation_test_input
+    -DselectedColNames=f0,f3
+    -DcenterCount=3
+    -Dloop=10
+    -Daccuracy=0.00001
+    -DdistanceType=euclidean
+    -DinitCenterMethod=random
+    -Dseed=1
+    -DmodelName=pai_kmeans_test_model
+    -DidxTableName=pai_kmeans_test_idx
+PAI命令
+
+PAI
+    -name cluster_evaluation
+    -project algo_public
+    -DinputTableName=pai_cluster_evaluation_test_input
+    -DselectedColNames=f0,f3
+    -DmodelName=pai_kmeans_test_model
+    -DoutputTableName=pai_ft_cluster_evaluation_out;
+输出说明
+
+输出表outputTableName，字段分别为：
+
+column name	comment
+count	总记录数
+centerCount	聚类中心数
+calinhara	Calinski Harabasz指标计算公式
+clusterCounts	各个聚类包含的点的数目
+PaiWeb：
+
+image
+
+PaiWeb-Pipeline：
+
+

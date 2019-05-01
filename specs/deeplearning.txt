@@ -654,3 +654,893 @@ A．2　反向传播　270
 附录A　在Ubuntu上安装Keras及其依赖　283
 附录B　在EC2 GPU实例上运行Jupyter笔记本　287
 
+
+
+深度学习
+更新时间：2018-08-28 11:16:51
+
+
+本页目录
+目录
+深度学习框架说明
+深度学习开通
+OSS上传数据说明
+读OSSBucket
+TensorFlow
+TensorFlow读取数据方法说明
+TensorFlow多机多卡使用说明
+TensorFlow超参支持
+TensorFlow支持的第三方库
+MXNet
+格式转换
+Caffe
+深度学习案例代码及数据下载
+目录
+深度学习框架说明
+
+深度学习开通
+
+OSS上传数据说明
+
+读OSS Bucket
+
+TensorFlow
+
+TensorFlow读取数据方法说明
+
+TensorFlow多机多卡使用说明
+
+TensorFlow支持的第三方库
+
+TensorFlow超参支持
+
+MXNet
+
+格式转换
+
+Caffe
+
+深度学习案例代码及数据下载
+
+深度学习框架说明
+阿里云机器学习平台上支持深度学习框架，同时后端提供了功能强大的GPU（型号M40、P100）计算集群。用户可以使用这些框架及硬件资源来运行深度学习算法。
+
+目前支持的框架包括 TensorFlow（支持1.0、1.1、1.2、1.4版本），MXNet 0.9.5， Caffe rc3。TensorFlow 和 MXNet 支持用户自己编写的 Python 代码， Caffe 支持用户自定义网络文件。
+
+在使用深度学习框架训练数据之前，需要将训练的数据上传至阿里云对象存储OSS中，算法在运行时从指定的OSS目录中读取数据。需要注意的是阿里云机器学习目前只在华东2和华北2部署了GPU 集群，算法在执行时访问同一区域下OSS 中数据时不产生流量费用，访问其它地域的OSS会产生流量费用。
+
+深度学习开通
+深度学习组件包含 TensorFlow、Caffe、MXNet 三个框架。开通方式如下图所示，进入机器学习控制台，在相应项目下勾选GPU资源即可使用。
+
+
+
+开通GPU资源的项目会被分配到公共的资源池，可以动态地调用底层的GPU计算资源。
+
+OSS上传数据说明
+使用深度学习处理数据时，数据先存储到 OSS 的 Bucket 中。第一步要创建OSS Bucket。 由于深度学习的GPU集群在华东2，建议您创建 OSS Bucket 时选择华东2地区。这样在数据传输时就可以使用阿里云经典网络，算法运行时不需要收取流量费用。Bucket 创建好之后，可以在OSS管理控制台 创建文件夹、组织数据目录、上传数据。
+
+OSS 支持多种方式上传数据， API 或 SDK 详细见：https://help.aliyun.com/document_detail/31848.html?spm=5176.doc31848.6.580.a6es2a
+
+OSS 还提供了大量的常用工具用来帮助用户更加高效的使用 OSS。工具列表请参见： https://help.aliyun.com/document_detail/44075.html?spm=5176.doc32184.6.1012.XlMMUx
+
+建议您使用 ossutil 或 osscmd 这两个命令行工具，通过命令的方式来上传、下载文件，还支持断点续传。
+
+注意：在使用工具时需要配置 AccessID 和 AccessKey，登录后，可以在Access Key 管理控制台创建或查看。
+
+读OSSBucket
+用户在机器学习平台中使用“读OSS Bucket”组件时，需要授予一个名称为“AliyunODPSPAIDefaultRole” 的系统默认角色给数加的服务账号，当且仅当该角色被正确授权后，机器学习平台的算法才能正确地读、写OSS bucket。
+
+注意：由于机器学习平台运行在MaxCompute框架之上，与MaxCompute共用服务账号。在授权时，默认的角色授予给MaxCompute服务账号。
+
+
+
+RAM 授权可以使机器学习平台获得OSS的访问权限。在设置菜单完成对OSS读写权限的授权，详情见RAM授权。
+
+
+
+RAM 授权
+进入机器学习控制台，单击左侧菜单栏的设置，选择基本设置。
+在OSS访问授权中勾选授权机器学习读取我的OSS中的数据。
+进入如下界面，单击点击前往RAM进行授权，进入RAM入口，如下图所示。
+
+
+
+进入如下界面，单击同意授权。
+
+
+
+注意：如果您想查看“AliyunODPSPAIDefaultRole”的相关详细策略信息，可以登录RAM控制台来查看。 默认角色“AliyunODPSPAIDefaultRole”包含的权限信息如下。
+
+权限名称（Action）	权限说明
+oss:PutObject	上传文件或文件夹对象
+oss:GetObject	获取文件或文件夹对象
+oss:ListObjects	查询文件列表信息
+oss:DeleteObjects	删除对象
+返回机器学习界面，单击刷新。RAM信息会自动录入组件中，如下图所示。
+
+
+
+使用深度学习框架。将读OSSBucket组件与相应的深度学习组件连接，用来获得OSS的读写权限。
+
+
+
+TensorFlow
+TensorFlow（以下简称TF）是Google开源的一套机器学习框架，算法开发者通过简单的学习就能快速上手。阿里云机器学习平台将TF框架集成到产品中。用户可以自由的利用TF进行代码编写，TF的计算引擎为GPU集群，用户可以灵活的对计算资源进行调整。
+
+参数说明
+参数设置
+
+
+
+Python代码文件：程序执行文件，多个文件可通过tar.gz打包上传。
+Python主文件：指定代码文件压缩包中的主文件，可选。
+数据源目录：选择OSS上的数据源。
+配置文件超参及用户自定义参数：PAI Tensorflow支持用户通过命令传入相应的超参配置，这样用户在做模型试验的时候可以尝试不同的learning rate, batch size等。
+输出目录：输出的模型路径。
+执行调优
+
+
+
+用户可以根据自身任务的复杂程度指定GPU卡数。
+
+PAI 命令
+实际使用中，并不需要指定所有参数（不要直接复制下面的命令），各个参数的含义可以参考后面的表格。
+
+PAI -name tensorflow_ext
+    -Dbuckets="oss://imagenet.oss-cn-shanghai-internal.aliyuncs.com/smoke_tensorflow/mnist/"
+    -DgpuRequired="100" -Darn="acs:ram::166408185518****:role/aliyunodpspaidefaultrole"
+    -Dscript="oss://imagenet.oss-cn-shanghai-internal.aliyuncs.com/smoke_tensorflow/mnist_ext.py";
+各个参数的具体含义如下表：
+
+参数名称	参数描述	参数值格式	默认值
+script	必选，TF算法文件，可以是单个文件或者tar.gz压缩包	oss://imagenet.oss-cn-shanghai-internal.aliyuncs.com/smoke_tensorflow/mnist_ext.py	不涉及
+entryFile	可选，算法入口文件名，当script为tar.gz压缩包时，该参数必填	train.py	空
+buckets	必选，输入OSS bucket，可指定多个，以逗号分割, 每个bucket须以”/“结尾	oss://imagenet.oss-cn-shanghai-internal.aliyuncs.com/smoke_tensorflow/mnist/	空
+arn	必选， OSS role_arn	不涉及	空
+gpuRequired	必选，标识使用GPU资源量	200	100
+checkpointDir	可选，TF checkpoint目录	oss://imagenet.oss-cn-shanghai-internal.aliyuncs.com/smoke_tensorflow/mnist/	空
+hyperParameters	可选，命令行超参数路径	oss://imagenet.oss-cn-shanghai-internal.aliyuncs.com/smoke_tensorflow/mnist/hyper_parameters.txt	空
+参数script和entryFile用于指定要执行的TF算法脚本，如果算法比较复杂，分成了多个文件，可以将多个算法文件打包成tar.gz格式，并利用entryFile参数指定该算法的入口文件。
+
+参数checkpointDir用于指定算法将要写入的OSS路径，在Tensorflow保存模型时需要指定。
+
+参数buckets用于指定算法将要读取的OSS路径，使用OSS需要指定arn参数。
+
+案例
+Mnist手写字识别是TF官方的案例，通过训练手写体1～9的数字生成模型，通过模型进行预测。
+
+在OSS端上传python执行文件以及训练数据集。本案例在OSS华东2 region创建bucket，bucket名为tfmnist，上传python脚本以及训练数据。
+
+
+
+拖拽读OSS Bucket和TensorFlow组件，拼接成如下实验。需要设置好OSS Bucket的地区，并且完成RAM授权，如下图所示。
+
+
+
+配置TensorFlow组件参数。参照下图配置python执行文件以及数据源文件路径，如下图所示。
+
+
+
+单击运行，直到两个组件运行完成，如下图所示。
+
+
+
+右键单击TensorFlow组件，查看运行日志。
+
+
+
+TensorFlow读取数据方法说明
+低效的IO方式
+本地执行TensorFlow代码和分布式云端执行TensorFlow的区别：
+
+
+
+本地读取数据：Server端直接从Client端获得graph进行计算。
+云端服务：Server在获得graph之后还需要将计算下发到各个Worker处理（具体原理可以参考视频教程-Tensorflow高级篇）。
+本文档通过读取一个简单的CSV文件为例，帮您快速了解如何使用TensorFlow高效地读取数据。CSV文件如下：
+
+1,1,1,1,1
+2,2,2,2,2
+3,3,3,3,3
+容易产生问题的几个地方：
+
+不建议使用python本地读取文件的方式
+
+机器学习平台支持python的自带IO方式，但是需要将数据源和代码打包上传。这种读取方式是将数据写入内存之后再计算，效率比较低，不建议使用。示例代码如下。
+
+import csv
+csv_reader=csv.reader(open('csvtest.csv'))
+for row in csv_reader:
+  print(row)
+不建议使用第三方库读取文件的方式
+
+通过第三方库（比如TFLearn、Panda）的一些数据IO的方式读取数据，是通过封装python的读取方式实现的，所以在机器学习平台使用时也会造成效率低下的问题。
+
+不建议使用 preload 读取文件的方式
+
+很多用户在使用机器学习服务的时候，发现 GPU 并没有比本地的 CPU 速度快的明显，主要问题可能就出在数据IO这块。
+preload 方式是先把数据全部都读到内存中，然后再通过 session 计算，比如feed的读取方式。这样要先进行数据读取，再计算，不同步造成性能浪费。同时因为内存限制也无法支持大数据量的计算。
+例如：假设硬盘中有一个图片数据集 0001.jpg，0002.jpg，0003.jpg，…… ，我们只需要把它们读取到内存中，然后提供给 GPU 或 CPU 计算就可以了。但并没有那么简单。事实上，我们必须把数据先读入后才能进行计算，假设读入用时0.1s，计算用时0.9s，那么就意味着每过1s，GPU都会有0.1s无事可做，这就大大降低了运算的效率。
+
+
+
+高效的IO方式
+高效的 TensorFlow 读取方式是将数据读取转换成 OP，通过 session run 的方式拉去数据。读取线程源源不断地将文件系统中的图片读入到一个内存的队列中，而负责计算的是另一个线程，计算需要数据时，直接从内存队列中取就可以了。这样就可以解决GPU因为IO而空闲的问题。
+
+
+
+如下代码解释了如何在机器学习平台通过OP的方式读取数据。
+
+import argparse
+import tensorflow as tf
+import os
+FLAGS=None
+def main(_):
+    dirname = os.path.join(FLAGS.buckets, "csvtest.csv")
+    reader=tf.TextLineReader()
+    filename_queue=tf.train.string_input_producer([dirname])
+    key,value=reader.read(filename_queue)
+    record_defaults=[[''],[''],[''],[''],['']]
+    d1, d2, d3, d4, d5= tf.decode_csv(value, record_defaults, ',')
+    init=tf.initialize_all_variables()
+    with tf.Session() as sess:
+        sess.run(init)
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(sess=sess,coord=coord)
+        for i in range(4):
+            print(sess.run(d2))
+        coord.request_stop()
+        coord.join(threads)
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--buckets', type=str, default='',
+                        help='input data path')
+    parser.add_argument('--checkpointDir', type=str, default='',
+                        help='output model path')
+    FLAGS, _ = parser.parse_known_args()
+    tf.app.run(main=main)
+dirname：OSS文件路径，可以是数组，方便下一阶段 shuffle。
+reader：TF内置各种reader API，可以根据需求选用。
+tf.train.string_input_producer：将文件生成队列。
+tf.decode_csv：是一个splite功能的OP，可以得到每一行的特定参数。
+通过OP获取数据，在session中需要tf.train.Coordinator()和tf.train.start_queue_runners(sess=sess,coord=coord)。
+在代码中，输入得是3行5个字段：
+
+1,1,1,1,1
+2,2,2,2,2
+3,3,3,3,3
+循环输出4次，打印出第2个字段。结果如下图所示。
+
+
+
+输出结果也证明了数据结构是成队列。
+
+其它
+机器学习平台 Notebook 功能上线，支持在线修改代码并且内置各种深度学习框架，欢迎使用。
+强烈推荐教程：https://yq.aliyun.com/articles/177245。
+本文参考了互联网上《十图详解TensorFlow数据读取机制（附代码）》一文，关于图片的读取方式也可以参考这篇文章，感谢原作者。
+TensorFlow多机多卡使用说明
+机器学习平台目前已经上线了支持多机、多卡、多PS Server的TensorFlow服务，目前只支持华北2 Region。华北2 Region因为支持多机多卡功能，适用于大规模数据的训练，相关服务需要收费，有需要的机构可以联系我们。
+
+原理说明
+Parameter Server 节点：用来存储 TensorFlow 计算过程中的参数。配置多个 PS节点，计算参数将会被自动切片并存储在不同的PS节点中，从而减小 Worker 和 PS 节点通信过程中的带宽限制的影响。
+Worker 节点：“多机多卡”中的“机”，GPU卡的载体。
+Task 节点：“多机多卡”中的“卡”，在机器学习中指的是 GPU卡，在 TensorFlow 训练过程中，通过数据切片将数据分布在不同的 Task 节点进行模型参数的训练。
+使用说明
+多机、多卡、多PS功能会以服务化的方式提供，用户无需关心底层计算资源的调度和运维，只需通过机器学习平台前端的简单配置，即可快速搭建整个分布式计算网络。具体的使用方式如下。
+
+前端配置
+
+将mnist_cluster.tar.gz文件下载并上传到 OSS。
+
+配置深度学习的OSS读取权限。
+
+拖拽任意版本TensorFlow组件并按照下图连接，并设置对应的代码数据源（Python代码文件设置 mnist_cluster.tar.gz 路径，Python 主文件填入 mnist_cluster.py）。
+
+
+单击执行调优进行参数配置。
+
+
+通过以上配置可以快速建立起如下图所示的多机多卡多PS计算网络结构，其中PS表示Parameter Server服务，WORKER 表示计算节点机器，TASK 表示具体执行计算的GPU卡。
+
+
+代码端设置
+
+传统的TensorFlow多机多卡作业需要在代码端输入每个计算节点的对应端口信息，如下图所示。
+
+
+
+当计算节点数量增多时，这种端口信息的配置会非常复杂。机器学习平台优化了计算节点配置信息的功能，只需要以下两行代码即可自动在代码端获取计算节点信息。
+
+ps_hosts = FLAGS.ps_hosts.split(",")#框架层提供ps_hosts的端口
+worker_hosts = FLAGS.worker_hosts.split(",")#框架层提供worker_hosts的端口
+运行日志查看
+
+右键单击 TensorFlow 组件，查看日志。可以看到资源的分配情况，分配两个PS，两个WORKER。
+
+
+点击蓝色链接，可以在logview中查看对应每个worker的运行状态。
+
+
+代码下载
+https://help.aliyun.com/document_detail/64146.html
+
+TensorFlow超参支持
+Tensorflow 超参配置：在画布右侧的组件参数设置页面，配置文件超参及用户自定义参数中设置超参文件，文件为.txt格式，如下所示。
+
+batch_size=10
+learning_rate=0.01
+在代码中可以通过如下方法引用超参。
+
+import tensorflow as tf
+tf.app.flags.DEFINE_string("learning_rate", "", "learning_rate")
+tf.app.flags.DEFINE_string("batch_size", "", "batch size")
+FAGS = tf.app.flags.FLAGS
+print("learning rate:" + FAGS.learning_rate)
+print("batch size:" + FAGS.batch_size)
+TensorFlow支持的第三方库
+TensorFlow1.0.0版本第三方库
+appdirs (1.4.3)
+backports-abc (0.5)
+backports.shutil-get-terminal-size (1.0.0)
+backports.ssl-match-hostname (3.5.0.1)
+bleach (2.0.0)
+boto (2.48.0)
+bz2file (0.98)
+certifi (2017.7.27.1)
+chardet (3.0.4)
+configparser (3.5.0)
+cycler (0.10.0)
+decorator (4.1.2)
+docutils (0.14)
+easygui (0.98.1)
+entrypoints (0.2.3)
+enum34 (1.1.6)
+funcsigs (1.0.2)
+functools32 (3.2.3.post2)
+gensim (2.3.0)
+h5py (2.7.0)
+html5lib (0.999999999)
+idna (2.6)
+iniparse (0.4)
+ipykernel (4.6.1)
+ipython (5.4.1)
+ipython-genutils (0.2.0)
+ipywidgets (7.0.0)
+Jinja2 (2.9.6)
+jsonschema (2.6.0)
+jupyter (1.0.0)
+jupyter-client (5.1.0)
+jupyter-console (5.1.0)
+jupyter-core (4.3.0)
+Keras (2.0.6)
+kitchen (1.1.1)
+langtable (0.0.31)
+MarkupSafe (1.0)
+matplotlib (2.0.2)
+mistune (0.7.4)
+mock (2.0.0)
+nbconvert (5.2.1)
+nbformat (4.4.0)
+networkx (1.11)
+nose (1.3.7)
+notebook (5.0.0)
+numpy (1.13.1)
+olefile (0.44)
+pandas (0.20.3)
+pandocfilters (1.4.2)
+pathlib2 (2.3.0)
+pbr (3.1.1)
+pexpect (4.2.1)
+pickleshare (0.7.4)
+Pillow (4.2.1)
+pip (9.0.1)
+prompt-toolkit (1.0.15)
+protobuf (3.1.0)
+ptyprocess (0.5.2)
+pycrypto (2.6.1)
+pycurl (7.19.0)
+Pygments (2.2.0)
+pygobject (3.14.0)
+pygpgme (0.3)
+pyliblzma (0.5.3)
+pyparsing (2.2.0)
+python-dateutil (2.6.1)
+pytz (2017.2)
+PyWavelets (0.5.2)
+pyxattr (0.5.1)
+PyYAML (3.12)
+pyzmq (16.0.2)
+qtconsole (4.3.1)
+requests (2.18.4)
+scandir (1.5)
+scikit-image (0.13.0)
+scikit-learn (0.19.0)
+scikit-sound (0.1.8)
+scikit-stack (3.0)
+scikit-surprise (1.0.3)
+scikit-tensor (0.1)
+scikit-video (0.1.2)
+scipy (0.19.1)
+setuptools (36.2.7)
+simplegeneric (0.8.1)
+singledispatch (3.4.0.3)
+six (1.10.0)
+slip (0.4.0)
+slip.dbus (0.4.0)
+smart-open (1.5.3)
+subprocess32 (3.2.7)
+tensorflow (1.0.0)
+terminado (0.6)
+testpath (0.3.1)
+tflearn (0.3.2)
+Theano (0.9.0)
+torch (0.1.12.post2)
+tornado (4.5.1)
+traitlets (4.3.2)
+urlgrabber (3.10)
+urllib3 (1.22)
+wcwidth (0.1.7)
+webencodings (0.5.1)
+wheel (0.29.0)
+widgetsnbextension (3.0.0)
+yum-langpacks (0.4.2)
+yum-metadata-parser (1.1.4)
+opencv-python (3.3.0.10)
+TensorFlow1.1.0版本第三方库
+appdirs (1.4.3)
+backports-abc (0.5)
+backports.shutil-get-terminal-size (1.0.0)
+backports.ssl-match-hostname (3.5.0.1)
+bleach (2.0.0)
+boto (2.48.0)
+bz2file (0.98)
+certifi (2017.7.27.1)
+chardet (3.0.4)
+configparser (3.5.0)
+cycler (0.10.0)
+decorator (4.1.2)
+docutils (0.14)
+easygui (0.98.1)
+entrypoints (0.2.3)
+enum34 (1.1.6)
+funcsigs (1.0.2)
+functools32 (3.2.3.post2)
+gensim (2.3.0)
+h5py (2.7.1)
+html5lib (0.999999999)
+idna (2.6)
+iniparse (0.4)
+ipykernel (4.6.1)
+ipython (5.4.1)
+ipython-genutils (0.2.0)
+ipywidgets (7.0.0)
+Jinja2 (2.9.6)
+jsonschema (2.6.0)
+jupyter (1.0.0)
+jupyter-client (5.1.0)
+jupyter-console (5.2.0)
+jupyter-core (4.3.0)
+jupyter-tensorboard (0.1.1)
+Keras (2.0.8)
+kitchen (1.1.1)
+langtable (0.0.31)
+MarkupSafe (1.0)
+matplotlib (2.0.2)
+mistune (0.7.4)
+mock (2.0.0)
+nbconvert (5.3.0)
+nbformat (4.4.0)
+networkx (1.11)
+nose (1.3.7)
+notebook (4.4.1)
+numpy (1.13.1)
+olefile (0.44)
+pandas (0.20.3)
+pandocfilters (1.4.2)
+pathlib2 (2.3.0)
+pbr (3.1.1)
+pexpect (4.2.1)
+pickleshare (0.7.4)
+Pillow (4.2.1)
+pip (9.0.1)
+prompt-toolkit (1.0.15)
+protobuf (3.1.0)
+ptyprocess (0.5.2)
+pycrypto (2.6.1)
+pycurl (7.19.0)
+Pygments (2.2.0)
+pygobject (3.14.0)
+pygpgme (0.3)
+pyliblzma (0.5.3)
+pyparsing (2.2.0)
+python-dateutil (2.6.1)
+pytz (2017.2)
+PyWavelets (0.5.2)
+pyxattr (0.5.1)
+PyYAML (3.12)
+pyzmq (16.0.2)
+qtconsole (4.3.1)
+requests (2.18.4)
+scandir (1.5)
+scikit-image (0.13.0)
+scikit-learn (0.19.0)
+scikit-sound (0.1.8)
+scikit-stack (3.0)
+scikit-surprise (1.0.3)
+scikit-tensor (0.1)
+scikit-video (0.1.2)
+scipy (0.19.1)
+setuptools (36.4.0)
+simplegeneric (0.8.1)
+singledispatch (3.4.0.3)
+six (1.10.0)
+slip (0.4.0)
+slip.dbus (0.4.0)
+smart-open (1.5.3)
+subprocess32 (3.2.7)
+tensorflow (1.1.0)
+terminado (0.6)
+testpath (0.3.1)
+tflearn (0.3.2)
+Theano (0.9.0)
+torch (0.1.12.post2)
+tornado (4.5.2)
+traitlets (4.3.2)
+urlgrabber (3.10)
+urllib3 (1.22)
+wcwidth (0.1.7)
+webencodings (0.5.1)
+Werkzeug (0.12.2)
+wheel (0.29.0)
+widgetsnbextension (3.0.2)
+yum-langpacks (0.4.2)
+yum-metadata-parser (1.1.4)
+opencv-python (3.3.0.10)
+TensorFlow1.2.1版本第三方库
+appdirs (1.4.3)
+backports-abc (0.5)
+backports.shutil-get-terminal-size (1.0.0)
+backports.ssl-match-hostname (3.5.0.1)
+backports.weakref (1.0rc1)
+bleach (1.5.0)
+boto (2.48.0)
+bz2file (0.98)
+certifi (2017.7.27.1)
+chardet (3.0.4)
+configparser (3.5.0)
+cycler (0.10.0)
+decorator (4.1.2)
+docutils (0.14)
+easygui (0.98.1)
+entrypoints (0.2.3)
+enum34 (1.1.6)
+funcsigs (1.0.2)
+functools32 (3.2.3.post2)
+gensim (2.3.0)
+h5py (2.7.1)
+html5lib (0.9999999)
+idna (2.6)
+iniparse (0.4)
+ipykernel (4.6.1)
+ipython (5.4.1)
+ipython-genutils (0.2.0)
+ipywidgets (7.0.0)
+Jinja2 (2.9.6)
+jsonschema (2.6.0)
+jupyter (1.0.0)
+jupyter-client (5.1.0)
+jupyter-console (5.2.0)
+jupyter-core (4.3.0)
+jupyter-tensorboard (0.1.1)
+Keras (2.0.8)
+kitchen (1.1.1)
+langtable (0.0.31)
+Markdown (2.6.9)
+MarkupSafe (1.0)
+matplotlib (2.0.2)
+mistune (0.7.4)
+mock (2.0.0)
+nbconvert (5.3.0)
+nbformat (4.4.0)
+networkx (1.11)
+nose (1.3.7)
+notebook (4.4.1)
+numpy (1.13.1)
+olefile (0.44)
+pandas (0.20.3)
+pandocfilters (1.4.2)
+pathlib2 (2.3.0)
+pbr (3.1.1)
+pexpect (4.2.1)
+pickleshare (0.7.4)
+Pillow (4.2.1)
+pip (9.0.1)
+prompt-toolkit (1.0.15)
+protobuf (3.1.0)
+ptyprocess (0.5.2)
+pycrypto (2.6.1)
+pycurl (7.19.0)
+Pygments (2.2.0)
+pygobject (3.14.0)
+pygpgme (0.3)
+pyliblzma (0.5.3)
+pyparsing (2.2.0)
+python-dateutil (2.6.1)
+pytz (2017.2)
+PyWavelets (0.5.2)
+pyxattr (0.5.1)
+PyYAML (3.12)
+pyzmq (16.0.2)
+qtconsole (4.3.1)
+requests (2.18.4)
+scandir (1.5)
+scikit-image (0.13.0)
+scikit-learn (0.19.0)
+scikit-sound (0.1.8)
+scikit-stack (3.0)
+scikit-surprise (1.0.3)
+scikit-tensor (0.1)
+scikit-video (0.1.2)
+scipy (0.19.1)
+setuptools (36.4.0)
+simplegeneric (0.8.1)
+singledispatch (3.4.0.3)
+six (1.10.0)
+slip (0.4.0)
+slip.dbus (0.4.0)
+smart-open (1.5.3)
+subprocess32 (3.2.7)
+tensorflow (1.2.1)
+terminado (0.6)
+testpath (0.3.1)
+tflearn (0.3.2)
+Theano (0.9.0)
+torch (0.1.12.post2)
+tornado (4.5.2)
+traitlets (4.3.2)
+urlgrabber (3.10)
+urllib3 (1.22)
+wcwidth (0.1.7)
+webencodings (0.5.1)
+Werkzeug (0.12.2)
+wheel (0.29.0)
+widgetsnbextension (3.0.2)
+yum-langpacks (0.4.2)
+yum-metadata-parser (1.1.4)
+opencv-python (3.3.0.10)
+MXNet
+MXNet是一个深度学习框架，支持命令和符号编程，可以运行在CPU和GPU集群上。MXNet是cxxnet的下一代，cxxnet借鉴了minerva的思想。
+
+参数说明
+参数设置
+
+
+
+Python代码文件：程序执行文件，多个文件可通过tar.gz打包上传。
+Python主文件：指定代码文件压缩包中的主文件，可选。
+数据源目录：选择OSS上的数据源。
+配置文件超参及用户自定义参数：PAI MXNet支持用户通过命令传入相应的超参配置，这样用户在做模型试验的时候可以尝试不同的learning rate, batch size等。
+输出目录：输出的模型路径。
+执行调优
+
+
+
+用户可以根据自身任务的复杂程度指定GPU卡数。
+
+PAI 命令
+实际使用中，并不需要指定所有参数（不要直接复制下面的命令），各个参数的含义可以参考后面的表格。
+
+PAI -name mxnet_ext
+    -Dscript="oss://imagenet.oss-cn-shanghai-internal.aliyuncs.com/mxnet-ext-code/mxnet_cifar10_demo.tar.gz"
+    -DentryFile="train_cifar10.py"
+    -Dbuckets="oss://imagenet.oss-cn-shanghai-internal.aliyuncs.com"
+    -DcheckpointDir="oss://imagenet.oss-cn-shanghai-internal.aliyuncs.com/mxnet-ext-model/"
+    -DhyperParameters="oss://imagenet.oss-cn-shanghai-internal.aliyuncs.com/mxnet-ext-code/hyperparam.txt.single"
+    -Darn="acs:ram::1664081855183111:role/role-for-pai";
+各个参数的具体含义如下表：
+
+参数名称	参数描述	参数值格式	默认值
+script	必选，TF算法文件，可以是单个文件或者tar.gz压缩包	oss://imagenet.oss-cn-shanghai-internal.aliyuncs.com/smoke_mxnet/mnist_ext.py	oss://imagenet.oss-cn-shanghai-internal.aliyuncs.com/smoke_mxnet/mnist_ext.py	-
+entryFile	可选，算法入口文件名，当script为tar.gz压缩包时，该参数必填	train.py	空
+buckets	必选，输入bucket，可多个，以逗号隔开, 每个bucket须以”/“结尾	oss://imagenet.oss-cn-shanghai-internal.aliyuncs.com	空
+hyperParameters	可选，命令行超参数路径	oss://imagenet.oss-cn-shanghai-internal.aliyuncs.com/mxnet-ext-code/	空
+gpuRequired	可选，标识使用GPU资源量	200	100
+checkpointDir	可选， checkpoint目录	oss://imagenet.oss-cn-shanghai-internal.aliyuncs.com/mxnet-ext-code/	空
+案例
+CIFAR-10是MXNet官方提供的基于图片的10分类场景的案例，通过对于6万张32*32的图片进行训练生成模型，可以对飞机、汽车、鸟、猫、鹿、狗、青蛙、马、船、卡车进行自动分类。详细内容见：https://www.cs.toronto.edu/~kriz/cifar.html 。
+
+在OSS端上传python执行文件以及训练数据集。本案例在OSS华东2 region创建bucket，bucket名为tfmnist，上传python脚本以及训练数据。
+
+
+
+拖拽读OSS Bucket和MXNet组件，拼接成如下实验。需要设置好OSS Bucket的地区，并完成RAM授权，如下图所示。
+
+
+
+配置MXNet组件参数。参照下图配置python执行文件以及数据源文件路径，如下图所示。
+
+
+
+Python代码文件选择.tar.gz文件。
+Python主文件选择tar包中的执行入口文件。
+超参自定义参数文件选择.txt.single文件。
+checkpoint为模型输出目录。
+单击运行，直到两个组件运行完成，如下图所示。
+
+
+
+右键单击MXNet组件，查看运行日志。
+
+
+
+在checkpoint地址下生成如下图所示的模型。
+
+
+
+格式转换
+目前PAI Caffe不支持自定义格式的训练数据，需要通过格式转换组件进行转换方可使用。
+
+输入桩连接读OSS Bucket组件。
+
+参数
+
+输入OSS路径。OSS的训练数据的file_list（如bucket.hz.aliyun.com/train_img/train_file_list.txt ）格式如下：
+bucket/ilsvrc12_val/ILSVRC2012_val_00029021.JPEG 817
+bucket/ilsvrc12_val/ILSVRC2012_val_00021046.JPEG 913
+bucket/ilsvrc12_val/ILSVRC2012_val_00041166.JPEG 486
+bucket/ilsvrc12_val/ILSVRC2012_val_00029527.JPEG 327
+bucket/ilsvrc12_val/ILSVRC2012_val_00042825.JPEG 138
+输出oss目录。如 bucket_name.oss-cn-hangzhou-zmf.aliyuncs.com/ilsvrc12_val_convert ，会输出转换后的data_file_list.txt和对应的数据文件。data_file_list格式如下：
+
+bucket/ilsvrc12_val_convert/train_data_00_01
+bucket/ilsvrc12_val_convert/train_data_00_02
+编码类型：选项，可选jpg，png，raw等。
+是否shuffle：勾选。
+文件前缀：默认为data。
+resize_height：默认为256。
+resize_width：默认为256。
+是否灰度：默认为否。
+是否需要产生图片mean文件：默认为否。
+PAI 命令
+PAI -name convert_image_oss2oss
+    -Darn=acs:ram::1607128916545079:role/test-1
+    -DossImageList=bucket_name.oss-cn-hangzhou-zmf.aliyuncs.com/image_list.txt
+    -DossOutputDir=bucket_name.oss-cn-hangzhou-zmf.aliyuncs.com/your/dir
+    -DencodeType=jpg
+    -Dshuffle=true
+    -DdataFilePrefix=train
+    -DresizeHeight=256
+    -DresizeWidth=256
+    -DisGray=false
+    -DimageMeanFile=false
+参数说明
+参数名称	参数描述	取值范围	是否必选，默认值/行为
+ossHost	对应的oss host地址	形式如“oss-test.aliyun-inc.com”	可选，默认值为“oss-cn-hangzhou-zmf.aliyuncs.com”，即为对内oss使用的host
+arn	OSS Bucket默认Role对应的ARN	形式如“acs:ram::XXXXXXXXXXXXXXXX:role/ossaccessroleforodps”，中间xxx代表生成的rolearn的16位数字	必选
+ossImageList	图片文件列表	形式如“bucket_name/image_list.txt”	必选
+ossOutputDir	输出oss目录	形式如“bucket_name/your/dir”	必选
+encodeType	编码类型	如jpg，png，raw	可选，默认值为jpg
+shuffle	是否shuffle数据	bool值	可选，默认值为true
+dataFilePrefix	数据文件前缀	string类型，如train或val	必选
+resizeHeight	图像resize的height	int类型，用户自定义	可选，默认值为256
+resizeWidth	图像resize的width	int类型，用户自定义	可选，默认值为256
+isGray	图像是否为灰度图	bool值	可选，默认值为false
+imageMeanFile	是否需要生成imagemean文件	bool值	可选，默认值为false
+Caffe
+Caffe 是一个清晰，可读性高，快速的深度学习框架。作者是贾扬清，加州大学伯克利的ph.D，现就职于Facebook。caffe的官网是 http://caffe.berkeleyvision.org/ 。
+
+参数说明
+
+
+首先配置OSS访问权限。
+
+唯一的参数就是solver.prototxt文件的oss路径。其中solver由于并行化的修改，同开源caffe略有不同，需要注意以下几点：
+
+net：“bucket.hz.aliyun.com/alexnet/train_val.prototxt”，net的文件位置是oss路径。
+type：“ParallelSGD”，type类型是ParallelSGD，为一个字符串。
+model_average_iter_interval：1 多卡下表示同步的频率，1表示每轮都同步一次。
+snapshot_prefix：“bucket/snapshot/alexnet_train”，模型输出到oss的目录。
+net: "bucket/alexnet/train_val.prototxt"
+test_iter: 1000
+test_interval: 1000
+base_lr: 0.01
+lr_policy: "step"
+gamma: 0.1
+stepsize: 100000
+display: 20
+max_iter: 450000
+momentum: 0.9
+weight_decay: 0.0005
+snapshot: 10000
+snapshot_prefix: "bucket/snapshot/alexnet_train"
+solver_mode: GPU
+type: "ParallelSGD"
+model_average_iter_interval: 1
+train_val中的datalayer需使用BinaryDataLayer，请参考如下示例。
+
+layer {
+name: "data"
+type: "BinaryData"
+top: "data"
+top: "label"
+include {
+  phase: TRAIN
+}
+transform_param {
+  mirror: true
+  crop_size: 227
+  mean_file: "bucket/imagenet_mean.binaryproto"
+}
+binary_data_param {
+  source: "bucket/ilsvrc12_train_binary/data_file_list.txt"
+  batch_size: 256
+  num_threads: 10
+}
+}
+layer {
+name: "data"
+type: "BinaryData"
+top: "data"
+top: "label"
+include {
+  phase: TEST
+}
+transform_param {
+  mirror: false
+  crop_size: 227
+  mean_file: "bucket/imagenet_mean.binaryproto"
+}
+binary_data_param {
+  source: "bucket/ilsvrc12_val_binary/data_file_list.txt"
+  batch_size: 50
+  num_threads: 10
+}
+}
+新的data Layer的名称为BinaryData，其中也支持 transform param 对输入图像数据进行变换，参数和caffe原生参数保持一致。
+
+其中 binary_data_param 为数据层本身的参数配置，包括以下特殊的参数：
+
+source：数据来源，其中路径为oss中filelist的路径，从bucket名称开始，不包含“oss://”。
+num_threads：读取oss数据时并发的线程数目，默认值为10，用户可以根据自己的需求进行调整。
+PAI 命令
+PAI -name pluto_train_oss
+    -DossHost=oss-cn-hangzhou-zmf.aliyuncs.com
+    -Darn=acs:ram::1607128916545079:role/test-1
+    -DsolverPrototxtFile=bucket_name.oss-cn-hangzhou-zmf.aliyuncs.com/solver.prototxt
+    -DgpuRequired=1
+参数说明
+参数名称	参数描述	取值范围	是否必选，默认值/行为
+ossHost	对应的oss host地址	形式如“oss-test.aliyun-inc.com”	可选，默认值为“oss-cn-hangzhou-zmf.aliyuncs.com”,即为对内oss使用的host
+arn	OSS Bucket默认Role对应的ARN	形式如“acs:ram::XXXXXXXXXXXXXXXX:role/ossaccessroleforodps”,中间xxx代表生成的rolearn的16位数字	必选
+solverPrototxtFile	solver文件	solver文件在oss中的路径，从bucket name开始	必选
+gpuRequired	GPU卡个数	整型值	可选，默认值为1
+案例
+利用Caffe实现mnist的数据训练。
+
+准备数据源
+
+在本文档的深度学习案例代码及数据下载章节中下载Caffe数据并解压。将数据导入OSS中，本案例路径如下图，请配合代码中的路径理解。
+
+
+
+运行实验
+
+拖拉Caffe组件拼接成如下图所示的实验。
+
+
+
+将solver oss路径指向mnist_solver_dnn_binary.prototxt文件，单击运行。
+
+查看日志
+
+右键单击Caffe组件，查看日志，如下图所示。
+
+
+
+单击 logview链接 -> ODPS Tasks -> VlinuxTask -> StdErr，查看训练过程产生的日志，如下图所示。
+
+
+
+深度学习案例代码及数据下载
+

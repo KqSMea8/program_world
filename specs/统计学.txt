@@ -1010,3 +1010,1214 @@
 六、练习题答案
 
 七、练习题提示
+
+
+=============
+百分位
+
+全表统计
+
+皮尔森系数
+
+直方图
+
+离散值特征分析
+
+T检验
+
+卡方检验
+
+数据视图
+
+协方差
+
+经验概率密度图
+
+箱线图
+
+散点图
+
+相关系数矩阵
+
+正态检验
+
+洛伦兹曲线
+
+百分位
+对一个存在的表，单列数据计算百分位。
+
+PAI命令
+PAI -name Percentile -project algo_public
+    -DoutputTableName="pai_temp_666_6014_1"\
+    -DcolName="euribor3m"
+    -DinputTableName="bank_data";
+name：组件名字。
+project：工程名字，用于指定算法所在空间。系统默认是algo_public，用户更改后系统会报错。
+outputTableName：系统执行百分位运算后自动分配的结果表。
+colName：要计算百分位的列，仅支持数字类型。
+inputTableName：输入表的名字。
+参数设置
+选择需要分析的字段，仅支持double和bigint类型。
+运行结果，如下图所示。
+screenshot
+
+全表统计
+对一个存在的表，进行全表基本统计，或者仅对选中的列做统计。
+
+PAI命令
+PAI -name stat_summary
+-project algo_public
+-DinputTableName=test_data
+-DoutputTableName=test_summary_out
+-DinputTablePartitions="ds='20160101'"
+-DselectColNames=col0,col1,col2
+-Dlifecycle=1
+参数说明
+参数名称	参数描述	参数值可选项	默认值
+inputTableName	必选，输入表名	表名	不涉及
+outputTableName	必选，推荐结果的输出表名	表名	不涉及
+inputTablePartitions	可选，输入表的分区	分区名	默认选择所有分区
+selectColNames	可选，指定需要统计的列名	列名	默认为空
+lifecycle	可选，输出结果表的生命周期	正整数	不设生命周期
+coreNum	可选，指定instance的总数	正整数	-1
+memSizePerCore	可选，指定memory大小	正整数，范围[1024, 64*1024]	-1
+输入格式：
+选择输入列框中可选择的需要统计的列，默认情况下统计全部列。
+
+输出格式：
+输出统计结果的全部字段，如下表所示。
+
+列名	描述
+colname	列名
+datatype	类型
+totalcount	总数
+count	非NULL数量
+missingcount	NULL数量
+nancount	NAN数量
+positiveinfinitycount	正无穷数量
+negativeinfinitycount	负无穷数量
+min	最小值
+max	最大值
+mean	平均值
+variance	方差
+standarddeviation	标准差
+standarderror	标准误差
+skewness	偏度
+kurtosis	峰度
+moment2	二阶矩
+moment3	三阶矩
+moment4	四阶矩
+centralmoment2	二阶中心距
+centralmoment3	三阶中心距
+centralmoment4	四阶中心距
+sum	总和
+sum2	平方和
+sum3	立方和
+sum4	四次方和
+实例
+测试数据
+
+新建数据SQL
+
+drop table if exists summary_test_input;
+create table summary_test_input as
+select
+  *
+from
+(
+  select 'a' as col1, 1 as col2, 0.001 as col3 from dual
+    union all
+  select 'b' as col1, 2 as col2, 100.01 as col3 from dual
+) tmp;
+运行命令
+
+PAI -name stat_summary
+-project algo_public
+-DinputTableName=summary_test_input
+-DoutputTableName=summary_test_input_out
+-DselectColNames=col1,col2,col3
+-Dlifecycle=1;
+运行结果
+
+    | colname    | datatype   | totalcount | count      | missingcount | nancount   | positiveinfinitycount | negativeinfinitycount | min        | max        | mean       | variance   | standarddeviation | standarderror | skewness   | kurtosis   | moment2    | moment3    | moment4    | centralmoment2 | centralmoment3 | centralmoment4 | sum        | sum2       | sum3       | sum4       |
+    | col1       | string     | 2          | 2          | 0            | 0          | 0                     | 0                     | NULL       | NULL       | NULL       | NULL       | NULL              | NULL          | NULL       | NULL       | NULL       | NULL       | NULL       | NULL           | NULL           | NULL           | NULL       | NULL       | NULL       | NULL       |
+    | col2       | bigint     | 2          | 2          | 0            | 0          | 0                     | 0                     | 1          | 2          | 1.5        | 0.5        | 0.7071067811865476 | 0.5           | 0          | -2         | 2.5        | 4.5        | 8.5        | 0.25           | 0              | 0.0625         | 3          | 5          | 9          | 17         |
+    | col3       | double     | 2          | 2          | 0            | 0          | 0                     | 0                     | 0.001      | 100.01     | 50.0055    | 5000.900040500001 | 70.71704207968544 | 50.00450000000001 | 2.327677906939552e-16 | -1.999999999999999 | 5001.000050500001 | 500150.0150005006 | 50020003.00020002 | 2500.45002025  | 2.91038304567337e-11 | 6252250.303768232 | 100.011    | 10002.000101 | 1000300.030001001 | 100040006.0004 |
+皮尔森系数
+对输入表或分区的两列（必须为数值列），计算其pearson相关系数，结果存入输出表中。
+
+组件的两个参数为输入列1、输入列2，填入需要计算相关系数的两列列名。
+
+运行完成后，右键单击组件选择查看分析报告，结果如下图所示。
+image
+最后一行为皮尔森系数值。
+
+PAI命令
+pai -name pearson
+    -project algo_test
+    -DinputTableName=wpbc
+    -Dcol1Name=f1
+    -Dcol2Name=f2
+    -DoutputTableName=wpbc_pear;
+算法参数
+参数key名称	参数描述	取值范围	是否必选，默认值/行为
+inputTableName	输入表的表名	表名	必选
+inputTablePartitions	输入表中指定哪些分区参与计算	格式为partition_name=value。如果是多级格式为name1=value1/name2=value2，如果是指定多个分区，中间用“,”分开	输入表的所有partition
+col1Name	输入列1	列名	必选
+col2Name	输入列2	列名	必选
+outputTableName	输出结果表	表名	必选
+直方图
+对一个存在的表，单列数据计算直方图。
+
+参数设置
+选择需要分析的字段，支持double和bigint类型。
+查看分析报告，如下图所示。
+screenshot
+可调节步长大小，并滑动查看直方图。
+
+离散值特征分析
+离散值特征分析统计离散特征的分布。包括gini，entropy，gini gain，infomation gain，infomation gain ratio等指标。其中计算每个离散值对应的gini，entropy，计算单列对应的gini gain，infomation gain，infomation gain ratio。
+
+gini index: image
+
+entropy: image
+
+PAI命令
+PAI
+-name enum_feature_selection
+-project algo_public
+-DinputTableName=enumfeautreselection_input
+-DlabelColName=label
+-DfeatureColNames=col0,col1
+-DenableSparse=false
+-DoutputCntTableName=enumfeautreselection_output_cntTable
+-DoutputValueTableName=enumfeautreselection_output_valuetable
+-DoutputEnumValueTableName=enumfeautreselection_output_enumvaluetable;
+算法参数
+参数key名称	参数描述	取值范围	默认值
+inputTableName	必选，输入表名	表名	不涉及
+inputTablePartitions	可选，输入表选择的分区	分区名	默认选择全表
+featureColNames	可选，输入表选择的列名	列名	默认选择除label外的其他列，如果输入表为kv格式，则默认选择所有的string类型的列
+labelColName	必选，label所在的列	列名	不涉及
+enableSparse	可选，输入表是否是kv格式	true/false	false
+kvFeatureColNames	可选，kv格式的特征	列名	默认选择全表
+kvDelimiter	可选，kv之间的分隔符	符号	默认为分号
+itemDelimiter	可选，k和v的分隔符	符号	默认为逗号
+outputCntTableName	必选，输出离散特征的枚举值分布数表	表名	不涉及
+outputValueTableName	必选，输出离散特征的gini，entropy表	表名	不涉及
+outputEnumValueTableName	必选，输出离散特征枚举值gini，entropy表	表名	不涉及
+lifecycle	可选，输入表的声明周期	正整数	默认不设置声明周期
+coreNum	可选，总的core个数	正整数	默认自动设置
+memSizePerCore	可选，单个core对应的内存数量，单位为MB	正整数，范围[1024, 64*1024]	默认为自动设置
+实例
+测试数据
+
+新建数据SQL
+
+drop table if exists enum_feature_selection_test_input;
+create table enum_feature_selection_test_input
+as
+select
+    *
+from
+(
+    select
+        '00' as col_string,
+        1 as col_bigint,
+        0.0 as col_double
+    from dual
+    union all
+        select
+            cast(null as string) as col_string,
+            0 as col_bigint,
+            0.0 as col_double
+        from dual
+    union all
+        select
+            '01' as col_string,
+            0 as col_bigint,
+            1.0 as col_double
+        from dual
+    union all
+        select
+            '01' as col_string,
+            1 as col_bigint,
+            cast(null as double) as col_double
+        from dual
+    union all
+        select
+            '01' as col_string,
+            1 as col_bigint,
+            1.0 as col_double
+        from dual
+    union all
+        select
+            '00' as col_string,
+            0 as col_bigint,
+            0.0 as col_double
+        from dual
+) tmp;
+输入数据说明
+
++------------+------------+------------+
+| col_string | col_bigint | col_double |
++------------+------------+------------+
+| 01         | 1          | 1.0        |
+| 01         | 0          | 1.0        |
+| 01         | 1          | NULL       |
+| NULL       | 0          | 0.0        |
+| 00         | 1          | 0.0        |
+| 00         | 0          | 0.0        |
++------------+------------+------------+
+运行命令
+
+drop table if exists enum_feature_selection_test_input_enum_value_output;
+drop table if exists enum_feature_selection_test_input_cnt_output;
+drop table if exists enum_feature_selection_test_input_value_output;
+PAI -name enum_feature_selection -project algo_public -DitemDelimiter=":" -Dlifecycle="28" -DoutputValueTableName="enum_feature_selection_test_input_value_output" -DkvDelimiter="," -DlabelColName="col_bigint" -DfeatureColNames="col_double,col_string" -DoutputEnumValueTableName="enum_feature_selection_test_input_enum_value_output" -DenableSparse="false" -DinputTableName="enum_feature_selection_test_input" -DoutputCntTableName="enum_feature_selection_test_input_cnt_output";
+界面
+
+image
+
+参数界面
+
+image
+
+界面运行结果
+
+image
+
+运行结果
+
+enum_feature_selection_test_input_cnt_output
+
++------------+------------+------------+------------+
+| colname    | colvalue   | labelvalue | cnt        |
++------------+------------+------------+------------+
+| col_double | NULL       | 1          | 1          |
+| col_double | 0          | 0          | 2          |
+| col_double | 0          | 1          | 1          |
+| col_double | 1          | 0          | 1          |
+| col_double | 1          | 1          | 1          |
+| col_string | NULL       | 0          | 1          |
+| col_string | 00         | 0          | 1          |
+| col_string | 00         | 1          | 1          |
+| col_string | 01         | 0          | 1          |
+| col_string | 01         | 1          | 2          |
++------------+------------+------------+------------+
+enum_feature_selection_test_input_value_output
+
++------------+------------+------------+------------+------------+---------------+
+| colname    | gini       | entropy    | infogain   | ginigain   | infogainratio |
++------------+------------+------------+------------+------------+---------------+
+| col_double | 0.3888888888888889 | 0.792481250360578 | 0.20751874963942196 | 0.1111111111111111 | 0.14221913160264427 |
+| col_string | 0.38888888888888884 | 0.792481250360578 | 0.20751874963942196 | 0.11111111111111116 | 0.14221913160264427 |
++------------+------------+------------+------------+------------+---------------+
+enum_feature_selection_test_input_enum_value_output
+
++------------+------------+------------+------------+
+| colname    | colvalue   | gini       | entropy    |
++------------+------------+------------+------------+
+| col_double | NULL       | 0.0        | 0.0        |
+| col_double | 0          | 0.22222222222222224 | 0.4591479170272448 |
+| col_double | 1          | 0.16666666666666666 | 0.3333333333333333 |
+| col_string | NULL       | 0.0        | 0.0        |
+| col_string | 00         | 0.16666666666666666 | 0.3333333333333333 |
+| col_string | 01         | 0.2222222222222222 | 0.4591479170272448 |
++------------+------------+------------+------------+
+T检验
+单样本T检验是检验某个变量的总体均值和某指定值之间是否存在显著差异。T检验的前提是样本总体服从正态分布。
+
+PAI命令
+pai -name t_test -project algo_public
+    -DxTableName=pai_t_test_all_type
+    -DxColName=col1_double
+    -DoutputTableName=pai_t_test_out
+    -DxTablePartitions=ds=2010/dt=1
+    -Dalternative=less
+    -Dmu=47
+    -DconfidenceLevel=0.95
+算法参数
+参数名称	参数描述	取值范围	是否必选，默认值/行为
+xTableName	输入表x	表名	必选
+xColName	需要做t检验的列	列名，只能是double或者bigint	必选
+outputTableName	输出表	不存在的表名	必选
+xTablePartitions	输入表x的分区列表	分区列表	可选，默认值为空
+alternative	对立假设	two.sided, less, greater	可选，默认值：two.sided
+mu	假设的均值	double	可选，默认值：0
+confidenceLevel	置信度	0.8,0.9,0.95,0.99,0.995,0.999	可选，默认值：0.95
+输出说明
+输出一个一行一列的表，是json格式。
+
+{
+    "AlternativeHypthesis": "mean not equals to 0",
+    "ConfidenceInterval": "(44.72234194006504, 46.27765805993496)",
+    "ConfidenceLevel": 0.95,
+    "alpha": 0.05,
+    "df": 99,
+    "mean": 45.5,
+    "p": 0,
+    "stdDeviation": 3.919647479510927,
+    "t": 116.081867662439
+}
+卡方检验
+卡方拟合性检验是检验单个多项分类名义型变量各分类间的实际观测次数与理论次数之间是否一致，其零假设是观测次数与理论次数之间无差异。
+
+PAI命令
+PAI -name chisq_test
+    -project algo_public
+    -DinputTableName=pai_chisq_test_input
+    -DcolName=f0
+    -DprobConfig=0:0.3,1:0.7
+    -DoutputTableName=pai_chisq_test_output0
+    -DoutputDetailTableName=pai_chisq_test_output0_detail
+算法参数
+参数名称	参数描述	取值范围	是否必选，默认值/行为
+inputTableName	输入表	表名	必选
+colName	需要做卡方检验的列	列名	必选
+outputTableName	输出表	不存在的表名	必选
+outputDetailTableName	输出detail表	不存在的表名	必选
+inputTablePartitions	输入表的分区列表	分区列表	可选，默认值为空
+probConfig	类别概率配置	kv对，格式为 类别:概率，类别:概率…所有概率和为1	可选，默认为所有类别概率相等
+实例
+测试数据
+
+create table pai_chisq_test_input as
+select * from
+(
+  select '1' as f0,'2' as f1 from dual
+  union all
+  select '1' as f0,'3' as f1 from dual
+  union all
+  select '1' as f0,'4' as f1 from dual
+  union all
+  select '0' as f0,'3' as f1 from dual
+  union all
+  select '0' as f0,'4' as f1 from dual
+)tmp;
+PAI命令
+
+PAI -name chisq_test
+    -project algo_public
+    -DinputTableName=pai_chisq_test_input
+    -DcolName=f0
+    -DprobConfig=0:0.3,1:0.7
+    -DoutputTableName=pai_chisq_test_output0
+    -DoutputDetailTableName=pai_chisq_test_output0_detail
+输出说明
+
+输出表outputTableName，只有一行一列，是json格式。
+
+{
+    "Chi-Square": {
+        "comment": "皮尔逊卡方",
+        "df": 1,
+        "p-value": 0.75,
+        "value": 0.2380952380952381
+    }
+}
+输出表outputDetailTableName，对应列为类别，观察频率(observed)，期望频率(expected)，标准误差(residuals = (observed-expected) / sqrt(expected) )。
+
+chisq_p1
+
+数据视图
+提供数据透视功能，通过数据视图组件，用户可以可视化了解特征取值分布，特征与标签列的分布情况。了解特征特点方便后续数据分析，支持稀疏和稠密。
+
+PAI命令
+PAI -name fe_meta_runner -project algo_public -DinputTable="pai_dense_10_10" -DoutputTable="pai_temp_2263_20384_1" -DmapTable="pai_temp_2263_20384_2"   -DselectedCols="pdays,previous,emp_var_rate,cons_price_idx,cons_conf_idx,euribor3m,nr_employed,age,campaign,poutcome" -DlabelCol="y"  -DcategoryCols="previous"  -Dlifecycle="28"-DmaxBins="5" ;
+算法参数
+参数key名称	参数描述	必/选填	默认值
+inputTable	输入数据表名	必填	不涉及
+inputTablePartitions	输入表分区	选填	不涉及
+outputTable	输出表名	必填	不涉及
+mapTable	输出映射表，数据视图对String类字符串会做一个统计映射成数字（转换成Int方便机器学习识别和训练）	必填	NA
+selectedCols	输入表选择列名类型	必填	不涉及
+categoryCols	把Int或者Double字段当做枚举特征	选填	默认为空
+maxBins	连续性特征等距离划分最大区间数	选填	100
+isSparse	是否是k:v的稀疏特征，默认稠密数据	选填	false
+itemSpliter	稀疏特征item分隔符，默认逗号	选填	“,”
+kvSpliter	稀疏特征item分隔符，默认冒号	选填	“：”
+lifecycle	输出表生命周期（单位：天）	选填	28
+实例
+输入数据
+
+age	workclass	fwlght	edu	edu_num	married	c	family	race	sex	gail	loss	work_year	country	income
+39	State-gov	77516	Bachelors	13	Never-married	Adm-clerical	Not-in-family	White	Male	2174.0	0.0	40.0	United-States	<=50K
+50	Self-emp-not-inc	83311	Bachelors	13	Married-civ-spouse	Exec-managerial	Husband	White	Male	0.0	0.0	13.0	United-States	<=50K
+38	Private	215646	HS-grad	9	Divorced	Handlers-cleaners	Not-in-family	White	Male	0.0	0.0	40.0	United-States	<=50K
+53	Private	234721	11th	7	Married-civ-spouse	Handlers-cleaners	Husband	Black	Male	0.0	0.0	40.0	United-States	<=50K
+28	Private	338409	Bachelors	13	Married-civ-spouse	Prof-specialty	Wife	Black	Female	0.0	0.0	40.0	Cuba	<=50K
+37	Private	284582	Masters	14	Married-civ-spouse	Exec-managerial	Wife	White	Female	0.0	0.0	40.0	United-States	<=50K
+49	Private	160187	9th	5	Married-spouse-absent	Other-service	Not-in-family	Black	Female	0.0	0.0	16.0	Jamaica	<=50K
+52	Self-emp-not-inc	209642	HS-grad	9	Married-civ-spouse	Exec-managerial	Husband	White	Male	0.0	0.0	45.0	United-States	>50K
+31	Private	45781	Masters	14	Never-married	Prof-specialty	Not-in-family	White	Female	14084.0	0.0	50.0	United-States	>50K
+42	Private	159449	Bachelors	13	Married-civ-spouse	Exec-managerial	Husband	White	Male	5178.0	0.0	40.0	United-States	>50K
+建模DAG
+
+建模DAG
+
+image
+
+数据视图配置：勾选income为目标列，其他14个字段为特征列，其中bigint类型的edu_num字段作为枚举值处理。
+
+image
+
+建模效果
+
+左边输入数据，原本是String字段的family，race，sex，income等都被映射成数值，这是**为了方便数据被机器学习算法训练（某种程度有数据格式转换的功能）。
+
+gail	loss	work_year	age	fwlght	edu_num	workclass	edu	married	c	family	race	sex	country	income
+2174.0	0.0	40.0	39.0	77516.0	1.0	3.0	3.0	4.0	1.0	2.0	2.0	2.0	3.0	0.0
+0.0	0.0	13.0	50.0	83311.0	1.0	2.0	3.0	2.0	2.0	1.0	2.0	2.0	3.0	0.0
+0.0	0.0	40.0	38.0	215646.0	5.0	1.0	4.0	1.0	3.0	2.0	2.0	2.0	3.0	0.0
+0.0	0.0	40.0	53.0	234721.0	4.0	1.0	1.0	2.0	3.0	1.0	1.0	2.0	3.0	0.0
+0.0	0.0	40.0	28.0	338409.0	1.0	1.0	3.0	2.0	5.0	3.0	1.0	1.0	1.0	0.0
+0.0	0.0	40.0	37.0	284582.0	2.0	1.0	5.0	2.0	2.0	3.0	2.0	1.0	3.0	0.0
+0.0	0.0	16.0	49.0	160187.0	3.0	1.0	2.0	3.0	4.0	2.0	1.0	1.0	2.0	0.0
+0.0	0.0	45.0	52.0	209642.0	5.0	2.0	4.0	2.0	2.0	1.0	2.0	2.0	3.0	1.0
+14084.0	0.0	50.0	31.0	45781.0	2.0	1.0	5.0	4.0	5.0	2.0	2.0	1.0	3.0	1.0
+5178.0	0.0	40.0	42.0	159449.0	1.0	1.0	3.0	2.0	2.0	1.0	2.0	2.0	3.0	1.0
+右边的输出是映射表。
+
+feature_name	feature_value	map_id
+income	<=50	0
+income	>50K	1
+edu_num	13	1
+edu_num	14	2
+edu_num	5	3
+edu_num	7	4
+edu_num	9	5
+workclass	Private	1
+workclass	Self-emp-not-inc	2
+workclass	State-gov	3
+edu	11th	1
+edu	9th	2
+edu	Bachelors	3
+edu	HS-grad	4
+edu	Masters	5
+married	Divorced	1
+married	Married-civ-spouse	2
+married	Married-spouse-absent	3
+married	Never-married	4
+c	Adm-clerical	1
+c	Exec-managerial	2
+c	Handlers-cleaners	3
+c	Other-service	4
+c	Prof-specialty	5
+family	Husband	1
+family	Not-in-family	2
+family	Wife	3
+race	Black	1
+race	White	2
+sex	Female	1
+sex	Male	2
+country	Cuba	1
+country	Jamaica	2
+country	United-States	3
+协方差
+在概率论和统计学中，协方差用于衡量两个变量的总体误差。而方差是协方差的一种特殊情况，即当两个变量是相同的情况。期望值分别为E(X) = μ 与 E(Y) = ν 的两个实数随机变量X与Y之间的协方差定义为：cov(X, Y) = E((X - μ) (Y - ν))
+
+PAI命令
+PAI -name cov
+    -project algo_public
+    -DinputTableName=maple_test_cov_basic12x10_input
+    -DoutputTableName=maple_test_cov_basic12x10_output
+    -DcoreNum=6
+    -DmemSizePerCore=110;
+参数说明
+参数名称	参数描述	取值范围	是否必选，默认值
+inputTableName	输入表	表名	必选
+inputTablePartitions	输入表中指定哪些分区参与训练，格式为Partition_name=value。如果是多级格式为name1=value1/name2=value2，如果是指定多个分区，中间用“,”分开	分区名	可选， 默认值选择所有分区
+outputTableName	输出表名列表	表名	必选
+selectedColNames	输入表选择列名类型	列名	可选默认选择全部列
+lifecycle	可选，指定输出表的生命周期	正整数	没有生命周期
+coreNum	节点个数	与参数memSizePerCore配对使用，正整数，范围[1, 9999]	可选， 默认自动计算
+memSizePerCore	单个节点内存大小，单位MB	正整数，范围[1024, 64*1024]	可选， 默认自动计算
+经验概率密度图
+经验分布是当无法得到精确的参数分布时，需要从数据中估计概率分布从而得到非参数分布。算法中采用内核分布估计样本数据的概率密度，和直方图类似都是产生函数描述样本数据的分布，区别是内核分布叠加各部分的贡献而产生连续平滑的分布曲线，而直方图是离散地描述，采用内核分布时，非样本的数据点概率密度并非0，而是各样本抽样点在某种内核分布下的概率密度加权叠加，在这版实现中，内核分布固定采用高斯分布。
+
+内核分布更详细介绍请见wiki。
+
+经验分布更详细介绍请见wiki
+
+PAI命令
+PAI -name empirical_pdf
+-project algo_public
+-DinputTableName="test_data"
+-DoutputTableName="test_epdf_out"
+-DfeatureColNames="col0,col1,col2"
+-DinputTablePartitions="ds='20160101'"
+-Dlifecycle=1
+-DintervalNum=100
+参数说明
+参数名称	参数描述	取值范围	是否必选，默认值
+inputTableName	输入表名	表名	必选
+outputTableName	输出表名	表名	必选
+featureColNames	输入列	可选多列，类型为double或bigint	必选
+labelColName	输入label列，把feature列按照这一列所有的label值进行分组计算	只能选一列，类型为bigint或string，label值数量不能超过100	可选，“”
+inputTablePartitions	输入表的分区	分区名	可选，””
+intervalNum	计算频次区间数，越大精度越高	[1,1E14)	可选，-1，会根据各列数据的取值范围进行区间划分自动计算区间数
+lifecycle	生命周期	正整数	可选，-1，不设生命周期
+coreNum	核数目	正整数	可选，-1，会根据输入数据量计算所起instance的数量
+memSizePerCore	内存数	正整数，范围[1024, 64*1024]	可选，-1，会根据输入数据量计算所需内存大小
+实例
+数据生成
+
+    drop table if exists epdf_test;
+    create table epdf_test as
+    select
+      *
+    from
+    (
+      select 1.0 as col1 from dual
+        union all
+      select 2.0 as col1 from dual
+        union all
+      select 3.0 as col1 from dual
+        union all
+      select 4.0 as col1 from dual
+        union all
+      select 5.0 as col1 from dual
+    ) tmp;
+PAI命令
+
+PAI -name empirical_pdf
+-project algo_public
+-DinputTableName=epdf_test
+-DoutputTableName=epdf_test_out
+-DfeatureColNames=col1;
+输入说明
+选择需要计算的列，可选择多列。同时可选label列，按照每个label值把这些列切分成多组，例如label列中包含label值0、1，需要计算的列会分成label=0的一组，和label=1的一组，分别画出概率密度。若没有选择label列，feature列会一整列进行计算。
+
+输出说明
+图和结果表，结果表的字段如下，不选label列时，label字段输出NULL。
+
+列名	数据类型
+colName	string
+label	string
+x	double
+pdf	double
+输出表如下：
+
+    +------------+------------+------------+------------+
+    | colname    | label      | x          | pdf        |
+    +------------+------------+------------+------------+
+    | col1       | NULL       | 1.0        | 0.12775155176809325 |
+    | col1       | NULL       | 1.0404050505050506 | 0.1304256933829622 |
+    | col1       | NULL       | 1.0808101010101012 | 0.13306325897429525 |
+    | col1       | NULL       | 1.1212151515151518 | 0.1356613897616418 |
+    | col1       | NULL       | 1.1616202020202024 | 0.1382173796574596 |
+    | col1       | NULL       | 1.202025252525253 | 0.1407286844875733 |
+    | col1       | NULL       | 1.2424303030303037 | 0.14319293014274642 |
+    | col1       | NULL       | 1.2828353535353543 | 0.14560791960033242 |
+    | col1       | NULL       | 1.3232404040404049 | 0.14797163876379316 |
+    | col1       | NULL       | 1.3636454545454555 | 0.1502822610772349 |
+    | col1       | NULL       | 1.404050505050506 | 0.1525381508819247 |
+    | col1       | NULL       | 1.4444555555555567 | 0.1547378654919243 |
+    | col1       | NULL       | 1.4848606060606073 | 0.1568801559764068 |
+    | col1       | NULL       | 1.525265656565658 | 0.15896396664681753 |
+    | col1       | NULL       | 1.5656707070707085 | 0.16098843325768245 |
+    | col1       | NULL       | 1.6060757575757592 | 0.1629528799404685 |
+    | col1       | NULL       | 1.6464808080808098 | 0.16485681490034038 |
+    | col1       | NULL       | 1.6868858585858604 | 0.16669992491584543 |
+    | col1       | NULL       | 1.727290909090911 | 0.16848206869138338 |
+    | col1       | NULL       | 1.7676959595959616 | 0.17020326912168932 |
+    | col1       | NULL       | 1.8081010101010122 | 0.17186370453638117 |
+    | col1       | NULL       | 1.8485060606060628 | 0.17346369900080946 |
+    | col1       | NULL       | 1.8889111111111134 | 0.17500371175692428 |
+    | col1       | NULL       | 1.929316161616164 | 0.17648432589456017 |
+    | col1       | NULL       | 1.9697212121212146 | 0.17790623634938396 |
+    | col1       | NULL       | 2.0101262626262653 | 0.1792702373286898 |
+    | col1       | NULL       | 2.050531313131316 | 0.18057720927022053 |
+    | col1       | NULL       | 2.0909363636363665 | 0.18182810544221673 |
+    | col1       | NULL       | 2.131341414141417 | 0.18302393829491406 |
+    | col1       | NULL       | 2.1717464646464677 | 0.18416576567472337 |
+    | col1       | NULL       | 2.2121515151515183 | 0.1852546770123305 |
+    | col1       | NULL       | 2.252556565656569 | 0.18629177959496213 |
+    | col1       | NULL       | 2.2929616161616195 | 0.18727818503109434 |
+    | col1       | NULL       | 2.33336666666667 | 0.18821499601297229 |
+    | col1       | NULL       | 2.3737717171717208 | 0.18910329347850022 |
+    | col1       | NULL       | 2.4141767676767714 | 0.18994412426940221 |
+    | col1       | NULL       | 2.454581818181822 | 0.19073848937711185 |
+    | col1       | NULL       | 2.4949868686868726 | 0.19148733286168018 |
+    | col1       | NULL       | 2.535391919191923 | 0.1921915315221827 |
+    | col1       | NULL       | 2.575796969696974 | 0.19285188538972659 |
+    | col1       | NULL       | 2.6162020202020244 | 0.19346910910630113 |
+    | col1       | NULL       | 2.656607070707075 | 0.19404382424446043 |
+    | col1       | NULL       | 2.6970121212121256 | 0.1945765526142701 |
+    | col1       | NULL       | 2.7374171717171762 | 0.19506771059517916 |
+    | col1       | NULL       | 2.777822222222227 | 0.19551760452158667 |
+    | col1       | NULL       | 2.8182272727272775 | 0.19592642714194602 |
+    | col1       | NULL       | 2.858632323232328 | 0.1962942551623821 |
+    | col1       | NULL       | 2.8990373737373787 | 0.1966210478770638 |
+    | col1       | NULL       | 2.9394424242424293 | 0.1969066468790639 |
+    | col1       | NULL       | 2.97984747474748 | 0.19715077683721793 |
+    | col1       | NULL       | 3.0202525252525305 | 0.19735304731663747 |
+    | col1       | NULL       | 3.060657575757581 | 0.19751295561309964 |
+    | col1       | NULL       | 3.1010626262626317 | 0.19762989056457925 |
+    | col1       | NULL       | 3.1414676767676823 | 0.19770313729675995 |
+    | col1       | NULL       | 3.181872727272733 | 0.19773188285349683 |
+    | col1       | NULL       | 3.2222777777777836 | 0.19771522265793107 |
+    | col1       | NULL       | 3.262682828282834 | 0.19765216774530828 |
+    | col1       | NULL       | 3.303087878787885 | 0.19754165270453194 |
+    | col1       | NULL       | 3.3434929292929354 | 0.19738254426210697 |
+    | col1       | NULL       | 3.383897979797986 | 0.19717365043938664 |
+    | col1       | NULL       | 3.4243030303030366 | 0.19691373021193162 |
+    | col1       | NULL       | 3.4647080808080872 | 0.1966015035982942 |
+    | col1       | NULL       | 3.505113131313138 | 0.19623566210464843 |
+    | col1       | NULL       | 3.5455181818181885 | 0.19581487945135703 |
+    | col1       | NULL       | 3.585923232323239 | 0.19533782250778076 |
+    | col1       | NULL       | 3.6263282828282897 | 0.1948031623623475 |
+    | col1       | NULL       | 3.6667333333333403 | 0.1942095854560816 |
+    | col1       | NULL       | 3.707138383838391 | 0.19355580470939734 |
+    | col1       | NULL       | 3.7475434343434415 | 0.19284057057394655 |
+    | col1       | NULL       | 3.787948484848492 | 0.19206268194364004 |
+    | col1       | NULL       | 3.8283535353535427 | 0.19122099686158253 |
+    | col1       | NULL       | 3.8687585858585933 | 0.19031444296253852 |
+    | col1       | NULL       | 3.909163636363644 | 0.1893420275936375 |
+    | col1       | NULL       | 3.9495686868686946 | 0.18830284755928747 |
+    | col1       | NULL       | 3.989973737373745 | 0.1871960984396676 |
+    | col1       | NULL       | 4.030378787878796 | 0.18602108343567092 |
+    | col1       | NULL       | 4.070783838383846 | 0.18477722169674377 |
+    | col1       | NULL       | 4.111188888888897 | 0.1834640560916829 |
+    | col1       | NULL       | 4.151593939393948 | 0.1820812603860928 |
+    | col1       | NULL       | 4.191998989898998 | 0.18062864579383914 |
+    | col1       | NULL       | 4.232404040404049 | 0.179106166873458 |
+    | col1       | NULL       | 4.272809090909099 | 0.17751392674406796 |
+    | col1       | NULL       | 4.31321414141415 | 0.17585218159888508 |
+    | col1       | NULL       | 4.353619191919201 | 0.17412134449794325 |
+    | col1       | NULL       | 4.394024242424251 | 0.1723219884250765 |
+    | col1       | NULL       | 4.434429292929302 | 0.17045484859762067 |
+    | col1       | NULL       | 4.4748343434343525 | 0.16852082402064342 |
+    | col1       | NULL       | 4.515239393939403 | 0.1665209782808102 |
+    | col1       | NULL       | 4.555644444444454 | 0.16445653957824907 |
+    | col1       | NULL       | 4.596049494949504 | 0.16232889999798905 |
+    | col1       | NULL       | 4.636454545454555 | 0.16013961402571825 |
+    | col1       | NULL       | 4.6768595959596055 | 0.1578903963157465 |
+    | col1       | NULL       | 4.717264646464656 | 0.15558311872216193 |
+    | col1       | NULL       | 4.757669696969707 | 0.1532198066072439 |
+    | col1       | NULL       | 4.798074747474757 | 0.1508026344442397 |
+    | col1       | NULL       | 4.838479797979808 | 0.14833392073462115 |
+    | col1       | NULL       | 4.878884848484859 | 0.14581612226291346 |
+    | col1       | NULL       | 4.919289898989909 | 0.1432518277151203 |
+    | col1       | NULL       | 4.95969494949496 | 0.1406437506896507 |
+    | col1       | NULL       | 5.00010000000001 | 0.13799472213247665 |
+    +------------+------------+------------+------------+
+算法规模
+选择的label列不能超过100个。
+
+箱线图
+可视化多个连续值特征与某个枚举类特征的箱线图和扰动关系。
+
+PAI命令
+PAI -name box_plot -project algo_public
+    -DinputTable="boxplot"
+    -DcontinueCols="age"
+    -DcategoryCol="y"
+     -DoutputTable="pai_temp_6075_97181_1"
+    -DsampleSize="1000"
+    -Dlifecycle="7";
+参数说明
+参数名称	参数描述	必/选填	默认值
+inputTable	输入数据表名	必填	不涉及
+inputTablePartitions	输入表分区	选填	不涉及
+outputTable	输出表名，存放箱线图和采样的样本	必填	不涉及
+continueCols	连续值特征，支持多选	必填	不涉及
+categoryCol	枚举特征列，单选	必填	不涉及
+sampleSize	绘制每个特征的扰动情况的样本采样数	选填	1000
+lifecycle	输出表生命周期（单位：天）	选填	28
+实例
+输入数据
+
+create table boxplot as select age, y from bank_data limit 100;
+age	y
+50	0
+53	0
+28	1
+39	0
+55	1
+30	0
+37	0
+39	0
+36	1
+27	0
+34	0
+41	0
+55	1
+33	0
+26	0
+52	0
+35	1
+27	1
+28	0
+26	0
+41	0
+35	0
+40	0
+32	0
+41	0
+34	0
+49	0
+37	0
+35	0
+38	0
+47	0
+46	0
+27	0
+29	1
+32	0
+36	0
+29	0
+47	0
+44	0
+54	0
+36	0
+42	0
+44	0
+72	1
+48	0
+36	0
+35	0
+43	0
+56	0
+42	0
+31	0
+32	0
+33	0
+31	0
+39	0
+30	0
+24	0
+24	0
+38	0
+26	0
+41	0
+34	0
+30	1
+37	0
+68	0
+31	0
+48	0
+33	0
+59	0
+44	0
+28	0
+50	0
+33	0
+45	0
+40	0
+45	0
+43	0
+54	0
+53	0
+35	0
+30	0
+25	0
+35	0
+54	1
+30	0
+38	0
+35	0
+47	0
+32	0
+27	0
+40	1
+31	0
+42	0
+40	0
+31	0
+57	0
+38	1
+39	0
+37	0
+44	0
+参数配置
+选择age为连续类型特征，y为枚举类特征，其他默认。
+
+运行效果
+箱线图分布情况如下图所示。
+
+boxplot
+
+扰动点图分布情况如下图所示。
+
+raodong
+
+散点图
+在回归分析中，数据点在直角坐标系平面上的分布图。
+
+PAI命令
+PAI -name scatter_diagram -project algo_public
+ -DselectedCols=emp_var_rate,cons_price_rate,cons_conf_idx,euribor3m
+ -DsampleSize=1000
+ -DlabelCol=y
+ -DmapTable=pai_temp_2447_22859_2
+ -DinputTable=scatter_diagram
+ -DoutputTable=pai_temp_2447_22859_1;
+参数说明
+参数key名称	参数描述	必/选填	默认值
+inputTable	输入数据表名	必填	不涉及
+inputTablePartitions	输入表分区	选填	不涉及
+outputTable	输出表名,存放采样样本	必填	不涉及
+mapTable	输出信息表，存放每个特征的最小最大值，枚举取值等	必填	不涉及
+selectedCols	输入表选择列名类型，用于绘制两两特征之间的散点图，最多勾选5个特征	必填	不涉及
+labelCol	把Int或者String字段当做枚举标签列	选填	默认为空
+sampleSize	对输入数据进行采样	选填	1000
+lifecycle	输出表生命周期（单位：天）	选填	28
+实例
+输入数据
+
+create table scatter_diagram as select emp_var_rate,cons_price_rate, cons_conf_idx,euribor3m,y from pai_bank_data limit 10
+emp_var_rate	cons_price_rate	cons_conf_idx	euribor3m	y
+1.4	93.918	-42.7	4.962	0
+-0.1	93.2	-42.0	4.021	0
+-1.7	94.055	-39.8	0.729	1
+-1.8	93.075	-47.1	1.405	0
+-2.9	92.201	-31.4	0.869	1
+1.4	93.918	-42.7	4.961	0
+-1.8	92.893	-46.2	1.327	0
+-1.8	92.893	-46.2	1.313	0
+-2.9	92.963	-40.8	1.266	1
+-1.8	93.075	-47.1	1.41	0
+1.1	93.994	-36.4	4.864	0
+1.4	93.444	-36.1	4.964	0
+1.4	93.444	-36.1	4.965	1
+-1.8	92.893	-46.2	1.291	0
+1.4	94.465	-41.8	4.96	0
+1.4	93.918	-42.7	4.962	0
+-1.8	93.075	-47.1	1.365	1
+-0.1	93.798	-40.4	4.86	1
+1.1	93.994	-36.4	4.86	0
+1.4	93.918	-42.7	4.96	0
+-1.8	93.075	-47.1	1.405	0
+1.4	94.465	-41.8	4.967	0
+1.4	93.918	-42.7	4.963	0
+1.4	93.918	-42.7	4.968	0
+1.4	93.918	-42.7	4.962	0
+-1.8	92.893	-46.2	1.344	0
+-3.4	92.431	-26.9	0.754	0
+-1.8	93.075	-47.1	1.365	0
+-1.8	92.893	-46.2	1.313	0
+1.4	93.918	-42.7	4.961	0
+1.4	94.465	-41.8	4.961	0
+-1.8	92.893	-46.2	1.327	0
+-1.8	92.893	-46.2	1.299	0
+-2.9	92.963	-40.8	1.268	1
+1.4	93.918	-42.7	4.963	0
+-1.8	92.893	-46.2	1.334	0
+1.4	93.918	-42.7	4.96	0
+-1.8	93.075	-47.1	1.405	0
+1.4	94.465	-41.8	4.96	0
+1.4	93.444	-36.1	4.962	0
+1.1	93.994	-36.4	4.86	0
+1.1	93.994	-36.4	4.857	0
+1.4	93.918	-42.7	4.961	0
+-3.4	92.649	-30.1	0.715	1
+1.4	93.444	-36.1	4.966	0
+-0.1	93.2	-42.0	4.076	0
+1.4	93.444	-36.1	4.965	0
+-1.8	92.893	-46.2	1.354	0
+1.4	93.444	-36.1	4.967	0
+1.4	94.465	-41.8	4.959	0
+-1.8	92.893	-46.2	1.354	0
+1.4	94.465	-41.8	4.958	0
+-1.8	92.893	-46.2	1.354	0
+1.4	94.465	-41.8	4.864	0
+1.1	93.994	-36.4	4.859	0
+1.1	93.994	-36.4	4.857	0
+-1.8	92.893	-46.2	1.27	0
+1.1	93.994	-36.4	4.857	0
+1.1	93.994	-36.4	4.859	0
+1.4	94.465	-41.8	4.959	0
+1.1	93.994	-36.4	4.856	0
+-1.8	93.075	-47.1	1.405	0
+-1.8	92.843	-50.0	1.811	1
+-0.1	93.2	-42.0	4.021	0
+-2.9	92.469	-33.6	1.029	0
+1.4	93.918	-42.7	4.962	0
+-1.8	93.075	-47.1	1.365	0
+1.1	93.994	-36.4	4.857	0
+-1.8	92.893	-46.2	1.259	0
+1.1	93.994	-36.4	4.857	0
+1.4	94.465	-41.8	4.866	0
+-2.9	92.201	-31.4	0.883	0
+-0.1	93.2	-42.0	4.076	0
+1.1	93.994	-36.4	4.857	0
+1.4	93.918	-42.7	4.96	0
+1.4	93.444	-36.1	4.962	0
+1.1	93.994	-36.4	4.858	0
+1.1	93.994	-36.4	4.857	0
+1.1	93.994	-36.4	4.856	0
+1.4	93.918	-42.7	4.968	0
+1.4	93.444	-36.1	4.966	0
+1.4	94.465	-41.8	4.962	0
+1.4	93.444	-36.1	4.963	0
+-1.8	92.843	-50.0	1.56	1
+1.4	93.918	-42.7	4.96	0
+1.4	93.444	-36.1	4.963	0
+-3.4	92.431	-26.9	0.74	0
+1.1	93.994	-36.4	4.856	0
+1.4	93.918	-42.7	4.962	0
+1.1	93.994	-36.4	4.856	0
+-0.1	93.2	-42.0	4.245	1
+1.1	93.994	-36.4	4.857	0
+-1.8	93.075	-47.1	1.405	0
+-1.8	92.893	-46.2	1.327	0
+-0.1	93.2	-42.0	4.12	0
+1.4	94.465	-41.8	4.958	0
+-1.8	93.749	-34.6	0.659	1
+1.1	93.994	-36.4	4.858	0
+1.1	93.994	-36.4	4.858	0
+1.4	93.444	-36.1	4.963	0
+参数配置
+
+选择y为散点图可选的标签列，选择select emp_var_rate，cons_price_rate，cons_conf_idx，euribor3m为特征列。
+
+运行结果
+
+image
+
+可以直观的看出特征与特征之间，分类标签的分布情况。
+
+相关系数矩阵
+相关系数算法用于计算一个矩阵中每一列之间的相关系数，范围在[-1,1]之间。计算的时候，count数按两列间同时非空的元素个数计算，两两列之间可能不同。
+
+PAI命令
+PAI -name corrcoef
+    -project algo_public
+    -DinputTableName=maple_test_corrcoef_basic12x10_input
+    -DoutputTableName=maple_test_corrcoef_basic12x10_output
+    -DcoreNum=1
+    -DmemSizePerCore=110;
+参数说明
+参数名称	参数描述	取值范围	是否必选，默认值
+inputTableName	输入表	表名	必选
+inputTablePartitions	输入表中指定哪些分区参与训练， 格式为Partition_name=value。如果是多级格式为name1=value1/name2=value2，如果是指定多个分区，中间用“,”分开	分区名	可选， 默认值选择所有分区
+outputTableName	输出表名列表	表名	必选
+selectedColNames	输入表选择列名类型	列名	可选，默认选择全部列
+lifecycle	可选，指定输出表的生命周期	正整数	没有生命周期
+coreNum	节点个数	与参数memSizePerCore配对使用，正整数，范围[1, 9999]	可选， 默认自动计算
+memSizePerCore	单个节点内存大小，单位MB	正整数，范围[1024, 64*1024]	可选， 默认自动计算
+实例
+数据生成
+
+col0:double	col1:bigint	col2:double	col3:bigint	col4:double	col5:bigint	col6:double	col7:bigint	col8:double	col9:double
+19	95	33	52	115	43	32	98	76	40
+114	26	101	69	56	59	116	23	109	105
+103	89	7	9	65	118	73	50	55	81
+79	20	63	71	5	24	77	31	21	75
+87	16	66	47	25	14	42	99	108	57
+11	104	38	37	106	51	3	91	80	97
+84	30	70	46	8	6	94	22	45	48
+35	17	107	64	10	78	53	34	90	96
+13	61	39	1	29	117	112	2	82	28
+62	4	102	88	100	36	67	54	12	85
+49	27	44	93	68	110	60	72	86	58
+92	119	0	113	41	15	74	83	18	111
+PAI命令
+
+PAI -name corrcoef
+    -project algo_public
+    -DinputTableName=maple_test_corrcoef_basic12x10_input
+    -DoutputTableName=maple_test_corrcoef_basic12x10_output
+    -DcoreNum=1
+    -DmemSizePerCore=110;
+运行结果
+
+columnsnames	col0	col1	col2	col3	col4	col5	col6	col7	col8	col9
+col0	1	-0.2115657251820724	0.0598306259706561	0.2599903570684693	-0.3483249188225586	-0.28716254396809926	0.47880162127435116	-0.13646519484213326	-0.19500158764680092	0.3897390240949085
+col1	-0.2115657251820724	1	-0.8444477377898585	-0.17507636221594533	0.40943384150571377	0.09135976026101403	-0.3018506374626574	0.40733726912808044	-0.11827739124590071	0.12433851389455183
+col2	0.0598306259706561	-0.8444477377898585	1	0.18518346647293102	-0.20934839228057014	-0.1896417512389659	0.1799377498863213	-0.3858885676469948	0.20254569203773892	0.13476160753756655
+col3	0.2599903570684693	-0.17507636221594533	0.18518346647293102	1	0.03988018649854009	-0.43737887418329147	-0.053818296425267184	0.2900856441586986	-0.3607547910075688	0.4912019074930449
+col4	-0.3483249188225586	0.40943384150571377	-0.20934839228057014	0.03988018649854009	1	0.1465605209246875	-0.5016030364347955	0.5496024325711117	0.013743256115394122	0.07497231559184887
+col5	-0.28716254396809926	0.09135976026101403	-0.1896417512389659	-0.43737887418329147	0.1465605209246875	1	0.16729809310873522	-0.29890655828796964	0.3618518101014617	-0.1713960957286885
+col6	0.47880162127435116	-0.3018506374626574	0.1799377498863213	-0.053818296425267184	-0.5016030364347955	0.16729809310873522	1	-0.8165019880156462	-0.11173420918721436	-0.10363860378347944
+col7	-0.13646519484213326	0.40733726912808044	-0.3858885676469948	0.2900856441586986	0.5496024325711117	-0.29890655828796964	-0.8165019880156462	1	0.07435907471544469	0.11711976051999162
+col8	-0.19500158764680092	-0.11827739124590071	0.20254569203773892	-0.3607547910075688	0.013743256115394122	0.3618518101014617	-0.11173420918721436	0.07435907471544469	1	-0.18463012549540175
+col9	0.3897390240949085	0.12433851389455183	0.13476160753756655	0.4912019074930449	0.07497231559184887	-0.1713960957286885	-0.10363860378347944	0.11711976051999162	-0.18463012549540175	1
+正态检验
+正态性检验是检验观测值是否服从正态分布，本组件由三种检验方法组成，包括Anderson-Darling Test（详见wiki），Kolmogorov-Smirnov Test（详见wiki），以及QQ图（详见wiki），用户可以自选某一种或多种检验方法。
+
+算法说明：
+
+原假设H0表示观测值服从正态分布，H1表示观测值不服从正态分布。
+
+KS的p值计算方法采用渐进计算KS分布的CDF，无论样本量多大都采用该方法，详见wiki。
+
+QQ图在样本量大于1000时，会采样进行计算并画图输出，因此图中的数据点不一定覆盖所有样本。
+
+PAI命令
+PAI -name normality_test
+    -project algo_public
+    -DinputTableName=test
+    -DoutputTableName=test_out
+    -DselectedColNames=col1,col2
+    -Dlifecycle=1;
+参数说明
+参数名称	参数描述	取值范围	是否必选，默认值
+inputTableName	输入表	表名	必选
+outputTableName	输出表	表名	必选
+selectedColNames	选择字段列	可选多列，类型为double或bigint	可选
+inputTablePartitions	输入表分区	分区名	可选，””
+enableQQplot	使用QQ图	true/fals	可选，默认true
+enableADtest	Anderson-Darling检验	true/false	可选，默认true
+enableKStest	Kolmogorov-Smirnov检验	true/fals	可选，默认true
+lifecycle	生命周期	>=-1整数	可选，默认-1，不设生命周期
+coreNum	核数目	>0整数	可选，默认-1，会根据输入数据量计算所起instance的数量
+memSizePerCore	内存数	(100,64*1024)	可选，默认-1，会根据输入数据量计算所需内存大小
+实例
+数据生成
+
+    drop table if exists normality_test_input;
+    create table normality_test_input as
+    select
+      *
+    from
+    (
+      select 1 as x from dual
+        union all
+      select 2 as x from dual
+        union all
+      select 3 as x from dual
+        union all
+      select 4 as x from dual
+        union all
+      select 5 as x from dual
+        union all
+      select 6 as x from dual
+        union all
+      select 7 as x from dual
+        union all
+      select 8 as x from dual
+        union all
+      select 9 as x from dual
+        union all
+      select 10 as x from dual
+    ) tmp;
+PAI命令
+
+PAI -name normality_test
+    -project projectxlib4
+    -DinputTableName=normality_test_input
+    -DoutputTableName=normality_test_output
+    -DselectedColNames=x
+    -Dlifecycle=1;
+输入说明
+
+输入格式：选择需要计算的列，可选择多列，但类型必须为double或bigint。
+
+输出说明
+
+输出格式：
+
+图和结果表，结果表的字段如下。结果表有两个分区：
+
+p=’test’的分区是AD检验或KS检验的结果，当enableADtest为true或enableKStest为true时会输出数据。
+p=’plot’是QQ图的数据，当enableQQplot为true时会输出数据，并复用p=’test’的列。即当p=’plot’时，testvalue列记录原观测数据（QQ图的x轴），pvalue列记录如果服从正态分布的预期数据（QQ图的y轴）。
+列名	数据类型	含义
+colName	string	列名
+testname	string	检验名
+testvalue	double	检验值/QQ图x轴
+pvalue	double	检验的p值/QQ图y轴
+p	double	分区名
+输出表如下：
+
++------------+------------+------------+------------+------------+
+| colname    | testname   | testvalue  | pvalue     | p          |
++------------+------------+------------+------------+------------+
+| x          | NULL       | 1.0        | 0.8173291742279805 | plot       |
+| x          | NULL       | 2.0        | 2.470864450785345 | plot       |
+| x          | NULL       | 3.0        | 3.5156067948020056 | plot       |
+| x          | NULL       | 4.0        | 4.3632330349313095 | plot       |
+| x          | NULL       | 5.0        | 5.128868067945126 | plot       |
+| x          | NULL       | 6.0        | 5.871131932054874 | plot       |
+| x          | NULL       | 7.0        | 6.6367669650686905 | plot       |
+| x          | NULL       | 8.0        | 7.4843932051979944 | plot       |
+| x          | NULL       | 9.0        | 8.529135549214654 | plot       |
+| x          | NULL       | 10.0       | 10.182670825772018 | plot       |
+| x          | Anderson_Darling_Test | 0.1411092332197832 | 0.9566579606430077 | test       |
+| x          | Kolmogorov_Smirnov_Test | 0.09551932503797644 | 0.9999888659426232 | test       |
++------------+------------+------------+------------+------------+
+洛伦兹曲线
+洛伦兹曲线研究的是国民收入在国民之间的分配问题。为了研究国民收入在国民之间的分配问题，美国统计学家（或说奥地利统计学家）M.O.洛伦兹（Max Otto Lorenz，1903-1907年（或说1905年））提出了著名的洛伦兹曲线。意大利经济学家基尼在此基础上定义了基尼系数。
+
+画一个矩形，矩形的高衡量社会财富的百分比，将之分为N等份，每一等分为1/N的社会总财富。在矩形的长上，将所有家庭从最贫者到最富者自左向右排列，也分为N等分，第一个等份代表收入最低的1/N的家庭。在这个矩形中，将每1/N的家庭所有拥有的财富的占比累积起来，并将相应的点画在图中，便得到了一条曲线就是洛伦兹曲线。
+
+PAI命令
+PAI -name LorenzCurve
+    -project algo_public
+    -DinputTableName=maple_test_lorenz_basic10_input
+    -DcolName=col0
+    -DoutputTableName=maple_test_lorenz_basic10_output -DcoreNum=20
+    -DmemSizePerCore=110;
+参数说明
+参数名称	参数描述	取值范围	是否必选，默认值
+inputTableName	输入表	表名	必选
+outputTableName	输出表	表名	必选
+colName	列名，逗号分隔	列名	可选选中全表
+N	分位数	不涉及	可选，默认100
+inputPartitions	输入表中指定哪些分区参与训练， 格式为Partition_name=value。如果是多级格式为name1=value1/name2=value2，如果是指定多个分区，中间用“,”分开	分区名	可选， 默认值选择所有分区
+lifecycle	可选，指定输出表的生命周期	正整数	没有生命周期
+coreNum	节点个数	与参数memSizePerCore配对使用，正整数，范围[1, 9999]	可选， 默认自动计算
+memSizePerCore	单个节点内存大小，单位M	正整数，范围[1024, 64*1024]	可选， 默认自动计算
+实例
+数据生成
+
+col0:double
+4
+7
+2
+8
+6
+3
+9
+5
+0
+1
+10
+PAI命令
+
+PAI -name LorenzCurve
+    -project algo_public
+    -DinputTableName=maple_test_lorenz_basic10_input
+    -DcolName=col0
+    -DoutputTableName=maple_test_lorenz_basic10_output
+    -DcoreNum=20
+    -DmemSizePerCore=110;
+输出结果
+
+输出表如下：
+
+quantile	col0
+0	0
+1	0.01818181818181818
+2	0.01818181818181818
+3	0.01818181818181818
+4	0.01818181818181818
+5	0.01818181818181818
+6	0.01818181818181818
+7	0.01818181818181818
+8	0.01818181818181818
+9	0.01818181818181818
+10	0.01818181818181818
+11	0.05454545454545454
+12	0.05454545454545454
+13	0.05454545454545454
+14	0.05454545454545454
+…	…
+85	0.8181818181818182
+86	0.8181818181818182
+87	0.8181818181818182
+88	0.8181818181818182
+89	0.8181818181818182
+90	1
+91	1
+92	1
+93	1
+94	1
+95	1
+96	1
+97	1
+98	1
+99	1
+100	1
