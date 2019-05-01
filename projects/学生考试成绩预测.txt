@@ -1,0 +1,124 @@
+学生考试成绩预测
+
+
+本页目录
+背景
+数据集介绍
+离线训练
+在线预测部署
+其它
+本文数据为虚构，仅供实验。
+
+背景
+本文档通过真实的中学生数据和机器挖掘算法得到影响中学生学业的关键因素。比如父母的职业、父母的学历、家庭能否上网等。
+本文档的数据采集于某中学在校生的家庭背景以及在校行为。通过逻辑回归算法生成离线模型和学业指标评估报告，对学生的期末成绩进行预测。同时生成在线预测API，通过API把训练好的离线模型应用到在线的业务场景中。
+
+数据集介绍
+数据集由25个特征列和一个目标列构成，具体字段如下表。
+
+字段名	含义	类型	描述
+sex	性别	string	F表示女，M表示男
+address	住址	string	U表示城市，R表示乡村
+famsize	家庭成员数	string	LE3表示少于三人，GT3表示多于三人
+pstatus	是否与父母住在一起	string	T表示住在一起，A表示分开
+medu	母亲的文化水平	string	从0～4逐步增高
+fedu	父亲的文化水平	string	从0～4逐步增高
+mjob	母亲的工作	string	分为教师相关、健康相关、服务业
+fjob	父亲的工作	string	分为教师相关、健康相关、服务业
+guardian	学生的监管人	string	mother、father、other
+traveltime	从家到学校需要的时间	double	以分钟为单位
+studytime	每周学习时间	double	以小时为单位
+failures	挂科数	double	挂科次数
+schoolsup	是否有额外的学习辅助	string	yes、no
+fumsup	是否有家教	string	yes、no
+paid	是否有相关考试学科的辅助	string	yes、no
+activities	是否有课外兴趣班	string	yes、no
+higher	是否有向上求学意愿	string	yes、no
+internet	家里是否联网	string	yes、no
+famrel	家庭关系	double	从1～5表示关系从差到好
+freetime	课余时间量	double	从1～5从少到多
+goout	跟朋友出去玩的频率	double	从1～5从少到多
+dalc	日饮酒量	double	从1～5从少到多
+walc	周饮酒量	double	从1～5从少到多
+health	健康状况	double	从1～5表示状态从差到好
+absences	出勤量	double	0到93次
+g3	期末成绩	double	20分制
+数据截图如下。
+
+
+
+离线训练
+实验流程图如下。
+
+
+
+数据自上到下流入实验，依次完成了数据预处理、拆分、训练、预测与评估。
+
+1. 数据预处理
+SQL脚本如下。
+
+select (case sex when 'F' then 1 else 0 end) as sex,
+(case address when 'U' then 1 else 0 end) as address,
+(case famsize when 'LE3' then 1 else 0 end) as famsize,
+(case Pstatus when 'T' then 1 else 0 end) as Pstatus,
+Medu,
+Fedu,
+(case Mjob when 'teacher' then 1 else 0 end) as Mjob,
+(case Fjob when 'teacher' then 1 else 0 end) as Fjob,
+(case guardian when 'mother' then 0 when 'father' then 1 else 2 end) as guardian,
+traveltime,
+studytime,
+failures,
+(case schoolsup when 'yes' then 1 else 0 end) as schoolsup,
+(case fumsup when 'yes' then 1 else 0 end) as fumsup,
+(case paid when 'yes' then 1 else 0 end) as paid,
+(case activities when 'yes' then 1 else 0 end) as activities,
+(case higher when 'yes' then 1 else 0 end) as higher,
+(case internet when 'yes' then 1 else 0 end) as internet,
+famrel,
+freetime,
+goout,
+Dalc,
+Walc,
+health,
+absences,
+(case  when G3>14 then 1 else 0 end) as finalScore
+from ${t1};
+使用SQL脚本组件将文本数据结构化。
+
+比如源数据分别有yes和no的情况，可以通过0表示yes，1表示no，将文本数据量化。
+对于一些多种类的文本型字段，可以结合业务场景将数据抽象化。比如“Mjob”字段，是teacher表示为1，不是teacher表示为0。抽象后这个特征的意义就是表示工作是否与教育相关。
+对于目标列，按照大于18分设为1，其它为0的方式进行量化。目的是通过训练，找出可以预测分数的模型。
+2. 归一化
+归一化组件的作用是去除量纲，将所有的字段都变换到0～1之间，去除字段间大小不均衡带来的影响，结果如下图所示。
+
+
+
+3. 拆分
+将数据集按照8：2的比例拆分，百分之八十用来训练模型，百分之二十用来预测。
+
+4. 逻辑回归
+通过逻辑回归算法训练生成离线模型。算法详情请参见wiki。
+
+5. 结果分析与评估
+通过混淆矩阵查看模型预测的准确率。从下图中可以看到本实验的预测准确率为82.911%。
+
+
+
+根据逻辑回归算法的特性，可以通过模型系数挖掘出一些有价值的信息。右键单击逻辑回归二分类组件查看模型，结果如下图所示。
+
+
+
+根据逻辑回归算法的算法特性，权重越大表示特征对于结果的影响越大。权重为正数表示对结果1（期末高分）正相关，权重负数表示负相关。下表对几个权重较大的特征进行了分析。
+
+字段名	含义	权重	分析
+mjob	母亲的工作	-0.7998341777833717	母亲是老师对于孩子考高分是不利的。
+fjob	父亲的工作	1.422595764037065	如果父亲是老师，对于孩子取得好的成绩是非常有利的。
+internet	家里是否联网	1.070938672974736	家里联网不但不会影响成绩，还会促进孩子的学习。
+medu	母亲的文化水平	2.196219307541352	母亲的文化水平高低对于孩子的影响是最大的，母亲文化越高孩子学习越好。
+由于本次实验的数据集较小，以上分析结果不一定准确，仅供参考。
+
+在线预测部署
+生成离线模型后，可以将离线模型部署到线上，通过调用restful-api实现在线预测功能。详细步骤请参考在线预测部署功能说明。
+
+其它
