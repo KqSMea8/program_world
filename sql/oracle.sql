@@ -1,3 +1,188 @@
+--https://github.com/jkstill/oracle-script-lib/tree/master/sql
+
+--1 数据定义语言DDL
+--定义和管理数据库中的各种对象 包括创建数据库 数据表 视图
+Create 创建对象
+Alter	修改对象
+Drop	删除对象
+
+
+----Data Definition Language 数据库定义语言
+
+
+CREATE TABLE <table_name>(
+column1 DATATYPE [NOT NULL] [PRIMARY KEY],
+column2 DATATYPE [NOT NULL],
+...
+[constraint <约束名> 约束类型 (要约束的字段)
+... ] ）
+说明：　
+DATATYPE --是Oracle的数据类型,可以查看附录。
+NUT NULL --可不可以允许资料有空的（尚未有资料填入）。
+PRIMARY KEY --是本表的主键。
+constraint --是对表里的字段添加约束.(约束类型有
+            Check,Unique,Primary key,not null,Foreign key)。
+
+示例:
+create table stu(
+s_id number(8) PRIMARY KEY,
+s_name varchar2(20) not null,
+s_sex varchar2(8),
+clsid number(8),
+constraint u_1 unique(s_name),
+constraint c_1 check (s_sex in ('MALE','FEMALE'))
+);
+
+
+CREATE TABLE <table_name> as <SELECT 语句>
+示例:
+--(需注意的是复制表不能复制表的约束) 包含数据
+create table test as select * from emp;
+
+--如果只复制表的结构不复制表的数据则:
+create table test as select * from emp where 1=2;
+
+
+修改表
+
+1.向表中添加新字段
+ALTER TABLE <table_name> ADD (字段1 类型 [NOT NULL],
+字段2 类型 [NOT NULL]
+.... );
+
+2.修改表中字段
+ALTER TABLE <table_name> modify(字段1 类型,
+字段2 类型
+.... );
+
+3 .删除表中字段
+ALTER TABLE <table_name> drop(字段1,
+字段2
+.... );
+
+4 .修改表的名称
+RENAME <table_name> to <new table_name>;
+
+5 .对已经存在的表添加约束
+ALTER TABLE <table_name> ADD CONSTRAINT <constraint_name> 约束类型 (针对的字段名);
+示例：
+Alter table emp add constraint S_F Foreign key (deptno) references dept(deptno);
+
+6 .对表里的约束禁用;
+ALTER TABLE <table_name> DISABLE CONSTRAINT <constraint_name>;
+
+7 .对表里的约束重新启用;
+ALTER TABLE <table_name> ENABLE CONSTRAINT <constraint_name>;
+
+8 .删除表中约束
+ALTER TABLE <table_name> DROP CONSTRAINT <constraint_name>;
+示例:
+ALTER TABLE emp drop CONSTRAINT <Primary key>;
+
+
+
+-- ascii.sql
+-- generate a simple ascii table
+-- 0-9, A-Z, a-z
+-- Jared Still 2016-11-04 still@pythian.com jkstill@gmail.com
+--
+
+select level dec, to_char(level,'XX') hex, chr(level) chr
+from dual
+where
+	( level between ascii('A') and ascii('Z'))
+	or ( level between ascii('a') and ascii('z'))
+	or ( level between ascii('0') and ascii('9'))
+connect by level < ascii('z')+1
+order by level
+/
+
+
+
+--1.java技术 0
+--  3.java基础 1
+--  4.JSP 技术 1
+      --5.servlet 4
+--2.net 技术 0
+
+/*分类表*/
+CREATE TABLE luntan_kind(
+kindId INTEGER PRIMARY KEY, --分类ID 主键
+kindName VARCHAR2(50 CHAR) NOT NULL,--分类名称
+parentKindId  INT NULL --父分类ID
+);
+INSERT INTO luntan_kind(kindId,kindName) VALUES(1,'java技术');
+SELECT * FROM luntan_kind;
+
+
+/*用户表*/
+CREATE TABLE luntan_user(
+lgName Varchar2(20) PRIMARY KEY,
+lgPass VARCHAR2(32) NOT NULL,
+sex NUMBER(1) default(1) NOT NULL,
+head VARCHAR2(50) DEFAULT('1.gif') NOT NULL,--数据库保存图片的名字
+register_time DATE DEFAULT(SYSDATE) NOT NULL
+);
+
+/*帖子表*/
+CREATE TABLE luntan_tip(
+tId NUMBER PRIMARY KEY,--帖子ID 主键
+title varchar2(50) NOT NULL, --标题
+tcontent VARCHAR2(4000) NOT NULL,--内容
+lgName Varchar2(20) NOT NULL CONSTRAINT Fk_lgName REFERENCES luntan_user(lgName),--发帖人 关联用户表的用户
+createTime DATE DEFAULT(SYSDATE) NOT NULL,--发帖时间
+modifyTime DATE DEFAULT(SYSDATE) NOT NULL, --修改时间
+kindId INTEGER NOT NULL CONSTRAINT FK_kindId REFERENCES luntan_kind(kindId) --分类 引用分类表的分类ID
+);
+
+/*删除约束*/
+ALTER TABLE luntan_tip DROP CONSTRAINT Fk_lgName;
+ALTER TABLE luntan_tip DROP CONSTRAINT FK_kindId;
+INSERT INTO luntan_tip VALUES(1,'abc','dfasd','abc',DEFAULT,DEFAULT,250);
+INSERT INTO luntan_tip VALUES(1,'abc','dfasd','abc',DEFAULT,DEFAULT,250);
+DELETE FROM luntan_tip;
+
+INSERT INTO luntan_user VALUES('chenghong','123',0,'2.gif',DEFAULT);
+INSERT INTO luntan_user VALUES('likeqiang','123',1,'3.gif',DEFAULT);
+INSERT INTO luntan_kind VALUES(1,'java技术'，0);
+
+INSERT INTO luntan_tip VALUES(1,'111dd','fasfd','likeqiang',DEFAULT,DEFAULT,1);
+INSERT INTO luntan_tip VALUES(2,'111dd','fasfd','likeqiang',DEFAULT,DEFAULT,1);
+INSERT INTO luntan_tip VALUES(3,'111dd','fasfd','chenghong',DEFAULT,DEFAULT,1);
+INSERT INTO luntan_tip VALUES(4,'111dd','fasfd','chenghong',DEFAULT,DEFAULT,1);
+INSERT INTO luntan_tip VALUES(5,'111dd','fasfd','chenghong',DEFAULT,DEFAULT,1);
+
+ROLLBACK;
+
+SELECT * FROM luntan_user WHERE lgname NOT IN (SELECT lgname FROM luntan_tip);
+
+SELECT COUNT(*) FROM luntan_tip GROUP BY lgName;
+
+SELECT * FROM (SELECT ROWNUM rn,luntan_user.* FROM luntan_tip WHERE rn=3);
+
+SELECT * FROM(SELECT ROWNUM rn,luntan_tip.* FROM luntan_tip)  WHERE rn BETWEEN 3 AND 5;
+
+SELECT * FROM luntan_tip
+
+/*按发帖人降序排列后 查询3到5行记录*/
+
+
+SELECT *
+  FROM (SELECT ROWNUM RN, CCC.*
+           FROM (SELECT * FROM LUNTAN_TIP ORDER BY LGNAME DESC) CCC)
+ WHERE RN BETWEEN 3 AND 5
+
+
+/*连接查询*/
+SELECT * FROM LUNTAN_TIP CROSS JOIN luntan_kind;
+
+
+
+
+
+
+
+
 --1. SQL语句执行步骤
 --
 语法分析> 语义分析> 视图转换 >表达式转换> 选择优化器 >选择连接方式 >选择连接顺序 >选择数据的搜索路径 >运行“执行计划”
@@ -640,3 +825,946 @@ SELECT TO_DATE（‘01-JAN-93’+.999999）
 --总是将你的表和索引建立在不同的表空间内（TABLESPACES）。
 --决不要将不属于ORACLE内部系统的对象存放到SYSTEM表空间里。
 --确保数据表空间和索引表空间置于不同的硬盘上。
+
+
+系统性能
+并发访问 用户感到延迟 体验度
+web应用充斥的时代
+设计系统时  用户的体验度
+
+--什么情况下要优化？
+劣质SQL：对系统性能带来严重负面影响的SQL
+1.运行时间超长
+2、引发严重的等待事件  等待时间过长
+	更强调事务交互时产生的等待造成的不良影响
+并发
+
+一个人去银行用存折取钱
+另一个人也去银行用卡取钱
+
+如果sql编写不当 会造成两个人互相等待  死锁
+
+3.不能满足压力测试 模拟实际环境
+通过大数据大并发来测试系统的抗压能力
+
+春运 查询考试成绩
+劣质SQL系统设计的问题　
+
+4.消耗大量的系统资源
+CPU
+IO
+物理存储的读取
+内存
+
+--优化技巧
+
+a. 应尽量避免在 where 子句中使用!=或<>操作符，否则将引擎放弃使用索引而进行全表扫描。
+
+b. 应尽量避免在 where 子句中使用 or 来连接条件，否则将导致引擎放弃使用索引而进行全表扫描，如： select id from t where num=10 or num=20 可以这样查询： select id from t where num=10 union all select id from t where num=20
+
+c. in 和 not in 也要慎用，否则会导致全表扫描，如： select id from t where num in(1,2,3) 对于连续的数值，能用 between 就不要用 in 了： select id from t where num between 1 and 3
+
+d. 下面的查询也将导致全表扫描： select id from t where name like ‘%abc%’
+
+e. 如果在 where 子句中使用参数，也会导致全表扫描。因为SQL只有在运行时才会解析局部变量，但优化程序不能将访问计划的选择推迟到运行时；它必须在编译时进行选择。然而，如果在编译时建立访问计划，变量的值还是未知的，因而无法作为索引选择的输入项。如下面语句将进行全表扫描： select id from t where num=@num 可以改为强制查询使用索引： select id from t with(index(索引名)) where num=@num
+
+f. 应尽量避免在 where 子句中对字段进行表达式操作，这将导致引擎放弃使用索引而进行全表扫描。如： select id from t where num/2=100 应改为: select id from t where num=100*2
+
+g. 应尽量避免在where子句中对字段进行函数操作，这将导致引擎放弃使用索引而进行全表扫描。如： select id from t where substring(name,1,3)=’abc’–name以abc开头的id select id from t where datediff(day,createdate,’2005-11-30′)=0–‘2005-11-30’生成的id 应改为: select id from t where name like ‘abc%’ select id from t where createdate>=’2005-11-30′ and createdate<’2005-12-1′
+
+h. 不要在 where 子句中的“=”左边进行函数、算术运算或其他表达式运算，否则系统将可能无法正确使用索引。
+
+i. 不要写一些没有意义的查询，如需要生成一个空表结构： select col1,col2 into #t from t where 1=0 这类代码不会返回任何结果集，但是会消耗系统资源的，应改成这样： create table #t(…)
+
+j. 很多时候用 exists 代替 in 是一个好的选择： select num from a where num in(select num from b) 用下面的语句替换： select num from a where exists(select 1 from b where num=a.num)
+
+k. 任何地方都不要使用 select * from t ，用具体的字段列表代替“*”，不要返回用不到的任何字段。
+
+l. 尽量避免使用游标，因为游标的效率较差，如果游标操作的数据超过1万行，那么就应该考虑改写。
+
+m. 尽量避免向客户端返回大数据量，若数据量过大，应该考虑相应需求是否合理。
+
+n. 尽量避免大事务操作，提高系统并发能力。
+
+
+
+
+　SELECT *
+　　FROM (SELECT a.*, ROWNUM NUM
+　　FROM (SELECT *
+　　FROM b
+　　WHERE 1 = 1
+　　AND type = '10'
+　　AND s_cd = '1000'
+　　AND name LIKE '%xxx%'
+　　ORDER BY (SELECT NVL(TO_NUMBER(REPLACE(TRANSLATE(des, REPLACE(TRANSLATE(des, '0123456789', '##########'), '#', ''), RPAD('#', 20, '#')), '#', '')), '0')
+　　FROM b_PRICE B
+　　WHERE max_price = '1'
+　　AND B.id = b.id),
+　　name) a)
+　　WHERE NUM > 1 AND NUM <= 20
+　　这个ORDER BY需要全表扫描才能得到所需数据，而且函数嵌套了多层，不好处理。因为上面这个替换语句的目的是只保留字符串中的数字，于是笔者给他提供了一个正则：
+　
+　ORDER BY regexp_replace(des, '[^0-9]', '')
+　　这个语句确认结果后，把语句改成了10.1节中讲过的样式：
+
+
+　　SELECT *
+　　FROM (SELECT a.*, rownum num
+　　FROM (SELECT a.*
+　　FROM b a
+　　INNER JOIN b_price b ON (b.id = a.id)
+　　WHERE 1 = 1
+　　AND b.max_price = '1'
+　　AND a.type = '10'
+　　AND a.s_cd = '1000'
+　　AND a.name LIKE '%xxx%'
+　　ORDER BY regexp_replace(des, '[^0-9]', '')) a
+　　WHERE num <= 20)
+　　WHERE num > 1;
+--　　注意上面两个分页条件的位置，这样更改后，把过滤列与regexp_replace(des, '[^0-9]', '')一起放在组合索引里，优化就到此结束
+
+-----------并行----------
+
+  --并行处理,添加定时任务
+  PROCEDURE proc_multi_task_exec(p_interface_name          IN   VARCHAR2,
+                                 p_scheduler_start_date    IN   DATE)
+  AS
+    v_job_num                 NUMBER(20,0);
+  BEGIN
+    dbms_job.submit(
+                      job => v_job_num,
+                      what => p_interface_name,
+                      next_date => p_scheduler_start_date
+                   );
+    COMMIT;
+  END proc_multi_task_exec;
+CREATE OR REPLACE PACKAGE lar_comm_logger_pkg IS
+  /*插入日志*/
+  PROCEDURE proc_insert_pol_ben_log(p_proc_date    IN DATE,
+                                    p_process_code IN pol_ben_log.process_code%TYPE,
+                                    p_process_name IN pol_ben_log.process_name%TYPE,
+                                    p_remark       IN pol_ben_log.remark%TYPE,
+                                    p_lbs_brch     IN pol_ben_log.lbs_brch%TYPE);
+
+  /*更新日志*/
+  PROCEDURE proc_update_pol_ben_log(p_proc_date    IN DATE,
+                                    p_process_code IN pol_ben_log.process_code%TYPE,
+                                    p_remark       IN pol_ben_log.remark%TYPE,
+                                    p_lbs_brch     IN pol_ben_log.lbs_brch%TYPE);
+
+  /*清理日志*/
+  PROCEDURE proc_delete_pol_ben_log(p_proc_date    IN DATE,
+                                    p_process_code IN pol_ben_log.process_code%TYPE,
+                                    p_lbs_brch     IN pol_ben_log.lbs_brch%TYPE);
+  /*插入错误以及异常日志*/
+  PROCEDURE proc_insert_pala_trace_log(v_log_date       IN DATE,
+                                       v_log_type       IN lar_pala_trace_log.log_type%TYPE,
+                                       v_pkg_name       IN lar_pala_trace_log.pkg_name%TYPE,
+                                       v_interface_name IN lar_pala_trace_log.interface_name%TYPE,
+                                       p_remark         IN lar_pala_trace_log.remark%TYPE,
+                                       v_description    IN lar_pala_trace_log.description%TYPE,
+                                       p_lbs_brch       IN lar_pala_trace_log.lbs_brch%TYPE);
+  /*插入审计日志*/
+  PROCEDURE proc_insert_trace_log(p_log_type       IN lar_pala_trace_log.log_type%TYPE,
+                                  p_pkg_name       IN lar_pala_trace_log.pkg_name%TYPE,
+                                  p_interface_name IN lar_pala_trace_log.interface_name%TYPE,
+                                  p_description    IN lar_pala_trace_log.description%TYPE,
+                                  p_lbs_brch       IN lar_pala_trace_log.lbs_brch%TYPE,
+                                  p_remark         IN lar_pala_trace_log.remark%TYPE,
+                                  p_id             OUT lar_pala_trace_log.id_lar_pala_trace_log%TYPE);
+
+  /*更新审计日志*/
+  PROCEDURE proc_update_trace_log(p_id     IN lar_pala_trace_log.id_lar_pala_trace_log%TYPE,
+                                  p_remark IN lar_pala_trace_log.remark%TYPE);
+
+  /*插入日志返回ID*/
+  PROCEDURE proc_insert_pol_ben_log_re(p_process_code IN pol_ben_log.process_code%TYPE,
+                                       p_process_name IN pol_ben_log.process_name%TYPE,
+                                       p_remark       IN pol_ben_log.remark%TYPE,
+                                       p_lbs_brch     IN pol_ben_log.lbs_brch%TYPE,
+                                       p_data_type    IN pol_ben_log.data_type%TYPE,
+                                       p_id           OUT pol_ben_log.id_pol_ben_log%TYPE);
+
+  /*根据ID更新日志*/
+  PROCEDURE proc_update_pol_ben_log_re(p_id     IN pol_ben_log.id_pol_ben_log%TYPE,
+                                       p_remark IN pol_ben_log.remark%TYPE);
+
+END lar_comm_logger_pkg;
+CREATE OR REPLACE PACKAGE BODY lar_comm_logger_pkg IS
+  /* 插入日志*/
+  PROCEDURE proc_insert_pol_ben_log(p_proc_date    IN DATE,
+                                    p_process_code IN pol_ben_log.process_code%TYPE,
+                                    p_process_name IN pol_ben_log.process_name%TYPE,
+                                    p_remark       IN pol_ben_log.remark%TYPE,
+                                    p_lbs_brch     IN pol_ben_log.lbs_brch%TYPE) IS
+  BEGIN
+    INSERT INTO pol_ben_log
+      (proc_date, process_code, process_name, remark, lbs_brch)
+    VALUES
+      (p_proc_date, p_process_code, p_process_name, p_remark, p_lbs_brch);
+    COMMIT;
+  END proc_insert_pol_ben_log;
+
+  /*更新日志*/
+  PROCEDURE proc_update_pol_ben_log(p_proc_date    IN DATE,
+                                    p_process_code IN pol_ben_log.process_code%TYPE,
+                                    p_remark       IN pol_ben_log.remark%TYPE,
+                                    p_lbs_brch     IN pol_ben_log.lbs_brch%TYPE) IS
+  BEGIN
+    UPDATE pol_ben_log
+       SET remark = p_remark, updated_date = SYSDATE
+     WHERE proc_date = p_proc_date
+       AND process_code = p_process_code
+       AND lbs_brch = p_lbs_brch
+       AND remark IS NULL;
+
+    COMMIT;
+  END proc_update_pol_ben_log;
+
+  /*清理日志*/
+  PROCEDURE proc_delete_pol_ben_log(p_proc_date    IN DATE,
+                                    p_process_code IN pol_ben_log.process_code%TYPE,
+                                    p_lbs_brch     IN pol_ben_log.lbs_brch%TYPE) IS
+  v_delete_count varchar2(10);
+  v_delete_switch  varchar2(10);
+  BEGIN
+--判断是否删除日志开关
+  SELECT COUNT(*)
+    INTO v_delete_count
+    FROM LAR_ACTION_CONTROL_PALA T
+   WHERE T.ACTION_NAME = 'is_pol_ben_log_del';
+  IF v_delete_count > 0 THEN
+    SELECT ACTION_VALUE
+    	INTO v_delete_switch
+    	FROM LAR_ACTION_CONTROL_PALA T
+  		 WHERE T.ACTION_NAME = 'is_pol_ben_log_del';
+         IF v_delete_switch='Y' THEN
+		    delete from pol_ben_log
+		     WHERE proc_date = p_proc_date
+		       AND process_code = p_process_code
+		       AND lbs_brch = p_lbs_brch;
+		   	   COMMIT;
+		 END IF;
+  ELSE
+    delete from pol_ben_log
+		     WHERE proc_date = p_proc_date
+		       AND process_code = p_process_code
+		       AND lbs_brch = p_lbs_brch;
+		   	   COMMIT;
+  END IF;
+  END proc_delete_pol_ben_log;
+
+  /*插入错误以及异常日志*/
+  PROCEDURE proc_insert_pala_trace_log(v_log_date    IN DATE,
+                                    v_log_type IN lar_pala_trace_log.log_type%TYPE,
+                                    v_pkg_name IN lar_pala_trace_log.pkg_name%TYPE,
+                                    v_interface_name IN lar_pala_trace_log.interface_name%TYPE,
+                                    p_remark       IN lar_pala_trace_log.remark%TYPE,
+                                    v_description  IN lar_pala_trace_log.description%TYPE,
+                                    p_lbs_brch     IN lar_pala_trace_log.lbs_brch%TYPE) IS
+  BEGIN
+      INSERT INTO LAR_PALA_TRACE_LOG
+        (LOG_DATE, LOG_TYPE, PKG_NAME, INTERFACE_NAME, REMARK, DESCRIPTION, LBS_BRCH)
+      VALUES
+        (SYSDATE, v_log_type, v_pkg_name, v_interface_name, p_remark, v_description, p_lbs_brch);
+    COMMIT;
+  END proc_insert_pala_trace_log;
+
+  /*插入审计日志*/
+  PROCEDURE proc_insert_trace_log(p_log_type       IN lar_pala_trace_log.log_type%TYPE,
+                                  p_pkg_name       IN lar_pala_trace_log.pkg_name%TYPE,
+                                  p_interface_name IN lar_pala_trace_log.interface_name%TYPE,
+                                  p_description    IN lar_pala_trace_log.description%TYPE,
+                                  p_lbs_brch       IN lar_pala_trace_log.lbs_brch%TYPE,
+                                  p_remark         IN lar_pala_trace_log.remark%TYPE,
+                                  p_id             OUT lar_pala_trace_log.id_lar_pala_trace_log%TYPE) IS
+  v_sqlerrm varchar2(510);
+  BEGIN
+    INSERT INTO lar_pala_trace_log a
+      (log_date, log_type, pkg_name, interface_name, description, lbs_brch, remark)
+    VALUES
+      (SYSDATE,
+       p_log_type,
+       p_pkg_name,
+       p_interface_name,
+       p_description,
+       p_lbs_brch,
+       p_remark)
+    RETURNING id_lar_pala_trace_log INTO p_id;
+    COMMIT;
+		EXCEPTION
+	    WHEN OTHERS THEN
+	    v_sqlerrm := SQLERRM;
+	    INSERT INTO lar_pala_trace_log a
+	      (log_date, log_type, pkg_name, interface_name, description, lbs_brch, remark)
+	    VALUES
+	      (SYSDATE,'ERROR','lar_comm_logger_pkg','proc_insert_trace_log','插入审计日志','','出现异常:' || substr(v_sqlerrm, 1, 400));
+	    COMMIT;
+  END proc_insert_trace_log;
+
+  /*更新审计日志*/
+  PROCEDURE proc_update_trace_log(p_id     IN lar_pala_trace_log.id_lar_pala_trace_log%TYPE,
+                                  p_remark IN lar_pala_trace_log.remark%TYPE) IS
+  v_sqlerrm varchar2(510);
+  BEGIN
+    UPDATE lar_pala_trace_log
+       SET remark = substr(remark || '-' || p_remark,1,300), updated_date = SYSDATE
+     WHERE id_lar_pala_trace_log = p_id;
+    COMMIT;
+  	EXCEPTION
+	    WHEN OTHERS THEN
+	    v_sqlerrm := SQLERRM;
+	    INSERT INTO lar_pala_trace_log a
+	      (log_date, log_type, pkg_name, interface_name, description, lbs_brch, remark)
+	    VALUES
+	      (SYSDATE,'ERROR','lar_comm_logger_pkg','proc_update_trace_log','更新审计日志','','出现异常:' || substr(v_sqlerrm, 1, 400));
+	    COMMIT;
+  END proc_update_trace_log;
+   /*插入日志返回ID*/
+  PROCEDURE proc_insert_pol_ben_log_re( p_process_code IN pol_ben_log.process_code%TYPE,
+                                    p_process_name IN pol_ben_log.process_name%TYPE,
+                                    p_remark       IN pol_ben_log.remark%TYPE,
+                                    p_lbs_brch     IN pol_ben_log.lbs_brch%TYPE,
+                                    p_data_type     IN pol_ben_log.data_type%TYPE,
+                                    p_id           OUT pol_ben_log.id_pol_ben_log%TYPE) IS
+  v_sqlerrm varchar2(510);
+  v_proc_date DATE;
+  BEGIN
+  v_proc_date:=lar_pol_comm_pkg.get_kettle_proc_date(p_process_code);
+
+     INSERT INTO pol_ben_log
+
+      (proc_date, process_code, process_name, remark, lbs_brch,data_type)
+    VALUES
+      (v_proc_date, p_process_code, p_process_name, p_remark, p_lbs_brch,p_data_type)
+    RETURNING id_pol_ben_log INTO p_id;
+    COMMIT;
+
+    EXCEPTION
+      WHEN OTHERS THEN
+      v_sqlerrm := SQLERRM;
+      INSERT INTO lar_pala_trace_log a
+        (log_date, log_type, pkg_name, interface_name, description, lbs_brch, remark)
+      VALUES
+        (SYSDATE,'ERROR','lar_comm_logger_pkg','proc_insert_pol_ben_log_re','插入日志返回ID','','出现异常:' || substr(v_sqlerrm, 1, 400));
+      COMMIT;
+  END proc_insert_pol_ben_log_re;
+
+  /*根据ID更新日志*/
+  PROCEDURE proc_update_pol_ben_log_re(p_id     IN pol_ben_log.id_pol_ben_log%TYPE,
+                                  p_remark IN pol_ben_log.remark%TYPE) IS
+  v_sqlerrm varchar2(510);
+  BEGIN
+    UPDATE pol_ben_log
+       SET remark = substr(p_remark,1,300), updated_date = SYSDATE
+     WHERE id_pol_ben_log = p_id;
+    COMMIT;
+    EXCEPTION
+      WHEN OTHERS THEN
+      v_sqlerrm := SQLERRM;
+      INSERT INTO lar_pala_trace_log a
+        (log_date, log_type, pkg_name, interface_name, description, lbs_brch, remark)
+      VALUES
+        (SYSDATE,'ERROR','lar_comm_logger_pkg','proc_update_pol_ben_log_re','根据ID更新日志','','出现异常:' || substr(v_sqlerrm, 1, 400));
+      COMMIT;
+  END proc_update_pol_ben_log_re;
+END lar_comm_logger_pkg;
+
+
+oracle 中的not Exists与Not in的性能巨大差异
+Not Exists与Not in的作用同样是排除数据,在oracle 中使用not in并不象mysql中的执行那么快,如(
+select jt1.doc_num --单据号码
+      ,oalc.description school_name --学校名称
+      ,oalc2.description system_name --系名称
+      ,oalc.description class_name --班级名称
+  from java_table1            jt1
+      ,java_table_description oalc
+      ,java_table_description oalc2
+      ,java_table_description oalc3
+where oalc.lookup_type(+) = 'JAVA_SCHOOL_NAME'
+   and jt1.school_id = oalc.lookup_code(+)
+   and oalc2.lookup_type(+) = 'JAVA_SYSTEM_NAME'
+   and jt1.system_id = oalc2.lookup_code(+)
+   and oalc3.lookup_type(+) = 'JAVA_CLASS_NAME'
+   and jt1.class_id = oalc3.lookup_code(+)
+   and not exists
+(select jt2.header_id
+          from java_table2 jt2 jt1.header_id = jt2.header_id))
+
+与
+
+select jt1.doc_num --单据号码
+      ,oalc.description school_name --学校名称
+      ,oalc2.description system_name --系名称
+      ,oalc.description class_name --班级名称
+  from java_table1            jt1
+      ,java_table_description oalc
+      ,java_table_description oalc2
+      ,java_table_description oalc3
+where oalc.lookup_type(+) = 'JAVA_SCHOOL_NAME'
+   and jt1.school_id = oalc.lookup_code(+)
+   and oalc2.lookup_type(+) = 'JAVA_SYSTEM_NAME'
+   and jt1.system_id = oalc2.lookup_code(+)
+   and oalc3.lookup_type(+) = 'JAVA_CLASS_NAME'
+   and jt1.class_id = oalc3.lookup_code(+)
+   and jt1.header_id not in (select jt2.header_id from java_table2 jt2)
+
+当jt2表中的数据比较大时,就会出现巨大的差异,以上只能是我的个人理解与测试结果(java_table1 视图测试
+
+数据量为36749,java_table2 为300条),如有其它可相互讨论
+
+
+--替代优化
+
+1、用>=替代>
+select ui.user_name
+  from user_info ui--员工信息表
+  where ui.student_id>=10
+  与
+  select ui.user_name
+  from user_info ui--员工信息表
+  where ui.student_id>9
+  执行时>=会比>执行得要快
+
+2、用UNION替换OR (适用于索引列)
+select ui.user_name
+  from user_info ui--员工信息表
+  where ui.student_id=10
+  union
+select ui.user_name
+  from user_info ui--员工信息表
+  where ui.student_id=2
+   上面语句可有效避免全表查询
+   select ui.user_name
+  from user_info ui--员工信息表
+  where ui.student_id=10
+  or ui.student_id=2
+  如果坚持要用OR, 可以把返回记录最少的索引列写在最前面
+
+3、用in 代替or
+select ui.user_name
+  from user_info ui--员工信息表
+  where ui.student_id=10
+  or ui.student_id=20
+  or ui.student_id=30
+  改成
+  select ui.user_name
+  from user_info ui--员工信息表
+  where ui.student_id in (10,20,30)
+  执行会更有效率
+
+4、 Union All 与Union
+Union All重复输出两个结果集合中相同记录
+如果两个并集中数据都不一样.那么使用Union All 与Union是没有区别的,
+select ui.user_name
+  from user_info ui--员工信息表
+  where ui.student_id=10
+  union All
+select ui.user_name
+  from user_info ui--员工信息表
+  where ui.student_id=2
+  与
+  select ui.user_name
+  from user_info ui--员工信息表
+  where ui.student_id=10
+  union
+select ui.user_name
+  from user_info ui--员工信息表
+  where ui.student_id=2
+但Union All会比Union要执行得快
+
+5、分离表和索引
+总是将你的表和索引建立在另外的表空间内
+决不要将这些对象存放到SYSTEM表空间里
+
+--一些优化技巧
+1、计算表的记录数时
+select count(si.student_id)
+from Student_info si(student_id为索引)
+与
+select count(*) from Student_info si
+执行时.上面的语句明显会比下面没有用索引统计的语句要快
+
+2.使用函数提高SQL执行速度
+当出现复杂的查询sql语名,可以考虑使用函数来提高速度
+查询学生信息并查询学生(李明)个人信息与的数学成绩排名
+如
+select di.description student_name
+      ,(select res.order_num--排名
+         from result res
+        where res.student_id = di.student_id
+        order by result_math) order_num
+  from description_info di
+      ,student_info     si --学生信息表
+where si.student_id = di.lookup_code(+)
+   and di.lookup_type(+) = 'STUDENT_ID'
+   and di.description = '李明'
+
+而且我们将上面order_num排名写成一个fuction时
+create or replace package body order_num_pkg is
+function order_num(p_student_id number) return_number is
+  v_return_number number;
+begin
+  select res.order_num --排名
+    into v_return_number
+    from result res
+   where res.student_id = di.student_id
+   order by result_math;
+  return v_return_number;
+exception
+  when others then
+    null;
+    return null;
+end;
+end order_num_pkg;
+执行
+select di.description student_name
+      ,order_num_pkg.order_num(di.student_id) order_num
+  from description_info di
+      ,student_info     si --学生信息表
+where si.student_id = di.lookup_code(+)
+   and di.lookup_type(+) = 'STUDENT_ID'
+   and di.description = '李明'
+执行查询时的速度也会有所提高
+
+3.减少访问数据库的次数
+执行次数的减少(当要查询出student_id=100的学生和student_id=20的学生信息时)
+select address_id
+from student_info si --学生信息表
+where si.student_id=100
+与
+select address_id
+from student_info si --学生信息表
+where si.student_id=20
+都进行查询.这样的效率是很低的
+而进行
+(
+select si.address_id,si2.address_id
+from student_info si --学生信息表
+,student_info si2
+where si.student_id=100
+and si2.student_id=20
+与
+select decode(si.student_id,100,address_id)
+   ,decode(si.student_id,20,address_id)
+from student_info si
+)
+执行速度是提高了,但可读性反而差了..
+所以这种写法个人并不太推荐
+
+4、用Exists(Not Exists)代替In(Not In)
+   在执行当中使用Exists或者Not Exists可以高效的进行查询
+5、Exists取代Distinct取唯一值的
+   取出关联表部门对员工时,这时取出员工部门时,出现多条..
+select distinct di.dept_name
+  from departments_info di --部门表
+      ,user_info        ui --员工信息表
+where ui.dept_no = di.dept_no
+   可以修改成
+  select di.dept_name
+    from departments_info di --部门表
+   where  exists (select 'X'
+            from user_info ui --员工信息表
+           where di.dept_no = ui.dept_no)
+
+6、用表连接代替Exists
+ 通过表的关联来代替exists会使执行更有效率
+select ui.user_name
+  from user_info ui--员工信息表
+where exists (select 'x '
+          from departments_info di--部门表
+         where di.dept_no = ui.dept_no
+           and ui.dept_cat = 'IT');
+执行是比较快,但还可以使用表的连接取得更快的查询效率
+   select ui.user_name
+    from departments_info di
+        ,user_info        ui --员工信息表
+   where ui.dept_no = di.dept_no
+     and ui.department_type_code = 'IT'
+
+
+a. 应尽量避免在 where 子句中使用!=或<>操作符，否则将引擎放弃使用索引而进行全表扫描。
+
+b. 应尽量避免在 where 子句中使用 or 来连接条件，否则将导致引擎放弃使用索引而进行全表扫描，如： select id from t where num=10 or num=20 可以这样查询： select id from t where num=10 union all select id from t where num=20
+
+c. in 和 not in 也要慎用，否则会导致全表扫描，如： select id from t where num in(1,2,3) 对于连续的数值，能用 between 就不要用 in 了： select id from t where num between 1 and 3
+
+d. 下面的查询也将导致全表扫描： select id from t where name like ‘%abc%’
+
+e. 如果在 where 子句中使用参数，也会导致全表扫描。因为SQL只有在运行时才会解析局部变量，但优化程序不能将访问计划的选择推迟到运行时；它必须在编译时进行选择。然而，如果在编译时建立访问计划，变量的值还是未知的，因而无法作为索引选择的输入项。如下面语句将进行全表扫描： select id from t where num=@num 可以改为强制查询使用索引： select id from t with(index(索引名)) where num=@num
+
+f. 应尽量避免在 where 子句中对字段进行表达式操作，这将导致引擎放弃使用索引而进行全表扫描。如： select id from t where num/2=100 应改为: select id from t where num=100*2
+
+g. 应尽量避免在where子句中对字段进行函数操作，这将导致引擎放弃使用索引而进行全表扫描。如： select id from t where substring(name,1,3)=’abc’–name以abc开头的id select id from t where datediff(day,createdate,’2005-11-30′)=0–‘2005-11-30’生成的id 应改为: select id from t where name like ‘abc%’ select id from t where createdate>=’2005-11-30′ and createdate<’2005-12-1′
+
+h. 不要在 where 子句中的“=”左边进行函数、算术运算或其他表达式运算，否则系统将可能无法正确使用索引。
+
+i. 不要写一些没有意义的查询，如需要生成一个空表结构： select col1,col2 into #t from t where 1=0 这类代码不会返回任何结果集，但是会消耗系统资源的，应改成这样： create table #t(…)
+
+j. 很多时候用 exists 代替 in 是一个好的选择： select num from a where num in(select num from b) 用下面的语句替换： select num from a where exists(select 1 from b where num=a.num)
+
+k. 任何地方都不要使用 select * from t ，用具体的字段列表代替“*”，不要返回用不到的任何字段。
+
+l. 尽量避免使用游标，因为游标的效率较差，如果游标操作的数据超过1万行，那么就应该考虑改写。
+
+m. 尽量避免向客户端返回大数据量，若数据量过大，应该考虑相应需求是否合理。
+
+n. 尽量避免大事务操作，提高系统并发能力。
+
+1.表名顺序优化
+
+(1) 基础表放下面,当两表进行关联时数据量少的表的表名放右边
+表或视图:
+Student_info   (30000条数据)
+Description_info (30条数据)
+select *
+  from description_info di
+      ,student_info     si --学生信息表
+where si.student_id = di.lookup_code(+)
+   and di.lookup_type(+) = 'STUDENT_ID'
+与
+select *
+  from student_info     si--学生信息表
+      ,description_info di
+where si.student_id = di.lookup_code(+)
+   and di.lookup_type(+) = 'STUDENT_ID'
+以student_info作为基础表,你会发现运行的速度会有很大的差距。
+
+
+(2) 当出现多个表时,关联表被称之为交叉表,交叉表作为基础表
+select *
+  from description_info di
+    ,description_info di2
+      ,student_info     si --学生信息表
+where si.student_id = di.lookup_code(+)
+   and di.lookup_type(+) = 'STUDENT_ID'
+   and si.school_id = di.lookup_code(+)
+   and di.lookup_type(+) = 'SCHOOL_ID'
+与
+select *
+  from student_info     si--学生信息表
+      ,description_info di
+      ,description_info di2
+where si.student_id = di.lookup_code(+)
+   and di.lookup_type(+) = 'STUDENT_ID'
+   and si.school_id = di.lookup_code(+)
+   and di.lookup_type(+) = 'SCHOOL_ID'
+以student_info作为基础表,你会发现运行的速度会有很大的差距,
+当基础表放在后面,这样的执行速度会明显快很多。
+
+2.where执行顺序
+
+where执行会从至下往上执行
+select *
+from student_info si --学生信息表
+where si.school_id=10 --学院ID
+and  si.system_id=100--系ID
+摆放where子句时,把能过滤大量数据的条件放在最下边
+
+3. is null 和is not null
+
+当要过滤列为空数据或不为空的数据时使用
+select *
+from student_info si --学生信息表
+where si.school_id is null(当前列中的null为少数时用is not null,否则is null)
+
+4.使用表别名
+
+当查询时出现多个表时,查询时加上别名,
+避免出现减少解析的时间字段歧义引起的语法错误。
+
+5. where执行速度比having快
+
+尽可能的使用where代替having
+select  from student_info si
+group by si.student_id
+having si.system_id!=100
+  and si.school_id!=10
+(select  from student_info si
+wehre si.system_id!=100
+and si.school_id!=10
+group by si.student_id)
+
+6.  * 号引起的执行效率
+
+尽量减少使用select * 来进行查询,当你查询使用*,
+数据库会进行解析并将*转换为全部列。
+
+查询表中的记录总数的语法就是SELECT COUNT(*) FROM TABLE_NAME。这可能是最经常使用的一类SQL语句。
+
+根据执行时间的长短进行判断偶然性比较大，本文以没种方法逻辑读的多少来进行判断。
+
+由于包括查询重写（需要的相对较多的执行计划的分析）和索引压缩（属于CPU密集型，消耗CPU资源较多），仅仅用逻辑读来衡量各种方法的优劣肯定不会很准确，
+
+但是考虑到表中的数据量比较大，而且我们以SQL的第二次执行结果为准，所以，其他方面的影响还是可以忽略的。
+
+另外一个前提就是结果的准确性，查询USER_TABLES的NUM_ROWS列等类似的方法不在本文讨论范畴之内。
+
+
+最后，由于ORACLE的缓存和共享池的机制，SQL语句逻辑读一般从第二次执行才稳定下来，
+
+出于篇幅的考虑，下面所有的SELECT COUNT(*) FROM T的结果都是该SQL语句第二次执行的结果。
+
+
+
+如果存在一个查询语句为SELECT COUNT(*)的物化视图，则最快的方式一定是扫描这张物化视图。
+
+
+
+SQL> CREATE TABLE T (ID NUMBER NOT NULL, NAME VARCHAR2(30), TYPE VARCHAR2(18));
+
+表已创建。
+
+SQL> INSERT INTO T SELECT ROWNUM, OBJECT_NAME, OBJECT_TYPE FROM DBA_OBJECTS;
+
+已创建30931行。
+
+SQL> COMMIT;
+
+提交完成。
+
+SQL> CREATE MATERIALIZED VIEW LOG ON T WITH ROWID INCLUDING NEW VALUES;
+
+实体化视图日志已创建。
+
+SQL> CREATE MATERIALIZED VIEW MV_T REFRESH FAST ON COMMIT ENABLE QUERY REWRITE AS
+2 SELECT COUNT(*) FROM T;
+
+实体化视图已创建。
+
+SQL> ALTER SESSION SET QUERY_REWRITE_ENABLED = TRUE;
+
+会话已更改。
+
+SQL> EXEC DBMS_STATS.GATHER_TABLE_STATS(USER, 'T')
+
+PL/SQL 过程已成功完成。
+
+SQL> SET AUTOT ON
+SQL> SELECT COUNT(*) FROM T;
+
+COUNT(*)
+----------
+30931
+
+Execution Plan
+----------------------------------------------------------
+0 SELECT STATEMENT Optimizer=CHOOSE (Cost=2 Card=82 Bytes=1066)
+1 0 TABLE ACCESS (FULL) OF 'MV_T' (Cost=2 Card=82 Bytes=1066)
+
+Statistics
+----------------------------------------------------------
+0 recursive calls
+0 db block gets
+3 consistent gets
+0 physical reads
+0 redo size
+378 bytes sent via SQL*Net to client
+503 bytes received via SQL*Net from client
+2 SQL*Net roundtrips to/from client
+0 sorts (memory)
+0 sorts (disk)
+1 rows processed
+
+根据上面的查询可以看出，扫描物化视图，只需3个逻辑读就可以了。
+但是，物化视图对系统的限制比较多。
+首先要创建物化视图日志，还要在SYSTEM或SESSION级设置参数，必须使用CBO等很多的条件，限制了物化视图的使用，
+而且最重要的是，一般情况下不会存在一个单纯查询全表记录数的物化视图，而一般建立的物化视图是为了加快一些更加复杂的表连接或聚集的查询的。
+因此，即使存在物化视图，也不会直接得到结果，一般是对物化视图上的结果进行再次计算。
+
+如果不考虑物化视图，那么得到记录总数的最快的方法一定是BITMAP索引扫描。
+BITMAP索引的机制使得BITMAP索引回答COUNT(*)之类的查询具有最快的响应速度和最小的逻辑读。
+至于BITMAP索引的机制，这里就不重复描述了，还是看看BITMAP索引的表现吧：
+
+SQL> DROP MATERIALIZED VIEW MV_T;
+
+实体化视图已删除。
+
+SQL> DROP MATERIALIZED VIEW LOG ON T;
+
+实体化视图日志已删除。
+
+SQL> CREATE BITMAP INDEX IND_B_T_TYPE ON T (TYPE);
+
+索引已创建。
+
+SQL> EXEC DBMS_STATS.GATHER_INDEX_STATS(USER, 'IND_B_T_TYPE')
+
+PL/SQL 过程已成功完成。
+
+SQL> SELECT COUNT(*) FROM T;
+
+COUNT(*)
+----------
+30931
+
+Execution Plan
+----------------------------------------------------------
+0 SELECT STATEMENT Optimizer=CHOOSE (Cost=2 Card=1)
+1 0 SORT (AGGREGATE)
+2 1 BITMAP CONVERSION (COUNT)
+3 2 BITMAP INDEX (FAST FULL SCAN) OF 'IND_B_T_TYPE'
+
+Statistics
+----------------------------------------------------------
+0 recursive calls
+0 db block gets
+5 consistent gets
+0 physical reads
+0 redo size
+378 bytes sent via SQL*Net to client
+503 bytes received via SQL*Net from client
+2 SQL*Net roundtrips to/from client
+0 sorts (memory)
+0 sorts (disk)
+1 rows processed
+
+可以看到，BITMAP索引的表现十分出色，只需5个逻辑读就可以得到结果。
+
+可惜的是，BITMAP索引比较适合在数据仓库中使用，
+而对于OLTP环境，BITMAP索引的锁粒度将给整个系统带来严重的灾难。
+因此，对于OLTP系统，BITMAP索引也是不合适的。
+
+不考虑BITMAP索引，那么速度最快的应该是普通索引的快速全扫了，比如主键列。
+
+SQL> DROP INDEX IND_B_T_TYPE;
+
+索引已丢弃。
+
+SQL> ALTER TABLE T ADD CONSTRAINT PK_T PRIMARY KEY (ID);
+
+表已更改。
+
+SQL> SELECT COUNT(*) FROM T;
+
+COUNT(*)
+----------
+30931
+
+Execution Plan
+----------------------------------------------------------
+0 SELECT STATEMENT Optimizer=CHOOSE (Cost=4 Card=1)
+1 0 SORT (AGGREGATE)
+2 1 INDEX (FAST FULL SCAN) OF 'PK_T' (UNIQUE) (Cost=4 Card=30931)
+
+Statistics
+----------------------------------------------------------
+0 recursive calls
+0 db block gets
+69 consistent gets
+0 physical reads
+0 redo size
+378 bytes sent via SQL*Net to client
+503 bytes received via SQL*Net from client
+2 SQL*Net roundtrips to/from client
+0 sorts (memory)
+0 sorts (disk)
+1 rows processed
+
+主键的快速全扫只需69个逻辑读。但是由于主键这里用的是ROWNUM，也就是说是主键的值是从1到30931，Oracle存储这些NUMBER类型则需要2到4位不等。
+如果建立一个常数索引，则在存储空间上要节省一些。而在执行索引快速全扫时，就能减少一些逻辑读。
+
+SQL> CREATE INDEX IND_T_CON ON T(1);
+
+索引已创建。
+
+SQL> SELECT COUNT(*) FROM T;
+
+COUNT(*)
+----------
+30931
+
+Execution Plan
+----------------------------------------------------------
+0 SELECT STATEMENT Optimizer=CHOOSE (Cost=4 Card=1)
+1 0 SORT (AGGREGATE)
+2 1 INDEX (FAST FULL SCAN) OF 'IND_T_CON' (NON-UNIQUE) (Cost=4 Card=30931)
+
+Statistics
+----------------------------------------------------------
+0 recursive calls
+0 db block gets
+66 consistent gets
+0 physical reads
+0 redo size
+378 bytes sent via SQL*Net to client
+503 bytes received via SQL*Net from client
+2 SQL*Net roundtrips to/from client
+0 sorts (memory)
+0 sorts (disk)
+1 rows processed
+
+果然，扫描常数索引比扫描主键的逻辑读更小一些。
+考虑到NUMBER类型中，1的存储需要两位，而0的存储只需一位，那么用0代替1创建常数索引，应该效果更好。
+
+SQL> CREATE INDEX IND_T_CON_0 ON T(0);
+
+索引已创建。
+
+SQL> SELECT /*+ INDEX(T IND_T_CON_0) */ COUNT(*) FROM T;
+
+COUNT(*)
+----------
+30931
+
+Execution Plan
+----------------------------------------------------------
+0 SELECT STATEMENT Optimizer=CHOOSE (Cost=26 Card=1)
+1 0 SORT (AGGREGATE)
+2 1 INDEX (FULL SCAN) OF 'IND_T_CON_0' (NON-UNIQUE) (Cost=26 Card=30931)
+
+Statistics
+----------------------------------------------------------
+0 recursive calls
+0 db block gets
+58 consistent gets
+0 physical reads
+0 redo size
+378 bytes sent via SQL*Net to client
+503 bytes received via SQL*Net from client
+2 SQL*Net roundtrips to/from client
+0 sorts (memory)
+0 sorts (disk)
+1 rows processed
+
+由于常数索引中所有节点值都相同，如果压缩一下的话，应该还能减少逻辑读。
+
+SQL> DROP INDEX IND_T_CON_0;
+
+索引已丢弃。
+
+SQL> CREATE INDEX IND_T_CON_COMPRESS ON T(0) COMPRESS;
+
+索引已创建。
+
+SQL> SELECT /*+ INDEX(T IND_T_CON_COMPRESS) */ COUNT(*) FROM T;
+
+COUNT(*)
+----------
+30931
+
+Execution Plan
+----------------------------------------------------------
+0 SELECT STATEMENT Optimizer=CHOOSE (Cost=26 Card=1)
+1 0 SORT (AGGREGATE)
+2 1 INDEX (FULL SCAN) OF 'IND_T_CON_COMPRESS' (NON-UNIQUE) (Cost=26 Card=30931)
+
+Statistics
+----------------------------------------------------------
+0 recursive calls
+0 db block gets
+49 consistent gets
+0 physical reads
+0 redo size
+378 bytes sent via SQL*Net to client
+503 bytes received via SQL*Net from client
+2 SQL*Net roundtrips to/from client
+0 sorts (memory)
+0 sorts (disk)
+1 rows processed
+
+和预计的一样，经过压缩，索引扫描的逻辑读进一步减少，现在和最初的主键扫描相比，逻辑读已经减少了30%。
+
+如果只为了得到COUNT(*)，那么压缩过的常数索引是最佳选择，不过这个索引对其他查询是没有任何帮助的，
+因此，实际中的用处不大。
