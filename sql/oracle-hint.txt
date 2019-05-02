@@ -1,0 +1,162 @@
+/*+ leading(table_1,table_2) */
+在多表关联查询中，指定哪个表作为驱动表，即告诉优化器首先要访问哪个表上的数据。 
+select /*+ leading(t,t1) */ t.* from t,t1 where t.id=t1.id; 
+/*+ order */
+让Oracle根据from后面表的顺序来选择驱动表，oracle建议使用leading，他更为灵活 
+select /*+ order */ t.* from t,t1 where t.id=t1.id;
+/*+ use_nl(table_1,table_2) */ 
+在多表关联查询中，指定使用nest loops方式进行多表关联。
+select /*+ use_nl(t,t1) */ t.* from t,t1 where t.id=t1.id;
+/*+ use_hash(table_1,table_2) */ 
+在多表关联查询中，指定使用hash join方式进行多表关联。
+select /*+ use_hash(t,t1) */ t.* from t,t1 where t.id=t1.id;
+在多表关联查询中，指定使用hash join方式进行多表关联，并指定表t为驱动表。
+select /*+ use_hash(t,t1) leading(t,t1) */ t.* from t,t1 where t.id=t1.id;
+/*+ use_merge(table_1,table_2) */ 
+在多表关联查询中，指定使用merge join方式进行多表关联。
+select /*+ use_merge(t,t1) */ t.* from t,t1 where t.id=t1.id;
+/*+ no_use_nl(table_1,table_2) */ 
+在多表关联查询中，指定不使用nest loops方式进行多表关联。
+select /*+ no_use_nl(t,t1) */ t.* from t,t1 where t.id=t1.id;
+/*+ no_use_hash(table_1,table_2) */ 
+在多表关联查询中，指定不使用hash join方式进行多表关联。
+select /*+ no_use_hash(t,t1) */ t.* from t,t1 where t.id=t1.id;
+/*+ no_use_merge(table_1,table_2) */ 
+在多表关联查询中，指定不使用merge join方式进行多表关联。
+select /*+ no_use_merge(t,t1) */ t.* from t,t1 where t.id=t1.id;
+其他常用的hint
+/*+ parallel(table_name n) */ 
+在sql中指定执行的并行度，这个值将会覆盖自身的并行度
+select /*+ parallel(t 4) */ count(*)  from t;
+/*+ no_parallel(table_name) */ 
+在sql中指定执行的不使用并行
+select /*+ no_parallel(t) */ count(*)  from t;
+/*+ append */以直接加载的方式将数据加载入库
+insert into t /*+ append */ select * from t;
+/*+ dynamic_sampling(table_name n) */
+设置sql执行时动态采用的级别，这个级别为0~10
+select /*+ dynamic_sampling(t 4) */ * from t where id > 1234 
+/*+ cache(table_name) */ 
+进行全表扫描时将table置于LRU列表的最活跃端，类似于table的cache属性
+select /*+ full(employees) cache(employees) */ last_name from employees 
+
+1、/*+ ALL_ROWS */
+表明对语句块选择基于开销的优化方法,并获得最佳吞吐量,使资源消耗最小化.
+SELECT /*+ ALL+_ROWS*/ EMP_NO,EMP_NAM,DAT_IN FROM BSEMPMS WHERE EMP_NO='SCOTT'; 
+
+2、/*+ FIRST_ROWS(n) */
+表明对语句块选择基于开销的优化方法,并获得最佳响应时间,使资源消耗最小化.
+SELECT /*+FIRST_ROWS(20) */ EMP_NO,EMP_NAM,DAT_IN FROM BSEMPMS WHERE EMP_NO='SCOTT'; 
+
+3、/*+ RULE*/
+
+表明对语句块选择基于规则的优化方法.
+SELECT /*+ RULE */ EMP_NO,EMP_NAM,DAT_IN FROM BSEMPMS WHERE EMP_NO='SCOTT'; 
+
+和访问路径相关的hint
+
+1、/*+ FULL(TABLE)*/
+表明对表选择全局扫描的方法.
+SELECT /*+FULL(A)*/ EMP_NO,EMP_NAM FROM BSEMPMS A WHERE EMP_NO='SCOTT'; 
+2、/*+ INDEX(TABLE INDEX_NAME) */
+表明对表选择索引的扫描方法.
+SELECT /*+INDEX(BSEMPMS SEX_INDEX) */ * FROM BSEMPMS WHERE SEX='M'; 
+5、/*+ INDEX_ASC(TABLE INDEX_NAME)*/
+表明对表选择索引升序的扫描方法.
+SELECT /*+INDEX_ASC(BSEMPMS PK_BSEMPMS) */ * FROM BSEMPMS WHERE DPT_NO='SCOTT'; 
+6、/*+ INDEX_COMBINE*/
+为指定表选择位图访问路经,如果INDEX_COMBINE中没有提供作为参数的索引,将选择出位图索引的布尔组合方式.
+SELECT /*+INDEX_COMBINE(BSEMPMS SAL_BMI HIREDATE_BMI) */  * FROM BSEMPMS
+WHERE SAL<5000000 AND HIREDATE 
+7、/*+ INDEX_JOIN(TABLE INDEX_NAME1 INDEX_NAME2) */
+当谓词中引用的列都有索引的时候，可以通过指定采用索引关联的方式，来访问数据
+select /*+ index_join(t t_ind t_bm) */ id from t where id=100 and object_name='EMPLOYEES' 
+8、/*+ INDEX_DESC(TABLE INDEX_NAME)*/
+表明对表选择索引降序的扫描方法.
+SELECT /*+INDEX_DESC(BSEMPMS PK_BSEMPMS) */ * FROM BSEMPMS WHERE DPT_NO='SCOTT'; 
+9、/*+ INDEX_FFS(TABLE INDEX_NAME) */
+对指定的表执行快速全索引扫描,而不是全表扫描的办法.
+SELECT /* + INDEX_FFS(BSEMPMS IN_EMPNAM)*/ * FROM BSEMPMS WHERE DPT_NO='TEC305';
+10、/*+ INDEX_SS(T T_IND) */
+从9i开始，oracle引入了这种索引访问方式。当在一个联合索引中，某些谓词条件并不在联合索引的第一列时，可以通过Index Skip Scan来访问索引获得数据。当联合索引第一列的唯一值个数很少时，使用这种方式比全表扫描效率高。
+
+Hint 是Oracle 提供的一种SQL语法，它允许用户在SQL语句中插入相关的语法，从而影响SQL的执行方式。
+因为Hint的特殊作用，所以对于开发人员不应该在代码中使用它，Hint 更像是Oracle提供给DBA用来分析问题的工具 。在SQL代码中使用Hint，可能导致非常严重的后果，因为数据库的数据是变化的，在某一时刻使用这个执行计划是最优的，在另一个时刻，却可能很差，这也是CBO 取代RBO的原因之一，规则是死的，而数据是时刻变化的，为了获得最正确的执行计划，只有知道表中数据的实际情况，通过计算各种执行计划的成本，则其最优，才是最科学的，这也是CBO的工作机制。 在SQL代码中加入Hint，特别是性能相关的Hint是很危险的做法。
+Hints
+Hints are comments in a SQL statement that pass instructions to the Oracle Database optimizer. The optimizer uses these hints to choose an execution plan for the statement, unless some condition exists that prevents the optimizer from doing so.
+Hints were introduced in Oracle7, when users had little recourse if the optimizer generated suboptimal plans. Now Oracle provides a number of tools, including the SQL Tuning Advisor, SQL plan management, and SQL Performance Analyzer, to help you address performance problems that are not solved by the optimizer. Oracle strongly recommends that you use those tools rather than hints. The tools are far superior to hints, because when used on an ongoing basis, they provide fresh solutions as your data and database environment change.
+Hints should be used sparingly, and only after you have collected statistics on the relevant tables and evaluated the optimizer plan without hints using the EXPLAIN PLAN statement. Changing database conditions as well as query performance enhancements in subsequent releases can have significant impact on how hints in your code affect performance.
+The remainder of this section provides information on some commonly used hints. If you decide to use hints rather than the more advanced tuning tools, be aware that any short-term benefit resulting from the use of hints may not continue to result in improved performance over the long term.
+Oracle 联机文档对Hint的说明：
+http://download.oracle.com/docs/cd/E11882_01/server.112/e10592/sql_elements006.htm#SQLRF50705
+之前整理的一篇文章：
+http://blog.csdn.net/tianlesoftware/archive/2009/12/13/4969702.aspx
+在使用Hint时需要注意的一点是，并非任何时刻Hint都起作用。 导致HINT 失效的原因有如下2点：
+（1） 如果CBO 认为使用Hint 会导致错误的结果时，Hint将被忽略。
+如索引中的记录因为空值而和表的记录不一致时，结果就是错误的，会忽略hint。
+（2） 如果表中指定了别名，那么Hint中也必须使用别名，否则Hint也会忽略。
+Select /*+full(a)*/ * from t a; -- 使用hint
+Select /*+full(t) */ * from t a; --不使用hint
+根据hint的功能，可以分成如下几类：
+Hint	Hint 语法
+优化器模式提示	ALL_ROWS Hint
+ 	FIRST_ROWS Hint
+ 	RULE Hint
+
+访问路径提示	CLUSTER Hint
+ 	FULL Hint
+ 	HASH Hint
+ 	INDEX Hint
+ 	NO_INDEX Hint
+ 	INDEX_ASC Hint
+ 	INDEX_DESC Hint
+ 	INDEX_COMBINE Hint
+ 	INDEX_FFS Hint
+ 	INDEX_SS Hint
+ 	INDEX_SS_ASC Hint
+ 	INDEX_SS_DESC Hint
+ 	NO_INDEX_FFS Hint
+ 	NO_INDEX_SS Hint
+ 	ORDERED Hint
+ 	LEADING Hint
+ 	USE_HASH Hint
+ 	NO_USE_HASH Hint
+表连接顺序提示	USE_MERGE Hint
+ 	NO_USE_MERGE Hint
+ 	USE_NL Hint
+ 	USE_NL_WITH_INDEX Hint
+ 	NO_USE_NL Hint
+表关联方式提示	PARALLEL Hint
+ 	NO_PARALLEL Hint
+ 	PARALLEL_INDEX Hint
+ 	NO_PARALLEL_INDEX Hint
+ 	PQ_DISTRIBUTE Hint
+并行执行提示	FACT Hint
+ 	NO_FACT Hint
+ 	MERGE Hint
+ 	NO_MERGE Hint
+ 	NO_EXPAND Hint
+ 	USE_CONCAT Hint
+查询转换提示	REWRITE Hint
+ 	NO_REWRITE Hint
+ 	UNNEST Hint
+ 	NO_UNNEST Hint
+ 	STAR_TRANSFORMATION Hint
+ 	NO_STAR_TRANSFORMATION Hint
+ 	NO_QUERY_TRANSFORMATION Hint
+ 	APPEND Hint
+ 	NOAPPEND Hint
+ 	CACHE Hint
+ 	NOCACHE Hint
+ 	CURSOR_SHARING_EXACT Hint
+其他Hint	DRIVING_SITE Hint
+ 	DYNAMIC_SAMPLING Hint
+ 	PUSH_PRED Hint
+ 	NO_PUSH_PRED Hint
+ 	PUSH_SUBQ Hint
+ 	NO_PUSH_SUBQ Hint
+ 	PX_JOIN_FILTER Hint
+ 	NO_PX_JOIN_FILTER Hint
+ 	NO_XML_QUERY_REWRITE Hint
+ 	QB_NAME Hint
+ 	MODEL_MIN_ANALYSIS Hint
