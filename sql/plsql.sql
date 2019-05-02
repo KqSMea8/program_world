@@ -791,3 +791,276 @@ FROM   emp
 GROUP BY deptno, job
 HAVING APPROX_RANK(partition by deptno ORDER BY APPROX_SUM(sal) desc) <= 2;
 
+
+--1、理解执行计划
+--1-1.什么是执行计划
+--    oracle数据库在执行sql语句时，oracle的优化器会根据一定的规则确定sql语句的执行路径，以确保sql语句能以最优性能执行.在oracle数据库系统中为了执行sql语句，oracle可能需要实现多个步骤，这些步骤中的每一步可能是从数据库中物理检索数据行，或者用某种方法准备数据行，让编写sql语句的用户使用，oracle用来执行语句的这些步骤的组合被称为执行计划。
+--  当执行一个sql语句时oracle经过了4个步骤:
+--  ①.解析sql语句:主要在共享池中查询相同的sql语句，检查安全性和sql语法与语义。
+--  ②.创建执行计划及执行:包括创建sql语句的执行计划及对表数据的实际获取。
+--  ③.显示结果集:对字段数据执行所有必要的排序，转换和重新格式化。
+--  ④.转换字段数据:对已通过内置函数进行转换的字段进行重新格式化处理和转换.
+--
+--1-2.查看执行计划
+--    查看sql语句的执行计划，比如一些第三方工具  需要先执行utlxplan.sql脚本创建explain_plan表。
+
+SQL> conn system/123456 as sysdba
+-- 如果下面语句没有执行成功，可以找到这个文件，单独执行这个文件里的建表语句
+SQL> @/rdbms/admin/utlxplan.sql
+SQL> grant all on sys.plan_table to public;
+  在创建表后，在SQL*Plus中就可以使用set autotrace语句来显示执行计划及统计信息。常用的语句与作用如下：
+set autotrace on explain:执行sql，且仅显示执行计划
+set autotrace on statistics:执行sql 且仅显示执行统计信息
+set autotrace on :执行sql，且显示执行计划与统计信息，无执行结果
+set autotrace traceonly:仅显示执行计划与统计信息，无执行结果
+set autotrace off:关闭跟踪显示计划与统计
+--  比如要执行SQL且显示执行计划，可以使用如下的语句：
+SQL> set autotrace on explain
+SQL> col ename format a20;
+SQL> select empno，ename from emp where empno=7369;
+--上面不一定可以执行成功，使用这个：explain plan for sql语句
+SQL> explain plan for
+  2  select * from cfreportdata where outitemcode='CR04_00160' and quarter='1' and month='2015';
+Explained
+
+SQL> select * from table(dbms_xplan.display);
+PLAN_TABLE_OUTPUT
+--------------------------------------------------------------------------------
+Plan hash value: 3825643284
+--------------------------------------------------------------------------------
+| Id  | Operation                   | Name            | Rows  | Bytes | Cost (%C
+--------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |                 |     1 |   115 |     3
+|   1 |  TABLE ACCESS BY INDEX ROWID| CFREPORTDATA    |     1 |   115 |     3
+|*  2 |   INDEX RANGE SCAN          | PK_CFREPORTDATA |     1 |       |     2
+--------------------------------------------------------------------------------
+Predicate Information (identified by operation id):
+---------------------------------------------------
+   2 - access("OUTITEMCODE"='CR04_00160' AND "MONTH"='2015' AND "QUARTER"='1')
+       filter("MONTH"='2015' AND "QUARTER"='1')
+15 rows selected
+
+--    PL/SQL DEVELOPER提供了一个执行计划窗口，如果在SQL Windows的窗口，按F8是执行该sql,按f5会显示该sql的执行计划。
+
+
+
+--3.理解执行计划
+--    1.全表扫描(full table scans):这种方式会读取表中的每一条记录，顺序地读取每一个数据块直到结尾标志，对于一个大的数据表来说，使用全表扫描会降低性能，但有些时候，比如查询的结果占全表的数据量的比例比较高时，全表扫描相对于索引选择又是一种较好的办法。
+--    2.通过ROWID值获取(table access by rowid)：行的rowid指出了该行所在的数据文件，数据块及行在该块中的位置，所以通过rowid来存取数据可以快速定位到目标数据上，是oracle存取单行数据的最快方法。
+--    3.索引扫描(index scan)：先通过索引找到对象的rowid值，然后通过rowid值直接从表中找到具体的数据，能大大提高查找的效率。
+
+--2.连接查询的表顺序
+--    默认情况下，优化器会使用all_rows优化方式，也就是基于成本的优化器CBO生成执行计划，CBO方式会根据统计信息来产生执行计划.
+--    统计信息给出表的大小，多少行，每行的长度等信息，这些统计信息起初在库内是没有的，是做analyee后才发现的，很多时候过期统计信息会令优化器做出一个错误的执行计划，因此应及时更新这些信息。
+--    在CBO模式下，当对多个表进行连接查询时，oracle分析器会按照从右到左的顺序处理from子句中的表名。例如：
+
+select a.empno，a.ename，c.deptno，c.dname，a.log_action from emp_log a,emp b,dept c
+
+
+--    在执行时，oracle会先查询dept表，根据dept表查询的行作为数据源串行连接emp表继续执行，因此dept表又称为基础表或驱动表。由于连接的顺序对于查询的效率有非常大的影响。因此在处理多表连接时，必须选择记录条数较少的表作为基础表，oracle会使用排序与合并的方式进行连接。比如先扫描dept表，然后对dept表进行排序，再扫描emp表，最后将所有检索出来的记录与第一个表中的记录进行合并。
+--    如果有3个以上的表连接查询，就需要选择交叉表作为基础表。交叉表是指那个被其他表所引用的表，由于emp_log是dept与emp表中的交叉表，既包含dept的内容又包含emp的内容。
+select a.empno，a.ename，c.deptno，c.dname，a.log_action from emp b,dept c,emp_log a;
+
+--3.指定where条件顺序
+--    在查询表时，where子句中条件的顺序往往影响了执行的性能。默认情况下，oracle采用自下而上的顺序解析where子句，因此在处理多表查询时，表之间的连接必须写在其他的where条件之前，但是过滤数据记录的条件则必须写在where子句的尾部，以便在过滤了数据之后再进行连接处理，这样可以提升sql语句的性能。
+--
+SELECT a.empno, a.ename, c.deptno, c.dname, a.log_action, b.sal
+  FROM emp b, dept c, emp_log a
+ WHERE a.deptno = b.deptno AND a.empno=b.empno AND c.deptno IN (20, 30)
+--    从SQL执行计划中可以看到const成本值为10。如果使用如下不好的查询方式，const成本值为32
+ SELECT a.empno, a.ename, c.deptno, c.dname, a.log_action, a.mgr
+  FROM emp b, dept c, emp_log a
+ WHERE c.deptno IN (20, 30) AND  a.deptno = b.deptno
+
+
+--4.避免使用*符号
+--  有时我们习惯使用*符号，如
+
+ SELECT * FROM emp
+    Oracle在遇到*符号时，会去查询数据字典表中获取所有的列信息，然后依次转换成所有的列名，这将耗费较长的执行时间，因此尽量避免使用*符号获取所有的列信息
+5.使用decode函数
+    是Oracle才具有的一个功能强大的函数
+    比如统计emp表中部门编号为20和部门编号为30的员工的人数和薪资汇总，如果不使用decode那么就必须用两条sql语句
+
+select count(*)，SUM(sal) from emp where deptno=20;
+union
+select count(*)，SUM(sal) from emp where deptno=30;
+  通过Union将两条SQL语句进行合并，实际上通过执行计划可以看到，SQL优化器对emp进行了两次全表扫描
+通过decode语句，可以再一个sql查询中获取到相同的结果，并且将两行结果显示为单行。
+SELECT COUNT (DECODE (deptno, 20, 'X', NULL)) dept20_count,
+       COUNT (DECODE (deptno, 30, 'X', NULL)) dept30_count,
+       SUM (DECODE (deptno, 20, sal, NULL)) dept20_sal,
+       SUM (DECODE (deptno, 30, sal, NULL)) dept30_sal
+  FROM emp;
+    通过灵活的运用decode函数，可以得到很多意想不到的结果，比如在group by 或order by子句中使用decode函数，或者在decode块中嵌套另一个decode块。
+关于decode函数详解：http://blog.csdn.net/ochangwen/article/details/52733273
+
+--6.使用where而非having
+--    where子句和having子句都可以过滤数据，但是where子句不能使用聚集函数，如count max min avg sum等函数。因此通常将Having子句与Group By子句一起使用
+--    注意：当利用Group By进行分组时，可以没有Having子句。但Having出现时，一定会有Group By
+--  需要了解的是，WHERE语句是在GROUP BY语句之前筛选出记录，而HAVING是在各种记录都筛选之后再进行过滤。也就是说HAVING子句是在从数据库中提取数据之后进行筛选的，因此在编写SQL语句时，尽量在筛选之前将数据使用WHERE子句进行过滤，因此执行的顺序应该总是这样。
+--  ①.使用WHERE子句查询符合条件的数据
+--  ②.使用GROUP BY子句对数据进行分组。
+--  ③.在GROUP BY分组的基础上运行聚合函数计算每一组的值
+--  ④.用HAVING子句去掉不符合条件的组。
+
+--例子：查询部门20和30的员工薪资总数大于1000的员工信息
+
+select empno,deptno，sum(sal)
+from emp group by empno，deptno
+having sum(sal) > 1000 and deptno in (20，30);
+    在having子句中，过滤出部门编号为20或30的记录，实际上这将导致查询取出所有部门的员工记录，在进行分组计算，最后才根据分组的结果过滤出部门 20和30的记录。这非常低效，好的算法是先使用where子句取出部门编号为20和30的记录，再进行过滤。修改如下：
+select empno，deptno，sum(sal)
+from emp where deptno in （20,30）
+group by empno，deptno having sum (sal) > 1000;
+7.使用UNION而非OR
+  如果要进行OR运算的两个列都是索引列，可以考虑使用union来提升性能。
+  例子：比如emp表中，empno和ename都创建了索引列，当需要在empno和ename之间进行OR操作查询时，可以考虑将这两个查询更改为union来提升性能。
+
+select empno，ename，job，sal from emp where empno > 7500 OR ename LIKE 'S%';
+使用UNION
+select empno，ename，job，sal from emp where empno > 7500
+UNION
+select empno，ename，job，sal from emp where ename LIKE 'S%';
+--    但这种方式要确保两个列都是索引列。否则还不如OR语句。
+--    如果坚持使用OR语句，①.需要记住尽量将返回记录最少的索引列写在最前面，这样能获得较好的性能，例如empno > 7500 返回的记录要少于对ename的查询，因此在OR语句中将其放到前面能获得较好的性能。②.另外一个建议是在要对单个字段值进行OR计算的时候，可以考虑使用IN来代替
+select empno，ename，job，sal from emp where deptno=20 OR deptno=30;
+--上面的SQL如果修改为使用In，性能更好
+
+--8.使用exists而非IN
+--    比如查询位于芝加哥的所有员工列表可以考虑使用IN
+
+SELECT *
+  FROM emp
+ WHERE deptno IN (SELECT deptno
+                    FROM dept
+                   WHERE loc = 'CHICAGO');
+替换成exists可以获取更好的查询性能
+SELECT a.*
+  FROM emp a
+ WHERE NOT EXISTS (SELECT 1
+                     FROM dept b
+                    WHERE a.deptno = b.deptno AND loc = 'CHICAGO');
+--    同样的替换页发生在not in 和not exists之间，not in 子句将执行一个内部的排序和合并，实际上它对子查询中的表执行了一次全表扫描，因此效率低，在需要使用NOT IN的场合，英爱总是考虑把它更改成外连接或NOT EXISTS
+SELECT *
+  FROM emp
+ WHERE deptno NOT IN (SELECT deptno
+                    FROM dept
+                   WHERE loc = 'CHICAGO');
+--为了提高较好的性能，可以使用连接查询，这是最有效率的的一种办法
+SELECT a.*
+  FROM emp a, dept b
+ WHERE a.deptno = b.deptno AND b.loc <> 'CHICAGO';
+--也可以考虑使用NOT EXIST
+select a.* from emp a
+          where NOT EXISTS (
+			select 1 from dept b where a.deptno =b.deptno and loc='CHICAGO');
+--9.避免低效的PL/SQL流程控制语句
+--    PLSQL在处理逻辑表达式值的时候，使用的是短路径的计算方式。
+DECLARE
+   v_sal   NUMBER        := &sal;                 --使用绑定变量输入薪资值
+   v_job   VARCHAR2 (20) := &job;                 --使用绑定变量输入job值
+BEGIN
+   IF (v_sal > 5000) OR (v_job = '销售')          --判断执行条件
+   THEN
+      DBMS_OUTPUT.put_line ('符合匹配的OR条件');
+   END IF;
+END;
+--    首先对第一个条件进行判断，如果v_sal大于5000，就不会再对v_job条件进行判断，灵活的运用这种短路计算方式可以提升性能。应该总是将开销较低的判断语句放在前面，这样当前面的判断失败时，就不会再执行后面的具有较高开销的语句，能提升PL/SQL应用程序的性能.
+--    举个例子，对于and逻辑运算符来说，只有左右两边的运算为真，结果才为真。如果前面的结果第一个运算时false值，就不会进行第二个运算、
+DECLARE
+   v_sal   NUMBER        := &sal;                 --使用绑定变量输入薪资值
+   v_job   VARCHAR2 (20) := &job;                 --使用绑定变量输入job值
+BEGIN
+   IF (Check_Sal(v_sal) > 5000) AND (v_job = '销售')          --判断执行条件
+   THEN
+      DBMS_OUTPUT.put_line ('符合匹配的AND条件');
+   END IF;
+END;
+    这段代码有一个性能隐患，check_sal涉及一些业务逻辑的检查，如果让check_sal函数的调用放在前面，这个函数总是被调用，因此处于性能方面的考虑，应该总是将v_job的判断放到and语句的前面.
+DECLARE
+   v_sal   NUMBER        := &sal;                     --使用绑定变量输入薪资值
+   v_job   VARCHAR2 (20) := &job;                     --使用绑定变量输入job值
+BEGIN
+   IF (v_job = '销售') AND (Check_Sal(v_sal) > 5000)  --判断执行条件
+   THEN
+      DBMS_OUTPUT.put_line ('符合匹配的AND条件');
+   END IF;
+END;
+
+
+
+今天在加班中，本身五一准备钓鱼去的， 我仿佛听到鲤鱼妹妹欢乐的笑声。
+
+    加班归加班，但是活并不多，我负责后期数据库调优，数据关联的。 其他公司抽取数据进度不行，听到的回答只是，现在再抽，没有报错，目前抽了多少不知道，速度不知道。 什么时候抽完不知道，方案B没有，二线没有。这够无语的。  后期他们一张560G的大表， 抽取进度 206M/分钟。 而且还是我帮他们评估出来的。 肯定不行，于是换方案。够喜剧性的，这个公司领导陆续施压，把另外2个人0点叫起来，高铁过来，到现场已是凌晨2点， 把单独抽取大表。 我当天是正常下班的， 看着群里他们大领导挨个拉进来，一级级施压，估计这情节放在韩国够拍成电视剧20集。我们领导让我帮他们建大表索引，我也答应了。我建索引最快的一个是308S， 索引20G。 这个下次说吧。建主键，报错，重复数据。  原因是大表重抽，他们通道里面的数据无法清理，造成数据量重复。于是主键建不了。 涉及到560G大表重复数据删除，我当时用了20分钟不到，甚至真正delete的时候 用了118S，各位想想看能有什么办法搞定？？  如果你不会，看了今天的文章你应该有所感悟了。好了废话不说，上干货。
+
+有个存储过程从周五晚上跑了到了周一还没有跑完，存储过程代码如下：
+
+
+
+ TMP_NBR_NO_XXXX共有400w行数据，180MB。For in 后面的查询
+
+select nli.*, .......
+   and ns2l.nbr_level_id between 201 and 208 order by nl2i.priority;
+
+上面SQL查询返回43行数据。
+
+   嵌套循环就是一个loop循环，loop套loop相当于笛卡尔积。该PLSQL代码中有loop套loop的情况，这就导致UPDATE TMP_NBR_NO_XXXX要执行400w*43次，TMP_NBR_NO_XXXX.no列没有索引，TMP_NBR_NO_XXXX每次更新都要进行全表扫描。这就是为什么存储过程从周五跑到周一还没跑完的原因。
+
+    有读者可能会问，为什么不用MERGE进行改写呢？在PLSQL代码中是用regexp_like关联的.无法走hash连接，也无法走排序合并连接，两表只能走嵌套循环并且被驱动表无法走索引。如果强行使用MERGE进行改写，因为该SQL执行时间很长，会导致UNDO不释放，因此，没有采用MERGE INTO对代码进行改写。
+
+    有读者可能也会问，为什么不对TMP_NBR_NO_XXXX.no建立索引呢？因为关联更新可以采用ROWID批量更新，所以没有采用建立索引方法优化。
+
+    下面采用ROWID批量更新方法改写上面PLSQL，为了方便读者阅读PLSQL代码，先创建一个临时表用于存储43记录：
+
+create table TMP_DATE_TEST as 
+
+  select  nli.expression, nl.nbr_level_id, priority   from tmp_xxx_item
+
+  ...... and ns2l.nbr_level_id between 201 and 208; 
+
+ 创建另外一个临时表，用于存储要被更新的表的ROWID以及no字段：
+
+create table TMP_NBR_NO_XXXX_TEXT as 
+
+select rowid rid, nbn.no from TMP_NBR_NO_XXXX nbn 
+
+ Where nbn.level_id=1 and length(nbn.no)= 8;   
+
+
+改写后的PLSQL能在4小时左右跑完。有没有什么办法进一步优化呢？单个进程能在4小时左右跑完，如果开启8个并行进程，那应该能在30分钟左右跑完。但是PLSQL怎么开启并行呢？正常情况下PLSQL是无法开启并行的，如果直接在多个窗口中执行同一个PLSQL代码，会遇到锁争用，如果能解决锁争用，在多个窗口中执行同一个PLSQL代码，这样就变相实现了PLSQL开并行功能。可以利用ROWID切片变相实现并行：
+
+select DBMS_ROWID.ROWID_CREATE(1,c.oid,e.RELATIVE_FNO,e.BLOCK_ID,0) minrid,
+
+       DBMS_ROWID.ROWID_CREATE(1,c.oid,e.RELATIVE_FNO,e.BLOCK_ID+e.BLOCKS-1,     10000) maxrid from dba_extents e,
+
+(select max(data_object_id)oid from dba_objects where object_name= 
+
+'TMP_NBR_NO_XXXX_TEXT' and owner='RESXX2')and data_object_id is not null) c
+
+ where e.segment_name='TMP_NBR_NO_XXXX_TEXT'and e.owner = 'RESXX2';
+
+ 但是这时发现，切割出来的数据分布严重不均衡，这是因为创建表空间的时候没有指定uniform size 的Extent所导致的。于是新建一个表空间，指定采用uniform size方式管理Extent：
+
+create tablespace TBS_BSS_FIXED datafile '/oradata/bs_bss_fixed_500.dbf' 
+
+       size 500M extent management local uniform size 128k;
+
+重建一个表用来存储要被更新的ROWID：
+
+create table RID_TABLE
+
+( rowno  NUMBER,  minrid VARCHAR2(18),  maxrid VARCHAR2(18)) ;  
+
+将ROWID插入到新表中：
+
+这样RID_TABLE中每行指定的数据都很均衡，大概4035条数据。最终更改的PLSQL代码：
+
+
+然后在8个窗口中同时运行上面PLSQL代码：
+
+Begin  pro_phone_grade(0); end; ..... Begin pro_phone_grade(7); end;
+
+    最终能在29分左右跑完所有存储过程。本案例技巧就在于ROWID切片实现并行，并且考虑到了数据分布对并行的影响，其次还使用了ROWID关联更新技巧。
+
+=================================
