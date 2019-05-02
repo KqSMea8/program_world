@@ -3579,6 +3579,33 @@ CLASS：导出模式对象	1034
 
 
 ========
+--ZRR123asdf
+
+连接到:
+Oracle Database 11g Enterprise Edition Release 11.2.0.1.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL> grant sysdba to system;
+
+授权成功。
+
+SQL> grant sysopr to system;
+grant sysopr to system
+      *
+第 1 行出现错误:
+ORA-01919: 角色 'SYSOPR' 不存在
+
+
+SQL> grant sysoper to system;
+
+授权成功。
+
+
+select distinct t.materialcode from T_OPERATE_STORAGE_ITEM t;
+select  t.materialcode from T_OPERATE_STORAGE_ITEM t group by t.materialcode;
+
+
+
 
 
 1.SQL语句执行过程

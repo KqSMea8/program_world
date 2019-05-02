@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="description" content="Free Web tutorials on HTML, CSS, XML"/>
+    <meta name="keywords" content="HTML, CSS, XML"/>
+    <title>Title</title>
+    <base href="http://www.w3school.com.cn/images/"/>
+    <base target="_blank"/>
+    <link rel="stylesheet" type="text/css" href="mystyle.css">
+    <link rel="stylesheet" type="text/css" href="mystyle.css"/>
+    <style type="text/css">
+body {background-color:yellow}
+p {color:blue}
+
+    </style>
+    <style>
+.cities {
+    background-color:black;
+    color:white;
+    margin:20px;
+    padding:20px;
+}
+span.red {color:red;}
+
+    </style>
+</head>
+<body bgcolor="yellow">
+
+
+<video width="420" controls>
+  <source src="mov_bbb.mp4" type="video/mp4">
+  <source src="mov_bbb.ogg" type="video/ogg">
+ Your browser does not support the video tag.
+</video>
+
+<meta charset="UTF-8">
+
+
+Empty	<input type="text" value="John Doe" disabled>
+Unquoted	<input type="text" value=John Doe>
+Double-quoted	<input type="text" value="John Doe">
+Single-quoted	<input type="text" value='John Doe'>
+
+header, section, footer, aside, nav, main, article, figure {
+    display: block;
+}
+
+
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Creating an HTML Element</title>
+  <script>document.createElement("myHero")</script>
+  <style>
+  myHero {
+    display: block;
+    background-color: #ddd;
+    padding: 50px;
+    font-size: 30px;
+  }
+  </style>
+</head>
+
+<body>
+
+<h1>My First Heading</h1>
+
+<p>My first paragraph.</p>
+
+<myHero>My First Hero</myHero>
+
+</body>
+</html>
+
+
+ <!--[if lt IE 9]>
+  <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
+
+
+<article>
+London is the capital city of England.
+It is the most populous city in the United Kingdom,
+with a metropolitan area of over 13 million inhabitants.
+</article>
+
+
+
+<article>	定义文档内的文章。
+<aside>	定义页面内容之外的内容。
+<bdi>	定义与其他文本不同的文本方向。
+<details>	定义用户可查看或隐藏的额外细节。
+<dialog>	定义对话框或窗口。
+<figcaption>	定义 <figure> 元素的标题。
+<figure>	定义自包含内容，比如图示、图表、照片、代码清单等等。
+<footer>	定义文档或节的页脚。
+<header>	定义文档或节的页眉。
+<main>	定义文档的主内容。
+<mark>	定义重要或强调的内容。
+<menuitem>	定义用户能够从弹出菜单调用的命令/菜单项目。
+<meter>	定义已知范围（尺度）内的标量测量。
+<nav>	定义文档内的导航链接。
+<progress>	定义任务进度。
+<rp>	定义在不支持 ruby 注释的浏览器中显示什么。
+<rt>	定义关于字符的解释/发音（用于东亚字体）。
+<ruby>	定义 ruby 注释（用于东亚字体）。
+<section>	定义文档中的节。
+<summary>	定义 <details> 元素的可见标题。
+<time>	定义日期/时间。
+<wbr>	定义可能的折行（line-break）。
+
+
+
+<datalist>	定义输入控件的预定义选项。
+<keygen>	定义键对生成器字段（用于表单）。
+<output>	定义计算结果。
+
+
+Empty	<input type="text" value="John Doe" disabled>
+Unquoted	<input type="text" value=John>
+Double-quoted	<input type="text" value="John Doe">
+Single-quoted	<input type="text" value='John Doe'>
+
+
+<canvas>	定义使用 JavaScript 的图像绘制。
+<svg>	定义使用 SVG 的图像绘制。
+
+<audio>	定义声音或音乐内容。
+<embed>	定义外部应用程序的容器（比如插件）。
+<source>	定义 <video> 和 <audio> 的来源。
+<track>	定义 <video> 和 <audio> 的轨道。
+<video>	定义视频或影片内容。
+
+<article>
+<aside>
+<details>
+<figcaption>
+<figure>
+<footer>
+<header>
+<main>
+<mark>
+<nav>
+<section>
+<summary>
+<time>
+
+<section>
+   <h1>WWF</h1>
+   <p>The World Wide Fund for Nature (WWF) is....</p>
+</section>
+
+
+<article>
+   <h1>What Does WWF Do?</h1>
+   <p>WWF's mission is to stop the degradation of our planet's natural environment,
+  and build a future in which humans live in harmony with nature.</p>
+</article>
+
+
+<article>
+   <header>
+     <h1>What Does WWF Do?</h1>
+     <p>WWF's mission:</p>
+   </header>
+   <p>WWF's mission is to stop the degradation of our planet's natural environment,
+  and build a future in which humans live in harmony with nature.</p>
+</article>
+
+
+<footer>
+   <p>Posted by: Hege Refsnes</p>
+   <p>Contact information: <a href="mailto:someone@example.com">
+  someone@example.com</a>.</p>
+</footer>
+
+<nav>
+<a href="/html/">HTML</a> |
+<a href="/css/">CSS</a> |
+<a href="/js/">JavaScript</a> |
+<a href="/jquery/">jQuery</a>
+</nav>
+
+
+<p>My family and I visited The Epcot center this summer.</p>
+
+<aside>
+   <h4>Epcot Center</h4>
+   <p>The Epcot Center is a theme park in Disney World, Florida.</p>
+</aside>
+
+<figure>
+   <img src="pic_mountain.jpg" alt="The Pulpit Rock" width="304" height="228">
+   <figcaption>Fig1. - The Pulpit Pock, Norway.</figcaption>
+</figure>
+
+
+
+<article>	定义文章。
+<aside>	定义页面内容以外的内容。
+<details>	定义用户能够查看或隐藏的额外细节。
+<figcaption>	定义 <figure> 元素的标题。
+<figure>	规定自包含内容，比如图示、图表、照片、代码清单等。
+<footer>	定义文档或节的页脚。
+<header>	规定文档或节的页眉。
+<main>	规定文档的主内容。
+<mark>	定义重要的或强调的文本。
+<nav>	定义导航链接。
+<section>	定义文档中的节。
+<summary>	定义 <details> 元素的可见标题。
+<time>	定义日期/时间。
+
+
+<div id="header">
+  <h1>Monday Times</h1>
+</div>
+.
+.
+.
+<div id="footer">
+  <p>&copy; 2014 W3Schools. All rights reserved.</p>
+</div>
+
+
+
+<header>
+  <h1>Monday Times</h1>
+</header>
+.
+.
+.
+<footer>
+  <p>© 2014 W3Schools. All rights reserved.</p>
+</footer>
+
+
+<div id="menu">
+  <ul>
+    <li>News</li>
+    <li>Sports</a></li>
+    <li>Weather</li>
+  </ul>
+</div>
+
+
+<nav>
+  <ul>
+    <li>News</li>
+    <li>Sports</a></li>
+    <li>Weather</li>
+  </ul>
+</nav>
+
+<section>
+.
+.
+.
+</section>
+
+<article>
+  <h2>News Article</h2>
+  <p>Ipsum lurum hurum turum ipsum lurum hurum turum ipsum lurum hurum turum ipsum
+  lurum hurum turum.</p>
+</article>
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<title>HTML5</title>
+<meta charset="utf-8">
+
+<!--[if lt IE 9]>
+<script src="http://html5shiv.googlecode.com/svn/trunk/html5.js">
+</script>
+<![endif]-->
+
+<style>
+body {
+    font-family:Verdana,sans-serif;font-size:0.8em;
+}
+header,footer,section,article {
+    border:1px solid grey;
+    margin:5px;margin-bottom:15px;padding:8px;
+    background-color:white;
+}
+header,footer {
+    color:white;background-color:#444;margin-bottom:5px;
+}
+section {
+    background-color:#ddd;
+}
+nav ul {
+    margin:0;padding:0;
+}
+nav ul li {
+    display:inline; margin:5px;
+}
+</style>
+<body>
+
+<header>
+  <h1>Monday Times</h1>
+</header>
+
+<nav>
+  <ul>
+    <li>News</li>
+    <li>Sports</li>
+    <li>Weather</li>
+  </ul>
+</nav>
+
+<section>
+<h2>News Section</h2>
+
+<div id="post">
+  <h2>News Article</h2>
+  <p>Ipsum lurum hurum turum ipsum lurum hurum turum ipsum lurum hurum turum ipsum
+  lurum hurum turum.</p>
+  <p>Ipsum lurum hurum turum ipsum lurum hurum turum ipsum lurum hurum turum ipsum
+  lurum hurum turum.</p>
+  <p>Ipsum lurum hurum turum ipsum lurum hurum turum ipsum lurum hurum turum ipsum
+  lurum hurum turum.</p>
+</div>
+
+<div id="post">
+<h2>News Article</h2>
+  <p>Ipsum lurum hurum turum ipsum lurum hurum turum ipsum lurum hurum turum ipsum
+  lurum hurum turum.</p>
+  <p>Ipsum lurum hurum turum ipsum lurum hurum turum ipsum lurum hurum turum ipsum
+  lurum hurum turum.</p>
+  <p>Ipsum lurum hurum turum ipsum lurum hurum turum ipsum lurum hurum turum ipsum
+  lurum hurum turum.</p>
+</div>
+
+</section>
+
+<footer>
+  <p>&copy; 2014 Monday Times. All rights reserved.</p>
+</footer>
+
+</body>
+</html>
+
+
+<article> 中的 <article>：
+
+<article>
+
+<h2>Famous Cities</h2>
+
+<article>
+<h2>London</h2>
+<p>London is the capital city of England. It is the most populous city in the United Kingdom,
+with a metropolitan area of over 13 million inhabitants.</p>
+</article>
+
+<article>
+<h2>Paris</h2>
+<p>Paris is the capital and most populous city of France.</p>
+</article>
+
+<article>
+<h2>Tokyo</h2>
+<p>Tokyo is the capital of Japan, the center of the Greater Tokyo Area,
+and the most populous metropolitan area in the world.</p>
+</article>
+
+</article>
+
+
+<article> 中的 <div>：
+
+<article>
+
+<h2>Famous Cities</h2>
+
+<div class="city">
+<h2>London</h2>
+<p>London is the capital city of England. It is the most populous city in the United Kingdom,
+with a metropolitan area of over 13 million inhabitants.</p>
+</div>
+
+<div class="city">
+<h2>Paris</h2>
+<p>Paris is the capital and most populous city of France.</p>
+</div>
+
+<div class="city">
+<h2>Tokyo</h2>
+<p>Tokyo is the capital of Japan, the center of the Greater Tokyo Area,
+and the most populous metropolitan area in the world.</p>
+</div>
+
+</article>
+
+
+<article> 中的 <section> 中的 <div>：
+
+<article>
+
+<section>
+<h2>Famous Cities</h2>
+
+<div class="city">
+<h2>London</h2>
+<p>London is the capital city of England. It is the most populous city in the United Kingdom,
+with a metropolitan area of over 13 million inhabitants.</p>
+</div>
+
+<div class="city">
+<h2>Paris</h2>
+<p>Paris is the capital and most populous city of France.</p>
+</div>
+
+<div class="city">
+<h2>Tokyo</h2>
+<p>Tokyo is the capital of Japan, the center of the Greater Tokyo Area,
+and the most populous metropolitan area in the world.</p>
+</div>
+</section>
+
+<section>
+<h2>Famous Countries</h2>
+
+<div class="country">
+<h2>England</h2>
+<p>London is the capital city of England. It is the most populous city in the United Kingdom,
+with a metropolitan area of over 13 million inhabitants.</p>
+</div>
+
+<div class="country">
+<h2>France</h2>
+<p>Paris is the capital and most populous city of France.</p>
+</div>
+
+<div class="country">
+<h2>Japan</h2>
+<p>Tokyo is the capital of Japan, the center of the Greater Tokyo Area,
+and the most populous metropolitan area in the world.</p>
+</div>
+</section>
+
+</article>
+
+===========
+
+
+===============================================================
+
+<!--accept-charset	规定在被提交表单中使用的字符集（默认：页面字符集）。-->
+<!--action	规定向何处提交表单的地址（URL）（提交页面）。-->
+<!--autocomplete	规定浏览器应该自动完成表单（默认：开启）。-->
+<!--enctype	规定被提交数据的编码（默认：url-encoded）。-->
+<!--method	规定在提交表单时所用的 HTTP 方法（默认：GET）。-->
+<!--name	规定识别表单的名称（对于 DOM 使用：document.forms.name）。-->
+<!--novalidate	规定浏览器不验证表单。-->
+<!--target	规定 action 属性中地址的目标（默认：_self）。-->
+
+
+<h1>我的第一个标题</h1>
+
+<p>我的第一个段落。</p>
+
+<h1>This is a heading</h1>
+<h2>This is a heading</h2>
+<h3>This is a heading</h3>
+
+
+<p>This is a paragraph.</p>
+<p>This is another paragraph.</p>
+
+<a href="http://www.w3school.com.cn">This is a link</a>
+
+
+<img src="w3school.jpg" width="104" height="142"/>
+
+<a href="http://www.w3school.com.cn">This is a link</a>
+
+<h1> 定义标题的开始。
+    <h1 align="center"> 拥有关于对齐方式的附加信息。
+
+
+        <table border="1">
+
+
+            <p>This is a paragraph</p>
+            <hr/>
+            <p>This is a paragraph</p>
+            <hr/>
+            <p>This is a paragraph</p>
+
+
+            <!-- This is a comment -->
+
+            <p>This is<br/>a para<br/>graph with line breaks</p>
+
+
+            <h2 style="background-color:red">This is a heading</h2>
+            <p style="background-color:green">This is a paragraph.</p>
+
+            <h1 style="font-family:verdana">A heading</h1>
+            <p style="font-family:arial;color:red;font-size:20px;">A paragraph.</p>
+
+            <p>The heading above is aligned to the center of this page.</p>
+
+
+            <b>This text is bold</b>
+
+            <br/>
+
+            <strong>This text is strong</strong>
+
+            <br/>
+
+            <big>This text is big</big>
+
+            <br/>
+
+            <em>This text is emphasized</em>
+
+            <br/>
+
+            <i>This text is italic</i>
+
+            <br/>
+
+            <small>This text is small</small>
+
+            <br/>
+
+            This text contains
+            <sub>subscript</sub>
+
+            <br/>
+
+            This text contains
+            <sup>superscript</sup>
+
+
+            <!--<tt> 呈现类似打字机或者等宽的文本效果。-->
+            <!--<i> 显示斜体文本效果。-->
+            <!--<b> 呈现粗体文本效果。-->
+            <!--<big> 呈现大号字体效果。-->
+            <!--<small> 呈现小号字体效果。-->
+
+
+            <!--<b> 定义粗体文本。-->
+            <!--<big> 定义大号字。-->
+            <!--<em> 定义着重文字。-->
+            <!--<i> 定义斜体字。-->
+            <!--<small> 定义小号字。-->
+            <!--<strong> 定义加重语气。-->
+            <!--<sub> 定义下标字。-->
+            <!--<sup> 定义上标字。-->
+            <!--<ins> 定义插入字。-->
+            <!--<del> 定义删除字。-->
+
+
+            <!--<code> 定义计算机代码。-->
+            <!--<kbd> 定义键盘码。-->
+            <!--<samp> 定义计算机代码样本。-->
+            <!--<tt> 定义打字机代码。-->
+            <!--<var> 定义变量。-->
+            <!--<pre>	定义预格式文本。-->
+
+
+            标签 描述
+            <abbr> 定义缩写。
+                <acronym> 定义首字母缩写。
+                    <address> 定义地址。
+                        <bdo> 定义文字方向。
+                            <blockquote> 定义长的引用。
+                                <q> 定义短的引用语。
+                                    <cite> 定义引用、引证。
+                                        <dfn> 定义一个定义项目。
+
+                                            <abbr>
+                                                <acronym>
+                                                    <cite>
+                                                        <code>
+                                                            <dfn>
+                                                                <em>
+                                                                    <kbd>
+                                                                        <samp>
+                                                                            <strong>
+                                                                                <var>
+
+
+                                                                                    <b>
+                                                                                        <big>
+                                                                                            <i>
+                                                                                                <s>
+                                                                                                    <small>
+                                                                                                        <strike>
+                                                                                                            <sub>
+                                                                                                                <sup>
+                                                                                                                    <tt>
+
+
+                                                                                                                        <!--<a>	定义锚。-->
+                                                                                                                        <!--<abbr>	定义缩写。-->
+                                                                                                                        <!--<acronym>	定义只取首字母的缩写。-->
+                                                                                                                        <!--<address>	定义文档作者或拥有者的联系信息。-->
+                                                                                                                        <!--<applet>	不赞成使用。定义嵌入的 applet。-->
+                                                                                                                        <!--<area>	定义图像映射内部的区域。-->
+                                                                                                                        <!--<article>	定义文章。-->
+                                                                                                                        <!--<aside>	定义页面内容之外的内容。-->
+                                                                                                                        <!--<audio>	定义声音内容。-->
+                                                                                                                        <!--<b>	定义粗体字。-->
+                                                                                                                        <!--<base>	定义页面中所有链接的默认地址或默认目标。-->
+                                                                                                                        <!--<basefont>	不赞成使用。定义页面中文本的默认字体、颜色或尺寸。-->
+                                                                                                                        <!--<bdi>	定义文本的文本方向，使其脱离其周围文本的方向设置。-->
+                                                                                                                        <!--<bdo>	定义文字方向。-->
+                                                                                                                        <!--<big>	定义大号文本。-->
+                                                                                                                        <!--<blockquote>	定义长的引用。-->
+                                                                                                                        <!--<body>	定义文档的主体。-->
+                                                                                                                        <!--<br>	定义简单的折行。-->
+                                                                                                                        <!--<button>	定义按钮 (push button)。-->
+                                                                                                                        <!--<canvas>	定义图形。-->
+                                                                                                                        <!--<caption>	定义表格标题。-->
+                                                                                                                        <!--<center>	不赞成使用。定义居中文本。-->
+                                                                                                                        <!--<cite>	定义引用(citation)。-->
+                                                                                                                        <!--<code>	定义计算机代码文本。-->
+                                                                                                                        <!--<col>	定义表格中一个或多个列的属性值。-->
+                                                                                                                        <!--<colgroup>	定义表格中供格式化的列组。-->
+                                                                                                                        <!--<command>	定义命令按钮。-->
+                                                                                                                        <!--<datalist>	定义下拉列表。-->
+                                                                                                                        <!--<dd>	定义定义列表中项目的描述。-->
+                                                                                                                        <!--<del>	定义被删除文本。-->
+                                                                                                                        <!--<details>	定义元素的细节。-->
+                                                                                                                        <!--<dir>	不赞成使用。定义目录列表。-->
+                                                                                                                        <!--<div>	定义文档中的节。-->
+                                                                                                                        <!--<dfn>	定义定义项目。-->
+                                                                                                                        <!--<dialog>	定义对话框或窗口。-->
+                                                                                                                        <!--<dl>	定义定义列表。-->
+                                                                                                                        <!--<dt>	定义定义列表中的项目。-->
+                                                                                                                        <!--<em>	定义强调文本。-->
+                                                                                                                        <!--<embed>	定义外部交互内容或插件。-->
+                                                                                                                        <!--<fieldset>	定义围绕表单中元素的边框。-->
+                                                                                                                        <!--<figcaption>	定义 figure 元素的标题。-->
+                                                                                                                        <!--<figure>	定义媒介内容的分组，以及它们的标题。-->
+                                                                                                                        <!--<font>	不赞成使用。定义文字的字体、尺寸和颜色。-->
+                                                                                                                        <!--<footer>	定义 section 或 page 的页脚。-->
+                                                                                                                        <!--<form>	定义供用户输入的 HTML 表单。-->
+                                                                                                                        <!--<frame>	定义框架集的窗口或框架。-->
+                                                                                                                        <!--<frameset>	定义框架集。-->
+                                                                                                                        <!--<h1> to <h6>	定义 HTML 标题。-->
+                                                                                                                        <!--<head>	定义关于文档的信息。-->
+                                                                                                                        <!--<header>	定义 section 或 page 的页眉。-->
+                                                                                                                        <!--<hr>	定义水平线。-->
+                                                                                                                        <!--<html>	定义 HTML 文档。-->
+                                                                                                                        <!--<i>	定义斜体字。-->
+                                                                                                                        <!--<iframe>	定义内联框架。-->
+                                                                                                                        <!--<img>	定义图像。-->
+                                                                                                                        <!--<input>	定义输入控件。-->
+                                                                                                                        <!--<ins>	定义被插入文本。-->
+                                                                                                                        <!--<isindex>	不赞成使用。定义与文档相关的可搜索索引。-->
+                                                                                                                        <!--<kbd>	定义键盘文本。-->
+                                                                                                                        <!--<keygen>	定义生成密钥。-->
+                                                                                                                        <!--<label>	定义 input 元素的标注。-->
+                                                                                                                        <!--<legend>	定义 fieldset 元素的标题。-->
+                                                                                                                        <!--<li>	定义列表的项目。-->
+                                                                                                                        <!--<link>	定义文档与外部资源的关系。-->
+                                                                                                                        <!--<map>	定义图像映射。-->
+                                                                                                                        <!--<mark>	定义有记号的文本。-->
+                                                                                                                        <!--<menu>	定义命令的列表或菜单。-->
+                                                                                                                        <!--<menuitem>	定义用户可以从弹出菜单调用的命令/菜单项目。-->
+                                                                                                                        <!--<meta>	定义关于 HTML 文档的元信息。-->
+                                                                                                                        <!--<meter>	定义预定义范围内的度量。-->
+                                                                                                                        <!--<nav>	定义导航链接。-->
+                                                                                                                        <!--<noframes>	定义针对不支持框架的用户的替代内容。-->
+                                                                                                                        <!--<noscript>	定义针对不支持客户端脚本的用户的替代内容。-->
+                                                                                                                        <!--<object>	定义内嵌对象。-->
+                                                                                                                        <!--<ol>	定义有序列表。-->
+                                                                                                                        <!--<optgroup>	定义选择列表中相关选项的组合。-->
+                                                                                                                        <!--<option>	定义选择列表中的选项。-->
+                                                                                                                        <!--<output>	定义输出的一些类型。-->
+                                                                                                                        <!--<p>	定义段落。-->
+                                                                                                                        <!--<param>	定义对象的参数。-->
+                                                                                                                        <!--<pre>	定义预格式文本。-->
+                                                                                                                        <!--<progress>	定义任何类型的任务的进度。-->
+                                                                                                                        <!--<q>	定义短的引用。-->
+                                                                                                                        <!--<rp>	定义若浏览器不支持 ruby 元素显示的内容。-->
+                                                                                                                        <!--<rt>	定义 ruby 注释的解释。-->
+                                                                                                                        <!--<ruby>	定义 ruby 注释。-->
+                                                                                                                        <!--<s>	不赞成使用。定义加删除线的文本。-->
+                                                                                                                        <!--<samp>	定义计算机代码样本。-->
+                                                                                                                        <!--&lt;!&ndash;<script>	定义客户端脚本。&ndash;&gt;-->
+                                                                                                                        <!--<section>	定义 section。-->
+                                                                                                                        <!--<select>	定义选择列表（下拉列表）。-->
+                                                                                                                        <!--<small>	定义小号文本。-->
+                                                                                                                        <!--<source>	定义媒介源。-->
+                                                                                                                        <!--<span>	定义文档中的节。-->
+                                                                                                                        <!--<strike>	不赞成使用。定义加删除线文本。-->
+                                                                                                                        <!--<strong>	定义强调文本。-->
+                                                                                                                        <!--<style>	定义文档的样式信息。-->
+                                                                                                                        <!--<sub>	定义下标文本。-->
+                                                                                                                        <!--<summary>	为 <details> 元素定义可见的标题。-->
+                                                                                                                        <!--<sup>	定义上标文本。-->
+                                                                                                                        <!--<table>	定义表格。-->
+                                                                                                                        <!--<tbody>	定义表格中的主体内容。-->
+                                                                                                                        <!--<td>	定义表格中的单元。-->
+                                                                                                                        <!--<textarea>	定义多行的文本输入控件。-->
+                                                                                                                        <!--<tfoot>	定义表格中的表注内容（脚注）。-->
+                                                                                                                        <!--<th>	定义表格中的表头单元格。-->
+                                                                                                                        <!--<thead>	定义表格中的表头内容。-->
+                                                                                                                        <!--<time>	定义日期/时间。-->
+                                                                                                                        <!--<title>	定义文档的标题。-->
+                                                                                                                        <!--<tr>	定义表格中的行。-->
+                                                                                                                        <!--<track>	定义用在媒体播放器中的文本轨道。-->
+                                                                                                                        <!--<tt>	定义打字机文本。-->
+                                                                                                                        <!--<u>	不赞成使用。定义下划线文本。-->
+                                                                                                                        <!--<ul>	定义无序列表。-->
+                                                                                                                        <!--<var>	定义文本的变量部分。-->
+                                                                                                                        <!--<video>	定义视频。-->
+                                                                                                                        <!--<wbr>	定义可能的换行符。-->
+
+
+                                                                                                                        <tt>
+                                                                                                                            呈现类似打字机或者等宽的文本效果。
+                                                                                                                            <i>
+                                                                                                                                显示斜体文本效果。
+                                                                                                                                <b>
+                                                                                                                                    呈现粗体文本效果。
+                                                                                                                                    <big>
+                                                                                                                                        呈现大号字体效果。
+                                                                                                                                        <small>
+                                                                                                                                            呈现小号字体效果。
+
+
+                                                                                                                                            <abbr>
+                                                                                                                                                定义缩写。
+                                                                                                                                                <acronym>
+                                                                                                                                                    定义首字母缩写。
+                                                                                                                                                    <address>
+                                                                                                                                                        定义地址。
+                                                                                                                                                        <bdo>
+                                                                                                                                                            定义文字方向。
+                                                                                                                                                            <blockquote>
+                                                                                                                                                                定义长的引用。
+                                                                                                                                                                <q>
+                                                                                                                                                                    定义短的引用语。
+                                                                                                                                                                    <cite>
+                                                                                                                                                                        定义引用、引证。
+                                                                                                                                                                        <dfn>
+                                                                                                                                                                            定义一个定义项目。
+
+                                                                                                                                                                            <p>
+                                                                                                                                                                                WWF
+                                                                                                                                                                                的目标是：<q>构建人与自然和谐共存的世界。</q>
+                                                                                                                                                                            </p>
+
+
+                                                                                                                                                                            <p>
+                                                                                                                                                                                以下内容引用自
+                                                                                                                                                                                WWF
+                                                                                                                                                                                的网站：</p>
+                                                                                                                                                                            <blockquote
+                                                                                                                                                                                    cite="http://www.worldwildlife.org/who/index.html">
+                                                                                                                                                                                五十年来，WWF
+                                                                                                                                                                                一直致力于保护自然界的未来。
+                                                                                                                                                                                世界领先的环保组织，WWF
+                                                                                                                                                                                工作于
+                                                                                                                                                                                100
+                                                                                                                                                                                个国家，
+                                                                                                                                                                                并得到美国一百二十万会员及全球近五百万会员的支持。
+                                                                                                                                                                            </blockquote>
+
+
+                                                                                                                                                                            <p>
+                                                                                                                                                                                <abbr title="World Health Organization">WHO</abbr>
+                                                                                                                                                                                成立于
+                                                                                                                                                                                1948
+                                                                                                                                                                                年。
+                                                                                                                                                                            </p>
+
+                                                                                                                                                                            <p>
+                                                                                                                                                                                <dfn title="World Health Organization">WHO</dfn>
+                                                                                                                                                                                成立于
+                                                                                                                                                                                1948
+                                                                                                                                                                                年。
+                                                                                                                                                                            </p>
+
+
+                                                                                                                                                                            <p>
+                                                                                                                                                                                <dfn><abbr
+                                                                                                                                                                                        title="World Health Organization">WHO</abbr></dfn>
+                                                                                                                                                                                成立于
+                                                                                                                                                                                1948
+                                                                                                                                                                                年。
+                                                                                                                                                                            </p>
+
+
+                                                                                                                                                                            <p>
+                                                                                                                                                                                <dfn>WHO</dfn>
+                                                                                                                                                                                World
+                                                                                                                                                                                Health
+                                                                                                                                                                                Organization
+                                                                                                                                                                                成立于
+                                                                                                                                                                                1948
+                                                                                                                                                                                年。
+                                                                                                                                                                            </p>
+
+
+                                                                                                                                                                            <address>
+                                                                                                                                                                                Written
+                                                                                                                                                                                by
+                                                                                                                                                                                Donald
+                                                                                                                                                                                Duck.<br>
+                                                                                                                                                                                Visit
+                                                                                                                                                                                us
+                                                                                                                                                                                at:<br>
+                                                                                                                                                                                Example.com<br>
+                                                                                                                                                                                Box
+                                                                                                                                                                                564,
+                                                                                                                                                                                Disneyland<br>
+                                                                                                                                                                                USA
+                                                                                                                                                                            </address>
+
+
+                                                                                                                                                                            <p>
+                                                                                                                                                                                <cite>The
+                                                                                                                                                                                    Scream</cite>
+                                                                                                                                                                                by
+                                                                                                                                                                                Edward
+                                                                                                                                                                                Munch.
+                                                                                                                                                                                Painted
+                                                                                                                                                                                in
+                                                                                                                                                                                1893.
+                                                                                                                                                                            </p>
+
+
+                                                                                                                                                                            <bdo dir="rtl">This
+                                                                                                                                                                                text
+                                                                                                                                                                                will
+                                                                                                                                                                                be
+                                                                                                                                                                                written
+                                                                                                                                                                                from
+                                                                                                                                                                                right
+                                                                                                                                                                                to
+                                                                                                                                                                                left</bdo>
+
+
+                                                                                                                                                                            <abbr>
+                                                                                                                                                                                定义缩写或首字母缩略语。
+                                                                                                                                                                                <address>
+                                                                                                                                                                                    定义文档作者或拥有者的联系信息。
+                                                                                                                                                                                    <bdo>
+                                                                                                                                                                                        定义文本方向。
+                                                                                                                                                                                        <blockquote>
+                                                                                                                                                                                            定义从其他来源引用的节。
+                                                                                                                                                                                            <dfn>
+                                                                                                                                                                                                定义项目或缩略词的定义。
+                                                                                                                                                                                                <q>
+                                                                                                                                                                                                    定义短的行内引用。
+                                                                                                                                                                                                    <cite>
+                                                                                                                                                                                                        定义著作的标题。
+
+
+                                                                                                                                                                                                        <p>
+                                                                                                                                                                                                            To
+                                                                                                                                                                                                            open
+                                                                                                                                                                                                            a
+                                                                                                                                                                                                            file,
+                                                                                                                                                                                                            select:</p>
+
+                                                                                                                                                                                                        <p>
+                                                                                                                                                                                                            <kbd>File
+                                                                                                                                                                                                                |
+                                                                                                                                                                                                                Open...</kbd>
+                                                                                                                                                                                                        </p>
+
+
+                                                                                                                                                                                                        <samp>
+                                                                                                                                                                                                            demo.example.com
+                                                                                                                                                                                                            login:
+                                                                                                                                                                                                            Apr
+                                                                                                                                                                                                            12
+                                                                                                                                                                                                            09:10:17
+                                                                                                                                                                                                            Linux
+                                                                                                                                                                                                            2.6.10-grsec+gg3+e+fhs6b+nfs+gr0501+++p3+c4a+gr2b-reslog-v6.189
+                                                                                                                                                                                                        </samp>
+
+
+                                                                                                                                                                                                        <code>
+                                                                                                                                                                                                            var
+                                                                                                                                                                                                            person
+                                                                                                                                                                                                            =
+                                                                                                                                                                                                            {
+                                                                                                                                                                                                            firstName:"Bill",
+                                                                                                                                                                                                            lastName:"Gates",
+                                                                                                                                                                                                            age:50,
+                                                                                                                                                                                                            eyeColor:"blue"
+                                                                                                                                                                                                            }
+                                                                                                                                                                                                        </code>
+
+                                                                                                                                                                                                        <p>
+                                                                                                                                                                                                            Coding
+                                                                                                                                                                                                            Example:</p>
+
+                                                                                                                                                                                                        <code>
+                                                                                                                                                                                                            var
+                                                                                                                                                                                                            person
+                                                                                                                                                                                                            =
+                                                                                                                                                                                                            {
+                                                                                                                                                                                                            firstName:"Bill",
+                                                                                                                                                                                                            lastName:"Gates",
+                                                                                                                                                                                                            age:50,
+                                                                                                                                                                                                            eyeColor:"blue"
+                                                                                                                                                                                                            }
+                                                                                                                                                                                                        </code>
+
+
+                                                                                                                                                                                                        <p>
+                                                                                                                                                                                                            Coding
+                                                                                                                                                                                                            Example:</p>
+
+                                                                                                                                                                                                        <code>
+<pre>
+var person = {
+    firstName:"Bill",
+    lastName:"Gates",
+    age:50,
+    eyeColor:"blue"
+}
+</pre>
+                                                                                                                                                                                                        </code>
+
+                                                                                                                                                                                                        <p>
+                                                                                                                                                                                                            Einstein
+                                                                                                                                                                                                            wrote:</p>
+
+                                                                                                                                                                                                        <p>
+                                                                                                                                                                                                            <var>E
+                                                                                                                                                                                                                =
+                                                                                                                                                                                                                m
+                                                                                                                                                                                                                c<sup>2</sup></var>
+                                                                                                                                                                                                        </p>
+
+
+                                                                                                                                                                                                        <code>
+                                                                                                                                                                                                            定义计算机代码文本
+                                                                                                                                                                                                            <kbd>
+                                                                                                                                                                                                                定义键盘文本
+                                                                                                                                                                                                                <samp>
+                                                                                                                                                                                                                    定义计算机代码示例
+                                                                                                                                                                                                                    <var>
+                                                                                                                                                                                                                        定义变量
+                                                                                                                                                                                                                        <pre>	定义预格式化文本
+
+
+                                                                                                                                                                                                                            <!-- 这是一段注释 -->
+
+<p>这是一个段落。</p>
+
+                                                                                                                                                                                                                            <!-- 记得在此处添加信息 -->
+
+                                                                                                                                                                                                                            <!-- 此刻不显示图片：
+                                                                                                                                                                                                                            <img border="0" src="/i/tulip_ballade.jpg" alt="Tulip">
+                                                                                                                                                                                                                            -->
+
+
+                                                                                                                                                                                                                            <!--[if IE 8]>
+                                                                                                                                                                                                                            .... some HTML here ....
+                                                                                                                                                                                                                            <![endif]-->
+
+
+                                                                                                                                                                                                                            <!--<style type="text/css">-->
+                                                                                                                                                                                                                            <!--body {background-color: red}-->
+                                                                                                                                                                                                                            <!--p {margin-left: 20px}-->
+                                                                                                                                                                                                                            <!--</style>-->
+
+
+
+<p style="color: red; margin-left: 20px">
+This is a paragraph
+</p>
+
+
+                                                                                                                                                                                                                            <!--<style>	定义样式定义。-->
+                                                                                                                                                                                                                            <!--<link>	定义资源引用。-->
+                                                                                                                                                                                                                            <!--<div>	定义文档中的节或区域（块级）。-->
+                                                                                                                                                                                                                            <!--<span>	定义文档中的行内的小块或区域。-->
+                                                                                                                                                                                                                            <!--<font>	规定文本的字体、字体尺寸、字体颜色。不赞成使用。请使用样式。-->
+                                                                                                                                                                                                                            <!--<basefont>	定义基准字体。不赞成使用。请使用样式。-->
+                                                                                                                                                                                                                            <!--<center>	对文本进行水平居中。不赞成使用。请使用样式。-->
+
+
+<a href="url">Link text</a>
+<a href="http://www.w3school.com.cn/">Visit W3School</a>
+<a href="http://www.w3school.com.cn/" target="_blank">Visit W3School!</a>
+<a name="label">锚（显示在页面上的文本）</a>
+<a name="tips">基本的注意事项 - 有用的提示</a>
+<a href="#tips">有用的提示</a>
+<a href="http://www.w3school.com.cn/html/html_links.asp#tips">有用的提示</a>
+<img src="url"/>
+
+<img src="boat.gif" alt="Big Boat">
+<img>	定义图像。
+<map>	定义图像地图。
+<area>	定义图像地图中的可点击区域。
+
+<ul>
+<li>Coffee</li>
+<li>Milk</li>
+</ul>
+
+<ol>
+<li>Coffee</li>
+<li>Milk</li>
+</ol>
+
+<dl>
+<dt>Coffee</dt>
+<dd>Black hot drink</dd>
+<dt>Milk</dt>
+<dd>White cold drink</dd>
+</dl>
+
+    <!--<ol>	定义有序列表。-->
+    <!--<ul>	定义无序列表。-->
+    <!--<li>	定义列表项。-->
+    <!--<dl>	定义定义列表。-->
+    <!--<dt>	定义定义项目。-->
+    <!--<dd>	定义定义的描述。-->
+    <!--<dir>	已废弃。使用 <ul> 代替它。-->
+    <!--<menu>	已废弃。使用 <ul> 代替它。-->
+
+
+
+
+<div>	定义文档中的分区或节（division/section）。
+<span>	定义 span，用来组合文档中的行内元素。
+
+
+
+
+<div class="cities">
+<h2>London</h2>
+<p>
+London is the capital city of England.
+It is the most populous city in the United Kingdom,
+with a metropolitan area of over 13 million inhabitants.
+</p>
+</div>
+
+
+
+<div class="cities">
+<h2>London</h2>
+<p>London is the capital city of England.
+It is the most populous city in the United Kingdom,
+with a metropolitan area of over 13 million inhabitants.</p>
+</div>
+
+<div class="cities">
+<h2>Paris</h2>
+<p>Paris is the capital and most populous city of France.</p>
+</div>
+
+<div class="cities">
+<h2>Tokyo</h2>
+<p>Tokyo is the capital of Japan, the center of the Greater Tokyo Area,
+and the most populous metropolitan area in the world.</p>
+</div>
+
+
+<h1>My <span class="red">Important</span> Heading</h1>
+
+
+<div id="header">
+<h1>City Gallery</h1>
+</div>
+
+<div id="nav">
+London<br>
+Paris<br>
+Tokyo<br>
+</div>
+
+<div id="section">
+<h1>London</h1>
+<p>
+London is the capital city of England. It is the most populous city in the United Kingdom,
+with a metropolitan area of over 13 million inhabitants.
+</p>
+<p>
+Standing on the River Thames, London has been a major settlement for two millennia,
+its history going back to its founding by the Romans, who named it Londinium.
+</p>
+</div>
+
+<div id="footer">
+Copyright W3School.com.cn
+</div>
+
+
+<header>
+<h1>City Gallery</h1>
+</header>
+
+<nav>
+London<br>
+Paris<br>
+Tokyo<br>
+</nav>
+
+<section>
+<h1>London</h1>
+<p>
+London is the capital city of England. It is the most populous city in the United Kingdom,
+with a metropolitan area of over 13 million inhabitants.
+</p>
+<p>
+Standing on the River Thames, London has been a major settlement for two millennia,
+its history going back to its founding by the Romans, who named it Londinium.
+</p>
+</section>
+
+<footer>
+Copyright W3School.com.cn
+</footer>
+
+
+
+
+<table class="lamp">
+<tr>
+  <th>
+    <img src="/images/lamp.jpg" alt="Note" style="height:32px;width:32px">
+  </th>
+  <td>
+    The table element was not designed to be a layout tool.
+  </td>
+</tr>
+</table>
+
+
+<h1>W3School Demo</h1>
+<h2>Resize this responsive page!</h2>
+<br>
+
+<div class="city">
+<h2>London</h2>
+<p>London is the capital city of England.</p>
+<p>It is the most populous city in the United Kingdom,
+with a metropolitan area of over 13 million inhabitants.</p>
+</div>
+
+<div class="city">
+<h2>Paris</h2>
+<p>Paris is the capital and most populous city of France.</p>
+</div>
+
+<div class="city">
+<h2>Tokyo</h2>
+<p>Tokyo is the capital of Japan, the center of the Greater Tokyo Area,
+and the most populous metropolitan area in the world.</p>
+</div>
+
+
+
+<frameset cols="25%,75%">
+   <frame src="frame_a.htm">
+   <frame src="frame_b.htm">
+</frameset>
+
+
+<iframe src="URL"></iframe>
+
+<iframe src="demo_iframe.htm" width="200" height="200"></iframe>
+
+<iframe src="demo_iframe.htm" frameborder="0"></iframe>
+
+
+<iframe src="demo_iframe.htm" name="iframe_a"></iframe>
+<p><a href="http://www.w3school.com.cn" target="iframe_a">W3School.com.cn</a></p>
+
+
+<iframe>	定义内联的子窗口（框架）
+
+    <!--<body bgcolor="#000000">-->
+    <!--<body bgcolor="rgb(0,0,0)">-->
+    <!--<body bgcolor="black">-->
+
+    <!--<body background="clouds.gif">-->
+    <!--<body background="http://www.w3school.com.cn/clouds.gif">-->
+
+
+<script type="text/javascript">
+document.write("Hello World!")
+</script>
+
+
+
+<script type="text/javascript">
+document.write("Hello World!")
+</script>
+<noscript>Your browser does not support JavaScript!</noscript>
+
+<script type="text/javascript">
+<!--
+document.write("Hello World!")
+//-->
+</script>
+
+<script type="text/vbscript">
+<!--
+document.write("Hello World!")
+'-->
+</script>
+
+
+    <!--<script>	定义客户端脚本。-->
+    <!--<noscript>	为不支持客户端脚本的浏览器定义替代内容。-->
+
+
+    <!--<head>	定义关于文档的信息。-->
+    <!--<title>	定义文档标题。-->
+    <!--<base>	定义页面上所有链接的默认地址或默认目标。-->
+    <!--<link>	定义文档与外部资源之间的关系。-->
+    <!--<meta>	定义关于 HTML 文档的元数据。-->
+    <!--<script>	定义客户端脚本。-->
+    <!--<style>	定义文档的样式信息。-->
+
+
+    <!--scheme://host.domain:port/path/filename-->
+
+    <!--http	超文本传输协议	以 http:// 开头的普通网页。不加密。-->
+    <!--https	安全超文本传输协议	安全网页。加密所有信息交换。-->
+    <!--ftp	文件传输协议	用于将文件下载或上传至网站。-->
+    <!--file	 	您计算机上的文件。-->
+
+
+按功能类别排列
+New : HTML5 中的新标签。
+基础
+标签	描述
+<!DOCTYPE> 	定义文档类型。
+<html>	定义 HTML 文档。
+<title>	定义文档的标题。
+<body>	定义文档的主体。
+<h1> to <h6>	定义 HTML 标题。
+<p>	定义段落。
+<br>	定义简单的折行。
+<hr>	定义水平线。
+    <!--...-->	定义注释。
+格式
+标签	描述
+<acronym>	定义只取首字母的缩写。
+<abbr>	定义缩写。
+<address>	定义文档作者或拥有者的联系信息。
+<b>	定义粗体文本。
+<bdi>	定义文本的文本方向，使其脱离其周围文本的方向设置。
+<bdo>	定义文字方向。
+<big>	定义大号文本。
+<blockquote>	定义长的引用。
+<center>	不赞成使用。定义居中文本。
+<cite>	定义引用(citation)。
+<code>	定义计算机代码文本。
+<del>	定义被删除文本。
+<dfn>	定义定义项目。
+<em>	定义强调文本。
+<font>	不赞成使用。定义文本的字体、尺寸和颜色
+<i>	定义斜体文本。
+<ins>	定义被插入文本。
+<kbd>	定义键盘文本。
+<mark>	定义有记号的文本。
+<meter>	定义预定义范围内的度量。
+<pre>	定义预格式文本。
+<progress>	定义任何类型的任务的进度。
+<q>	定义短的引用。
+<rp>	定义若浏览器不支持 ruby 元素显示的内容。
+<rt>	定义 ruby 注释的解释。
+<ruby>	定义 ruby 注释。
+<s>	不赞成使用。定义加删除线的文本。
+<samp>	定义计算机代码样本。
+<small>	定义小号文本。
+<strike>	不赞成使用。定义加删除线文本。
+<strong>	定义语气更为强烈的强调文本。
+<sup>	定义上标文本。
+<sub>	定义下标文本。
+<time>	定义日期/时间。
+<tt>	定义打字机文本。
+<u>	不赞成使用。定义下划线文本。
+<var>	定义文本的变量部分。
+<wbr>	定义可能的换行符。
+表单
+标签	描述
+<form>	定义供用户输入的 HTML 表单。
+<input>	定义输入控件。
+<textarea>	定义多行的文本输入控件。
+<button>	定义按钮。
+<select>	定义选择列表（下拉列表）。
+<optgroup>	定义选择列表中相关选项的组合。
+<option>	定义选择列表中的选项。
+<label>	定义 input 元素的标注。
+<fieldset>	定义围绕表单中元素的边框。
+<legend>	定义 fieldset 元素的标题。
+<isindex>	不赞成使用。定义与文档相关的可搜索索引。
+<datalist>	定义下拉列表。
+<keygen>	定义生成密钥。
+<output>	定义输出的一些类型。
+框架
+标签	描述
+<frame>	定义框架集的窗口或框架。
+<frameset>	定义框架集。
+<noframes>	定义针对不支持框架的用户的替代内容。
+<iframe>	定义内联框架。
+图像
+标签	描述
+<img>	定义图像。
+<map>	定义图像映射。
+<area>	定义图像地图内部的区域。
+<canvas>	定义图形。
+<figcaption>	定义 figure 元素的标题。
+<figure>	定义媒介内容的分组，以及它们的标题。
+音频/视频
+标签	描述
+<audio>	定义声音内容。
+<source>	定义媒介源。
+<track>	定义用在媒体播放器中的文本轨道。
+<video>	定义视频。
+链接
+标签	描述
+<a>	定义锚。
+<link>	定义文档与外部资源的关系。
+<nav>	定义导航链接。
+列表
+标签	描述
+<ul>	定义无序列表。
+<ol>	定义有序列表。
+<li>	定义列表的项目。
+<dir>	不赞成使用。定义目录列表。
+<dl>	定义定义列表。
+<dt>	定义定义列表中的项目。
+<dd>	定义定义列表中项目的描述。
+<menu>	定义命令的菜单/列表。
+<menuitem>	定义用户可以从弹出菜单调用的命令/菜单项目。
+<command>	定义命令按钮。
+表格
+标签	描述
+<table>	定义表格
+<caption>	定义表格标题。
+<th>	定义表格中的表头单元格。
+<tr>	定义表格中的行。
+<td>	定义表格中的单元。
+<thead>	定义表格中的表头内容。
+<tbody>	定义表格中的主体内容。
+<tfoot>	定义表格中的表注内容（脚注）。
+<col>	定义表格中一个或多个列的属性值。
+<colgroup>	定义表格中供格式化的列组。
+样式/节
+标签	描述
+<style>	定义文档的样式信息。
+<div>	定义文档中的节。
+<span>	定义文档中的节。
+<header>	定义 section 或 page 的页眉。
+<footer>	定义 section 或 page 的页脚。
+<section>	定义 section。
+<article>	定义文章。
+<aside>	定义页面内容之外的内容。
+<details>	定义元素的细节。
+<dialog>	定义对话框或窗口。
+<summary>	为 <details> 元素定义可见的标题。
+元信息
+标签	描述
+<head>	定义关于文档的信息。
+<meta>	定义关于 HTML 文档的元信息。
+<base>	定义页面中所有链接的默认地址或默认目标。
+<basefont>	不赞成使用。定义页面中文本的默认字体、颜色或尺寸。
+编程
+标签	描述
+<script>	定义客户端脚本。
+<noscript>	定义针对不支持客户端脚本的用户的替代内容。
+<applet>	不赞成使用。定义嵌入的 applet。
+<embed>	为外部应用程序（非 HTML）定义容器。
+<object>	定义嵌入的对象。
+<param>	定义对象的参数。
+
+
+
+
+HTML Basic Document
+<html>
+<head>
+<title>Document name goes here</title>
+</head>
+<body>
+Visible text goes here
+</body>
+</html>
+Text Elements
+<p>This is a paragraph</p>
+<br> (line break)
+<hr> (horizontal rule)
+<pre>This text is preformatted</pre>
+Logical Styles
+<em>This text is emphasized</em>
+<strong>This text is strong</strong>
+<code>This is some computer code</code>
+Physical Styles
+<b>This text is bold</b>
+<i>This text is italic</i>
+Links, Anchors, and Image Elements
+<a href="http://www.example.com/">This is a Link</a>
+<a href="http://www.example.com/"><img src="URL"
+alt="Alternate Text"></a>
+<a href="mailto:webmaster@example.com">Send e-mail</a>A named anchor:
+<a name="tips">Useful Tips Section</a>
+<a href="#tips">Jump to the Useful Tips Section</a>
+Unordered list
+<ul>
+<li>First item</li>
+<li>Next item</li>
+</ul>
+Ordered list
+<ol>
+<li>First item</li>
+<li>Next item</li>
+</ol>
+Definition list
+<dl>
+<dt>First term</dt>
+<dd>Definition</dd>
+<dt>Next term</dt>
+<dd>Definition</dd>
+</dl>
+Tables
+<table border="1">
+<tr>
+  <th>someheader</th>
+  <th>someheader</th>
+</tr>
+<tr>
+  <td>sometext</td>
+  <td>sometext</td>
+</tr>
+</table>
+Frames
+<frameset cols="25%,75%">
+  <frame src="page1.htm">
+  <frame src="page2.htm">
+</frameset>
+Forms
+<form action="http://www.example.com/test.asp" method="post/get">
+<input type="text" name="lastname"
+value="Nixon" size="30" maxlength="50">
+<input type="password">
+<input type="checkbox" checked="checked">
+<input type="radio" checked="checked">
+<input type="submit">
+<input type="reset">
+<input type="hidden">
+<select>
+<option>Apples
+<option selected>Bananas
+<option>Cherries
+</select>
+<textarea name="Comment" rows="60"
+cols="20"></textarea>
+</form>
+Entities
+&lt; is the same as <
+&gt; is the same as >
+&#169; is the same as ©
+Other Elements
+<!-- This is a comment -->
+<blockquote>
+Text quoted from some source.
+</blockquote>
+<address>
+Address 1<br>
+Address 2<br>
+City<br>
+</address>
+
+
+
+http://www.w3school.com.cn/html/index.asp
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>
