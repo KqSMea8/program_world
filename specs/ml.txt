@@ -485,12 +485,178 @@ master和worker服务290
 19．1　使用最小二乘回归的多任务学习
 19．2　使用最小二乘概率分类器的多任务学习
 19．3　多次维输出函数的学习
+-----------
+
+18种和“距离(distance)”、“相似度(similarity)”相关的量的小结
+2015年08月12日 23:16:44 Solomon-Lang 阅读数：19168 标签： 人工智能 计算机 数学 距离 相似度  更多
+个人分类： 数学 人工智能
+版权声明：本文为博主原创文章，未经博主允许不得转载。	https://blog.csdn.net/solomonlangrui/article/details/47454805
+在计算机人工智能领域，距离(distance)、相似度(similarity)是经常出现的基本概念，它们在自然语言处理、计算机视觉等子领域有重要的应用，而这些概念又大多源于数学领域的度量(metric)、测度(measure)等概念。
+这里拮取其中18种做下小结备忘，也借机熟悉markdown的数学公式语法。
+
+英文名	中文名	算式	说明
+Euclidean Distance	欧式距离
+d=∑i=1n(xi−yi)2−−−−−−−−−−√
+以古希腊数学家欧几里得命名的距离；也就是我们直观的两点之间直线最短的直线距离
+Manhattan Distance	曼哈顿距离
+d=∑i=1n|xi−yi|
+是由十九世纪的赫尔曼·闵可夫斯基所创词汇；是种使用在几何度量空间的几何学用语，用以标明两个点在标准坐标系上的绝对轴距总和；也就是和象棋中的“車”一样横平竖直的走过的距离；曼哈顿距离是超凸度量
+Minkowski Distance	闵氏距离
+d=∑i=1n(xi−yi)p−−−−−−−−−−√p
+以俄罗斯数学家闵可夫斯基命名的距离；是欧式距离的推广，p=2时等价于欧氏距离，和p-范数等值
+Hamming Distance	海明距离	逐个字符(或逐位)对比，统计不一样的位数的个数总和	所得值越小，参与对比的两个元素约相似；下面是从wikipedia借的4bit的海明距离示意图4bit的海明距离示意图
+Jaccard Coefficient	杰卡德距离
+J(A,B)=|A⋂B||A⋃B|
+越大越相似；分子是A和B的交集大小，分母是A和B的并集大小
+Ochiai Coefficient	?
+K=n(A⋂B)n(A)×n(B)−−−−−−−−−−√
+Pearson Correlation	皮尔森相关系数
+r=∑ni=1(Xi−x¯¯¯)(yi−y¯¯¯)∑ni=1(Xi−x¯¯¯)2−−−−−−−−−−−−√∑ni=1(yi−y¯¯¯)2−−−−−−−−−−−√
+分子是两个集合的交集大小，分母是两个集合大小的几何平均值。是余弦相似性的一种形式
+Cosine Similarity	余弦相似度
+S=x⋅y|x||y|
+Mahalanobis Distance	马氏距离
+d=(x⃗ −y⃗ )TS−1(x⃗ −y⃗ )−−−−−−−−−−−−−−−−√
+其中S是x和y的协方差矩阵	印度统计学家马哈拉诺比斯(P. C. Mahalanobis)提出的，表示数据的协方差距离。它是一种有效的计算两个未知样本集的相似度的方法；若协方差矩阵是对角阵(diagonal)，则该距离退化为欧式距离
+Kullback-Leibler Divergence	K-L散度
+D(P||Q)=∑i=1nP(i)logP(i)Q(i)
+即相对熵；是衡量两个分布(P、Q)之间的距离；越小越相似
+PMI(Pointwise Mutual Information)	点对互信息
+pmi=logp(x,y)p(x)p(y)=logp(y|x)p(y)
+利用co-occurance来衡量x和y的相似度；越大越相关；可以看做局部点的互信息(mutual information)
+NGD(Normalized Google Distance)	?
+NGD(x,y)=max{logf(x),logf(y)}−logf(x,y)logM−min{logf(x),logf(y)}
+这是google用来衡量两个不同的关键字(keyword)的检索结果之间的相关程度；其中f(x)代表包含了关键字x的页面数量，f(x,y)代表同时包含了关键字x和关键字y的页面的数量，M代表google所搜索的总页数；若两个关键字总是成对出现在页面上，那么NGD值为0，相反的，如果两个关键字在所有页面上都没有同时出现过，那么NGD值为无穷；该量是从normalized compression distance (Cilibrasi & Vitanyi 2003)衍生而来的
+Levenshtein Distance(Edit Distance)	Levenshtein距离(编辑距离)	f(n)=
+⎧⎩⎨⎪⎪⎪⎪⎪⎪max(i,j)min⎧⎩⎨⎪⎪leva,b(i−1,j)+1leva,b(i,j−1)+1leva,b(i−1,j−1)+1(ai≠bj)if min(i,j)=0,otherwise.
+是指两个字串之间，由一个转成另一个所需的最少编辑操作次数；俄罗斯科学家Vladimir Levenshtein在1965年提出这个概念；编辑距离越小的两个字符串越相似，当编辑距离为0时，两字符串相等
+Jaro-Winkler Distance	?
+{013(m|s1|+m|s2|+m−tm)if m=0otherwise
+Lee Distance	李氏距离
+d=∑i=1n|xi−yi|
+在编码理论(coding theory)中两个字符串间距离的一种度量方法
+Hellinger Distance	?
+H2(P,Q)=12–√∫(dPdλ−−−√−dQdλ−−−√)2dλ−−−−−−−−−−−−−−−−−−√
+
+当dP/dλ、dQ/dλ为概率密度函数时，进一步有
+H2(P,Q)=1−∫f(x)g(x)−−−−−−−√dx−−−−−−−−−−−−−−−√	注意在作为概率意义的计算时需在测度空间进行；通常被用来度量两个概率分布的相似度，它是f散度的一种；由Ernst Helligner在1909年引进
+Canberra Distance	坎贝拉距离
+d(p⃗ ,q⃗ )=∑i=1n|pi−qi||pi|+|qi|
+
+where
+p⃗ =(p1,p2,⋯,pn)
+and
+q⃗ =(q1,q2,⋯,qn)
+Chebyshev Distance	切比雪夫距离
+DChebyshev(p,q)=maxi(|pi−qi|)=limk→∞(∑i=1n|pi−qi|k)1/k
+切比雪夫距离是由一致范数(uniform norm)(或称为上确界范数)所衍生的度量，也是超凸度量
+距离和相似度度量方法
+62369
+
+http://blog.csdn.net/pipisorry/article/details/45651315在机器学习和数据挖掘中，我们经常需要知道个体间差异的大小，进而评价个体的相似性和类别。最常...
+
+     /**
+         * 两个向量可以为任意维度，但必须保持维度相同，表示n维度中的两点
+         *  欧式距离
+         * @param vector1
+         * @param vector2
+         * @return 两点间距离
+         */  
+        public void sim_distance(double[] vector1, double[] vector2) {  
+            double distance = 0;  
+              
+            if (vector1.length == vector2.length) {  
+                for (int i = 0; i < vector1.length; i++) {  
+                    double temp = Math.pow((vector1[i] - vector2[i]), 2);  
+                    distance += temp;  
+                }  
+                distance = Math.sqrt(distance);  
+            }  
+            System.out.println(distance);
+        }   
+        //向量a与矩阵的欧式距离--------------------------------------------------------------------
+        public void jsim_distance(double[] vector1, double[][] vector2) {  
+            double distance[]= new double[vector2.length];  
+              
+            if (vector1.length == vector2[0].length) {  
+                for (int i = 0; i < vector1.length; i++) {  
+                    for(int j=0;j<vector2.length;j++){
+                    distance[j] += Math.pow((vector1[i] - vector2[i][j]), 2);  
+                
+                 
+            }  }}
+            for (int i = 0; i < distance.length; i++) {
+                distance[i] = Math.sqrt(distance[i]); }
+            
+            for(int i=0;i< distance.length;i++){
+                System.out.println( distance[i]);}
+        }   
+
+        //标准化欧式距离-------------------------------------------------------------
+        public void  bzsim_distance(double[] vector1, double[][] vector2) {  
+           double []s=new double[vector2.length+1];
+           double []avg=new double[vector2.length];
+          // vector2均值
+           for(int i=0;i<vector2.length;i++){
+               for(int j=0;j<vector2[0].length;j++){
+               avg[i]+=vector2[i][j];  
+        }  }
+           // vector1均值
+           double avg0=0;
+           for(int i=0;i<vector1.length;i++){
+               avg0+=vector1[i];  
+        }  
+           //vector1方差
+           if (vector1.length == vector2[0].length) {         
+                  for (int i = 0; i < vector1.length; i++) {  
+               s[0]+=Math.pow( vector1[i]-avg0,2);
+                        }
+                s[0]=Math.sqrt(s[0]/vector2.length);           
+                    }        
+           //vector2方差       
+                for (int i = 0; i < vector2.length; i++) {  
+                    for(int j=0;j<vector2[0].length;j++){
+           s[i+1]+= Math.pow( vector2[i][j]-avg[i],2);
+           
+                    }
+            s[i+1]=Math.sqrt(s[i]/vector2.length);           
+                }   
+                
+                //标准化欧氏距离
+                double distance[]= new double[vector2.length];  
+                for (int i = 0; i < vector1.length; i++) {  
+                    for(int j=0;j<vector2.length;j++){
+                    double  temp= Math.pow((vector1[i] - vector2[j][i]), 2)/s[i];  
+                  distance[j] = distance[j]+temp;    
+            }  }       
+                for (int i = 0; i < distance.length; i++) {
+                    distance[i] = Math.sqrt(distance[i]); }       
+                for(int i=0;i< distance.length;i++){
+                    System.out.println( distance[i]);}
+        }   
+    
+        public static void main(String[] args){
+            System    .out.println("普通欧氏距离");
+            test s1=new test();
+            double[]a={5,5,1};
+            double[]b={1,2,1};
+                   s1.sim_distance(a,b);    
+            System    .out.println("矩阵欧氏距离");
+            //向量a与矩阵的欧式距离
+            double[][]c={{1,5,1},{2,7,1},{1,1,1}};
+                    s1.jsim_distance(a,c);    
+          //向量a与矩阵的标准欧式距离
+        System    .out.println("标准欧氏距离");
+           s1.bzsim_distance(a,c);    
+            
+        }   
+    }
+
 
 ------------------------------
 
 
 机器学习
-更新时间：2019-04-25 16:25:27
 
 
 本页目录
