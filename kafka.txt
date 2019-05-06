@@ -1873,4 +1873,70 @@ Kafka 自身没有消息广播的语义，可以通过创建不同的 Consumer G
 
 ======================================================
 
+Apache Kafka是一款流行的分布式数据流平台，它已经广泛地被诸如New Relic(数据智能平台)、Uber、Square(移动支付公司)等大型公司用来构建可扩展的、高吞吐量的、且高可靠的实时数据流系统。例如，在New Relic的生产环境中，Kafka群集每秒能够处理超过1500万条消息，而且其数据聚合率接近1 Tbps。
+
+可见，Kafka大幅简化了对于数据流的处理，因此它也获得了众多应用开发人员和数据管理专家的青睐。然而，在大型系统中Kafka的应用会比较复杂。如果您的consumers无法跟上数据流的话，各种消息往往在未被查看之前就已经消失掉了。同时，它在自动化数据保留方面的限制，高流量的发布+订阅(publish-subscribe，pub/sub)模式等，可能都会影响到您系统的性能。可以毫不夸张地说，如果那些存放着数据流的系统无法按需扩容、或稳定性不可靠的话，估计您经常会寝食难安了。
+
+针对Partitions的最佳实践
+• 了解分区的数据速率，以确保提供合适的数据保存空间。此处所谓“分区的数据速率”是指数据的生成速率。换言之，它是由“平均消息大小”乘以“每秒消息数”得出的。数据速率决定了在给定时间内，所能保证的数据保存空间的大小(以字节为单位)。如果您不知道数据速率的话，则无法正确地计算出满足基于给定时间跨度的数据，所需要保存的空间大小。同时，数据速率也能够标识出单个consumer在不产生延时的情况下，所需要支持的最低性能值。
+
+• 除非您有其他架构上的需要，否则在写topic时请使用随机分区。在您进行大型操作时，各个分区在数据速率上的参差不齐是非常难以管理的。其原因来自于如下三个方面：
+
+首先，“热”(有较高吞吐量)分区上的consumer势必会比同组中的其他consumer处理更多的消息，因此很可能会导致出现在处理上和网络上的瓶颈。
+
+其次，那些为具有最高数据速率的分区，所配置的最大保留空间，会导致topic中其他分区的磁盘使用量也做相应地增长。
+
+第三，根据分区的leader关系所实施的最佳均衡方案，比简单地将leader关系分散到所有broker上，要更为复杂。在同一topic中，“热”分区会“承载”10倍于其他分区的权重。
+
+针对Consumers的最佳实践
+
+如果consumers运行的是比Kafka 0.10还要旧的版本，那么请马上升级。
+
+
+在0.8.x 版中，consumer使用Apache ZooKeeper来协调consumer group，而许多已知的bug会导致其长期处于再均衡状态，或是直接导致再均衡算法的失败(我们称之为“再均衡风暴”)。因此在再均衡期间，一个或多个分区会被分配给同一组中的每个consumer。而在再均衡风暴中，分区的所有权会持续在各个consumers之间流转，这反而阻碍了任何一个consumer去真正获取分区的所有权。
+
+调优consumer的套接字缓冲区(socket buffers)，以应对数据的高速流入。
+
+在Kafka的0.10.x版本中，参数receive.buffer.bytes的默认值为64 kB。而在Kafka的0.8.x版本中，参数socket.receive.buffer.bytes的默认值为100 kB。这两个默认值对于高吞吐量的环境而言都太小了，特别是如果broker和consumer之间的网络带宽延迟积(bandwidth-delay product)大于局域网(local area network，LAN)时。对于延迟为1毫秒或更多的高带宽的网络(如10 Gbps或更高)，请考虑将套接字缓冲区设置为8或16 MB。
+
+如果您的内存不足，也至少考虑设置为1 MB。当然，您也可以设置为-1，它会让底层操作系统根据网络的实际情况，去调整缓冲区的大小。但是，对于需要启动“热”分区的consumers来说，自动调整可能不会那么快。
+
+设计具有高吞吐量的consumers，以便按需实施背压(back-pressure)。通常，我们应该保证系统只去处理其能力范围内的数据，而不要超负荷“消费”，进而导致进程中断“挂起”，或出现consume group的溢出。如果是在Java虚拟机(JVM)中运行，consumers应当使用固定大小的缓冲区(请参见Disruptor模式：http://lmax-exchange.github.io/disruptor/files/Disruptor-1.0.pdf)，而且最好是使用堆外内存(off-heap)。固定大小的缓冲区能够阻止consumer将过多的数据拉到堆栈上，以至于JVM花费掉其所有的时间去执行垃圾回收，进而无法履行其处理消息的本质工作。
+
+在JVM上运行各种consumers时，请警惕垃圾回收对它们可能产生的影响。例如，长时间垃圾回收的停滞，可能导致ZooKeeper的会话被丢弃、或consumer group处于再均衡状态。对于broker来说也如此，如果垃圾回收停滞的时间太长，则会产生集群掉线的风险。
+
+针对Producers的最佳实践
+• 配置producer，以等待各种确认。籍此producer能够获知消息是否真正被发送到了broker的分区上。在Kafka的0.10.x版本上，其设置是acks;而在0.8.x版本上，则为request.required.acks。Kafka通过复制，来提供容错功能，因此单个节点的故障、或分区leader关系的更改不会影响到系统的可用性。如果您没有用acks来配置producer(或称“fire and forget”)的话，则消息可能会悄然丢失。
+
+• 为各个producer配置retries。其默认值为3，当然是非常低的。不过，正确的设定值取决于您的应用程序，即：就那些对于数据丢失零容忍的应用而言，请考虑设置为Integer.MAX_VALUE(有效且最大)。这样将能够应对broker的leader分区出现无法立刻响应produce请求的情况。
+
+• 为高吞吐量的producer，调优缓冲区的大小，特别是buffer.memory和batch.size(以字节为单位)。由于batch.size是按照分区设定的，而producer的性能和内存的使用量，都可以与topic中的分区数量相关联。因此，此处的设定值将取决于如下几个因素：producer数据速率(消息的大小和数量)、要生成的分区数、以及可用的内存量。请记住，将缓冲区调大并不总是好事，如果producer由于某种原因而失效了(例如，某个leader的响应速度比确认还要慢)，那么在堆内内存(on-heap)中的缓冲的数据量越多，其需要回收的垃圾也就越多。
+
+• 检测应用程序，以跟踪诸如生成的消息数、平均消息大小、以及已使用的消息数等指标。
+
+针对Brokers的最佳实践
+• 在各个brokers上，请压缩topics所需的内存和CPU资源。日志压缩需要各个broker上的堆栈(内存)和CPU周期都能成功地配合实现。而如果让那些失败的日志压缩数据持续增长的话，则会给brokers分区带来风险。您可以在broker上调整log.cleaner.dedupe.buffer.size和log.cleaner.threads这两个参数，但是请记住，这两个值都会影响到各个brokers上的堆栈使用。如果某个broker抛出OutOfMemoryError异常，那么它将会被关闭、并可能造成数据的丢失。而缓冲区的大小和线程的计数，则取决于需要被清除的topic partition数量、以及这些分区中消息的数据速率与密钥的大小。对于Kafka的0.10.2.1版本而言，通过ERROR条目来监控日志清理程序的日志文件，是检测其线程可能出现问题的最可靠方法。
+
+• 通过网络吞吐量来监控brokers。请监控发向(transmit，TX)和收向(receive，RX)的流量，以及磁盘的I/O、磁盘的空间、以及CPU的使用率，而且容量规划是维护群集整体性能的关键步骤。
+
+• 在群集的各个brokers之间分配分区的leader关系。Leader通常会需要大量的网络I/O资源。例如，当我们将复制因子(replication factor)配置为3、并运行起来时，leader必须首先获取分区的数据，然后将两套副本发送给另两个followers，进而再传输到多个需要该数据的consumers上。因此在该例子中，单个leader所使用的网络I/O，至少是follower的四倍。而且，leader还可能需要对磁盘进行读操作，而follower只需进行写操作。
+
+• 不要忽略监控brokers的in-sync replica(ISR)shrinks、under-replicated partitions和unpreferred leaders。这些都是集群中潜在问题的迹象。例如，单个分区频繁出现ISR收缩，则暗示着该分区的数据速率超过了leader的能力，已无法为consumer和其他副本线程提供服务了。
+
+• 按需修改Apache Log4j的各种属性。Kafka的broker日志记录会耗费大量的磁盘空间，但是我们却不能完全关闭它。因为有时在发生事故之后，需要重建事件序列，那么broker日志就会是我们最好的、甚至是唯一的方法。
+
+• 禁用topic的自动创建，或针对那些未被使用的topics建立清除策略。例如，在设定的x天内，如果未出现新的消息，您应该考虑该topic是否已经失效，并将其从群集中予以删除。此举可避免您花时间去管理群集中被额外创建的元数据。
+
+• 对于那些具有持续高吞吐量的brokers，请提供足够的内存，以避免它们从磁盘子系统中进行读操作。我们应尽可能地直接从操作系统的缓存中直接获取分区的数据。然而，这就意味着您必须确保自己的consumers能够跟得上“节奏”，而对于那些延迟的consumer就只能强制broker从磁盘中读取了。
+
+• 对于具有高吞吐量服务级别目标(service level objectives，SLOs)的大型群集，请考虑为brokers的子集隔离出不同的topic。至于如何确定需要隔离的topics，则完全取决于您自己的业务需要。例如，您有一些使用相同群集的联机事务处理(multiple online transaction processing，OLTP)系统，那么将每个系统的topics隔离到不同brokers子集中，则能够有助于限制潜在事件的影响半径。
+
+• 在旧的客户端上使用新的topic消息格式。应当代替客户端，在各个brokers上加载额外的格式转换服务。当然，最好还是要尽量避免这种情况的发生。
+
+• 不要错误地认为在本地主机上测试好broker，就能代表生产环境中的真实性能了。要知道，如果使用复制因子为1，并在环回接口上对分区所做的测试，是与大多数生产环境截然不同的。在环回接口上网络延迟几乎可以被忽略的，而在不涉及到复制的情况下，接收leader确认所需的时间则同样会出现巨大的差异。
+
+
+本文英文原文《20 Best Practices for Working With Apache Kafka at Scale》：https://blog.newrelic.com/engineering/kafka-best-practices/
+
+--------
 
