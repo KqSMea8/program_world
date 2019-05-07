@@ -1,0 +1,904 @@
+
+
+https://www.pypandas.cn/document/indexing/query.html#
+
+
+准备工作：导入Pandas库、numpy库，并使用Pandas测试数据库tips导入为DataFrame格式（Pandas两种数据结构之一）。
+
+In [1]: import pandas as pd
+In [2]: import numpy as np
+In [3]: url = 'https://raw.github.com/pandas-dev/pandas/master/pandas/tests/data/tips.csv'
+In [4]: tips = pd.read_csv(url)
+In [5]: tips.head()
+Out[5]:
+   total_bill   tip     sex smoker  day    time  size
+0       16.99  1.01  Female     No  Sun  Dinner     2
+1       10.34  1.66    Male     No  Sun  Dinner     3
+2       21.01  3.50    Male     No  Sun  Dinner     3
+3       23.68  3.31    Male     No  Sun  Dinner     2
+4       24.59  3.61  Female     No  Sun  Dinner     4
+
+Select
+SQL中，选取包含“total_bill, tip, smoker, time”这四列的前5行数据SQL脚本如下：
+
+SELECT total_bill, tip, smoker, time
+FROM tips
+LIMIT 5;
+
+Pandas中，通过如下代码实现选取指定列，指定行：
+
+In [6]: tips[['total_bill', 'tip', 'smoker', 'time']].head(5)
+Out[6]:
+   total_bill   tip smoker    time
+0       16.99  1.01     No  Dinner
+1       10.34  1.66     No  Dinner
+2       21.01  3.50     No  Dinner
+3       23.68  3.31     No  Dinner
+4       24.59  3.61     No  Dinner
+
+若DataFrame数据结构中不提供列名列表，则默认选择全部数据列，等同于SQL中的“select *”
+
+Where
+SQL使用where语句选择时间为dinner的前五行数据：
+
+SELECT *
+FROM tips
+WHERE time = 'Dinner'
+LIMIT 5;
+1
+2
+3
+4
+pandas通过个列添加限制条件实现如下：
+
+In [7]: tips[tips['time'] == 'Dinner'].head(5)
+Out[7]:
+   total_bill   tip     sex smoker  day    time  size
+0       16.99  1.01  Female     No  Sun  Dinner     2
+1       10.34  1.66    Male     No  Sun  Dinner     3
+2       21.01  3.50    Male     No  Sun  Dinner     3
+3       23.68  3.31    Male     No  Sun  Dinner     2
+4       24.59  3.61  Female     No  Sun  Dinner     4
+1
+2
+3
+4
+5
+6
+7
+8
+上述代码通过判断DataFrame中某一列满足条件即返回满足条件的所有行。
+Pandas提供了另一种实现方式，并提供统计满足条件数据行数的功能：
+
+In [8]: is_dinner = tips['time'] == 'Dinner'
+In [9]: is_dinner.value_counts()
+Out[9]:
+True     176
+False     68
+Name: time, dtype: int64
+In [10]: tips[is_dinner].head(5)
+Out[10]:
+   total_bill   tip     sex smoker  day    time  size
+0       16.99  1.01  Female     No  Sun  Dinner     2
+1       10.34  1.66    Male     No  Sun  Dinner     3
+2       21.01  3.50    Male     No  Sun  Dinner     3
+3       23.68  3.31    Male     No  Sun  Dinner     2
+4       24.59  3.61  Female     No  Sun  Dinner     4
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+类似SQL中的OR和AND，Pandas也可以通过“ | (OR) ”或者“& (AND)”在DataFrame中实现多条件查询：
+AND：
+
+SELECT *
+FROM tips
+WHERE time = 'Dinner' AND tip > 5.00;
+1
+2
+3
+In [11]: tips[(tips['time'] == 'Dinner') & (tips['tip'] > 5.00)]
+Out[11]:
+     total_bill    tip     sex smoker  day    time  size
+23        39.42   7.58    Male     No  Sat  Dinner     4
+44        30.40   5.60    Male     No  Sun  Dinner     4
+47        32.40   6.00    Male     No  Sun  Dinner     4
+52        34.81   5.20  Female     No  Sun  Dinner     4
+59        48.27   6.73    Male     No  Sat  Dinner     4
+116       29.93   5.07    Male     No  Sun  Dinner     4
+155       29.85   5.14  Female     No  Sun  Dinner     5
+170       50.81  10.00    Male    Yes  Sat  Dinner     3
+172        7.25   5.15    Male    Yes  Sun  Dinner     2
+181       23.33   5.65    Male    Yes  Sun  Dinner     2
+183       23.17   6.50    Male    Yes  Sun  Dinner     4
+211       25.89   5.16    Male    Yes  Sat  Dinner     4
+212       48.33   9.00    Male     No  Sat  Dinner     4
+214       28.17   6.50  Female    Yes  Sat  Dinner     3
+239       29.03   5.92    Male     No  Sat  Dinner     3
+
+OR：
+
+SELECT *
+FROM tips
+WHERE size >= 5 OR total_bill > 45;
+
+In [12]: tips[(tips['size'] >= 5) | (tips['total_bill'] > 45)]
+Out[12]:
+     total_bill    tip     sex smoker   day    time  size
+59        48.27   6.73    Male     No   Sat  Dinner     4
+125       29.80   4.20  Female     No  Thur   Lunch     6
+141       34.30   6.70    Male     No  Thur   Lunch     6
+142       41.19   5.00    Male     No  Thur   Lunch     5
+143       27.05   5.00  Female     No  Thur   Lunch     6
+155       29.85   5.14  Female     No   Sun  Dinner     5
+156       48.17   5.00    Male     No   Sun  Dinner     6
+170       50.81  10.00    Male    Yes   Sat  Dinner     3
+182       45.35   3.50    Male    Yes   Sun  Dinner     3
+185       20.69   5.00    Male     No   Sun  Dinner     5
+187       30.46   2.00    Male    Yes   Sun  Dinner     5
+212       48.33   9.00    Male     No   Sat  Dinner     4
+216       28.15   3.00    Male    Yes   Sat  Dinner     5
+
+非空检查
+Pandas提供 notna() 和 isna()方法来判断字段是否为空，举例如下：
+
+In [13]: frame = pd.DataFrame({'col1': ['A', 'B', np.NaN, 'C', 'D'],
+   ....:                       'col2': ['F', np.NaN, 'G', 'H', 'I']})
+In [14]: frame
+Out[14]:
+  col1 col2
+0    A    F
+1    B  NaN
+2  NaN    G
+3    C    H
+4    D    I
+9
+10
+SQL筛选空数据如下：
+
+SELECT *
+FROM frame
+WHERE col2 IS NULL;
+1
+2
+3
+Pandas筛选空数据如下：
+
+In [15]: frame[frame['col2'].isna()]
+Out[15]:
+  col1 col2
+1    B  NaN
+1
+2
+3
+4
+SQL筛选非空数据如下：
+
+SELECT *
+FROM frame
+WHERE col1 IS NOT NULL;
+1
+2
+3
+Pandas筛选非空数据如下：
+
+In [16]: frame[frame['col1'].notna()]
+Out[16]:
+  col1 col2
+0    A    F
+1    B  NaN
+3    C    H
+4    D    I
+1
+2
+3
+4
+5
+6
+7
+Group By
+Group By用来对数据进行分组统计。
+例如使用SQL语句实现按照性别分组并计数：
+
+SELECT sex, count(*)
+FROM tips
+GROUP BY sex;
+/*
+Female     87
+Male      157
+*/
+1
+2
+3
+4
+5
+6
+7
+Pandas实现如下：
+
+In [17]: tips.groupby('sex').size()
+Out[17]:
+sex
+Female     87
+Male      157
+dtype: int64
+1
+2
+3
+4
+5
+6
+注意：上述代码中计数使用size（）方法而不是count（）方法，因为count（）是对所有列生效：
+
+In [18]: tips.groupby('sex').count()
+Out[18]:
+        total_bill  tip  smoker  day  time  size
+sex
+Female          87   87      87   87    87    87
+Male           157  157     157  157   157   157
+1
+2
+3
+4
+5
+6
+也可以对指定单个列使用count（）方法：
+
+In [19]: tips.groupby('sex')['total_bill'].count()
+Out[19]:
+sex
+Female     87
+Male      157
+Name: total_bill, dtype: int64
+1
+2
+3
+4
+5
+6
+Pandas可以对Group By分组之后的数据实现多种统计方法，如统计“一周内不同工作日获得的小费平均数及次数”：
+
+SELECT day, AVG(tip), COUNT(*)
+FROM tips
+GROUP BY day;
+/*
+Fri   2.734737   19
+Sat   2.993103   87
+Sun   3.255132   76
+Thur  2.771452   62
+*/
+1
+2
+3
+4
+5
+6
+7
+8
+9
+Pandas通过 agg() 方法实现上述功能：
+
+In [20]: tips.groupby('day').agg({'tip': np.mean, 'day': np.size})
+Out[20]:
+           tip  day
+day
+Fri   2.734737   19
+Sat   2.993103   87
+Sun   3.255132   76
+Thur  2.771452   62
+1
+2
+3
+4
+5
+6
+7
+8
+Pandas也可以实现对多个列进行Group By分组统计：
+
+SELECT smoker, day, COUNT(*), AVG(tip)
+FROM tips
+GROUP BY smoker, day;
+/*
+smoker day
+No     Fri      4  2.812500
+       Sat     45  3.102889
+       Sun     57  3.167895
+       Thur    45  2.673778
+Yes    Fri     15  2.714000
+       Sat     42  2.875476
+       Sun     19  3.516842
+       Thur    17  3.030000
+*/
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+In [21]: tips.groupby(['smoker', 'day']).agg({'tip': [np.size, np.mean]})
+Out[21]:
+              tip
+             size      mean
+smoker day
+No     Fri    4.0  2.812500
+       Sat   45.0  3.102889
+       Sun   57.0  3.167895
+       Thur  45.0  2.673778
+Yes    Fri   15.0  2.714000
+       Sat   42.0  2.875476
+       Sun   19.0  3.516842
+       Thur  17.0  3.030000
+Join
+Pandas使用 join() 和 merge() 实现SQL中的 join 功能，默认情况下，join（）方法根据DataFrame数据中的indices连接。
+Pandas可以实现 inner、outer、left、right连接。
+准备数据如下：
+
+In [22]: df1 = pd.DataFrame({'key': ['A', 'B', 'C', 'D'],
+   ....:                     'value': np.random.randn(4)})
+   ....:
+In [23]: df2 = pd.DataFrame({'key': ['B', 'D', 'D', 'E'],
+   ....:                     'value': np.random.randn(4)})
+   ....:
+INNER JOIN
+
+SELECT *
+FROM df1
+INNER JOIN df2
+  ON df1.key = df2.key;
+1
+2
+3
+4
+Pandas默认使用 inner join
+
+# merge performs an INNER JOIN by default
+In [24]: pd.merge(df1, df2, on='key')
+Out[24]:
+  key   value_x   value_y
+0   B -0.318214  0.543581
+1   D  2.169960 -0.426067
+2   D  2.169960  1.138079
+1
+2
+3
+4
+5
+6
+7
+merge方法也提供了连接一个数据的列与另一个数据的index索引的功能：
+
+In [25]: indexed_df2 = df2.set_index('key')
+In [26]: pd.merge(df1, indexed_df2, left_on='key', right_index=True)
+Out[26]:
+  key   value_x   value_y
+1   B -0.318214  0.543581
+3   D  2.169960 -0.426067
+3   D  2.169960  1.138079
+1
+2
+3
+4
+5
+6
+7
+LEFT OUTER JOIN
+
+-- 显示df1的所有数据
+SELECT *
+FROM df1
+LEFT OUTER JOIN df2
+  ON df1.key = df2.key;
+1
+2
+3
+4
+5
+# show all records from df1
+In [27]: pd.merge(df1, df2, on='key', how='left')
+Out[27]:
+  key   value_x   value_y
+0   A  0.116174       NaN
+1   B -0.318214  0.543581
+2   C  0.285261       NaN
+3   D  2.169960 -0.426067
+4   D  2.169960  1.138079
+1
+2
+3
+4
+5
+6
+7
+8
+9
+RIGHT JOIN
+
+-- show all records from df2
+SELECT *
+FROM df1
+RIGHT OUTER JOIN df2
+  ON df1.key = df2.key;
+1
+2
+3
+4
+5
+# show all records from df2
+In [28]: pd.merge(df1, df2, on='key', how='right')
+Out[28]:
+  key   value_x   value_y
+0   B -0.318214  0.543581
+1   D  2.169960 -0.426067
+2   D  2.169960  1.138079
+3   E       NaN  0.086073
+1
+2
+3
+4
+5
+6
+7
+8
+FULL JOIN
+
+-- show all records from both tables
+SELECT *
+FROM df1
+FULL OUTER JOIN df2
+  ON df1.key = df2.key;
+1
+2
+3
+4
+5
+# show all records from both frames
+In [29]: pd.merge(df1, df2, on='key', how='outer')
+Out[29]:
+  key   value_x   value_y
+0   A  0.116174       NaN
+1   B -0.318214  0.543581
+2   C  0.285261       NaN
+3   D  2.169960 -0.426067
+4   D  2.169960  1.138079
+5   E       NaN  0.086073
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+merge方法详解：
+
+pandas.merge(left, right, how='inner', on=None, left_on=None, right_on=None, left_index=False, right_index=False, sort=False, suffixes=('_x', '_y'), copy=True, indicator=False, validate=None)
+
+参数解释：
+left，right：表示要合并的两个 DataFrame 对象；
+how：表示如何合并连接，默认为 inner，还有outer、left、right；
+on：指定进行连接的标签或列表，注意此生的标签必须同时存在两个 DataFrame 对象中；
+left_on：左侧DataFrame对象中参与连接的标签或列表；
+right_on：右侧dataFrame对象中参与连接的标签或列表；
+left_index：是否使用左侧DataFrame对象中的索引作为连接的主键；
+right_idnex：是否使用右侧dataFrame对象中的索引作为连接的主键；
+sort：是否对连接结果根据连接关键字进行排序；
+suffixes：后缀名分别用于左右数据对象中的重叠名称；
+copy：是否复制结果；
+indicator：
+validate：默认为None，检查merge的连接匹配类型，“one_to_one” or “1:1”:检查合并所用关键字在连个数据对象中的唯一性；“one_to_many” or “1:m”: 检查合并关键字在左侧数据中的唯一性；“many_to_one” or “m:1”: 检查合并所用关键字在右侧数据中的唯一性；“many_to_many” or “m:m”:允许此种形式但不起作用。
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+>>> A              >>> B
+    lkey value         rkey value
+0   foo  1         0   foo  5
+1   bar  2         1   bar  6
+2   baz  3         2   qux  7
+3   foo  4         3   bar  8
+
+>>> A.merge(B, left_on='lkey', right_on='rkey', how='outer')
+   lkey  value_x  rkey  value_y
+0  foo   1        foo   5
+1  foo   4        foo   5
+2  bar   2        bar   6
+3  bar   2        bar   8
+4  baz   3        NaN   NaN
+5  NaN   NaN      qux   7
+1
+2
+3
+4
+5
+7
+8
+9
+10
+11
+12
+13
+14
+15
+Union
+合并数据，Pandas使用 concat() 实现相同功能，举例如下：
+
+In [30]: df1 = pd.DataFrame({'city': ['Chicago', 'San Francisco', 'New York City'],
+   ....:                     'rank': range(1, 4)})
+In [31]: df2 = pd.DataFrame({'city': ['Chicago', 'Boston', 'Los Angeles'],
+   ....:                     'rank': [1, 4, 5]})
+1
+2
+3
+4
+Union all 不删除重复项。
+
+SELECT city, rank FROM df1
+UNION ALL
+SELECT city, rank FROM df2;
+/*
+         city  rank
+      Chicago     1
+San Francisco     2
+New York City     3
+      Chicago     1
+       Boston     4
+  Los Angeles     5
+*/
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+In [32]: pd.concat([df1, df2])
+Out[32]:
+            city  rank
+0        Chicago     1
+1  San Francisco     2
+2  New York City     3
+0        Chicago     1
+1         Boston     4
+2    Los Angeles     5
+1
+2
+3
+4
+5
+6
+7
+8
+9
+Union 删除重复项：
+
+SELECT city, rank FROM df1
+UNION
+SELECT city, rank FROM df2;
+-- notice that there is only one Chicago record this time
+/*
+         city  rank
+      Chicago     1
+San Francisco     2
+New York City     3
+       Boston     4
+  Los Angeles     5
+*/
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+concat().drop_duplicates()删除重复项
+
+In [33]: pd.concat([df1, df2]).drop_duplicates()
+Out[33]:
+            city  rank
+0        Chicago     1
+1  San Francisco     2
+2  New York City     3
+1         Boston     4
+2    Los Angeles     5
+1
+2
+3
+4
+5
+6
+7
+8
+其他统计分析功能
+Top N rows with offset
+将tips表按tip列的值降序排序，偏移量offset5表示从第6条数据读取，limit10表示读取十行数据，最终取降序排序后的结果第6-15行的数据。
+
+-- MySQL
+SELECT * FROM tips
+ORDER BY tip DESC
+LIMIT 10 OFFSET 5;
+1
+2
+3
+4
+In [34]: tips.nlargest(10+5, columns='tip').tail(10)
+Out[34]:
+     total_bill   tip     sex smoker   day    time  size
+183       23.17  6.50    Male    Yes   Sun  Dinner     4
+214       28.17  6.50  Female    Yes   Sat  Dinner     3
+47        32.40  6.00    Male     No   Sun  Dinner     4
+239       29.03  5.92    Male     No   Sat  Dinner     3
+88        24.71  5.85    Male     No  Thur   Lunch     2
+181       23.33  5.65    Male    Yes   Sun  Dinner     2
+44        30.40  5.60    Male     No   Sun  Dinner     4
+52        34.81  5.20  Female     No   Sun  Dinner     4
+85        34.83  5.17  Female     No  Thur   Lunch     4
+211       25.89  5.16    Male    Yes   Sat  Dinner     4
+Update
+UPDATE tips
+SET tip = tip*2
+WHERE tip < 2
+1
+2
+3
+In [38]: tips.loc[tips['tip'] < 2, 'tip'] *= 2
+1
+Delete
+DELETE FROM tips
+WHERE tip > 9;
+1
+2
+In [39]: tips = tips.loc[tips['tip'] <= 9]
+
+==========================================================================
+
+【Python实战】Pandas：让你像写SQL一样做数据分析（一）
+
+Series，1维序列，可视作为没有column名的、只有一个column的DataFrame；
+DataFrame，同Spark SQL中的DataFrame一样，其概念来自于R语言，为多column并schema化的2维结构化数据，可视作为Series的容器（container）；
+Panel，为3维的结构化数据，可视作为DataFrame的容器；
+DataFrame较为常见，因此本文主要讨论内容将为DataFrame。DataFrame的生成可通过读取纯文本、Json等数据来生成，亦可以通过Python对象来生成：
+
+import pandas as pd
+import numpy as np
+
+
+df = pd.DataFrame({'total_bill': [16.99, 10.34, 23.68, 23.68, 24.59],
+                   'tip': [1.01, 1.66, 3.50, 3.31, 3.61],
+                   'sex': ['Female', 'Male', 'Male', 'Male', 'Female']})
+对于DataFrame，我们可以看到其固有属性：
+
+# data type of columns
+df.dtypes
+# indexes
+df.index
+# return pandas.Index
+df.columns
+# each row, return array[array]
+df.values
+# a tuple representing the dimensionality of df
+df.shape
+.index，为行索引
+.columns，为列名称（label）
+.dtype，为列数据类型
+2. SQL操作
+官方Doc给出了部分SQL的Pandas实现，在此基础上本文给出了一些扩充说明。以下内容基于Python 2.7 + Pandas 0.18.1的版本。
+
+select
+SQL中的select是根据列的名称来选取；Pandas则更为灵活，不但可根据列名称选取，还可以根据列所在的position选取。相关函数如下：
+
+loc，基于列label，可选取特定行（根据行index）；
+iloc，基于行/列的position；
+df.loc[1:3, ['total_bill', 'tip']]
+df.loc[1:3, 'tip': 'total_bill']
+df.iloc[1:3, [1, 2]]
+df.iloc[1:3, 1: 3]
+at，根据指定行index及列label，快速定位DataFrame的元素；
+iat，与at类似，不同的是根据position来定位的；
+df.at[3, 'tip']
+df.iat[3, 1]
+ix，为loc与iloc的混合体，既支持label也支持position；
+df.ix[1:3, [1, 2]]
+df.ix[1:3, ['total_bill', 'tip']]
+
+此外，有更为简洁的行/列选取方式：
+
+df[1: 3]
+df[['total_bill', 'tip']]
+# df[1:2, ['total_bill', 'tip']]  # TypeError: unhashable type
+where
+Pandas实现where filter，较为常用的办法为df[df[colunm] boolean expr]，比如：
+
+df[df['sex'] == 'Female']
+df[df['total_bill'] > 20]
+
+# or
+df.query('total_bill > 20')
+
+
+在where子句中常常会搭配and, or, in, not关键词，Pandas中也有对应的实现：
+
+# and
+df[(df['sex'] == 'Female') & (df['total_bill'] > 20)]
+# or
+df[(df['sex'] == 'Female') | (df['total_bill'] > 20)]
+# in
+df[df['total_bill'].isin([21.01, 23.68, 24.59])]
+# not
+df[-(df['sex'] == 'Male')]
+df[-df['total_bill'].isin([21.01, 23.68, 24.59])]
+# string function
+df = df[(-df['app'].isin(sys_app)) & (-df.app.str.contains('^微信\d+$'))]
+对where条件筛选后只有一行的dataframe取其中某一列的值，其两种实现方式如下：
+
+total = df.loc[df['tip'] == 1.66, 'total_bill'].values[0]
+total = df.get_value(df.loc[df['tip'] == 1.66].index.values[0], 'total_bill')
+distinct
+drop_duplicates根据某列对dataframe进行去重：
+
+df.drop_duplicates(subset=['sex'], keep='first', inplace=True)
+包含参数：
+
+subset，为选定的列做distinct，默认为所有列；
+keep，值选项{'first', 'last', False}，保留重复元素中的第一个、最后一个，或全部删除；
+inplace ，默认为False，返回一个新的dataframe；若为True，则返回去重后的原dataframe
+group
+group一般会配合合计函数（Aggregate functions）使用，比如：count、avg等。Pandas对合计函数的支持有限，有count和size函数实现SQL的count：
+
+df.groupby('sex').size()
+df.groupby('sex').count()
+df.groupby('sex')['tip'].count()
+对于多合计函数，
+
+select sex, max(tip), sum(total_bill) as total
+from tips_tb
+group by sex;
+实现在agg()中指定dict：
+
+df.groupby('sex').agg({'tip': np.max, 'total_bill': np.sum})
+
+# count(distinct **)
+df.groupby('tip').agg({'sex': pd.Series.nunique})
+as
+SQL中使用as修改列的别名，Pandas也支持这种修改：
+
+# first implementation
+df.columns = ['total', 'pit', 'xes']
+# second implementation
+df.rename(columns={'total_bill': 'total', 'tip': 'pit', 'sex': 'xes'}, inplace=True)
+其中，第一种方法的修改是有问题的，因为其是按照列position逐一替换的。因此，我推荐第二种方法。
+
+join
+Pandas中join的实现也有两种：
+
+# 1.
+df.join(df2, how='left'...)
+
+# 2.
+pd.merge(df1, df2, how='left', left_on='app', right_on='app')
+第一种方法是按DataFrame的index进行join的，而第二种方法才是按on指定的列做join。Pandas满足left、right、inner、full outer四种join方式。
+
+order
+Pandas中支持多列order，并可以调整不同列的升序/降序，有更高的排序自由度：
+
+df.sort_values(['total_bill', 'tip'], ascending=[False, True])
+top
+对于全局的top：
+
+df.nlargest(3, columns=['total_bill'])
+
+对于分组top，MySQL的实现（采用自join的方式）：
+
+select a.sex, a.tip
+from tips_tb a
+where (
+    select count(*)
+    from tips_tb b
+    where b.sex = a.sex and b.tip > a.tip
+) < 2
+order by a.sex, a.tip desc;
+Pandas的等价实现，思路与上类似：
+
+# 1.
+df.assign(rn=df.sort_values(['total_bill'], ascending=False)
+          .groupby('sex')
+          .cumcount()+1)\
+    .query('rn < 3')\
+    .sort_values(['sex', 'rn'])
+
+# 2.
+df.assign(rn=df.groupby('sex')['total_bill']
+          .rank(method='first', ascending=False)) \
+    .query('rn < 3') \
+    .sort_values(['sex', 'rn'])
+replace
+replace函数提供对dataframe全局修改，亦可通过where条件进行过滤修改（搭配loc）：
+
+# overall replace
+df.replace(to_replace='Female', value='Sansa', inplace=True)
+
+# dict replace
+df.replace({'sex': {'Female': 'Sansa', 'Male': 'Leone'}}, inplace=True)
+
+# replace on where condition
+df.loc[df.sex == 'Male', 'sex'] = 'Leone'
+自定义
+除了上述SQL操作外，Pandas提供对每列/每一元素做自定义操作，为此而设计以下三个函数：
+
+map(func)，为Series的函数，DataFrame不能直接调用，需取列后再调用；
+apply(func)，对DataFrame中的某一行/列进行func操作；
+applymap(func)，为element-wise函数，对每一个元素做func操作
+df['tip'].map(lambda x: x - 1)
+df[['total_bill', 'tip']].apply(sum)
+df.applymap(lambda x: x.upper() if type(x) is str else x)
+3. 实战
+环比增长
+现有两个月APP的UV数据，要得到月UV环比增长；该操作等价于两个Dataframe left join后按指定列做减操作：
+
+def chain(current, last):
+    df1 = pd.read_csv(current, names=['app', 'tag', 'uv'], sep='\t')
+    df2 = pd.read_csv(last, names=['app', 'tag', 'uv'], sep='\t')
+    df3 = pd.merge(df1, df2, how='left', on='app')
+    df3['uv_y'] = df3['uv_y'].map(lambda x: 0.0 if pd.isnull(x) else x)
+    df3['growth'] = df3['uv_x'] - df3['uv_y']
+    return df3[['app', 'growth', 'uv_x', 'uv_y']].sort_values(by='growth', ascending=False)
+差集
+对于给定的列，一个Dataframe过滤另一个Dataframe该列的值；相当于集合的差集操作：
+
+def difference(left, right, on):
+    """
+    difference of two dataframes
+    :param left: left dataframe
+    :param right: right dataframe
+    :param on: join key
+    :return: difference dataframe
+    """
+    df = pd.merge(left, right, how='left', on=on)
+    left_columns = left.columns
+    col_y = df.columns[left_columns.size]
+    df = df[df[col_y].isnull()]
+    df = df.ix[:, 0:left_columns.size]
+    df.columns = left_columns
+    return df
+

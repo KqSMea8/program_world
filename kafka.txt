@@ -1899,7 +1899,10 @@ Apache Kafka是一款流行的分布式数据流平台，它已经广泛地被�
 
 在Kafka的0.10.x版本中，参数receive.buffer.bytes的默认值为64 kB。而在Kafka的0.8.x版本中，参数socket.receive.buffer.bytes的默认值为100 kB。这两个默认值对于高吞吐量的环境而言都太小了，特别是如果broker和consumer之间的网络带宽延迟积(bandwidth-delay product)大于局域网(local area network，LAN)时。对于延迟为1毫秒或更多的高带宽的网络(如10 Gbps或更高)，请考虑将套接字缓冲区设置为8或16 MB。
 
-如果您的内存不足，也至少考虑设置为1 MB。当然，您也可以设置为-1，它会让底层操作系统根据网络的实际情况，去调整缓冲区的大小。但是，对于需要启动“热”分区的consumers来说，自动调整可能不会那么快。
+如果您的内存不足，也至少考虑设置为1 MB。当然，您也可以设置为-1，它会让底层操作系统根据网络的实际情况，去调整缓冲区的大小。
+
+但是，对于需要启动“热”分区的consumers来说，自动调整可能不会那么快。
+
 
 设计具有高吞吐量的consumers，以便按需实施背压(back-pressure)。通常，我们应该保证系统只去处理其能力范围内的数据，而不要超负荷“消费”，进而导致进程中断“挂起”，或出现consume group的溢出。如果是在Java虚拟机(JVM)中运行，consumers应当使用固定大小的缓冲区(请参见Disruptor模式：http://lmax-exchange.github.io/disruptor/files/Disruptor-1.0.pdf)，而且最好是使用堆外内存(off-heap)。固定大小的缓冲区能够阻止consumer将过多的数据拉到堆栈上，以至于JVM花费掉其所有的时间去执行垃圾回收，进而无法履行其处理消息的本质工作。
 
@@ -1915,6 +1918,7 @@ Apache Kafka是一款流行的分布式数据流平台，它已经广泛地被�
 • 检测应用程序，以跟踪诸如生成的消息数、平均消息大小、以及已使用的消息数等指标。
 
 针对Brokers的最佳实践
+
 • 在各个brokers上，请压缩topics所需的内存和CPU资源。日志压缩需要各个broker上的堆栈(内存)和CPU周期都能成功地配合实现。而如果让那些失败的日志压缩数据持续增长的话，则会给brokers分区带来风险。您可以在broker上调整log.cleaner.dedupe.buffer.size和log.cleaner.threads这两个参数，但是请记住，这两个值都会影响到各个brokers上的堆栈使用。如果某个broker抛出OutOfMemoryError异常，那么它将会被关闭、并可能造成数据的丢失。而缓冲区的大小和线程的计数，则取决于需要被清除的topic partition数量、以及这些分区中消息的数据速率与密钥的大小。对于Kafka的0.10.2.1版本而言，通过ERROR条目来监控日志清理程序的日志文件，是检测其线程可能出现问题的最可靠方法。
 
 • 通过网络吞吐量来监控brokers。请监控发向(transmit，TX)和收向(receive，RX)的流量，以及磁盘的I/O、磁盘的空间、以及CPU的使用率，而且容量规划是维护群集整体性能的关键步骤。
