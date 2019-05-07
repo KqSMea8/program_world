@@ -1,0 +1,7 @@
+Apache Cassandra 是一个开源的、分布式、无中心、弹性可扩展、高可用、容错、一致性可调、面向行的数据库，它基于 Amazon Dynamo 的分布式设计和 Google Bigtable 的数据模型，由 Facebook 创建，在一些最流行的网站中得到应用。更多特点请参见 一篇文章了解 Apache Cassandra 是什么。
+
+由于 Cassandra 数据库的众多优点，在国内外多达 1500+ 家公司使用，这里包括 Apple、Constant Contact, CERN, Comcast, eBay, GitHub, GoDaddy, Hulu, Instagram, Intuit, Netflix, Reddit, 以及国内的 360、京东、饿了么、宜搜、三一重工、国家气象局等。其中 Apple 在2018年12月于 DevOpsDays India 会议公布其 Cassandra 集群规模达到 16W+ 个实例，存储超过 100PB 的数据，超过 1000个集群。
+
+
+
+虽然有这么多公司使用 Cassandra ，但是国内外关于 Cassandra 的资料非常少，而且很旧。为了让大家更好的了解和使用 Cassandra，我们发动了 Cassandra 中国技术社区，并且申请了公众号以及钉钉交流群（如下），社区网站我们在筹备中。后续我们会在钉钉群安排直播，并且也会计划一些线下 Cassandra Meetup，欢迎大家关注下面 Cassandra技术社区公众号以及钉钉群。

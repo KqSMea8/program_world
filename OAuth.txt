@@ -1,0 +1,778 @@
+第 一部分 起步
+第　1章 OAuth 2．0是什么，为什么要关心它　2
+1．1　OAuth 2．0是什么　2
+1．2　黑暗的旧时代：凭据共享与凭据盗用　5
+1．3　授权访问　9
+1．3．1　超越HTTP 基本认证协议和密码共享反模式　10
+1．3．2　授权委托：重要性及应用　11
+1．3．3　用户主导的安全与用户的选择　12
+1．4　OAuth 2．0：优点、缺点和丑陋的方面　13
+1．5　OAuth 2．0 不能做什么　15
+1．6　小结　16
+第　2章 OAuth之舞　17
+2．1　OAuth 2．0协议概览：获取和使用令牌　17
+2．2　OAuth 2．0授权许可的完整过程　17
+2．3　OAuth中的角色：客户端、授权服务器、资源拥有者、受保护资源　25
+2．4　OAuth的组件：令牌、权限范围和授权许可　27
+2．4．1　访问令牌　27
+2．4．2　权限范围　27
+2．4．3　刷新令牌　27
+2．4．4　授权许可　28
+2．5　OAuth的角色与组件间的交互：后端信道、前端信道和端点　29
+2．5．1　后端信道通信　29
+2．5．2　前端信道通信　30
+2．6　小结　32
+第二部分　构建OAuth环境
+第3章　构建简单的OAuth客户端　34
+3．1　向授权服务器注册OAuth客户端　34
+3．2　使用授权码许可类型获取令牌　36
+3．2．1　发送授权请求　37
+3．2．2　处理授权响应　39
+3．2．3　使用state参数添加跨站保护　40
+3．3　使用令牌访问受保护资源　41
+3．4　刷新访问令牌　43
+3．5　小结　47
+第4章　构建简单的OAuth受保护资源　48
+4．1　解析HTTP请求中的OAuth令牌　49
+4．2　根据数据存储验证令牌　50
+4．3　根据令牌提供内容　53
+4．3．1　不同的权限范围对应不同的操作　54
+4．3．2　不同的权限范围对应不同的数据结果　56
+4．3．3　不同的用户对应不同的数据结果　58
+4．3．4　额外的访问控制　61
+4．4　小结　61
+第5章　构建简单的OAuth授权服务器　62
+5．1　管理OAuth客户端注册　62
+5．2　对客户端授权　64
+5．2．1　授权端点　64
+5．2．2　客户端授权　66
+5．3　令牌颁发　68
+5．3．1　对客户端进行身份认证　69
+5．3．2　处理授权许可请求　70
+5．4　支持刷新令牌　72
+5．5　增加授权范围的支持　74
+5．6　小结　77
+第6章　现实世界中的OAuth 2．0　78
+6．1　授权许可类型　78
+6．1．1　隐式许可类型　79
+6．1．2　客户端凭据许可类型　81
+6．1．3　资源拥有者凭据许可类型　85
+6．1．4　断言许可类型　89
+6．1．5　选择合适的许可类型　91
+6．2　客户端部署　92
+6．2．1　Web应用　93
+6．2．2　浏览器应用　93
+6．2．3　原生应用　94
+6．2．4　处理密钥　99
+6．3　小结　100
+第三部分　OAuth 2．0的实现与漏洞
+第7章　常见的客户端漏洞　102
+7．1　常规客户端安全　102
+7．2　针对客户端的CSRF攻击　103
+7．3　客户端凭据失窃　105
+7．4　客户端重定向URI注册　107
+7．4．1　通过Referrer盗取授权码　108
+7．4．2　通过开放重定向器盗取令牌　111
+7．5　授权码失窃　113
+7．6　令牌失窃　114
+7．7　原生应用最佳实践　115
+7．8　小结　116
+第8章　常见的受保护资源漏洞　117
+8．1　受保护资源会受到什么攻击　117
+8．2　受保护资源端点设计　118
+8．2．1　如何保护资源端点　118
+8．2．2　支持隐式许可　126
+8．3　令牌重放　128
+8．4　小结　130
+第9章　常见的授权服务器漏洞　131
+9．1　常规安全　131
+9．2　会话劫持　131
+9．3　重定向URI篡改　134
+9．4　客户端假冒　138
+9．5　开放重定向器　140
+9．6　小结　142
+第　10章 常见的OAuth令牌漏洞　143
+10．1　什么是bearer令牌　143
+10．2　使用bearer令牌的风险及注意事项　144
+10．3　如何保护bearer令牌　145
+10．3．1　在客户端上　145
+10．3．2　在授权服务器上　146
+10．3．3　在受保护资源上　146
+10．4　授权码　147
+10．5　小结　152
+第四部分　更进一步
+第　11章 OAuth令牌　154
+11．1　OAuth令牌是什么　154
+11．2　结构化令牌：JWT　155
+11．2．1　JWT的结构　156
+11．2．2　JWT声明　157
+11．2．3　在服务器上实现JWT　158
+11．3　令牌的加密保护：JOSE　160
+11．3．1　使用HS256的对称签名　161
+11．3．2　使用RS256 的非对称签名　162
+11．3．3　其他令牌保护方法　165
+11．4　在线获取令牌信息：令牌内省　166
+11．4．1　内省协议　167
+11．4．2　构建内省端点　168
+11．4．3　发起令牌内省请求　170
+11．4．4　将内省与JWT结合　171
+11．5　支持令牌撤回的令牌生命周期管理　172
+11．5．1　令牌撤回协议　172
+11．5．2　实现令牌撤回端点　173
+11．5．3　发起令牌撤回请求　174
+11．6　OAuth 令牌的生命周期　175
+11．7　小结　177
+第　12章 动态客户端注册　178
+12．1　服务器如何识别客户端　178
+12．2　运行时的客户端注册　179
+12．2．1　协议的工作原理　180
+12．2．2　为什么要使用动态注册　181
+12．2．3　实现注册端点　183
+12．2．4　实现客户端自行注册　186
+12．3　客户端元数据　188
+12．3．1　核心客户端元数据字段名表　188
+12．3．2　可读的客户端元数据国际化　190
+12．3．3　软件声明　191
+12．4　管理动态注册的客户端　192
+12．4．1　管理协议的工作原理　193
+12．4．2　实现动态客户端注册管理API　195
+12．5　小结　202
+第　13章 将OAuth 2．0用于用户身份认证　203
+13．1　为什么OAuth 2．0不是身份认证协议　203
+13．2　OAuth到身份认证协议的映射　205
+13．3　OAuth 2．0是如何使用身份认证的　207
+13．4　使用OAuth 2．0进行身份认证的常见陷阱　208
+13．4．1　将访问令牌作为身份认证的证明　208
+13．4．2　将对受保护API的访问作为身份认证的证明　209
+13．4．3　访问令牌注入　209
+13．4．4　缺乏目标受众限制　210
+13．4．5　无效用户信息注入　210
+13．4．6　不同身份提供者的协议各不相同　210
+13．5　OpenID Connect：一个基于OAuth 2．0的认证和身份标准　210
+13．5．1　ID令牌　211
+13．5．2　UserInfo端点　212
+13．5．3　动态服务器发现与客户端注册　214
+13．5．4　与OAuth 2．0的兼容性　216
+13．5．5　高级功能　216
+13．6　构建一个简单的OpenID Connect系统　217
+13．6．1　生成ID 令牌　217
+13．6．2　创建UserInfo 端点　219
+13．6．3　解析ID 令牌　221
+13．6．4　获取UserInfo　222
+13．7　小结　224
+第　14章 使用OAuth 2．0的协议和配置规范　225
+14．1　UMA　225
+14．1．1　UMA的重要性　226
+14．1．2　UMA协议的工作原理　227
+14．2　HEART　237
+14．2．1　HEART的重要性　237
+14．2．2　HEART规范　238
+14．2．3　HEART机制维度的配置规范　238
+14．2．4　HEART 语义维度的配置规范　239
+14．3　iGov　239
+14．3．1　iGov的重要性　240
+14．3．2　iGov展望　240
+14．4　小结　240
+第　15章 bearer令牌以外的选择　241
+15．1　为什么不能满足于bearer令牌　241
+15．2　PoP令牌　242
+15．2．1　PoP令牌的请求与颁发　245
+15．2．2　在受保护资源上使用PoP令牌　246
+15．2．3　验证PoP令牌请求　246
+15．3　PoP令牌实现　247
+15．3．1　颁发令牌和密钥　247
+15．3．2　生成签名头部并发送给受保护资源　249
+15．3．3　解析头部、内省令牌并验证签名　250
+15．4　TLS令牌绑定　252
+15．5　小结　254
+第　16章 归纳总结　255
+16．1　正确的工具　255
+16．2　做出关键决策　256
+16．3　更大范围的生态系统　257
+16．4　社区　257
+16．5　未来　258
+16．6　小结　259
+附录A　代码框架介绍　260
+附录B　补充代码清单　265
+
+itle Page
+Copyright
+OAuth 2.0 Cookbook
+Credits
+About the Author
+About the Reviewer
+www.PacktPub.com
+Why subscribe?
+Customer Feedback
+Preface
+What this book covers
+What you need for this book
+Who this book is for
+Sections
+Getting ready
+How to do it…
+How it works…
+There's more…
+See also
+Conventions
+Reader feedback
+Customer support
+Downloading the example code
+Downloading the color images of this book
+Errata
+Piracy
+Questions
+OAuth 2.0 Foundations
+Introduction
+Preparing the environment
+Getting ready
+How to do it...
+See also
+How it works...
+There's more...
+See also
+Reading the user's contacts from Facebook on the client side
+Getting ready
+How to do it...
+How it works...
+There's more...
+See also
+Reading the user's contacts from Facebook on the server side
+Getting ready
+How to do it...
+How it works...
+There's more...
+See also
+Accessing OAuth 2.0 LinkedIn protected resources
+Getting ready
+How to do it...
+How it works...
+There's more...
+See also
+Accessing OAuth 2.0 Google protected resources bound to the user's session
+Getting ready
+How to do it...
+How it works...
+There's more...
+See also
+Implementing Your Own OAuth 2.0 Provider
+Introduction
+Protecting resources using the Authorization Code grant type
+Getting ready
+How to do it...
+How it works...
+There's more...
+Supporting the Implicit grant type
+Getting ready
+How to do it...
+How it works...
+There's more...
+See also
+Using the Resource Owner Password Credentials grant type as an approach for OAuth 2.0 migration
+Getting ready
+How to do it...
+How it works...
+There's more...
+See also
+Configuring the Client Credentials grant type
+Getting ready
+How to do it...
+How it works...
+There's more...
+See also
+Adding support for refresh tokens
+Getting ready
+How to do it...
+How it works...
+There's more...
+See also
+Using a relational database to store tokens and client details
+Getting ready
+How to do it...
+How it works...
+There's more...
+See also
+Using Redis as a token store
+Getting ready
+How to do it...
+How it works...
+See also
+Implementing client registration
+Getting ready
+How to do it...
+How it works...
+See also
+Breaking the OAuth 2.0 Provider in the middle
+Getting ready
+How to do it...
+How it works...
+See also
+Using Gatling to load test the token validation process using shared databases
+Getting ready
+How to do it...
+How it works...
+See also
+Using OAuth 2.0 Protected APIs
+Introduction
+Creating an OAuth 2.0 client using the Authorization Code grant type
+Getting ready
+How to do it...
+How it works...
+Creating an OAuth 2.0 client using the Implicit grant type
+Getting ready
+How to do it...
+How it works...
+There's more...
+See also
+Creating an OAuth 2.0 client using the Resource Owner Password Credentials grant type
+Getting ready
+How to do it...
+How it works...
+There's more...
+See also
+Creating an OAuth 2.0 client using the Client Credentials grant type
+Getting ready
+How to do it...
+How it works...
+See also
+Managing refresh tokens on the client side
+Getting ready
+How to do it...
+How it works...
+See also
+Accessing an OAuth 2.0 protected API with RestTemplate
+Getting ready
+How to do it...
+How it works...
+See also
+OAuth 2.0 Profiles
+Introduction
+Revoking issued tokens
+Getting ready
+How to do it...
+How it works...
+Remote validation using token introspection
+Getting ready
+How to do it...
+How it works...
+There's more...
+Improving performance using cache for remote validation
+Getting ready
+How to do it...
+How it works...
+See also
+Using Gatling to load test remote token validation
+Getting ready
+How to do it...
+There's more...
+See also
+Dynamic client registration
+Getting ready
+How to do it...
+How it works...
+There's more...
+See also
+Self Contained Tokens with JWT
+Introduction
+Generating access tokens as JWT
+Getting ready
+How to do it...
+How it works...
+See also
+Validating JWT tokens at the Resource Server side
+Getting ready
+How to do it...
+How it works...
+There's more...
+See also
+Adding custom claims on JWT
+Getting ready
+How to do it...
+How it works...
+See also
+Asymmetric signing of a JWT token
+Getting ready
+How to do it...
+How it works...
+See also
+Validating asymmetric signed JWT token
+Getting ready
+How to do it...
+How it works...
+See also
+Using JWE to cryptographically protect JWT tokens
+Getting ready
+How to do it...
+How it works...
+See also
+Using JWE at the Resource Server side
+Getting ready
+How to do it...
+How it works...
+See also
+Using proof-of-possession key semantics on OAuth 2.0 Provider
+Getting ready
+How to do it...
+How it works...
+There's more...
+See also
+Using proof-of-possession key on the client side
+Getting ready
+How to do it...
+How it works...
+See also
+OpenID Connect for Authentication
+Introduction
+Authenticating Google's users through Google OpenID Connect
+Getting ready
+How to do it...
+How it works...
+See also
+Obtaining user information from Identity Provider
+Getting ready
+How to do it...
+How it works...
+There's more...
+See also
+Using Facebook to authenticate users
+Getting ready
+How to do it...
+How it works...
+See also
+Using Google OpenID Connect with Spring Security 5
+Getting ready
+How to do it...
+How it works...
+See also
+Using Microsoft and Google OpenID providers together with Spring Security 5
+Getting ready
+How to do it...
+How it works...
+
+See also
+Implementing Mobile Clients
+Introduction
+Preparing an Android development environment
+Getting ready
+How to do it...
+How it works...
+Creating an Android OAuth 2.0 client using an Authorization Code with the system browser
+Getting ready
+How to do it...
+How it works...
+There's more...
+See also
+Creating an Android OAuth 2.0 client using the Implicit grant type with the system browser
+Getting ready
+How to do it...
+How it works...
+See also
+Creating an Android OAuth 2.0 client using the embedded browser
+Getting ready
+How to do it...
+How it works...
+See also
+Using the Password grant type for client apps provided by the OAuth 2 server
+Getting ready
+How to do it...
+How it works...
+There's more...
+See also
+Protecting an Android client with PKCE
+Getting ready
+How to do it...
+How it works...
+See also
+Using dynamic client registration with mobile applications
+Getting ready
+How to do it...
+How it works...
+See also
+Avoiding Common Vulnerabilities
+Introduction
+Validating the Resource Server audience
+Getting ready
+How to do it...
+How it works...
+Protecting Resource Server with scope validation
+Getting ready
+How to do it...
+How it works...
+Binding scopes with user roles to protect user's resources
+Getting ready
+How to do it...
+How it works...
+See also
+Protecting the client against Authorization Code injection
+Getting ready
+How to do it...
+How it works...
+Protecting the Authorization Server from invalid redirection
+Getting ready
+How to do it...
+How it works...
+收起全部↑
+
+Table of Contents
+Mastering OAuth 2.0
+Credits
+About the Author
+About the Reviewers
+www.PacktPub.com
+Support files, eBooks, discount offers, and more
+Why subscribe?
+Free access for Packt account holders
+Preface
+What this book covers
+What you need for this book
+Who this book is for
+Conventions
+Reader feedback
+Customer support
+Downloading the example code
+Errata
+Piracy
+Questions
+1. Why Should I Care About OAuth 2.0?
+Authentication versus authorization
+Authentication
+Authorization
+What problems does it solve?
+Federated identity
+Delegated authority
+Real-life examples of OAuth 2.0 in action
+How does OAuth 2.0 actually solve the problem?
+Without OAuth 2.0 – GoodApp wants to suggest contacts by looking at your Facebook friends
+With OAuth 2.0 – GoodApp wants to suggest contacts by looking at your Facebook friends
+Who uses OAuth 2.0?
+Introducing "The World's Most Interesting Infographic Generator"
+Summary
+2. A Bird's Eye View of OAuth 2.0
+How does it work?
+User consent
+Two main flows for two main types of client
+Trusted versus untrusted clients
+First look at the client-side flow
+An untrusted client – GoodApp requests access for user's Facebook friends using implicit grant
+The big picture
+When should this be used?
+Pros and cons of being an untrusted client
+Pros
+Cons
+First look at the server-side flow
+A trusted client – GoodApp requests access for user's Facebook friends using authorization code grant
+The big picture
+When should this be used?
+Pros and cons of being a trusted client
+Pros
+Cons
+What are the differences?
+What about mobile?
+Summary
+3. Four Easy Steps
+Let's get started
+Step 1 – Register your client application
+Different service providers, different registration process, same OAuth 2.0 protocol
+Your client credentials
+Step 2 – Get your access token
+A closer look at access tokens
+Scope
+Duration of access
+Token revocation
+Sometimes a refresh token
+Step 3 – Use your access token
+An access token is an access token
+Step 4 – Refresh your access token
+What if I don't have a refresh token?
+Refresh tokens expire too
+Putting it all together
+Summary
+4. Register Your Application
+Recap of registration process
+Registering your application with Facebook
+Creating your application
+Setting your redirection endpoint
+What is a redirection endpoint?
+Find your service provider's authorization and token endpoints
+Putting it all together!
+Summary
+5. Get an Access Token with the Client-Side Flow
+Refresher on the implicit grant flow
+A closer look at the implicit grant flow
+Authorization request
+According to the specification
+In our application
+Access token response
+Success
+Error
+Let's build it!
+Build the base application
+Install Apache Maven
+Create the project
+Configure base project to fit our application
+Modify the hosts file
+Running it for the first time
+Make the authorization request
+Handle the access token response
+Summary
+Reference pages
+Overview of the implicit grant flow
+Authorization request
+Access token response
+Error response
+6. Get an Access Token with the Server-Side Flow
+Refresher on the authorization code grant flow
+A closer look at the authorization code grant flow
+Authorization request
+According to the specification
+In our application
+Authorization response
+Success
+Error
+Access token request
+According to the specification
+In our application
+Access token response
+Success
+Error
+Let's build it!
+Build the base application
+Install Apache Maven
+Create the project
+Configure the base project to fit our application
+Modify the hosts file
+Running it for the first time
+Make the authorization request
+Handle the authorization response
+Make the access token request
+Handle the access token response
+Summary
+Reference pages
+An overview of the authorization code grant flow
+Authorization request
+Authorization response
+Error response
+Access token request
+Access token response
+Error response
+7. Use Your Access Token
+Refresher on access tokens
+Use your access token to make an API call
+The authorization request header field
+The form-encoded body parameter
+The URI query parameter
+Let's build it!
+In our client-side application
+Send via the URI query parameter
+Send via the form-encoded body parameter
+In our server-side application
+Send via the URI query parameter
+Send via the HTTP authorization header
+Creating the world's most interesting infographic
+Summary
+Reference pages
+An overview of protected resource access
+The authorization request header field
+The form-encoded body parameter
+The URI query parameter
+8. Refresh Your Access Token
+A closer look at the refresh token flow
+The refresh request
+According to the specification
+The access token response
+Success
+Error
+What if I have no refresh token? Or my refresh token has expired?
+Comparison between the two methods
+The ideal workflow
+Summary
+Reference pages
+An overview of the refresh token flow
+The refresh request
+Access token response
+Error response
+9. Security Considerations
+What's at stake?
+Security best practices
+Use TLS!
+Request minimal scopes
+When using the implicit grant flow, request read-only permissions
+Keep credentials and tokens out of reach of users
+Use the authorization code grant flow whenever possible
+Use the refresh token whenever possible
+Use native browsers instead of embedded browsers
+Do not use third-party scripts in the redirection endpoint
+Rotate your client credentials
+Common attacks
+Cross-site request forgery (CSRF)
+What's going on?
+Use the state param to combat CSRF
+Phishing
+Redirection URI manipulation
+Client and user impersonation
+Summary
+10. What About Mobile?
+What is a mobile application?
+What flow should we use for mobile applications?
+Are mobile applications trusted or untrusted?
+What about mobile applications built on top of mobile platforms with secure storage APIs?
+Not quite enough
+Hybrid architectures
+Implicit for mobile app, authorization code grant for backend server
+What is the benefit of this?
+Authorization via application instead of user-agent
+Summary
+11. Tooling and Troubleshooting
+Tools
+Troubleshooting
+The implicit grant flow
+The authorization request
+Common issues
+The authorization code grant flow
+The authorization request
+Common issues
+The access token request
+Common issues
+The API call flow
+The authorization request header field
+Common issues
+The form-encoded body parameter
+Common issues
+The URI query parameter
+The refresh token flow
+Common issues
+Summary
+12. Extensions to OAuth 2.0
+Extensions to the OAuth 2.0 framework
+Custom grant types
+A variety of token types
+Any authorization backend
+OpenID Connect
+Summary
+A. Resource Owner Password Credentials Grant
+When should you use it?
+Reference pages
+An overview of the resource owner password credentials grant
+Authorization request and response
+Access token request
+Access token response
+Error response
+B. Client Credentials Grant
+When should you use it?
+Reference pages
+Overview of the client credentials grant
+Authorization request and response
+Access token request
+Access token response
+Error response
+C. Reference Specifications
+The OAuth 2 Authorization Framework
+The OAuth 2 Authorization Framework: Bearer Token Usage
+OAuth 2.0 Token Revocation
+OAuth 2.0 Thread Model and Security Considerations
+Assertion Framework for OAuth 2.0 Client Authentication and Authorization Grants
+Security Assertion Markup Language (SAML) 2.0 Profile for OAuth 2.0 Client Authentication and Authorization Grants
+JSON Web Token (JWT)
+JSON Web Token (JWT) Profile for OAuth 2.0 Client Authentication and Authorization Grants
+OpenID Connect Core 1.0
+HTTP Authentication: Basic and Digest Access Authentication

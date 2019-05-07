@@ -1710,3 +1710,880 @@ Fork/Join　框架　142
 8．2　正式起航 332
 8．3　挂起整个虚拟机 334
 8．4　调试进入ArrayList内部 336
+
+
+提到 JAVA 加锁，我们通常会想到 synchronized 关键字或者是 Java Concurrent Util（后面简称JCU）包下面的 Lock，今天就来扒一扒 Lock 是如何实现的，比如我们可以先提出一些问题：当我们通实例化一个 ReentrantLock 并且调用它的 lock 或 unlock 的时候，这其中发生了什么？如果多个线程同时对同一个锁实例进行 lock 或 unlcok 操作，这其中又发生了什么？
+
+什么是可重入锁？
+
+ReentrantLock 是可重入锁，什么是可重入锁呢？可重入锁就是当前持有该锁的线程能够多次获取该锁，无需等待。可重入锁是如何实现的呢？这要从 ReentrantLock 的一个内部类 Sync 的父类说起，Sync 的父类是 AbstractQueuedSynchronizer（后面简称AQS）。
+
+什么是AQS？
+
+AQS 是 JDK1.5 提供的一个基于 FIFO 等待队列实现的一个用于实现同步器的基础框架，这个基础框架的重要性可以这么说，JCU 包里面几乎所有的有关锁、多线程并发以及线程同步器等重要组件的实现都是基于 AQS 这个框架。AQS 的核心思想是基于 volatile int state 这样的一个属性同时配合 Unsafe 工具对其原子性的操作来实现对当前锁的状态进行修改。当 state 的值为 0 的时候，标识改 Lock 不被任何线程所占有。
+
+ReentrantLock 锁的架构
+
+ReentrantLock 的架构相对简单，主要包括一个 Sync 的内部抽象类以及 Sync 抽象类的两个实现类。上面已经说过了 Sync 继承自 AQS，他们的结构示意图如下：
+
+
+
+上图除了 AQS 之外，我把 AQS 的父类 AbstractOwnableSynchronizer（后面简称AOS）也画了进来，可以稍微提一下，AOS 主要提供一个 exclusiveOwnerThread 属性，用于关联当前持有该所的线程。另外、Sync 的两个实现类分别是 NonfairSync 和 FairSync，由名字大概可以猜到，一个是用于实现公平锁、一个是用于实现非公平锁。那么 Sync 为什么要被设计成内部类呢？我们可以看看 AQS 主要提供了哪些 protect 的方法用于修改 state 的状态，我们发现 Sync 被设计成为安全的外部不可访问的内部类。ReentrantLock 中所有涉及对 AQS 的访问都要经过 Sync，其实，Sync 被设计成为内部类主要是为了安全性考虑，这也是作者在 AQS 的 comments 上强调的一点。
+
+AQS 的等待队列
+
+作为 AQS 的核心实现的一部分，举个例子来描述一下这个队列长什么样子，我们假设目前有三个线程 Thread1、Thread2、Thread3 同时去竞争锁，如果结果是 Thread1 获取了锁，Thread2 和 Thread3 进入了等待队列，那么他们的样子如下：
+
+
+
+AQS 的等待队列基于一个双向链表实现的，HEAD 节点不关联线程，后面两个节点分别关联 Thread2 和 Thread3，他们将会按照先后顺序被串联在这个队列上。这个时候如果后面再有线程进来的话将会被当做队列的 TAIL。
+
+1）入队列
+
+我们来看看，当这三个线程同时去竞争锁的时候发生了什么？代码：
+
+public final void acquire(int arg) {
+    if (!tryAcquire(arg) &&
+        acquireQueued(addWaiter(Node.EXCLUSIVE), arg))
+        selfInterrupt();
+}
+解读：三个线程同时进来，他们会首先会通过 CAS 去修改 state 的状态，如果修改成功，那么竞争成功，因此这个时候三个线程只有一个 CAS 成功，其他两个线程失败，也就是 tryAcquire 返回 false。接下来，addWaiter 会把将当前线程关联的 EXCLUSIVE 类型的节点入队列：
+
+private Node addWaiter(Node mode) {
+    Node node = new Node(Thread.currentThread(), mode);
+    Node pred = tail;
+    if (pred != null) {
+        node.prev = pred;
+        if (compareAndSetTail(pred, node)) {
+            pred.next = node;
+            return node;
+        }
+    }
+    enq(node);
+    return node;
+}
+解读：如果队尾节点不为 null，则说明队列中已经有线程在等待了，那么直接入队尾。对于我们举的例子，这边的逻辑应该是走 enq，也就是开始队尾是 null，其实这个时候整个队列都是 null 的。代码：
+
+private Node enq(final Node node) {
+    for (;;) {
+        Node t = tail;
+        if (t == null) { // Must initialize
+            if (compareAndSetHead(new Node()))
+                tail = head;
+        } else {
+            node.prev = t;
+            if (compareAndSetTail(t, node)) {
+                t.next = node;
+                return t;
+            }
+        }
+    }
+}
+解读：如果 Thread2 和 Thread3 同时进入了 enq，同时 t==null，则进行 CAS 操作对队列进行初始化，这个时候只有一个线程能够成功，然后他们继续进入循环，第二次都进入了 else 代码块，这个时候又要进行 CAS 操作，将自己放在队尾，因此这个时候又是只有一个线程成功，我们假设是 Thread2 成功，哈哈，Thread2 开心的返回了，Thread3 失落的再进行下一次的循环，最终入队列成功，返回自己。
+
+2）并发问题
+
+基于上面两段代码，他们是如何实现不进行加锁，当有多个线程，或者说很多很多的线程同时执行的时候，怎么能保证最终他们都能够乖乖的入队列而不会出现并发问题的呢？这也是这部分代码的经典之处，多线程竞争，热点、单点在队列尾部，多个线程都通过【CAS+死循环】这个free-lock黄金搭档来对队列进行修改，每次能够保证只有一个成功，如果失败下次重试，如果是N个线程，那么每个线程最多 loop N 次，最终都能够成功。
+
+3）挂起等待线程
+
+上面只是 addWaiter 的实现部分，那么节点入队列之后会继续发生什么呢？那就要看看 acquireQueued 是怎么实现的了，为保证文章整洁，代码我就不贴了，同志们自行查阅，我们还是以上面的例子来看看，Thread2 和 Thread3 已经被放入队列了，进入 acquireQueued 之后：
+
+对于 Thread2 来说，它的 prev 指向 HEAD，因此会首先再尝试获取锁一次，如果失败，则会将 HEAD 的 waitStatus 值为 SIGNAL，下次循环的时候再去尝试获取锁，如果还是失败，且这个时候 prev 节点的 waitStatus 已经是 SIGNAL，则这个时候线程会被通过 LockSupport 挂起。
+
+对于 Thread3 来说，它的 prev 指向 Thread2，因此直接看看 Thread2 对应的节点的 waitStatus 是否为 SIGNAL，如果不是则将它设置为 SIGNAL，再给自己一次去看看自己有没有资格获取锁，如果 Thread2 还是挡在前面，且它的 waitStatus 是 SIGNAL，则将自己挂起。
+
+如果 Thread1 死死的握住锁不放，那么 Thread2 和 Thread3 现在的状态就是挂起状态啦，而且 HEAD，以及 Thread 的 waitStatus 都是 SIGNAL，尽管他们在整个过程中曾经数次去尝试获取锁，但是都失败了，失败了不能死循环呀，所以就被挂起了。当前状态如下：
+
+
+
+锁释放-等待线程唤起
+
+我们来看看当 Thread1 这个时候终于做完了事情，调用了 unlock 准备释放锁，这个时候发生了什么。代码：
+
+public final boolean release(int arg) {
+    if (tryRelease(arg)) {
+        Node h = head;
+        if (h != null && h.waitStatus != 0)
+            unparkSuccessor(h);
+        return true;
+    }
+    return false;
+}
+解读：首先，Thread1 会修改AQS的state状态，加入之前是 1，则变为 0，注意这个时候对于非公平锁来说是个很好的插入机会，举个例子，如果锁是公平锁，这个时候来了 Thread4，那么这个锁将会被 Thread4 抢去。。。
+
+我们继续走常规路线来分析，当 Thread1 修改完状态了，判断队列是否为 null，以及队头的 waitStatus 是否为 0，如果 waitStatus 为 0，说明队列无等待线程，按照我们的例子来说，队头的 waitStatus 为 SIGNAL=-1，因此这个时候要通知队列的等待线程，可以来拿锁啦，这也是 unparkSuccessor 做的事情，unparkSuccessor 主要做三件事情：
+
+将队头的 waitStatus 设置为 0。
+
+通过从队列尾部向队列头部移动，找到最后一个 waitStatus<=0 的那个节点，也就是离队头最近的没有被cancelled的那个节点，队头这个时候指向这个节点。
+
+将这个节点唤醒，其实这个时候 Thread1 已经出队列了。
+
+还记得线程在哪里挂起的么，上面说过了，在 acquireQueued 里面，我没有贴代码，自己去看哦。这里我们也大概能理解 AQS 的这个队列为什么叫 FIFO 队列了，因此每次唤醒仅仅唤醒队头等待线程，让队头等待线程先出。
+
+羊群效应
+
+这里说一下羊群效应，当有多个线程去竞争同一个锁的时候，假设锁被某个线程占用，那么如果有成千上万个线程在等待锁，有一种做法是同时唤醒这成千上万个线程去去竞争锁，这个时候就发生了羊群效应，海量的竞争必然造成资源的剧增和浪费，因此终究只能有一个线程竞争成功，其他线程还是要老老实实的回去等待。AQS 的 FIFO 的等待队列给解决在锁竞争方面的羊群效应问题提供了一个思路：保持一个 FIFO 队列，队列每个节点只关心其前一个节点的状态，线程唤醒也只唤醒队头等待线程。其实这个思路已经被应用到了分布式锁的实践中，见：Zookeeper 分布式锁的改进实现方案。
+
+==========
+
+线程池的设计原理是什么？
+无敌码农  Java技术江湖  昨天
+点击关注上方“Java技术江湖”，设为“置顶或星标”，第一时间送达技术干货。
+
+
+
+
+
+作者：无敌码农
+
+文章来源：无敌码农
+
+
+
+
+
+导读
+
+
+
+
+
+线程池相关的知识点是面试中非常高频的问题，掌握线程及线程池相关的知识点也是程序员向高段位进阶的必由之路。由于线程池涉及线程、并发、编程语言内存模型等多方面的知识，历来也不是一块特别好掌握的内容。因此，小码哥决定好好梳理下这方面的知识，希望能够对你有所帮助。在本文中，作者将以JAVA语言中的线程池设计为基础，从原理分析及代码实践两个方面来进行梳理。
+
+
+
+线程的概念
+
+
+
+
+
+在了解线程池的相关的知识之前，我们有必要再次深入理解下线程的基本概念。在这里，也许会有很多同学质疑，线程的基本概念我们都懂，为什么还需要重复提起呢？
+
+
+
+在回答这个问题之前，我们还是先回到实际的编程语言中来看看线程到底是什么？以JAVA为例，在JAVA中如何实现一个线程呢？
+
+
+
+public class ThreadDemo01 {
+    public static void main(String args[]) {
+        //通过匿名内部类的方式创建线程，并且重写其中的run方法
+        new Thread() {
+            public void run() {
+                while (true) {
+                    System.out.println("线程->" + Thread.currentThread().getName() + " 运行中！");
+                    try {
+                        sleep(100);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }.start();
+    }
+}
+
+
+
+
+通过上面的代码示例，我们知道在JAVA中要实现一个线程可以通过构造Thread类来实现。之后，通过重写run()方法来让线程执行我们想要让它执行的逻辑。然而，为了让线程生效，我们还需要通过调用start()方法来启动它。那么为什么我们重写了run()方法，但是却还需要调用start()方法呢？run()方法和start()方法有什么关系？到底那个方法才是真正代表了线程这个存在呢？
+
+
+
+要搞清楚这个问题，需要我们明确“线程的执行单元”与“线程”是两个不同的概念。在JAVA中通过Thread类重写的run()方法是线程的执行单元，而通过调用start()方法才是真正启动了一个线程。这一点对后面我们理解线程池的作用会比较有用，因为只有从概念上剥离线程的执行单元与线程本身才能更深入的理解线程池存在的意义。
+
+
+
+为了更加深入的说明这一点，我们可以来具体分析下上面例子中start()方法在JDK中的源码：
+
+
+
+ public synchronized void start() {
+        group.add(this);
+        boolean started = false;
+        try {
+            start0();
+            started = true;
+        } finally {
+            try {
+                if (!started) {
+                    group.threadStartFailed(this);
+                }
+            } catch (Throwable ignore) {
+            }
+        }
+    }
+
+
+
+在start()方法的源码中，最核心的部分其实就是start0()这个JNI本地方法：
+
+
+
+private native void start0();
+
+
+
+
+也就是说在start方法中会调用start0这个本地方法，但是从源码上这么看又看不出start0的具体逻辑。为此，作者特地翻了下JDK的官方文档，其中关于start方法的说明如下：
+
+Causes this thread to begin execution; the Java Virtual Machine calls the run method of this thread.
+
+上面这句话的意思是：在开始执行这个线程的时候，JVM将会调用该线程的run方法，而实际上run方法是被本地方法start0()调用的。也就是说，在JAVA中由于语言的约定，我们需要在使用线程时重写线程中的执行单元方法来实现业务逻辑，而真正开启线程资源的则是start方法。
+
+
+
+在不少关于JAVA线程的软文或者书籍中，经常会提到，创建线程有两种方式：第一种是构造一个Thread；第二种是实现Runnable接口。通过上面的分析，这种说法其实是不严谨的。在JDK中代表线程的只有Thread类，而Runnable接口只是简单定义了一个无参数返回值的run方法。而我们知道run方法只是定义了线程的执行单元，而并非直接开启了线程资源，只有Thread方法的start()方法才可以启动一个线程。
+
+
+
+所以，如果面试中有人问你在JAVA中实现线程的方式有哪些？应该告诉他准确答案：“在JAVA中创建线程只有一种方式，那就是构造Thread类。而实现线程的执行单元则有两种方式，第一种是重写Thread类的run方法；第二种是实现Runnable接口的run方法，并且将Runnable实例用作构造Thread的参数”。
+
+
+
+接下来让我们再来回顾下线程的定义：“线程是一种轻量级的进程，是由进程派生出来的子任务，它是程序执行的一个路径；每个线程都有自己的局部变量表、程序计数器（指向真正执行的指令指针）以及各自的生命周期”。例如，当启动了一个JVM时，从操作系统开始就会创建一个新的JVM进程，之后JVM进程中将会派生或者创建很多线程。
+
+
+
+线程知识涉及编程语言特性的面非常广泛，以JAVA语言为例，作者梳理了一份有关线程的知识图谱，如下：
+
+
+
+
+
+要掌握JAVA中的线程，需要我们理解线程的生命周期、Thread类提供的方法细节、线程安全问题等多方面的知识点。而其中线程安全相关的问题又涉及JVM的内存模型、线程同步及锁相关的知识。由于篇幅的关系，这里作者也只能给出一个大致的提纲，更细节的内容在后面有时间再和大家一起细化同步。
+
+
+
+以上就是在具体讲述线程池之前有关线程知识的回顾了，接下来就让我们进入本篇文章的主题“线程池”相关的内容吧！
+
+
+
+线程池原理
+
+
+
+
+
+在上节关于线程知识的回顾中，我们知道创建一个线程Thread其实是比较耗费操作系统资源的，况且系统中可创建的线程数量也是有限的，如果创建的线程资源数量不能够很好的加以限制，反而会导致系统性能的下降。因此我们在进行多线程编程时，对线程资源的重复利将是一种非常好的程序设计习惯。
+
+
+
+那么我们在编程时如何才能实现线程资源的重复利用呢？答案就是使用线程池！所谓的线程池，通俗的理解就是有一个池子，里面存放着已经创建好的线程资源，当有任务提交给线程池执行时，池中的某个线程就会主动执行该任务，执行完任务后该线程就会继续回到池子中等待下次任务的执行。下面我们就来看一下线程池的基本原理图，如下：
+
+
+
+
+
+
+
+线程池中的线程资源是Thread类代表的，而具体的执行任务是由实现Runnable接口的线程执行单元类组成。线程的执行单元逻辑随业务的变化而有所不同，而线程则是一个公共资源，所以可以复用，这一点也是我们在前面内容中特别强调的，因为如果我们将线程的执行单元中的逻辑与线程本身混在一起理解的话就很容易产生疑惑。
+
+
+
+那么如何实现一个线程池呢？一个完整的线程池应该具备如下要素：
+
+任务队列：用于缓存提交的任务。
+
+线程数量管理功能：一个线程池必须能够很好地管理和控制线程的数量。大致会有三个参数，创建线程池时的初始线程数量init；自动扩充时的最大线程数量max；在线程池空闲时需要释放资源但是也要维持一定数量的核心线程数量core。通过这三个基本参数维持好线程池中数量的合理范围，一般来说它们之间的关系是“init<=core<=max”。
+
+任务拒绝策略：如果线程数量已达到上限且任务队列已满，则需要有相应的拒绝策略来通知任务的提交者。
+
+线程工厂：主要用于个性化定制线程，如设置线程的名称或者将线程设置为守护线程等。
+
+QueueSize：任务队列主要存放提交的Runnable,但是为了防止内存溢出，需要有limit数量对其进行限制。
+
+Keepedalive时间：该时间主要决定线程各个重要参数自动维护的时间间隔。
+
+
+通过上面对线程池组成部分及原理的分析，为了更加深刻地理解下线程池，下面我们手工实现一个线程池！UML类图如下：
+
+
+
+
+
+
+
+ThreadPool（接口）：主要定义一个线程池应该具备的基本操作和方法。
+
+RunnableQueue（接口）：定义存放提交的线程执行单元Runnable的队列。
+
+ThreadFactory（接口）：定义创建线程的接口，便于个性化地定制Thread。
+
+DenyPolicy（接口）：拒绝策略接口，主要用于Queue中当runnable达到limit上限后所采用的拒绝策略。
+
+Internaltask（类）：Runnable的实现，用于线程池内部，该类通过沦陷RunnableQueue队列，不断从队列中取出任务进行执行。
+
+LinkedRunnableQueue（类）：队列接口的具体实现。
+
+BasicThreadPool（类）：线程池的核心实现类。
+
+手工编写完线程池后，我们看看怎么使用：
+
+
+
+public class ThreadPoolTest
+    public static void main(String args[]) throws InterruptedException {
+        //定义线程池，初始化线程数为2，核心线程数为4，最大线程数为6，任务队列最多允许1000个任务
+        final ThreadPool threadPool = new BasicThreadPool(2, 6, 4, 1000);
+        //定义20个任务并提交给线程池
+        for (int i = 0; i < 20; i++) {
+            threadPool.execute(() -> {
+                try {
+                    TimeUnit.SECONDS.sleep(10);
+                    System.out.println(Thread.currentThread().getName() + " is running and done.");
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            });
+        }
+    }
+}
+
+
+以上测试代码，我们通过初始化2个线程、核心线程数为4，最大为6，然后向该线程池提交20个任务，执行结果如下：
+
+
+
+thread-pool-0 is running and done.
+thread-pool--1 is running and done.
+thread-pool--2 is running and done.
+thread-pool--3 is running and done.
+thread-pool-0 is running and done.
+thread-pool--1 is running and done.
+thread-pool--2 is running and done.
+thread-pool--3 is running and done.
+thread-pool--1 is running and done.
+thread-pool-0 is running and done.
+thread-pool--3 is running and done.
+thread-pool--2 is running and done.
+thread-pool--1 is running and done.
+thread-pool-0 is running and done.
+thread-pool--3 is running and done.
+thread-pool--2 is running and done.
+thread-pool-0 is running and done.
+thread-pool--1 is running and done.
+thread-pool--2 is running and done.
+thread-pool--3 is running and done.
+
+
+从运行结果看，由于提交速度比较快，线程池扩容到了其核心线程的数量，总共4个线程，然后这些线程逐步完成了20个任务的执行，从而实现了线程的重复使用。
+
+
+
+以上代码的github地址如下：
+
+https://github.com/manongwudi/java-thread.git。
+
+通过手工编写线程池的目的只是为了让大家更好地理解线程池的实现原理，实际上在JDK1.5以后在"java.util.concurrent(简称JUC)"中已经提供了多种版本的线程池实现，所以在JAVA中使用线程池时，我们只需要选择合适的线程池类型即可，而这些线程池的实现也基本上与我们手工编写的线程池原理类似。
+
+
+
+Java自带线程池
+
+
+
+
+
+在Java中通过Executor框架提供线程池支持，通过该框架我们可以创建出如下几类线程池：
+
+
+
+
+
+按照线程池的核心实现类的不同派生，Java中共提供了5种现成的线程池。
+
+
+
+1、newSingleThreadExecutor
+
+
+
+是单个工作线程的Executor，它的corePoolSize和maximumPoolSize被设置为1。采用的是无界队列LinkedBlockingQueue作为线程池的工作队列（队列的容量为Interger.MAX_VALUE）。由于使用了无界队列，如果请求过多会导致OOM，在并发请求量比较大的系统中，使用此线程池需要注意。
+
+
+
+public class SingleThreadExecutorDemo {
+
+    public static void main(String args[]) {
+        ExecutorService pool = Executors.newSingleThreadExecutor();
+        for (int i = 0; i <= 20; i++) {
+            pool.execute(() -> System.out.println(Thread.currentThread().getName() + "[running done]"));
+        }
+    }
+}
+
+
+2、newFixedThreadPool
+
+
+
+被称为可重用固定线程数线程池。与SingleThreadExecutor一样它也使用了无界队列作为工作队列，如果没有执行方法shutdown()的话也是不会拒绝任务的。
+
+
+
+public class FixThreadPoolDemo {
+    public static void main(String args[]) {
+        ExecutorService pool = Executors.newFixedThreadPool(10);
+        for (int i = 0; i <= 100; i++) {
+            pool.execute(() -> {
+                try {
+                    Thread.sleep(10);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                System.out.println(Thread.currentThread().getName() + "[runing done]");
+            });
+        }
+    }
+}
+
+
+3、newCachedThreadPool
+
+
+
+是一个会根据需要创建新线程的线程池。它的corePoolSize被设置为0，即corePool为空；maximumPoolSize被设置为Integer.MAX_VALUE,即maximumPool是无界的，正因为如此，如果主线程提交任务的速度高于线程池中线程处理任务的速度的话，线程池就会不断创建新的线程，极端情况下就可能导致线程创建过多而耗尽CPU和内存资源。
+
+
+
+public class CacheThreadPoolDemo {
+    public static void main(String args[]) {
+        ExecutorService pool = Executors.newCachedThreadPool();
+        for (int i = 0; i <= 20; i++) {
+            pool.execute(() -> {
+                System.out.println(Thread.currentThread().getName() + "[runing done]");
+            });
+        }
+    }
+}
+
+
+4、newScheduledThreadPool
+
+
+
+用于实现多个线程的周期性任务，它会把待调度的任务放到延迟队列DelayQueue中。与CacheThreadPool一样，它允许创建的最大线程数也是Interger.MAX_VALUE。
+
+
+
+public class ScheduledThreadPoolExecutorDemo {
+    public static void main(String args[]) {
+        ScheduledExecutorService pool = Executors.newScheduledThreadPool(10);
+        for (int i = 0; i <= 20; i++) {
+            pool.schedule(() -> {
+                System.out.println(Thread.currentThread().getName() + "[runing done]");
+            }, 10, TimeUnit.SECONDS);
+        }
+    }
+}
+以上逻辑实现的是：延迟10秒后开始执行任务。
+
+
+
+5、newSingleThreadScheduledExecutor
+
+
+
+只包含一个线程的ThreadScheduleExecutor。
+
+
+
+public class SingleThreadScheduledExecutorDemo {
+    public static void main(String args[]) {
+        ScheduledExecutorService pool = Executors.newSingleThreadScheduledExecutor();
+        for (int i = 0; i <= 20; i++) {
+            pool.scheduleAtFixedRate(() -> {
+                System.out.println(Thread.currentThread().getName() + "[runing done]");
+            }, 1, 1, TimeUnit.SECONDS);
+        }
+    }
+}
+以上逻辑实现的是：每一秒钟执行一次任务。
+
+
+
+6、newWorkStealingPool
+
+
+
+该线程池是jdk1.8以后新增的，底层采用ForkJoinPool来实现，类似于Fork-Join框架所支持的功能。
+
+
+
+public class WorkStealingPoolDemo {
+    public static void main(String args[]) {
+        ExecutorService pool = Executors.newWorkStealingPool(10);
+        for (int i = 0; i <= 20; i++) {
+            pool.execute(() -> {
+                System.out.println(Thread.currentThread().getName() + "[running done]");
+            });
+        }
+    }
+}
+
+
+JDK自带的线程池大家可以根据场景选用，在阿里的开发手册中要求在实现线程池时明确的通过ThreadPoolExecutor去自行创建，并要求使用有界队列作为线程池的工作队列，同时对线程池允许创建的最大线程数也要限制，因为以上几个线程池都存在对资源使用没有限制的问题，所以大家还是根据实际情况来判断吧！
+
+
+==========
+【干货走一波】千万级用户的大型网站，应该如何设计其高并发架构？
+原创： 原子弹大侠  狸猫技术窝  前天
+目录
+
+（1）单块架构
+
+（2）初步的高可用架构
+
+（3）千万级用户量的压力预估
+
+（4）服务器压力预估
+
+（5）业务垂直拆分
+
+（6）用分布式缓存抗下读请求
+
+（7）基于数据库主从架构做读写分离
+
+（8）总结
+
+本文将会从一个大型的网站发展历程出发，一步一步的探索这个网站的架构是如何从单体架构，演化到分布式架构，然后演化到高并发架构的。
+
+
+
+
+
+
+（1）单块架构
+
+
+
+一般一个网站刚开始建立的时候，用户量是很少的，大概可能就几万或者几十万的用户量，每天活跃的用户可能就几百或者几千个。
+
+
+
+这个时候一般网站架构都是采用单体架构来设计的，总共就部署3台服务器，1台应用服务器，1台数据库服务器，1台图片服务器。
+
+
+
+研发团队通常都在10人以内，就是在一个单块应用里写代码，然后写好之后合并代码，接着就是直接在线上的应用服务器上发布。很可能就是手动把应用服务器上的Tomcat给关掉，然后替换系统的代码war包，接着重新启动Tomcat。
+
+
+
+数据库一般就部署在一台独立的服务器上，存放网站的全部核心数据。
+
+
+
+然后在另外一台独立的服务器上部署NFS作为图片服务器，存放网站的全部图片。应用服务器上的代码会连接以及操作数据库以及图片服务器。如下图所示：
+
+
+
+
+
+
+
+（2）初步的高可用架构
+
+
+
+但是这种纯单块系统架构下，有高可用问题存在，最大的问题就是应用服务器可能会故障，或者是数据库可能会故障
+
+
+
+所以在这个时期，一般稍微预算充足一点的公司，都会做一个初步的高可用架构出来。
+
+
+
+对于应用服务器而言，一般会集群化部署。当然所谓的集群化部署，在初期用户量很少的情况下，其实一般也就是部署两台应用服务器而已，然后前面会放一台服务器部署负载均衡设备，比如说LVS，均匀的把用户请求打到两台应用服务器上去。
+
+
+
+如果此时某台应用服务器故障了，还有另外一台应用服务器是可以使用的，这样就避免了单点故障问题。如下图所示：
+
+
+
+对于数据库服务器而言，此时一般也会使用主从架构，部署一台从库来从主库同步数据，这样一旦主库出现问题，可以迅速使用从库继续提供数据库服务，避免数据库故障导致整个系统都彻底故障不可用。如下图：
+
+
+
+
+
+
+
+（3）千万级用户量的压力预估
+
+
+
+这个假设这个网站预估的用户数是1000万，那么根据28法则，每天会来访问这个网站的用户占到20%，也就是200万用户每天会过来访问。
+
+
+
+通常假设平均每个用户每次过来会有30次的点击，那么总共就有6000万的点击（PV）。
+
+
+
+每天24小时，根据28法则，每天大部分用户最活跃的时间集中在（24小时 * 0.2）≈ 5小时内，而大部分用户指的是（6000万点击 * 0.8 ≈ 5000万点击）
+
+
+
+也就是说，在5小时内会有5000万点击进来。
+
+
+
+换算下来，在那5小时的活跃访问期内，大概每秒钟会有3000左右的请求量，然后这5小时中可能又会出现大量用户集中访问的高峰时间段。
+
+
+
+比如在集中半个小时内大量用户涌入形成高峰访问。根据线上经验，一般高峰访问是活跃访问的2~3倍。假设我们按照3倍来计算，那么5小时内可能有短暂的峰值会出现每秒有10000左右的请求。
+
+
+
+
+
+
+
+（4）服务器压力预估
+
+
+
+大概知道了高峰期每秒钟可能会有1万左右的请求量之后，来看一下系统中各个服务器的压力预估。
+
+
+
+一般来说一台虚拟机部署的应用服务器，上面放一个Tomcat，也就支撑最多每秒几百的请求。
+
+
+
+按每秒支撑500的请求来计算，那么支撑高峰期的每秒1万访问量，需要部署20台应用服务。
+
+
+
+而且应用服务器对数据库的访问量又是要翻几倍的，因为假设一秒钟应用服务器接收到1万个请求，但是应用服务器为了处理每个请求可能要涉及到平均3~5次数据库的访问。
+
+
+
+按照3次数据库访问来算，那么每秒会对数据库形成3万次的请求。
+
+
+
+按照一台数据库服务器最高支撑每秒5000左右的请求量，此时需要通过6台数据库服务器才能支撑每秒3万左右的请求。
+
+
+
+图片服务器的压力同样会很大，因为需要大量的读取图片展示页面，这个不太好估算，但是大致可以推算出来每秒至少也会有几千次请求，因此也需要多台图片服务器来支撑图片访问的请求。
+
+
+
+
+
+
+
+（5）业务垂直拆分
+
+
+
+一般来说在这个阶段要做的第一件事儿就是业务的垂直拆分
+
+
+
+因为如果所有业务代码都混合在一起部署，会导致多人协作开发时难以维护。在网站到了千万级用户的时候，研发团队一般都有几十人甚至上百人。
+
+
+
+所以这时如果还是在一个单块系统里做开发，是一件非常痛苦的事情，此时需要做的就是进行业务的垂直拆分，把一个单块系统拆分为多个业务系统，然后一个小团队10个人左右就专门负责维护一个业务系统。如下图
+
+
+
+
+
+
+
+（6）分布式缓存扛下读请求
+
+
+
+这个时候应用服务器层面一般没什么大问题，因为无非就是加机器就可以抗住更高的并发请求。
+
+
+
+现在估算出来每秒钟是1万左右的请求，部署个二三十台机器就没问题了。
+
+
+
+但是目前上述系统架构中压力最大的，其实是数据库层面 ，因为估算出来可能高峰期对数据库的读写并发会有3万左右的请求。
+
+
+
+此时就需要引入分布式缓存来抗下对数据库的读请求压力了，也就是引入Redis集群。
+
+
+
+一般来说对数据库的读写请求也大致遵循28法则，所以每秒3万的读写请求中，大概有2.4万左右是读请求
+
+
+
+这些读请求基本上90%都可以通过分布式缓存集群来抗下来，也就是大概2万左右的读请求可以通过 Redis集群来抗住。
+
+
+
+我们完全可以把热点的、常见的数据都在Redis集群里放一份作为缓存，然后对外提供缓存服务。
+
+
+
+在读数据的时候优先从缓存里读，如果缓存里没有，再从数据库里读取。这样2万读请求就落到Redis上了，1万读写请求继续落在数据库上。
+
+
+
+Redis一般单台服务器抗每秒几万请求是没问题的，所以Redis集群一般就部署3台机器，抗下每秒2万读请求是绝对没问题的。如下图所示：
+
+
+
+
+
+（7）基于数据库主从架构做读写分离
+
+
+
+此时数据库服务器还是存在每秒1万的请求，对于单台服务器来说压力还是过大。
+
+
+
+但是数据库一般都支持主从架构，也就是有一个从库一直从主库同步数据过去。此时可以基于主从架构做读写分离。
+
+
+
+也就是说，每秒大概6000写请求是进入主库，大概还有4000个读请求是在从库上去读，这样就可以把1万读写请求压力分摊到两台服务器上去。
+
+这么分摊过后，主库每秒最多6000写请求，从库每秒最多4000读请求，基本上可以勉强把压力给抗住。如下图：
+
+
+（8）总结
+
+
+
+本文主要是探讨在千万级用户场景下的大型网站的高并发架构设计，也就是预估出了千万级用户的访问压力以及对应的后台系统为了要抗住高并发，在业务系统、缓存、数据库几个层面的架构设计以及抗高并发的分析。
+
+
+MQ、CDN、静态化、分库分表、NoSQL、搜索、分布式文件系统、反向代理，
+
+
+
+为什么我如此注重并发？
+
+
+
+因为随着公司发展，并发量及数据量肯定会增加，高性能、高并发的问题就避免不了。而且工作中，你总是绕不开并发编程的任务，比如说，你想写个程序，一边从文件中读取数据，一边还要做实时计算.....
+
+
+
+另外，并发编程是Java语言中最为晦涩的知识点，它涉及操作系统、内存、CPU、编程语言等多方面的基础能力，而这些知识点看上去非常的零散、独立，可实则关联性又比较强，更为考验一个程序员的内功。
+
+
+
+甚至可以说，只要你想进大厂，并发是必须跨过的一道“坎”。
+
+
+
+不过，因为网上学习资料非常零散，也很少有人能系统讲清楚并发，所以想掌握并发，只能靠“自学”，却往往不得要领。
+
+
+
+说到这里，我想给你推荐一张“并发编程”全景图。是由京东资深架构师王宝令凝聚他十几年经验制成的，从三个核心问题：分工、互斥、协作，全面且系统地涵盖了Java并发编程的技术难点。
+
+
+
+我认为，这个全景图是回到并发的源头思考来问题，根据这个思路，可以举一反三，融会贯通。
+
+
+
+并发编程全景图
+
+
+
+这张全景图，出自宝令老师《Java并发编程实战》专栏，我也一直在跟着学习，让我觉得很厉害的是，他把并发编程涉及到的Java内存模型、管程、多线程等关键性问题讲得通俗易懂、深入浅出，时常让你有种“原来如此”的豁然开朗。甚至即使你是初学者，也能看懂每篇内容的逻辑及要点。
+
+
+
+而且，每篇文章下的留言也特别精彩，有些是总结笔记，有些是提问，还有一些是课后作业的回答代码，跟着大家一起查缺补漏，我也收获良多。
+
+
+
+
+其实，这个专栏上新的时候，我就推荐过了。有好的学习资料，我希望可以让粉丝中想想好好并发的用户知道。特意给大伙争取了《Java并发编程实战》专栏的24小时限时福利，参团价仅79元，原价99元，立省20元。
+
+
+
+
+
+
+
+
+👆👆👆
+
+扫描上方二维码，立即参团
+
+立省20元，限时24小时
+
+
+
+
+
+另外，这个专栏不断有用户呼吁涨价，据运营小姐姐说，涨价时间不确定，但这个拼团价格绝对是最低了。
+
+
+
+
+
+也截了一些留言，供你参考。
+
+
+
+
+
+
+第二个推荐的硬核课程：《深入拆解Java虚拟机》，原价99，限时优惠79，立省20。
+
+
+
+JVM也是大厂常见的面试题之一，而且如果你想进阶资深Java程序员，虚拟机必然是你要深耕的一块内容。
+
+
+
+郑雨迪这个专栏，我看到很多Java领域大神都推荐过，比如你假笨、江南白衣、开涛等等，自己也在跟着学，确实很硬核。
+
+
+
+我记得，这个专栏上线不到3天，专栏订阅量都已经破1W订阅了，异常火爆。目前为止，这个专栏订阅量一直稳居极客时间 top 5，现在快2.5w+订阅。大概原因，我总结了两点：
+
+1、Java虚拟机确实是面试大题；
+
+2、作者是郑雨迪，Oracle Labs高级研究员，专攻Graal编译器，也在研究HotSpot虚拟机项目。
+
+
+
+既然你要学JVM，那跟着Oracle内部专家学，是我想到最高效的方式。想认真进阶Java的同学，请不要错过这次的福利，也是专栏最优惠的时候了。
+
+
+
+雨迪从底层出发，通过揭秘 Java虚拟机的工作原理，掌握诊断手法和调优方式。通过这个专栏的学习，你将了解如何编写高效的代码，如何对Bug达到最优处理，以及如何针对自己的应用调整虚拟机的运营参数。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

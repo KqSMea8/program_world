@@ -1,0 +1,1034 @@
+每个程序员都该学会的Maven知识
+逅弈  Java团长  昨天
+
+来源：逅弈逐码（ID：CodeChaaaser）
+
+
+以前的日子
+以前我们写代码时，jar包都默认放在一个叫 /lib 的目录下，然后把该目录设置为classpath可以读取到的目录，如下图所示：
+
+
+
+某一天我们新加了一个功能，需要用到一个比较古老的 z.jar 包，这时我们到网上去各种搜索，由于比较罕见，最终在某个 xxx软件园 中找到了他。然后我们把 z.jar 包拷贝到 /lib 目录下：
+
+
+
+这时运行后报了一堆的错，原因是 z.jar 包有很多的依赖项，分别是 z1.jar , z2.jar , z3.jar。这时的你是否有种想要骂人的冲动？但是冲动归冲动，代码还是要写，jar包还是要找，自己挖的坑，哭着也要填完啊。
+
+历经千难万险，终于在1个博客中找到了 z1.jar , z2.jar , z3.jar 的下载链接，但是需要支付积分才能下载。。为了得到这些jar包，我们又注册了一个账号，发了几个评论，赚到足够的积分后，终于把那三个jar包下载下来了。然后赶紧把他们拷贝到 /lib 下去：
+
+
+
+凑够了jar包之后，再次运行项目，终于能成功运行了，真是谢天谢地！
+
+过了半个月，老板说我们 项目A 非常不错，现在我们准备再启动一个 项目B 作为他的兄弟项目。这时你开始搭建 项目B 的框架了，把所有需要用到的jar包从 项目A 拷贝到 项目B 中：
+
+
+
+从此你又开始了打怪升级的日子了。
+
+现在的日子
+随着科技的发展，改革开放的浪潮席卷了大地，也席卷了IT界，一大堆生产力工具被创造出来了，俗话说的好，工欲善其事必先利其器。有了好的生产力工具，要做的事必定是事半功倍！而 Maven 就是一种为了解放我们程序猿的生产力工具。
+
+程序猿在日常工作中需要用到大量的jar包，有的是框架包如：netty，sentinel等，有的是工具包如：hutool，有的是公司内部的私有包如：xx-framework等等。
+
+一个项目中可能充斥着各种各样的jar包，如果我们用手工的方式去一个一个的管理的话，那样就会迷失在jar包的海洋里，这时我们通过 Maven 这种管理jar包的工具来帮助我们解决这个繁琐又棘手的问题，可以让我们专心于自己的功能与业务。
+
+其实 Maven 是一套软件工程管理和整合工具。他有很多的功能包括但不限于以下几点：
+
+工程的创建、构建、测试
+
+依赖的管理
+
+仓库的管理
+
+自动化部署
+
+。。。
+
+我们日常中用的最多的可能就是工程与依赖的管理了，其他的用到的频率不多。
+
+有了 Maven 之后，我们：
+
+不需要为每个项目都创建一个 /lib 目录用来存放各种jar包了
+
+不需要为到哪去寻找我需要的jar包而发愁了
+
+不需要为引用的jar包去寻找他所依赖的jar包了
+
+。。。
+
+结构
+下面是一个典型的maven项目的结构图：
+
+
+
+仓库
+在 Maven 的术语中，仓库是一个位置(place)，例如目录，可以存储所有的工程 jar 文件、library jar 文 件、插件或任何其他的工程指定的文件。
+
+严格意义上说，Maven 只有两种类型的仓库:
+
+本地(local)
+
+远程(remote)
+
+本地仓库
+Maven 的本地仓库是机器上的一个文件夹。它在你第一次运行任何 maven 命令的时候创建。
+
+Maven 的本地仓库保存你的工程的所有依赖(library jar、plugin jar 等)。当你运行一次 Maven 构建时，Maven 会自动下载所有依赖的 jar 文件到本地仓库中。它避免了每次构建时都引用存放在远程仓库上的依赖文件。
+
+Maven 的本地仓库默认被创建在 ${user.home}/.m2/repository 目录下。要修改默认位置，只要在 settings.xml 文件中定义另一个路径即可，例如：
+
+<localRepository>
+/anotherDirectory/.m2/respository
+</localRepository>
+
+远程仓库
+Maven 的远程仓库可以是任何其他类型的存储库，可通过各种协议，例如 file：//和 http：// 来访问。
+
+这些存储库可以是由第三方提供的可供下载的远程仓库，例如Maven 的中央仓库(central repository)：
+
+repo.maven.apache.org/maven2
+
+uk.maven.org/maven2
+
+也可以是在公司内的FTP服务器或HTTP服务器上设置的内部存储库，用于在开发团队和发布之间共享私有的 artifacts。
+
+中央仓库
+Maven 的中央仓库是 Maven 社区维护的，里面包含了大量常用的库，我们可以直接引用，但是前提是我们的项目能够访问外网。
+
+私有仓库
+除了 Maven 的中央仓库外，还有一种就是私有仓库，这种仓库通常都是企业内部创建的一个私有库，用于一些内部jar包的维护与共享。由于网络原因和鉴于安全性的考虑，很多公司的内外网是隔离的，要想直接访问中央仓库是不可能的，并且直接把内部资源暴露在互联网上也是非常危险的，所以这时就需要创建一个私有库。
+
+那这些仓库之间的关系是怎样的呢？或者说一个 Maven 项目想要获取一个jar包的话，他该从哪个仓库中去获取呢？下图就是一个简单的描述：
+
+
+
+首先 Maven 会到本地仓库中去寻找所需要的jar吧，如果找不到就会到配置的私有仓库中去找，如果私有仓库中也找不到的话，就会到配置的中央仓库中去找，如果还是找不到就会报错。但是这中间只要在某一个仓库中找到了就会返回了，除非仓库中有更新的版本，或者是snapshot版本。
+
+那么 Maven 的远程仓库是怎么配置的呢？假设我们要配置一个中央仓库，可以像下面这样配置：
+
+<project>
+
+...
+
+
+<profiles>
+
+
+<profile>
+
+
+
+<id>
+central
+</id>
+
+
+
+<repositories>
+
+
+<repository>
+<id>
+Central
+</id>
+<name>
+Central
+</name>
+<url>
+http://repo.maven.apache.org/maven2/
+</url>
+</repository>
+</repositories>
+</profile>
+</profiles>
+<activeProfiles>
+<activeProfile>
+central
+</activeProfile>
+</activeProfiles>
+...
+
+</project>
+
+最佳实践
+但是官方并不推荐直接配置远程仓库，例如直接配置一个中央仓库，而是通过 仓库管理器 来下载我们所需要的jar包。试想一下如果你所在的公司有几千甚至上万的开发者，每个人都单独配置一个中央仓库，那每个人都到中央仓库中去下载所需的jar，这就退化成最原始的模式，并且是一个巨大的资源浪费。
+
+那什么是 仓库管理器 呢？仓库管理器是一种专用服务器应用程序，目的是用来管理二进制组件的存储库。对于任何使用 Maven 的项目，仓库管理器的使用被认为是必不可少的最佳实践。
+
+仓库管理器提供了以下基本用途：
+
+充当中央Maven存储库的专用代理服务器
+
+提供存储库作为Maven项目输出的部署目标
+
+使用仓库管理器可以获得以下优点和功能：
+
+显著减少了远程存储库的下载次数，节省了时间和带宽，从而提高了构建性能
+
+由于减少了对外部存储库的依赖，提高了构建稳定性
+
+与远程SNAPSHOT存储库交互的性能提高
+
+提供了一个有效的平台，用于在组织内外交换二进制工件，而无需从源代码中构建工件
+
+。。。
+
+已知的开源和商业存储库管理器有以下这些：
+
+Apache Archiva（开源）
+
+CloudRepo（商业）
+
+Cloudsmith套餐（商业）
+
+JFrog Artifactory开源（开源）
+
+JFrog Artifactory Pro（商业）
+
+Sonatype Nexus OSS（开源）
+
+Sonatype Nexus Pro（商业）
+
+packagecloud.io（商业）
+
+镜像
+Mirror 则相当于一个代理，它会拦截去指定的远程 Repository 下载构件的请求，然后从自己这里找出构件回送给客户端。配置 Mirror 的目的一般是出于网速考虑。
+
+Repository 和 Mirror 是两个不同的概念：前者本身是一个仓库，可以堆外提供服务，而后者本身并不是一个仓库，它只是远程仓库的网络加速器。
+
+需要注意的是很多本地仓库搭建工具往往也提供 Mirror 服务，比如Nexus就可以让同一个URL,既用作 internalrepository，又使它成为所有 repository 的 Mirror。
+
+如果 仓库X 可以提供 仓库Y 存储的所有内容，那么就可以认为 X是Y的一个镜像。这也意味着，任何一个可以从某个仓库中获得的构件，都可以从它的镜像中获取。
+
+举个例子：http://maven.net.cn/content/groups/public/ 是中央仓库 http://repo1.maven.org/maven2/ 在中国的镜像，由于地理位置的因素，该镜像往往能够提供比中央仓库更快的服务。
+
+因此，可以在Maven中配置该镜像来替代中央仓库。在settings.xml中配置如下代码：
+
+<settings>
+<mirrors>
+<mirror>
+<id>
+maven.net.cn
+</id>
+
+
+<mirrorOf>
+central
+</mirrorOf>
+
+
+<name>
+one of the central mirrors in china
+</name>
+
+
+<url>
+http://maven.net.cn/content/groups/public/
+</url>
+
+
+</mirror>
+
+
+</mirrors>
+
+  ...
+
+</settings>
+
+\的值为central，表示该镜像是中央仓库的镜像，任何对于中央仓库的请求都会转至该镜像，如下图所示：
+
+
+
+对于镜像的最佳实践是结合私服。由于私服可以代理任何外部的公共仓库(包括中央仓库)，因此，对于组织内部的Maven用户来说，使用一个私服地址就等于使用了所有需要的外部仓库，这可以将配置集中到私服，从而简化Maven本身的配置。在这种情况下，任何需要的构件都可以从私服获得，私服就是所有仓库的镜像。
+
+例如可以这样来配置一个代理所有仓库的镜像：
+
+<settings>
+
+  ...
+
+
+<mirrors>
+
+
+<mirror>
+
+
+<id>
+internal-repository
+</id>
+
+
+<name>
+Internal Repository Manager
+</name>
+
+
+<url>
+internal-repository-url
+</url>
+
+
+<mirrorOf>
+*
+</mirrorOf>
+
+
+</mirror>
+
+
+</mirrors>
+
+  ...
+
+</settings>
+
+\的值为星号，表示该镜像是所有Maven仓库的镜像，任何对于远程仓库的请求都会被转至： internal-repository-url 这个地址。
+
+下面给出一张 Maven 官方的架构图：
+
+
+
+生命周期
+生命周期是由 一组 有 顺序 的 阶段 构成的一个整体，这么说可能有点绕，那让我们来关注他里面的几个重要的点：
+
+一组：指的是可能有多个
+
+顺序：指的是按照顺序执行，执行某一个阶段的指令时会依次先执行该阶段之前的指令
+
+阶段：指的是具体要执行的内容
+
+例如 Maven 有三个内置的构建生命周期： default， clean 和 site。每个生命周期都由一系列的阶段所构成，比如 default 生命周期的一个简易阶段如下，完整的生命周期请参考官方文档：
+
+
+
+上图中的每一个节点都是一个 阶段 ，阶段的执行是按顺序的，一个阶段执行完成之后才会执行下一个阶段。比如我们执行了一个如下的指令：
+
+mvn install
+
+他实际会执行 install 阶段之前的所有阶段，然后才会执行 install 阶段本身。
+
+PS：当我们的项目是多模块的，我们在最顶层执行该指令时，Maven 会遍历每一个子模块，依次执行所有的阶段。
+
+坐标
+说到 Maven 的坐标，我们首先就需要想到 GAV ，即 groupId artifactId version。由这三个属性就可以唯一确定一个jar包了。其中每个属性的意义如下：
+
+groupId：表示一个团体，可以是公司、组织等
+
+artifactId：表示团体下的某个项目
+
+version：表示某个项目的版本号
+
+他们之间的关系是一对多的，即每个团体下可以有多个项目，每个项目可以有多个版本号，可以用下面这张图来表示：
+
+
+
+依赖
+Maven 核心特点之一是依赖管理。一旦我们开始处理多模块工程(包含数百个子模块或者子工程)的时候，模块
+间的依赖关系就变得非常复杂，管理也变得很困难。针对此种情形，Maven 提供了一种高度控制的方法。
+
+依赖传递
+依赖传递很好理解，假设 B 依赖于 C，当 A 需要依赖 B 时，则 A 自动获得了对 C 的依赖。依赖传递有时非常好，当我们需要依赖很多jar包时，我们可以声明一个包来依赖所有的jar，然后只要依赖这个包就可以了。但是有时又很麻烦，因为很可能会造成依赖的冲突。
+
+依赖冲突
+当同一个项目中由于不同的jar包依赖了相同的jar包，此时就会发生依赖冲突的情况，如下图所示：
+
+
+
+当项目中依赖了a和c，而a和c都依赖了b，这时就造成了冲突。为了避免冲突的产生，Maven 使用了两种策略来解决冲突，分别是 短路优先 和 声明优先 。
+
+短路优先
+短路优先的意识是，从项目一直到最终依赖的jar的距离，哪个距离短就依赖哪个，距离长的将被忽略掉。例如下图所示：
+
+
+
+声明优先
+声明优先的意思是，通过jar包声明的顺序来决定使用哪个，最先声明的jar包总是被选中，后声明的jar包则会被忽略，如下图所示：
+
+
+
+依赖排除
+如果我们只想引用我们直接依赖的jar包，而不想把间接依赖的jar包也引入的话，那可以使用依赖排除的方式，将间接引用的jar包排除掉，如下面的配置所示：
+
+<exclusions>
+
+
+<exclusion>
+
+
+<groupId>
+excluded.groupId
+</groupId>
+
+
+<artifactId>
+excluded-artifactId
+</artifactId>
+
+
+</exclusion>
+
+</exclusions>
+
+解决冲突
+项目中出现冲突，大体都是因为上面所描述的原因，然后 Maven 在选择jar包时，选择了一个错的包，导致出现问题，这时我们就需要人为来干预他，告诉 Maven 使用哪个正取的包。下面让我举个例子来说明冲突产生后该如何解决。
+
+我们原本运行得好好的一个项目，突然有一次启动的时候，报错了，如下图所示：
+
+
+
+可以看到有报了一个 NoSuchMethodError ，看到这个错，多半都是因为冲突导致的。
+
+错误说的是找不到 javax.servlet.ServletContext 类中的 getVirtualServerName 方法了，那我们在 idea 中搜索一下 javax.servlet.ServletContext 类，看看是否存在多个的情况，如下图所示：
+
+
+
+可以发现确实在两个jar包中都找到了 javax.servlet.ServletContext 这个类，那我们打开他们看看哪个类没有我们需要方法：
+
+
+
+可以很清楚的看到，在 servlet-api-3.0.jar 包中没有找到我们需要的方法，而 Maven 肯定是选择了这个包。那就让我们来看下依赖树吧，看看 Maven 是怎样选择了错误的包的。
+
+在项目目录中输入如下指令：
+
+mvn dependency
+:
+tree
+-
+Dverbose
+
+-
+Dincludes
+=
+javax
+.
+servlet
+:
+servlet
+-
+api
+
+Maven 将打印出 servlet-api-3.0.jar 的包的依赖树，如下图所示：
+
+
+
+然后在输入如下指令：
+
+mvn dependency
+:
+tree
+-
+Dverbose
+
+-
+Dincludes
+=
+org
+.
+apache
+.
+tomcat
+.
+embed
+:
+tomcat
+-
+embed
+-
+core
+
+Maven 将打印出 tomcat-embed-core-8.5.31.jar 的包的依赖树，如下图所示：
+
+
+
+我们分析下原因，从 Maven 中打印出的依赖树来看，发现很奇怪的事：
+
+servlet-api-3.0.jar 包是在 xx-service 模块中引入的，从 xx-web 到他的深度为6，
+
+tomcat-embed-core-8.5.31.jar 包是在 xx-web 模块中引入的，从 xx-web 到他的深度为3。
+
+那按照短路优先的规则，Maven 应该会选择 tomcat-embed-core-8.5.31.jar 包才对，现在没有选择他，那原因肯定只有一个了：声明优先！
+
+说明 servlet-api-3.0.jar 包比 tomcat-embed-core-8.5.31.jar 包先声明。
+
+我们发现 servlet-api-3.0.jar 包是在 xx-service 中被引入的，
+
+而 tomcat-embed-core-8.5.31.jar 是在 spring-boot-starter-web 中被引入的。
+
+那只要能证明在 xx-web 中 xx-service 先于 spring-boot-starter-web 声明就可以了，让我们去 xx-web 中看看：
+
+
+
+事实证明了我们的猜想是正确的， xx-service 确实比 spring-boot-starter-web 先声明！
+
+可以用图形表示成如下：
+
+
+
+那知道原因了，要解决这个冲突，就很好办了，有两种方法：
+
+在 xx-web 中将 xx-service 放到 spring-boot-starter-web 后面声明
+
+在 xx-service 中找到引入 servlet-api-3.0.jar 包将他排除掉
+
+依赖管理
+聚合
+将多个项目同时运行就称为聚合，如下就是一个多模块的项目：
+
+<packaging>
+pom
+</packaging>
+
+
+<modules>
+
+
+<module>
+module-1
+</module>
+
+
+<module>
+module-2
+</module>
+
+
+<module>
+module-3
+</module>
+
+
+</modules>
+
+聚合的优势在于可以在一个地方编译多个 pom 文件。
+
+PS：聚合时 packaging 必须要是 pom
+
+继承
+跟java类的继承类似，Maven 的继承特性也会继承父pom中的依赖，假设我们定义了一个父pom：
+
+<groupId>
+com.houyi
+</groupId>
+
+<artifactId>
+maven-parent
+</artifactId>
+
+
+<version>
+0.0.1-SNAPSHOT
+</version>
+
+
+
+<dependencyManagement>
+
+
+<dependencies>
+
+
+<dependency>
+
+
+<groupId>
+junit
+</groupId>
+
+
+
+<artifactId>
+junit
+</artifactId>
+
+
+
+<version>
+${junit.version}
+</version>
+
+
+
+<scope>
+test
+</scope>
+
+
+</dependency>
+
+
+<dependency>
+
+
+<groupId>
+mysql
+</groupId>
+
+
+
+<artifactId>
+mysql-connector-java
+</artifactId>
+
+
+
+<version>
+5.1.30
+</version>
+
+
+</dependency>
+
+
+</dependencies>
+
+</dependencyManagement>
+
+然后在子pom中引入这个父pom：
+
+<!-- 指定parent，说明是从哪个pom继承 -->
+
+<parent>
+
+
+<groupId>
+com.houyi
+</groupId>
+
+
+
+<artifactId>
+maven-parent
+</artifactId>
+
+
+
+<version>
+0.0.1-SNAPSHOT
+</version>
+
+
+<!-- 指定相对路径 -->
+
+
+
+<relativePath>
+../maven-parent
+</relativePath>
+
+</parent>
+
+
+
+<!-- 只需要指明groupId + artifactId，就可以到父pom找到了，无需指明版本 -->
+
+<dependencies>
+
+
+<dependency>
+
+
+<groupId>
+junit
+</groupId>
+
+
+
+<artifactId>
+junit
+</artifactId>
+
+
+
+</dependency>
+
+
+<dependency>
+
+
+<groupId>
+mysql
+</groupId>
+
+
+
+<artifactId>
+mysql-connector-java
+</artifactId>
+
+
+
+</dependency>
+
+</dependencies>
+
+使用dependencyManagement，可对依赖进行管理。子类只要不引用这个里面写的groupId + artifactId，则不会添加依赖，这样防止造成重复加了包：如果不使用dependencyManagement，那么只要写了dependency，子pom中会全部添加到依赖中，而其中很多包可能都用不上。
+
+插件
+插件是 Maven 的核心，所有执行的操作都是基于插件来完成的。
+
+为了让一个插件中可以实现众多的相类似的功能，Maven 为插件设定了目标，一个插件中有可能有多个目标。其实生命周期中的每个阶段都是由插件的一个具体目标来执行的
+
+例如可以用下面的方式配置一个插件：
+
+<build>
+
+
+<plugins>
+
+
+<plugin>
+
+
+
+<groupId>
+org.apache.maven.plugins
+</groupId>
+
+
+<artifactId>
+maven-source-plugin
+</artifactId>
+
+
+
+<version>
+2.2.1
+</version>
+
+
+<!-- 配置执行 -->
+
+
+<executions>
+
+
+<execution>
+
+
+<phase>
+package
+</phase>
+
+
+<goals>
+
+
+<goal>
+jar-no-fork
+</goal>
+
+
+</goals>
+
+
+</execution>
+
+
+</executions>
+
+
+</plugin>
+
+
+</plugins>
+
+</build>
+
+配置目标 goal 的目的是：这样在执行 mvnpackage 的时候，就会自动执行 mvn source:jar-no-fork了，jar-no-fork这个目标是用来进行源码打包的。
+
+除了可以在build元素中配置插件，当然也可以在parent项目中，用pluginManagement来配置，然后在子项目继承即可使用。
+
+PS：通过插件我们可以做很多事，比如通过mybatis-generator 我们可以生成很多DAO层的代码，再配合通用Mapper+lombok使用的话就可以使你的代码非常简洁，绝对的生产力工具！
+
+指令
+下面列举一些常用的 maven 指令：
+
+
+
+指令参数
+上面列举的只是比较通用的命令，其实很多命令都可以携带参数以执行更精准的任务。
+Maven命令可携带的参数类型如下：
+
+-D 传入属性参数
+比如命令： mvnpackage-Dmaven.test.skip=true以 -D开头，将 maven.test.skip 的值设为 true ,就是告诉maven打包的时候跳过单元测试。
+
+同理， mvn deploy-Dmaven.test.skip=true 代表部署项目并跳过单元测试。
+
+-P 使用指定的Profile配置
+比如项目开发需要有多个环境，一般为开发，测试，预发，正式4个环境，在pom.xml中的配置如下：
+
+<profiles>
+
+
+<profile>
+
+
+<id>
+dev
+</id>
+
+
+<properties>
+
+
+<env>
+dev
+</env>
+
+
+</properties>
+
+
+<activation>
+
+
+<activeByDefault>
+true
+</activeByDefault>
+
+
+</activation>
+
+
+</profile>
+
+
+<profile>
+
+
+<id>
+qa
+</id>
+
+
+<properties>
+
+
+<env>
+qa
+</env>
+
+
+</properties>
+
+
+</profile>
+
+
+<profile>
+
+
+<id>
+pre
+</id>
+
+
+<properties>
+
+
+<env>
+pre
+</env>
+
+
+</properties>
+
+
+</profile>
+
+
+<profile>
+
+
+<id>
+prod
+</id>
+
+
+<properties>
+
+
+<env>
+prod
+</env>
+
+
+</properties>
+
+
+</profile>
+
+</profiles>
+
+
+
+...
+
+
+
+<build>
+
+
+<filters>
+
+
+<filter>
+config/${env}.properties
+</filter>
+
+
+</filters>
+
+
+<resources>
+
+
+<resource>
+
+
+<directory>
+src/main/resources
+</directory>
+
+
+<filtering>
+true
+</filtering>
+
+
+</resource>
+
+
+</resources>
+
+</build>
+
+profiles定义了各个环境的变量 id， filters中定义了变量配置文件的地址，其中地址中的环境变量就是上面 profile中定义的值， resources中是定义哪些目录下的文件会被配置文件中定义的变量替换。
+
+通过maven可以实现按不同环境进行打包部署，命令为:
+
+mvn
+package
+
+-
+P dev
+
+其中 dev 为环境的变量id,代表使用Id为 dev 的 profile。
+
+-e 显示maven运行出错的信息
+-o 离线执行命令,即不去远程仓库更新包
+-X 显示maven允许的debug信息
+-U 强制去远程更新snapshot的插件或依赖，默认每天只更新一次
+举个例子
+将自己的jar包部署到远程仓库去，可以使用 deploy 指令：
+
+mvn deploy
+:
+deploy
+-
+file
+-
+DgroupId
+=<
+group
+-
+id
+>
+ \
+
+
+-
+DartifactId
+=<
+artifact
+-
+id
+>
+ \
+
+
+-
+Dversion
+=<
+version
+>
+ \
+
+
+-
+Dpackaging
+=<
+type
+-
+of
+-
+packaging
+>
+ \
+
+
+-
+Dfile
+=<
+path
+-
+to
+-
+file
+>
+ \
+
+
+-
+DrepositoryId
+=<
+id
+-
+to
+-
+map
+-
+on
+-
+server
+-
+section
+-
+of
+-
+settings
+.
+xml
+>
+ \
+
+
+-
+Durl
+=<
+url
+-
+of
+-
+the
+-
+repository
+-
+to
+-
+deploy
+>
+
+最后说下我们为什么要学习maven，大概可以收获这些好处吧：
+
+提高自己的生产力
+
+更好的管理项目中的jar包
+
+自己开发的jar包可以共享给别人
+
+遇到jar包冲突问题可以不求人
