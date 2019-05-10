@@ -1,0 +1,964 @@
+基于规则的优化器——Rule Based Optimizer，即RBO
+基于成本的优化器——Cost Based Optimizer，即CBO。
+
+
+Oracle优化器也被称为查询优化器，因为查询是影响数据库性能最主要的因素。不单单select语句是查询，DML语句带有where条件的也是需要做查询的。
+优化器应该是数据库引擎中最神秘也最吸引人的一部分，对性能的影响也是最大的，它的好坏直接决定数据库性能的好坏。
+Oracle优化器在分析sql语句时，会依据自己内部的一些规则来决定一个sql的执行计划。
+
+
+基于规则的优化器——Rule Based Optimizer，即RBO
+下面简单介绍下RBO的相关内容
+
+在oracle较早的版本oracle 7以前，使用的优化器是RBO。顾名思义，这是一个基于规则的优化器。
+ORACLE在基于规则的优化器中采用启发式的方法(Heuristic Approach)或规则(Rules)来生成执行计划。。例如，如果一个查询的where条件(where clause)包含一个谓词(predicate，其实就是一个判断条件，如”=”, “>”, ”<”等)，而且该谓词上引用的列上有有效索引，那么优化器将使用索引访问这个表，而不考虑其它因素，如表中数据的多少、表中数据的易变性、索引的可选择性等。此时数据库中没有关于表与索引数据的统计性描述，如表中有多上行，每行的可选择性等。优化器也不考虑实例参数，如multi block i/o、可用排序内存的大小等，所以优化器有时就选择了次优化的计划作为真正的执行计划，导致系统性能不高。
+
+
+RBO也会导致很多优化方法无法使用：1. Hash join2. 数据仓库中的 star transformation3. Unnested sub query4. Push predicate
+
+RBO有自己的执行路径顺序规则（见下页）。RBO认为越往下执行的代价越大，即等级越低。在RBO生成执行计划时，如果它发现有等级高的执行路径可用，则肯定会使用等级高的路径，而不管任何其它影响性能的元素，即RBO通过下面的路径的等级决定执行路径的代价，执行路径的等级越高，则使用该执行路径的代价越小。
+
+
+9i库中rbo的访问路径顺序：
+RBO Path 1: Single Row by Rowid
+RBO Path 2: Single Row by Cluster Join
+RBO Path 3: Single Row by Hash Cluster Key with Unique or Primary Key
+RBO Path 4: Single Row by Unique or Primary Key
+RBO Path 5: Clustered Join
+RBO Path 6: Hash Cluster Key
+RBO Path 7: Indexed Cluster Key
+RBO Path 8: Composite Index
+RBO Path 9: Single-Column Indexes
+RBO Path 10: Bounded Range Search on Indexed Columns
+RBO Path 11: Unbounded Range Search on Indexed Columns
+RBO Path 12: Sort Merge Join
+RBO Path 13: MAX or MIN of Indexed Column
+RBO Path 14: ORDER BY on Indexed Column
+RBO Path 15: Full Table Scan
+
+可以看到，优先级最高的是Single Row by Rowid，这就意味着在基于规则的优化器如果有索引可以利用，即使全表扫描更有效率，也不会使用全表扫描，因为Full Table Scan 的优先级是最低的。这也是大家通常所说的RBO总是认为索引最优的原因。
+RBO的缺点很显而易见，就是对数据不敏感，也就是说，数据的变化是不会影响执行计划的生成，优化器不会考虑数据的多少、数据分布、索引的可选择性等等，而这是非常不好的。
+RBO对于开发人员的要求也会相对比较高，在RBO模式，需要按照一定的规则来写SQL。
+由于RBO有这么多的缺点，所以oracle推出了CBO，虽然在早期的版本中存在很多缺点，但是在oracle每个版本中都对它有增强，在平安常用的版本10.2.0.4以上已相对比较稳定了。
+
+
+基于成本的优化器——Cost Based Optimizer，即CBO。
+下面简单的介绍下CBO的相关内容
+
+数据库把一个代价引擎集成到数据库内核中，用来估计每个执行计划需要的代价，选择代价最小的一个执行计划作为这个sql的执行计划。
+一个查询耗费的资源可以被分成3个基本组成部分：I/O代价、CPU代价、network代价。I/O代价是将数据从磁盘读入内存所需的代价。访问数据包括将数据文件中数据块的内容读入到SGA的数据高速缓存中，在一般情况下，该代价是处理一个查询所需要的最主要代价，所以我们在优化时，一个基本原则就是降低查询所产生的I/O总次数。CPU代价是处理在内存中数据所需要的代价，如一旦数据被读入内存，则我们在识别出我们需要的数据后，在这些数据上执行排序(sort)或连接(join)操作，这需要耗费CPU资源，常见的消耗CPU的操作：
+1. Sum, Decode, Avg
+2. Filter
+3. Join
+4. Sort
+
+
+
+对于需要访问跨节点(即通常说的服务器)数据库上数据的查询来说，存在network代价，用来量化传输操作耗费的资源。查询远程表的查询或执行分布式连接的查询会在network代价方面花费比较大。
+在使用CBO时，需要有表和索引的统计数据(分析数据)作为基础数据，有了这些数据，CBO才能为各个执行计划计算出相对准确的代价，从而使CBO选择最佳的执行计划。如果统计信息为空，oracle会做动态采样，会读取少量数据块来分析块中的数据分布来评估表中的数据分布以及索引的选择性等等信息。
+
+
+
+判断当前数据库使用何种优化器
+
+
+主要是由optimizer_mode初始化参数决定的。如下：
+RULE：RBO优化器。
+CHOOSE：根据实际情况，如果数据字典中包含被引用的表的统计数据，即引用的对象已经被分析，则就使用CBO优化器，否则为RBO优化器。
+ALL_ROWS：是CBO优化器使用的第一种具体的优化方法，是以数据的吞吐量为主要目标，以便可以使用最少的资源完成语句。
+FIRST_ROW：是优化器使用的第二种具体的优化方法，是以数据的响应时间为主要目标，以便快速查询出开始的几行数据。在使用first rows时，会更偏向于使用索引。
+FIRST_ROWS_[1 | 10 | 100 | 1000] ：是优化器使用的第三种具体的优化方法，让优化器选择一个能够把响应时间减到最小的查询执行计划，以迅速产生查询结果的前 n 行。该参数为ORACLE 9I新引入的。
+注意，在使用这个参数时，由于某些bug会导致优化器选择次优化的执行计划。
+
+从ORACLE V7以来，optimizer_mode参数的缺省设置应是"choose"，即如果对已分析的表查询的话选择CBO，否则选择RBO。在此种设置中，如果采用了CBO，则缺省为CBO中的all_rows模式，目前平安10g以上包括10g的库现在采用的都是ALL_ROWS的优化器。
+需要注意的是，不管optimizer_mode参数如何设置，只要满足下面3个条件，就一定使用CBO：
+1）如果使用Index Organized Tables(IOTs), 自动使用CBO。
+2）Oracle 7.3以后，如果表上的Paralle degree option设为>1，则自动使用CBO, 而不管是否用rule hints.。
+3）除rule以外的任何hints都将导致自动使用CBO来执行语句。
+
+通常我们遇到一个sql执行缓慢时，会先去看它的执行计划，那么什么是执行计划呢？我们又有哪几种常用方式来看执行计划呢？
+一个sql的执行分为多个阶段，语义解析阶段、sql parse阶段、执行阶段、fetch阶段。
+为了不重复解析相同的SQL语句(因为解析操作比较费资源)，在第一次解析之后，ORACLE将SQL语句及解析后得到的执行计划存放在内存中。这块位于系统全局区域SGA(system global area)的共享池(shared buffer pool)中的内存可以被所有的数据库用户共享。因此，当你执行一个SQL语句(有时被称为一个游标)时，如果该语句和之前的执行过的某一语句完全相同，并且之前执行的该语句与其执行计划仍然在内存中存在，则ORACLE就不需要再进行分析，直接得到该语句的执行路径。ORACLE的这个功能大大地提高了SQL的执行性能并大大节省了内存的使用。使用这个功能的关键是将执行过的语句尽可能放到内存中，所以这要求有大的共享池(通过设置shared buffer pool参数值)和尽可能的使用绑定变量的方法执行SQL语句。
+
+
+Sql parse的种类
+
+
+Sql parse又通常分为硬解析和软解析（软软解析我们暂时不做讨论），当sql第一次执行的时候，会发生硬解析，之后的执行如果在shared pool中能找到就是软解析。
+
+sql会在以下情况下发生硬解析：
+1）统计信息改变
+2）Sql中的表上有做ddl操作，包括grant和revoke。
+3）执行计划被踢出shared pool
+4）开启了trace
+5）绑定变量长度变化
+6)启用outline，11g启用SPM
+7)SQL语句相同但是所引用的表不同，例如不是同一属主
+8)环境发生变化，如Sort area size、Hash area size和locale setting发生变化
+
+软解析
+当你向ORACLE 提交一个SQL语句，ORACLE会首先在共享内存中查找是否有相同的语句。这里需要注明的是，ORACLE对两者采取的是一种严格匹配，要达成共享，SQL语句必须完全相同(包括空格,换行等)。如果完全相同，才会有软解析。
+
+
+如何判断两个sql语句是否是同一个sql语句呢？
+
+1）大小写和空格以及字母值不一致：
+SELECT * FROM emp WHERE empno = 1000;
+和下列每一个都不同
+SELECT * from emp WHERE empno = 1000;
+SELECT * FROM emp WHERE  empno = 1000;
+SELECT * FROM emp WHERE empno = 2000;
+在上面的语句中列值都是直接SQL语句中的，我们将这类sql称为硬编码SQL或字面值SQL
+
+
+2）绑定变量名称不同
+使用绑定变量的SQL语句中必须使用相同的名字的绑定变量(bind variables)
+例如：
+a. 该2个sql语句被认为相同
+select * from emp where empno = :empno;
+select * from emp where empno = :empno;
+b. 该2个sql语句被认为不相同
+select * from emp where empno = :empno1;
+select * from emp where empno = :empno2;
+我们将上面的这类语句称为绑定变量SQL。
+
+
+3）对象名称相同，但是属主不同
+将所发出语句中涉及的对象与已存在语句所涉及对象相比较。
+例如:
+如用户user1与用户user2下都有EMP表，则
+用户user1发出的语句：SELECT * FROM EMP; 与
+用户user2发出的语句：SELECT * FROM EMP; 被认为是不相同的语句，
+因为两个语句中引用的EMP不是指同一个表。
+
+4) 在SQL语句中使用的捆绑变量的捆绑类型必须一致
+
+Cursor_sharing简介
+
+1）exact:
+只有当发布的SQL语句与缓存中的语句完全相同时才用已有的执行计划。也是cursor_sharing的默认值
+2）force:
+如果SQL语句是字面量，则迫使Optimizer始终使用已有的执行计划,无论已有的执行计划是不是最佳的。
+3）similar:
+如果SQL语句是字面量，则只有当已有的执行计划是最佳时才使用它，如果已有执行计划不是最佳则重新对这个SQL语句进行分析来制定最佳执行计划。
+
+
+EXPLAIN_PLAN
+格式：explain plan for sql_text
+
+Example:
+SQL> explain plan for select * from t_test;
+
+Explained
+SQL> select * from table(dbms_xplan.display);
+
+PLAN_TABLE_OUTPUT
+--------------------------------------------------------------------------------
+Plan hash value: 4036493941
+----------------------------------------------------------------------------
+| Id  | Operation         | Name   | Rows  | Bytes | Cost (%CPU)| Time     |
+----------------------------------------------------------------------------
+|   0 | SELECT STATEMENT  |        |     1 |    13 |     2   (0)| 00:00:01 |
+|   1 |  TABLE ACCESS FULL| T_TEST |     1 |    13 |     2   (0)| 00:00:01 |
+----------------------------------------------------------------------------
+Note
+-----
+   - dynamic sampling used for this statement
+
+12 rows selected
+
+通过这种方式就可以简单地查看执行计划，plsql dev中的F5看执行计划其实使用的就是explain plan，toad的也一样。
+但是这种方式查看的执行计划并不一定是sql实际执行时会选择的执行计划，它只是优化器根据现有的统计信息来计算生成的，得到的cost值也只是根据现有的统计信息得到的，而现在的统计信息有可能已经是好几个月前的了，后面在经常碰到的几个误区中会详细讲到这个问题。
+对于explain plan，所有的参数的类型都被默认为是varchar2，也不支持绑定变量代入值，这种方式得到的执行计划，只能是作为参考，但的确是我们做sql优化经常会使用到的方法。
+
+
+SQLPLUS的AUTOTRACE
+
+example：
+SQL> set autot trace
+SQL> set timing on
+SQL> set time on
+15:18:17 SQL> select * from t_test;
+
+未选定行
+
+已用时间:  00: 00: 00.19
+
+执行计划
+----------------------------------------------------------
+Plan hash value: 4036493941
+
+----------------------------------------------------------------------------
+| Id  | Operation         | Name   | Rows  | Bytes | Cost (%CPU)| Time     |
+----------------------------------------------------------------------------
+|   0 | SELECT STATEMENT  |        |     1 |    13 |     2   (0)| 00:00:01 |
+|   1 |  TABLE ACCESS FULL| T_TEST |     1 |    13 |     2   (0)| 00:00:01 |
+----------------------------------------------------------------------------
+
+Note
+-----
+   - dynamic sampling used for this statement
+
+
+统计信息
+----------------------------------------------------------
+          1  recursive calls
+          0  db block gets
+          4  consistent gets
+          0  physical reads
+          0  redo size
+        153  bytes sent via SQL*Net to client
+        240  bytes received via SQL*Net from client
+          1  SQL*Net roundtrips to/from client
+          0  sorts (memory)
+sorts (disk)
+0  rows processed
+
+可以看到sql的执行计划以及相关的统计信息（此统计信息非对象统计信息）
+
+这种方式看到的执行计划已经是sql实际的执行计划了，不过存在一个问题，必须sql执行后才能看到执行计划，如果sql执行时间很长，那岂不是要等很久才能看到执行计划？
+我前面提到过，一个sql的执行需要经过很多阶段，在执行阶段前的是sql parse阶段，这个时候sql的执行计划已经生成了，也就是说我们已经可以查到它了。
+select * from v$sql t where upper(t.SQL_FULLTEXT) like upper('%select * from t_test%');
+通过这个sql就可以找到我们刚执行的sql的sql_id，然后用第三种查看执行计划的方法来看。
+如果sql很复杂，而且类似的sql很多不好找，这时候一个个筛选就很痛苦。这种情况下，可以使用一个小技巧，在你调优的sql中加入一个你特有的hint：
+select /*+ jinhf*/* from t_test;
+查v$sql的条件改下，如下：
+select * from v$sql t where upper(t.SQL_FULLTEXT) like upper('%jinhf%');
+就可以很方便的找到刚执行的sql_id了。
+在优化sql的过程中，经常配合使用explain plan和autotrace，还是非常好用的。
+
+DBMS_XPLAN
+
+dbms_xplan包很强大，提供了多种方法，这边只介绍以下4种:
+Dbms_xplan.display
+Dbms_xplan.display_cursor
+Dbms_xplan.display_awr
+Dbms_xplan.display_sql_plan_baseline
+
+1）Dbms_xplan.display：
+已经介绍过了，在使用explain plan解析sql后，可以使用Dbms_xplan.display来查看执行计划。
+
+2）Dbms_xplan.display_cursor：
+SQL> desc dbms_xplan.display_cursor
+Parameter       Type                      Mode Default?
+--------------- ------------------------- ---- --------
+(RESULT)        SYS.DBMS_XPLAN_TYPE_TABLE
+SQL_ID          VARCHAR2                  IN   Y
+CURSOR_CHILD_NO NUMBER                    IN   Y
+FORMAT          VARCHAR2                  IN   Y
+这个function可以查shared pool中的执行计划。提供了三个参数，可以查看指定sql_id指定child_no的执行计划。
+如果不输入任何参数，则取数据库中最近一次执行的sql的执行计划。
+
+
+3）Dbms_xplan.display_awr：
+查看历史的执行计划，从10g开始，oracle提供了awr来记录数据库的信息，平安默认保留时间是90天。对于某个sql的历史执行情况，包括执行计划和逻辑读、物理读、cpu time以及elapsed time等信息，这个在9i的数据库中是无从查询的。
+SQL> desc dbms_xplan.display_awr
+Parameter       Type                      Mode Default?
+--------------- ------------------------- ---- --------
+(RESULT)        SYS.DBMS_XPLAN_TYPE_TABLE
+SQL_ID          VARCHAR2                  IN
+PLAN_HASH_VALUE NUMBER                    IN   Y
+DB_ID           NUMBER                    IN   Y
+FORMAT          VARCHAR2                  IN   Y
+Sql_id是必输的，其他的参数可以灵活选择。
+缺点：无法显示谓词、存取路径。
+
+
+三、如何看执行计划
+
+
+看一个简单的例子：
+--------------------------------------------------------------------------------
+| Id  | Operation                        | Name                    | Rows  | Byt
+--------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                 |                         |     |
+|   1 |  SORT AGGREGATE                  |                         |     1 |
+|   2 |   TABLE ACCESS BY INDEX ROWID    | T_PUB_TASK_GROUP        |     1 |
+|   3 |    INDEX RANGE SCAN              | IX_TASK_GRP_BAT_SUP_STA |     3 |
+|   4 |  VIEW                            |                         |     2 |  21
+|   5 |   COUNT STOPKEY                  |                         |       |
+|   6 |    VIEW                          |                         |     2 |  21
+|   7 |     SORT ORDER BY                |                         |     2 |   4
+|   8 |      NESTED LOOPS                |                         |     2 |   4
+|   9 |       NESTED LOOPS               |                         |     2 |   2
+|  10 |        TABLE ACCESS FULL         | T_PUB_QUEUE             |     2 |   2
+|  11 |        INDEX UNIQUE SCAN         | PK_T_PUB_ASSIGNED_QUEUE |     1 |
+|  12 |       TABLE ACCESS BY INDEX ROWID| T_PUB_BATCH             |     1 |
+|  13 |        INDEX UNIQUE SCAN         | PK_T_PUB_BATCH          |     1 |
+--------------------------------------------------------------------------------
+简单来讲，是从右到左，从上到下的原则。
+从横向来看10、11、13都是在最右端，优先级是一样的，这时候就需要看纵向的。对于10和11的执行顺序，是先执行步骤10，再执行步骤11，步骤9结束后，再和步骤12得到的结果集做步骤8的nested loop操作。
+
+
+Card
+是指计划中这一步所处理的行数。
+Cost
+是指cbo中这一步所耗费的资源，以单块读的IO成本来表示。
+Bytes
+是指cbo中这一步所处理所有记录的字节数，是估算出来的一组值。
+Predicate(谓词)
+一个查询中的WHERE限制条件
+Probed Table(被探查表)
+该表又称为内层表(INNER TABLE)。在我们从驱动表中得到具体一行的数据后，在该表中寻找符合连接条件的行。所以该表应当为返回较大row source的表且相应的列上应该有索引，索引扫描的范围越小，效率越高。
+
+rowid
+
+rowid是一个伪列，是系统自己给加上的。对每个表都有一个rowid的伪列，但是表中并不物理存储ROWID列的值。不过你可以像使用其它列那样使用它，但是不能删除该列，也不能对该列的值进行修改、插入。一旦一行数据插入数据库，则rowid在该行的生命周期内是唯一的，即即使该行产生行迁移，行的rowid也不会改变。 也有例外的情况，在分区表中，如果对分区列的值进行修改，这一行的数据会从一个分区迁移到另一个分区，那么这行数据对应的rowid也会改变；表做shrink或者move的操作时，rowid也会改变。
+rowid对访问一个表中的给定的行提供了最快的访问方法，通过ROWID可以直接定位到相应的数据块上，然后将其读到内存。我们创建一个索引时，该索引不但存储索引列的值，而且也存储索引值所对应的行的ROWID，这样我们通过索引快速找到相应行的ROWID后，通过该ROWID，就可以迅速将数据查询出来。这也就是我们使用索引查询时，速度比较快的原因。
+在ORACLE 8以前的版本中，ROWID由FILE 、BLOCK、ROW NUMBER构成。随着oracle8中对象概念的扩展，ROWID发生了变化，ROWID由OBJECT、FILE、BLOCK、ROW NUMBER构成。利用DBMS_ROWID可以将rowid分解成上述的各部分，也可以将上述的各部分组成一个有效的rowid。
+
+Resuive SQL
+
+
+有时为了执行用户发出的一个sql语句，Oracle必须执行一些额外的语句，我们将这些额外的语句称之为‘recursive calls’或‘recursive SQL statements’。比如创建一个表，ORACLE总是隐含的发出一些recursive SQL语句来修改数据字典信息如tab$等。当需要的数据字典信息没有在共享内存中时，经常会发生Recursive calls，这些Recursive calls会将数据字典信息从硬盘读入内存中。用户不比关心这些recursive SQL语句的执行情况， ORACLE会自动的在内部执行这些语句。当然DML语句与SELECT、sql parse或者在执行过程中需要空间扩展都可能引起recursive SQL。
+
+
+Row Source(行源)
+
+用在查询中，由上一操作返回的符合条件的行的集合，即可以是表的全部行数据的集合；也可以是表的部分行数据的集合；也可以为对上2个row source进行连接操作(如join连接)后得到的行数据集合。
+
+
+
+Driving Table(驱动表)
+该表又称为外层表(OUTER TABLE)。这个概念用于嵌套与HASH连接中。如果该row source返回较多的行数据，则对所有的后续操作有负面影响。一般说来，是应用查询的限制条件后，返回较少行源的表作为驱动表，所以如果一个大表在WHERE条件有有限制条件(如等值限制)，则该大表作为驱动表也是合适的，所以并不是只有较小的表可以作为驱动表，正确说法应该为应用查询的限制条件后，返回较少行源的表作为驱动表。在执行计划中，应该为靠上的那个row source。
+
+
+组合索引(composite index)
+组合索引就是由多个列构成的索引。在组合索引中有一个重要的概念：引导列(leading column)，创建组合索引时最前面的列即为引导列。如
+Create index idx_test on table_name(col1,col2,…);
+当我们进行查询时可以使用”where col1 = ? ”，也可以使用”where col1 = ? and col2 = ?”，这样的限制条件都会使用索引，但是”where col2 = ? ”查询就不会使用该索引。所以限制条件中包含先导列时，该限制条件才会使用该组合索引。
+有些情况下，”where col2 = ? ”也会使用索引，使用的是index skip scan，col1的distinct值有N个，那么就相当于N个基于col2的查询的union。N这个值越大，union的个数就越多，index skip scan的效率就越低，所以大部分情况下，当我们看到执行计划中出现index skip scan时，需要加以关注。
+
+
+可选择性(selectivity)
+
+比较一下列中唯一键的数量和表中的行数，就可以判断该列的可选择性。如果该列的唯一键的数量/表中的行数”的比值越接近1，则该列的可选择性越高，该列就越适合创建索引，同样索引的可选择性也越高。在可选择性高的列上进行查询时，返回的数据就较少，比较适合使用索引查询。
+
+常见的连接类型
+
+Join是一种试图将两个表结合在一起的谓词，一次只能连接2个表，表连接也可以被称为表关联。在后面的叙述中，我们将会使用”row source”来代替”表”，因为使用row source更严谨一些，并且将参与连接的2个row source分别称为row source1和row source 2。Join过程的各个步骤经常是串行操作，即使相关的row source可以被并行访问，但是在将表中符合限制条件的数据读入到内存形成row source后，join的其它步骤一般是串行的。有多种方法可以将2个表连接起来，当然每种方法都有自己的优缺点，每种连接类型只有在特定的条件下才会发挥出其最大优势。
+row source(表)之间的连接顺序对于查询的效率有非常大的影响。通过首先存取特定的表，即将该表作为驱动表，这样可以先应用某些限制条件，从而得到一个较小的row source，使连接的效率较高，这也就是我们常说的要先执行限制条件的原因。一般是在将表读入内存时，应用where子句中对该表的限制条件。
+根据2个row source的连接条件的中操作符的不同，可以将连接分为等值连接(如WHERE A.COL1 = B.COL2)、非等值连接(WHERE A.COL1> B.COL2)、外连接(WHERE A.COL1= B.COL2+)).
+
+
+NESTED LOOP JOIN
+
+
+这个连接方法有驱动表(外部表)的概念。其实，该连接过程就是一个2层嵌套循环，所以外层循环的次数越少越好，这也就是我们为什么将小表或返回较小row source的表作为驱动表(用于外层循环)的理论依据。但是这个理论只是一般指导原则，因为遵循这个理论并不能总保证使语句产生的I/O次数最少。有时不遵守这个理论依据，反而会获得更好的效率。如果使用这种方法，决定使用哪个表作为驱动表很重要。有时如果驱动表选择不正确，将会导致语句的性能很差。
+内部连接过程：
+Row source1的Row 1 -------------- -- Probe -> Row source 2
+Row source1的Row 2 -------------- -- Probe -> Row source 2
+Row source1的Row 3 -------------- -- Probe -> Row source 2
+…….
+Row source1的Row n -------------- -- Probe -> Row source 2
+从内部连接过程来看，需要用row source1中的每一行，去匹配row source2中的所有行，所以此时保持row source1尽可能的小与高效的访问row source2(一般通过索引实现)是影响这个连接效率的关键问题。这只是理论指导原则，目的是使整个连接操作产生最少的物理I/O次数，而且如果遵守这个原则，一般也会使总的物理I/O数最少。
+在上面的连接过程中，我们称Row source1为驱动表或外部表。Row Source2被称为被探查表或内部表。
+
+在NESTED LOOPS连接中，Oracle读取row source1中的每一行，然后在row source2中检查是否有匹配的行，所有被匹配的行都被放到结果集中，然后处理row source1中的下一行。这个过程一直继续，直到row source1中的所有行都被处理。这是从连接操作中可以得到第一个匹配行的最快的方法之一，这种类型的连接可以用在需要快速响应的语句中，以响应速度为主要目标。
+如果driving row source(外部表)比较小，并且在inner row source(内部表)上有唯一索引，或有高选择性非唯一索引时，使用这种方法可以得到较好的效率。NESTED LOOPS有其它连接方法没有的的一个优点是：可以先返回已经连接的行，而不必等待所有的连接操作处理完才返回数据，这可以实现快速的响应时间。
+
+
+
+
+
+例子：
+SQL> explain plan for
+  2  select /*+ use_nl(a, b)*/a.dname, b.sal
+  3  from scott.dept a, scott.emp b
+  4  where a.deptno = b.deptno;
+
+Explained
+
+SQL> select * from table(dbms_xplan.display);
+
+PLAN_TABLE_OUTPUT
+--------------------------------------------------------------------------------
+Plan hash value: 3338707304
+---------------------------------------------------------------------------
+| Id  | Operation          | Name | Rows  | Bytes | Cost (%CPU)| Time     |
+---------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |      |    14 |   280 |     9   (0)| 00:00:01 |
+|   1 |  NESTED LOOPS      |      |    14 |   280 |     9   (0)| 00:00:01 |
+|   2 |   TABLE ACCESS FULL| DEPT |     4 |    52 |     3   (0)| 00:00:01 |
+|*  3 |   TABLE ACCESS FULL| EMP  |     4 |    28 |     2   (0)| 00:00:01 |
+---------------------------------------------------------------------------
+Predicate Information (identified by operation id):
+---------------------------------------------------
+   3 - filter("A"."DEPTNO"="B"."DEPTNO")
+
+15 rows selected
+
+
+
+HASH JOIN
+这种连接是在oracle 7.3以后引入的，从理论上来说比NL与SMJ更高效，而且只用在CBO优化器中。
+较小的row source被用来构建hash table与bitmap，第2个row source被用来被hashed，并与第一个row source生成的hash table进行匹配，以便进行进一步的连接。Bitmap被用来作为一种比较快的查找方法，来检查在hash table中是否有匹配的行。特别的，当hash table比较大而不能全部容纳在内存中时，这种查找方法更为有用。这种连接方法也有NL连接中所谓的驱动表的概念，被构建为hash table与bitmap的表为驱动表，当被构建的hash table与bitmap能被容纳在内存中时，这种连接方式的效率极高。
+Hash join处理的两个数据集分布称为构造输入(build input)和探测输入(probe input)。
+
+
+Hash join有3种不同的类型：
+1）Optimal hash join
+整个join过程都是在位于PGA中的SQL WORKAREA中进行的，也就是说hash join也有其界限约束，通常如果build table能够完全cache在SQL WORKAREA指定的内存中，那么就最能体现hash join在其性能上的优势。这种情况下的hash join我们称作Optimal hash join。
+
+
+2）one pass hash join
+如果build table不能完全cache在内存中（workarea有一部分block支持probe table dump的I/O需求），那么oracle会对build table进行partition，partition数取决于oracle的一种内部算法，如果在partition后单个partition能够完全cache在内存中，那么我们称作这种hash join为one pass hash join，因为此时需要将其余的partition dump到temp段中，并且对于probe table，首先会进行位图扫描，直接丢弃不匹配的记录，然后会通过hash函数分布映射到对应的build table partition上，最后dump到临时段(ORACLE会产生有一个地址列表，列出了剩余build table partition和剩余probe table partition的在temp段中的位置和对应关系)，当然如果匹配当前partition的probe table部分，那么处理会像Optimal一样，直接传输至客户端进行输出。当dump 完整个probe table 以后，我们拥有了3对不同build probe partition。之后Oracle会从temp段dump出第二个build partition（或者是probe partition，此时会进行动态驱动分区选择），然后从地址列表中找到对应的probe partition，再次进行类似Optimal hash join。从整个join周期来看，bulid table和probe table都在temp中dump了一遍，所以这种类型的hash join被称为one pass hash join。
+
+
+3）mutiple pass hash join
+最后，如果我们的内存特别小或者相对而言需要hash的数据特别大，hash join就会以最恶劣的方式执行：multipass hash join。如果说onepass是只需要多从磁盘做一次probe table的读取，那么multipass就需要做多次读取，这往往发生在可用内存和数据量相差很大的情况下。multipass hash join是我们需要尽量避免的东西。
+
+
+好在现在的PGA是采样自动管理，而不是手动管理。自动管理可以合理使用我们有限的内存，使更多的 hash join可以在optimal下完成， hash join所使用的内存在整个处理的阶段是会一直改变的，也就是说可能在最开始的时候需要很多内存，后来就只需要很少的内存，如果我们是运行在PGA自动管理模式下，oracle可以在hash join不需要太多内存做hash join的时候回收这些内存，而这在手动管理模式下是做不到的。
+
+例子：
+SQL> explain plan for
+  2  select /*+ use_hash(a, b)*/a.dname, b.sal
+  3  from scott.dept a, scott.emp b
+  4  where a.deptno = b.deptno;
+
+Explained
+
+SQL> select * from table(dbms_xplan.display);
+
+PLAN_TABLE_OUTPUT
+--------------------------------------------------------------------------------
+Plan hash value: 1093152308
+---------------------------------------------------------------------------
+| Id  | Operation          | Name | Rows  | Bytes | Cost (%CPU)| Time     |
+---------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |      |    14 |   280 |     7  (15)| 00:00:01 |
+|*  1 |  HASH JOIN         |      |    14 |   280 |     7  (15)| 00:00:01 |
+|   2 |   TABLE ACCESS FULL| DEPT |     4 |    52 |     3   (0)| 00:00:01 |
+|   3 |   TABLE ACCESS FULL| EMP  |    14 |    98 |     3   (0)| 00:00:01 |
+---------------------------------------------------------------------------
+Predicate Information (identified by operation id):
+---------------------------------------------------
+   1 - access("A"."DEPTNO"="B"."DEPTNO")
+
+15 rows selected
+
+SORT MERGE JOIN
+
+
+内部连接过程：
+1) 首先生成row source1需要的数据，然后对这些数据按照连接操作关联列进行排序。
+2) 随后生成row source2需要的数据，然后对这些数据按照与sort source1对应的连接操作关联列进行排序。
+3) 最后两边已排序的行被放在一起执行合并操作，即将2个row source按照连接条件连接起来
+下面是连接步骤的图形表示：
+ MERGE
+       /     \
+    SORT     SORT
+     |         |
+Row Source 1 Row Source 2
+
+如果row source已经在连接关联列上被排序，则该连接操作就不需要再进行sort操作，这样可以大大提高这种连接操作的连接速度，因为排序是个极其费资源的操作，
+特别是对于较大的表。 预先排序的row source包括已经被索引的列或row source已经在前面的步骤中被排序了。尽管合并两个row source的过程是串行的，但是可以并行访问这两个row source(如并行读入数据，并行排序).
+排序是一个费时、费资源的操作，特别对于大表。基于这个原因，SMJ经常不是一个特别有效的连接方法，但是如果2个row source都已经预先排序，则这种连接方法的效率也是蛮高的
+
+如果row source已经在连接关联列上被排序，则该连接操作就不需要再进行sort操作，这样可以大大提高这种连接操作的连接速度，因为排序是个极其费资源的操作，
+特别是对于较大的表。 预先排序的row source包括已经被索引的列或row source已经在前面的步骤中被排序了。尽管合并两个row source的过程是串行的，但是可以并行访问这两个row source(如并行读入数据，并行排序).
+排序是一个费时、费资源的操作，特别对于大表。基于这个原因，SMJ经常不是一个特别有效的连接方法，但是如果2个row source都已经预先排序，则这种连接方法的效率也是蛮高的
+
+SQL> explain plan for
+  2  select /*+ use_mj(a, b)*/a.dname, b.sal
+  3  from scott.dept a, scott.emp b
+  4  where a.deptno = b.deptno;
+
+Explained
+
+SQL> select * from table(dbms_xplan.display);
+
+PLAN_TABLE_OUTPUT
+--------------------------------------------------------------------------------
+Plan hash value: 2865896559
+--------------------------------------------------------------------------------
+| Id  | Operation                    | Name    | Rows  | Bytes | Cost (%CPU)| Ti
+--------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |         |    14 |   280 |     6  (17)| 00
+|   1 |  MERGE JOIN                  |         |    14 |   280 |     6  (17)| 00
+|   2 |   TABLE ACCESS BY INDEX ROWID| DEPT    |     4 |    52 |     2   (0)| 00
+|   3 |    INDEX FULL SCAN           | PK_DEPT |     4 |       |     1   (0)| 00
+|*  4 |   SORT JOIN                  |         |    14 |    98 |     4  (25)| 00
+|   5 |    TABLE ACCESS FULL         | EMP     |    14 |    98 |     3   (0)| 00
+--------------------------------------------------------------------------------
+Predicate Information (identified by operation id):
+---------------------------------------------------
+   4 - access("A"."DEPTNO"="B"."DEPTNO")
+       filter("A"."DEPTNO"="B"."DEPTNO")
+
+
+总结：
+总结一下，在哪种情况下用哪种连接方法比较好：
+排序 - - 合并连接(Sort Merge Join, SMJ)：
+如果在关联的列上都有索引，那么效率会比较好，因为省却了排序的步骤
+嵌套循环(Nested Loops, NL)：
+a) 如果driving row source(外部表)比较小，并且在inner row source(内部表)上有唯一索引，或有高选择性非唯一索引时，使用这种方法可以得到较好的效率。
+b) NESTED LOOPS有其它连接方法没有的的一个优点是：可以先返回已经连接的行，而不必等待所有的连接操作处理完才返回数据，这可以实现快速的响应时间。
+哈希连接(Hash Join, HJ)：
+a) 这种方法是在oracle7后来引入的，使用了比较先进的连接理论，
+一般来说，其效率应该好于其它2种连接，但是这种连接只能用在
+CBO优化器中。
+b) 在2个较大的row source之间连接时会取得相对较好的效率，在一个row source较小时则能取得更好的效率。
+c) 只能用于等值连接中
+在这个大家都关心的章节开篇前，先介绍下几个简单概念
+物理读
+数据只要从除了buffer cache以外的地方读入到buffer cache或PGA就是数据库的物理读。
+逻辑读
+逻辑读指的就是Buffer Cache中读取数据块。按照访问数据块的模式不同，可以分为即时读（Current Read）和一致性读（Consistent Read）。
+Cpu time
+Sql执行所消耗的cpu时间，影响这部分时间的因素有很多，有逻辑读、物理读、过滤、排序以及hash join等等操作。
+
+
+DB time
+DB time=DB CPU+ DB waiting time(no-idle time)，不包括网络传输时间
+
+Elapsed time
+Sql的执行时间。这部分时间包括了DB time和 网络传输时间，调整客户端的array size能够影响网络传输时间。
+
+Array size
+是sqlplus中的一个设置，定义了一次返回到客户端的行数，默认是15行。假设一个块中平均有270条数据，当array size为5的时候，从服务器到客户端传输需要24个buffer gets；当调大array size到50时，只需要6个buffer gets，大大减少了逻辑读次数，同时网络传输开销也可以大大节约。
+
+介绍了那么多知识点，还没有涉及到实际的优化工作。在接触第一个例子前，来问一个问题。什么是优化？优化的目的是什么？
+优化是选择较优的执行计划来执行SQL语句的过程，对于复杂的sql，有时是需要取权衡的，可能在一个场景中是最优，但是另一个场景中不是好的执行计划。
+优化的目的我认为可以分多种。大多数人的理解可能是执行时间的降低，如果是通过降低资源的消耗来达到降低执行时间，那是最好的，也是最常见的。但某些情况下，可能需要增加cpu的使用来缩短sql执行时间，如在晚上数据库相对比较空闲的时候对一个跑批的sql加并行处理以加快处理速度，而这种方法在系统繁忙时候就不能采用。
+
+对于最常见的优化方式，我们关注的是逻辑读和cpu time，可能大家还会说需要关注物理读，物理读也是影响sql执行效率的一个因素，但是这是一个可变的因素，sql第一次执行时因为需要从磁盘读取数据块到buffer cache中，所以逻辑读会相对较高。但之后的执行物理读就会降下来了，对于一个频繁读取的sql，物理读不适合作为评判sql执行效率的依据。
+
+优化器总是希望以最小的代价（cost）来完成任务，我们的思路也应该是这样的。要学会像优化器一样去思考，需要关注几点：
+1)表之间的连接类型是什么，哪个表做驱动表
+2)走全表扫描还是走索引
+3)如果是走索引，那个索引是最优的
+
+我们看一个案例：
+SELECT COUNT(A.ASSIST_NO)
+  FROM T_PUB_ASSIST_APPLY A, T_PC_VEHICLE V, T_PUB_TASK T
+WHERE A.VEHICLE_ID = V.NETS_VEHICLE_ID
+   AND A.TASK_GROUP_ID = T.TASK_GROUP_ID
+   AND T.COVERAGE_ID IN (1, 2)
+   AND A.ASSISTANT = :V_ASSISTANT
+   AND T.STATUS IN ('1', '2', '3')
+   AND A.STATUS IN ('7', '9');
+
+
+这个sql共有三张表做关联：
+T_PUB_ASSIST_APPLY A, T_PC_VEHICLE V, T_PUB_TASK T
+关联条件为：
+A.VEHICLE_ID = V.NETS_VEHICLE_ID
+   AND A.TASK_GROUP_ID = T.TASK_GROUP_ID
+谓词条件为：
+AND T.COVERAGE_ID IN (1, 2)
+   AND A.ASSISTANT = :V_ASSISTANT
+   AND T.STATUS IN ('1', '2', '3')
+   AND A.STATUS IN ('7', '9')
+
+优化器先通过谓词条件过滤再做表关联, 所以我们先看谓词条件，。
+谓词条件分别在两张表上：
+T_PUB_TASK的COVERAGE_ID和STATUS
+T_PUB_ASSIST_APPLY的ASSISTANT和STATUS。
+分布查看这两张表上这几个字段相关的索引：
+
+
+表T_PUB_ASSIST_APPLY：
+SQL>  col index_name format a25
+SQL> col column_name format a25
+SQL> col column_position format a1
+SQL>
+SQL> SELECT INDEX_NAME, COLUMN_NAME, COLUMN_POSITION
+  2    FROM DBA_IND_COLUMNS
+  3   WHERE INDEX_NAME IN
+  4         (SELECT DISTINCT INDEX_NAME
+  5            FROM DBA_IND_COLUMNS
+  6           WHERE TABLE_NAME = 'T_PUB_ASSIST_APPLY'
+  7             AND COLUMN_NAME IN ('ASSISTANT', 'STATUS'))
+  8   ORDER BY INDEX_NAME, COLUMN_POSITION;
+
+INDEX_NAME                COLUMN_NAME               C
+------------------------- ------------------------- -
+IX_ASSITAPPLY_APPL_STAT   APPLY_UMID                1
+IX_ASSITAPPLY_APPL_STAT   STATUS                    2
+IX_ASSITAPPLY_ASSI_STAT   ASSISTANT                 1
+IX_ASSITAPPLY_ASSI_STAT   STATUS                    2
+IX_ASSITAPPLY_DEPA_STAT   DEPARTMENT_THIRD_CODE     1
+IX_ASSITAPPLY_DEPA_STAT   STATUS                    2
+6 rows selected
+
+表：T_PUB_TASK
+SQL> col index_name format a30
+SQL> col column_name format a25
+SQL> col column_position format a1
+SQL>
+SQL>
+SQL> SELECT INDEX_NAME, COLUMN_NAME, COLUMN_POSITION
+  2    FROM DBA_IND_COLUMNS
+  3   WHERE INDEX_NAME IN
+  4         (SELECT DISTINCT INDEX_NAME
+  5            FROM DBA_IND_COLUMNS
+  6           WHERE TABLE_NAME = 'T_PUB_TASK'
+  7             AND COLUMN_NAME IN ('COVERAGE_ID', 'STATUS'))
+  8   ORDER BY INDEX_NAME, COLUMN_POSITION;
+
+INDEX_NAME                     COLUMN_NAME               C
+------------------------------ ------------------------- -
+IDX_TASK_GROUP_ID_STATUS       TASK_GROUP_ID             1
+IDX_TASK_GROUP_ID_STATUS       STATUS                    2
+IDX_TASK_TEAM_STATUS_POLICY    TEAM_ID                   1
+IDX_TASK_TEAM_STATUS_POLICY    STATUS                    2
+IDX_TASK_TEAM_STATUS_POLICY    POLICY_END_DATE           3
+IDX_TASK_TEAM_STATUS_POLICY    TASK_GROUP_ID             4
+IDX_TASK_TMR_APPOINT_STATUS    TMR_ID                    1
+IDX_TASK_TMR_APPOINT_STATUS    APPOINTMENT_DATE          2
+IDX_TASK_TMR_APPOINT_STATUS    STATUS                    3
+
+
+
+可以看到，只有索引IX_ASSITAPPLY_ASSI_STAT适合，那么应该是先通过索引查表，然后再做关联。
+那么IX_ASSITAPPLY_ASSI_STAT的选择率怎样呢？
+SQL> SELECT t.distinct_keys, 1/distinct_keys FROM DBA_IND_STATISTICS t WHERE INDEX_NAME='IX_ASSITAPPLY_ASSI_STAT';
+
+DISTINCT_KEYS 1/DISTINCT_KEYS
+------------- ---------------
+           21 0.0476190476190
+表中ASSISTANT的值大部分都是空值，所以选择率还可以，实际的情况是：
+SELECT count(ASSISTANT), ASSISTANT
+  FROM T_PUB_ASSIST_APPLY
+  where  STATUS IN ('7', '9')
+  group by
+  order by count(ASSISTANT);
+的ASSISTANT的共有1669个，其中1448个的的count值在100以下，最大的为count值为2873，也就是说row resource1比较小。
+
+看关联条件
+A.VEHICLE_ID = V.NETS_VEHICLE_ID
+   AND A.TASK_GROUP_ID = T.TASK_GROUP_ID
+对应的表T_PUB_TASK字段TASK_GROUP_ID上的索引
+SQL>  SELECT INDEX_NAME, COLUMN_NAME, COLUMN_POSITION
+  2    FROM DBA_IND_COLUMNS
+  3   WHERE INDEX_NAME IN
+  4         (SELECT DISTINCT INDEX_NAME
+  5            FROM DBA_IND_COLUMNS
+  6           WHERE TABLE_NAME = 'T_PUB_TASK'
+  7             AND COLUMN_NAME IN ('TASK_GROUP_ID'))
+  8   ORDER BY INDEX_NAME, COLUMN_POSITION;
+
+INDEX_NAME                     COLUMN_NAME               C
+------------------------------ ------------------------- -
+IDX_TASK_GROUP_ID_STATUS       TASK_GROUP_ID             1
+IDX_TASK_GROUP_ID_STATUS       STATUS                    2
+IDX_TASK_TEAM_STATUS_POLICY    TEAM_ID                   1
+IDX_TASK_TEAM_STATUS_POLICY    STATUS                    2
+IDX_TASK_TEAM_STATUS_POLICY    POLICY_END_DATE           3
+IDX_TASK_TEAM_STATUS_POLICY    TASK_GROUP_ID             4
+IX_TASK_UD_AP_GID              UPDATED_DATE              1
+IX_TASK_UD_AP_GID              AFTER_APPOINT_PRIORITY    2
+IX_TASK_UD_AP_GID              TASK_GROUP_ID             3
+
+9 rows selected
+
+对应的表T_PC_VEHICLE字段NETS_VEHICLE_ID上的索引
+SQL>
+SQL>  SELECT INDEX_NAME, COLUMN_NAME, COLUMN_POSITION
+  2    FROM DBA_IND_COLUMNS
+  3   WHERE INDEX_NAME IN
+  4         (SELECT DISTINCT INDEX_NAME
+  5            FROM DBA_IND_COLUMNS
+  6           WHERE TABLE_NAME = 'T_PC_VEHICLE'
+  7             AND COLUMN_NAME IN ('NETS_VEHICLE_ID'))
+  8   ORDER BY INDEX_NAME, COLUMN_POSITION;
+
+INDEX_NAME                     COLUMN_NAME               C
+------------------------------ ------------------------- -
+PK_PC_VEHICLE                  NETS_VEHICLE_ID           1
+
+NETS_VEHICLE_ID对应的是PK_PC_VEHICLE，是主键索引，高选择率。
+TASK_GROUP_ID结合status，只能使用IDX_TASK_GROUP_ID_STATUS，选择率肯定没有主键索引好。
+
+
+现在大致情况我们都知道了。
+通过分析谓词条件，可以走表T_PUB_ASSIST_APPLY的X_ASSITAPPLY_ASSI_STAT索引，表T_PUB_ASSIST_APPLY可以作为驱动表。
+ 通过分析关联条件，比较表T_PC_VEHICLE和表T_PUB_TASK关联字段的索引选择率，表T_PC_VEHICLE更适合作为和表T_PUB_ASSIST_APPLY关联的被驱动表。
+Row resource1数据量很低，而被驱动表上又有高效的唯一性索引，非常适合用NESTED LOOP。
+表T_PUB_ASSIST_APPLY和表T_PC_VEHICLE关联后的结果集再和T_PUB_TASK做NESTED LOOP。
+我们来看下实际的执行计划如何：
+
+
+|   0 | SELECT STATEMENT                   |                          |     1 |35 |    10   (0)|
+
+|   1 |  SORT AGGREGATE                   |                          |     1 |35 |            |
+|*  2 |   TABLE ACCESS BY INDEX ROWID   | T_PUB_TASK               |     1 |12 |     5   (0)|
+
+|   3 |    NESTED LOOPS                        |                          |     1 |35 |    10   (0)|
+
+|   4 |     NESTED LOOPS                       |                          |     1 |23 |     5   (0)|
+
+|   5 |      TABLE ACCESS BY INDEX ROWID  | T_PUB_ASSIST_APPLY       |     1 |17 |     3   (0)|
+
+|*  6 |       INDEX RANGE SCAN            | IX_ASSITAPPLY_ASSI_STAT  |     1 |   |     2   (0)|
+
+|*  7 |       INDEX UNIQUE SCAN             | PK_PC_VEHICLE            |     1 | 6 |     2   (0)|
+
+|   8 |     INLIST ITERATOR                     |                          |         |   |            |
+
+|*  9 |       INDEX RANGE SCAN              | IDX_TASK_GROUP_ID_STATUS |     1 |   |     4   (0)|
+
+可以看到，实际的执行计划的确是和我们预想的一样。
+
+注：从Oracle的一个版本到另一个版本，优化器可能对同一语句生成不同的执行计划。在将来的Oracle 版本中，优化器可能会基于它可以用的更好、更理想的信息，作出更优的决策，从而导致为语句产生更优的执行计划。
+
+
+什么是hint
+
+Cbo已经是相当不错的优化器了，大部分情况下会选择正确的执行计划。但是优化器毕竟是程序，就算统计信息是最新最准确的，也不能保证生成的执行计划一定是好的，这时候就需要我们来人工干预。改变sql执行计划的方式有多种，除了改写sql外，还可以通过加hint来实现，这应该也是最简单的一种方法。
+hints是oracle提供的一种机制，用来告诉优化器按照我们的告诉它的方式生成执行计划。我们可以用hints来实现：
+1) 使用的优化器的类型
+2) 基于代价的优化器的优化目标，是all_rows还是first_rows。
+3) 表的访问路径，是全表扫描，还是索引扫描，还是直接利用rowid。
+4) 表之间的连接类型
+5) 表之间的连接顺序
+6) 语句的并行程度
+
+除了使用RULE提示外，使用其他的提示都会自动使用CBO。
+
+如何使用hint
+Hints只应用在它们所在sql语句块(statement block，由select、update、delete关键字标识)上，对其它SQL语句或语句的其它部分没有影响。如：对于使用union操作的2个sql语句，如果只在一个sql语句上有hints，则该hints不会影响另一个sql语句。
+我们可以使用注释(comment)来为一个语句添加hints，一个语句块只能有一个注释，而且注释只能放在SELECT, UPDATE, or DELETE关键字的后面
+使用hints的语法：
+{DELETE|INSERT|SELECT|UPDATE} /*+ hint [text] [hint[text]]... */
+多个hint之间需要用空格分开，如果没有指定正确的hint，oracle讲忽视该hint，没有任何错误提示。
+
+优化器相关
+ALL_ROWS -- 基于代价的优化器，以吞吐量为目标
+FIRST_ROWS(n) -- 基于代价的优化器，以响应时间为目标
+CHOOSE -- 根据是否有统计信息，选择不同的优化器
+RULE -- 使用基于规则的优化器
+
+连接类型相关
+USE_NL /*+ USE_NL ( table [,table, ...] ) */
+使用嵌套连接
+USE_MERGE /*+ USE_MERGE ( table [,table, ...]) */
+使用排序- -合并连接
+USE_HASH /*+ USE_HASH ( table [,table, ...]) */
+使用HASH连接
+注意：如果表有alias(别名)，则上面的table指的是表的别名，而不是真实的表名
+
+存取路径相关
+FULL /*+ FULL ( table ) */
+指定该表使用全表扫描
+ROWID /*+ ROWID ( table ) */
+指定对该表使用rowid存取方法，该提示用的较少
+INDEX /*+ INDEX ( table [index]) */
+使用该表上指定的索引对表进行索引扫描
+INDEX_FFS /*+ INDEX_FFS ( table [index]) */
+使用索引快速全扫描
+NO_INDEX /*+ NO_INDEX ( table [index]) */
+不使用该表上指定的索引进行存取，仍然可以使用其它的索引进行索引扫描
+
+连接顺序相关
+ORDERED /*+ ORDERED */
+按from 子句中表的顺序从左到右的连接
+STAR /*+ STAR */
+指示优化器使用星型查询
+LEADING /*+ LEADINGING(TAB1,TAB2,……)*/
+指定表的连接顺序
+
+使用hint并不总是能如愿，有时需要尝试使用不同的hint。
+
+
+加hint可以解决偶尔出现的一些执行计划不好sql的性能问题，但是对于一个表相关的很多sql出现执行计划不好的情况时，不应该简单地通过加hint来解决，我们应该考虑是否这个表的统计信息过旧导致优化器选择了不正确的执行计划，这时收集最新的统计信息往往是更好的解决方案。当然，收集统计信息不应该直接在生产库上执行，而是应该在和生产一样的库中如cow库收集并做影响分析，确定没有问题后再通过版本下发导入到生产库中。如果没有cow库，就需要从生产最新的rman备份中恢复一个库出来。
+
+1)stored outline简介
+   有时候生产上sql的执行计划发生突变引发生产紧急问题，修改源码加hint在解决问题的时效上不允许的，这时候stored outline就有了用武之地。
+可以通过做stored outline，无需更改sql源码，永久地为sql固定执行计划。同样引入了问题，如果数据分布是不均匀的，用stored outline固定后，就算之后发生硬解析，不管bind value是什么（在有直方图的情况下），执行计划也不会变。所以，我觉得stored outline适用于那种数据分布均匀的情况。还有一个问题，oracle的版本升级后，stored outline很可能会失效，如果dba没有做相应的措施，那么很可能在oracle版本升级后原先正确的执行计划会出现问题，所以stored outline的管理也是一件麻烦的事。在平安，stored outline可以作为临时解决生产问题的方法，但是开发一定要在后续的版本中修正sql问题而不是依赖于stored outline。
+2）spm简介
+ 在Oracle 11g前，我们可以借助Stored Outline来固定sql的执行计划。在oracle 11g中，提供了SPM（SQL PLAN Managment），SPM是Oracle自我管理发展的新功能，自动去判断某个SQL的新的执行计划是否更加合理（成本更低），只有在新的执行计划比原来的执行计划更好的情况下，它才会被使用，从而有效的保护了执行计划的稳定性，进而保证了SQL语句的执行效率。
+     Oracle提供了 DBMS_SPM来做相关的管理工作，常用方法有：
+DBMS_SPM.ALTER_SQL_PLAN_BASELINE
+DBMS_SPM.CREATE_STGTAB_BASELINE
+DBMS_SPM.DROP_SQL_PLAN_BASELINE
+DBMS_SPM.EVOLVE_SQL_PLAN_BASELINE
+DBMS_SPM.LOAD_PLANS_FROM_CURSOR_CACHE
+
+统计信息简介
+
+从上章的hint中，我们可以看出统计信息是非常重要，它是cbo的基础，也是执行计划正确高效的保障。
+优化器使用的统计信息，主要包括两类，其一是系统统计信息（System Statistics），用于反映系统中CPU的处理速度，以及从磁盘上读取数据块的速度；另一类就是表和索引的统计信息。对于系统统计信息，可能库的升级或者服务器的迁移，系统的统计信息如CPU成本、多块读成本等的改变会导致执行计划的改变，但是这个不在我们今天培训的范围中，我们讨论的是第二类统计信息。
+统计信息是数据中表和索引信息的一些统计，这些信息包括：
+表：行数、块数、行平均长度。
+列：列中distinct值个数、null值的数量、数据分布。
+索引：叶块数量、层级、聚簇因子。
+
+
+可以通过以下视图来查询对象的统计信息：
+DBA_TAB_STATISTICS
+DBA_TAB_COL_STATISTICS
+DBA_IND_STATISTICS
+
+CBO根据统计信息来计算各种可能的执行计划的cost值，选择cost值最低的执行计划。
+
+收集统计信息的命令有两种：
+1）analyze
+在oracle 8i以前是用analyze命令。现在基本已不使用这种方法来收集统计信息了（在收集表的行链接的行时还是需要用到这个命令）。
+格式：
+analyze table …
+analyze index …
+
+2）dbms_Stats
+在oracle 8i以后用dbms_stats包， oracle建议使用dbms_stats来代替analyze，的确这个包也比analyze好用。
+
+可以收集数据库、schema、表、索引统计：
+dbms_stats.gather_database_stats
+dbms_stats.gather_system_stats
+dbms_stats.gather_schema_stats
+dbms_stats.gather_table_stats
+dbms_stats.gather_index_stats
+
+你还可以设置表和列的统计信息：
+dbms_stats.set_system_stats
+dbms_stats.set_table_stats
+dbms_stats.set_index_stats
+dbms_stats.set_column_stats
+
+锁定和解锁统计信息：
+dbms_stats.lock_schema_stats
+dbms_stats.lock_table_stats
+dbms_stats.lock_partition_stats
+
+也可以导出导入统计信息的：
+dbms_stats.export_database_stats
+dbms_stats.export_system_stats
+dbms_stats.export_schema_stats
+dbms_stats.export_table_stats
+dbms_stats.export_index_stats
+dbms_stats.export_column_stats
+dbms_stats.import_database_stats
+dbms_stats.import_system_stats
+dbms_stats.import_schema_stats
+dbms_stats.import_table_stats
+dbms_stats.import_index_stats
+dbms_stats.import_column_stats
+
+当然不止这些方法，还有很多其他的方法，dbms_stats 包的功能是十分强大的。
+
+
+动态采样（Dynamic Sampling）技术的最初提出是在Oracle 9i R2，在段（表，索引，分区）没有分析的情况下，为了使CBO优化器得到足够的信息以保证做出正确的执行计划而发明的一种技术，可以把它看做分析手段的一种补充。当段对象没有统计信息时（即没有做分析），动态采样技术可以通过直接从需要分析的对象上收集数据块（采样）来获得CBO需要的统计信息，如数据分布、列的distinct值等。
+动态采样在某些情况下是不得已而为之的，如果我们能够收集统计信息，那么还是收集吧，因为这个比动态采样要来得精确得多。
+当然，动态采样也有它适用的场景。比如：
+对于临时表，数据的变化很频繁，每次的变化量也不一致，变化量差别很大，那么这种情况下每次收集统计是不现实的，这时候oracle的动态采样就可以帮上忙，以相对小的开销得到较优的执行计划。
+同样是临时表，每次数据处理完毕后都会清理，但是每次的变化量是一定的，比如都是100w左右，那么这时候可以在数据导入完毕后，收集统计信息并锁定统计信息，效果往往比动态采样会更好。
+
+
+使用动态采样的时候，使用sql trace可以看到执行计划中会出现如下标红提示：
+已用时间:  00: 00: 00.02
+执行计划
+----------------------------------------------------------
+Plan hash value: 1357081020
+
+--------------------------------------------------------------------------
+| Id  | Operation         | Name | Rows  | Bytes | Cost (%CPU)| Time     |
+--------------------------------------------------------------------------
+|   0 | SELECT STATEMENT  |      | 44151 |  7631K|   196   (3)| 00:00:03 |
+|*  1 |  TABLE ACCESS FULL| TEST | 44151 |  7631K|   196   (3)| 00:00:03 |
+--------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - filter("OBJECT_NAME"='TEST')
+
+Note
+-----
+   - dynamic sampling used for this statement
+当出现标红的字样时，表明执行计划是通过动态采样生成的。
+
+
+构造直方图最主要的原因就是帮助优化器在表中数据严重偏斜时做出更好的规划。当表中的列的数据分布存在倾斜时——即列的不同值出现数量差异较大，而这个列出现在where子句的谓词中，如果在没有直方图的情况下，oracle对这个列的区分度取的是平均值，这样无法体现sql执行时实际bind值的占比情况，在适合走全表的情况下走了索引扫描，那么就不是一个好的执行计划。
+
+直方图类型 :
+频率直方图
+Oracle中的频率直方图是按照累积某一列值的出现次数来生成数据分布描述的
+
+高度均衡直方图
+直方图的buckets数量的最大值为254个，当列的唯一值超过这个值时，Oracle会以height balanced的方式记录histograms，也就是按照buckets的值把所有的数据平分，如果bucket是50，就把所有的数据平分为50等份，再告诉我们处于每个边界的值
+
+所以oracle引入了直方图。它可以描述列中数据的分布以及倾斜度。当sql发生硬解析时，优化器会依据传入的绑定变量值以及直方图信息来选择正确的执行计划，而不是一成不变的，这个过程叫做bind peeking。
+但是同样引入了一个问题，在sql第一次执行时传入的bind值决定了执行计划，不管之后传入的bind值是怎样的，执行计划都不会变，除非发生硬解析，这样，当第一次传入的bind值和之后执行的bind值是在列的倾斜度的两端的数据时，这个执行计划对于这个特定的bind值就不是一个正确的执行计划，直方图依然没有解决问题。(在oracle 9i和10g中，cursor_sharing参数设置为similar可以为不同的bind值生成不同的执行计划，这听起来很不错，但是很不幸的是，它会导致子游标数过高的问题)。折衷的办法就是，分析数据分布，为不同的倾斜度的bind值（在一个范围内，而不是每一个的bind值）sql加hint固定。
+
+由于直方图的种种问题，在平安的9i、10g库中是不建议自动收集直方图的信息的，对于已有的直方图，为避免影响，不做删除。
+如何在收集统计信息时不收集直方图信息呢？在收集统计信息时，METHOD_OPT参数设置为“FOR ALL COLUMNS SIZE1”就不会收集直方图信息。
+那么对于已有的直方图信息，在不重新收集统计信息的情况下如何删除呢？dbms_stats同样提供方法，使用dbms_stats.delete_column_stats可以删除列上的统计信息。
+Oracle的bind peeking问题，直到11g才得到了解决。11g 的Adaptive Cursor Sharing in Oracle Database 11g Release 1新特性改善了这个情况，即使被bind peeking了，之后执行的时候11g的优化器会选择更优的执行计划。
+
+看到这里，大家可能会问，如果库的统计信息策略是收集不启用，那么数据的变化量就算很大，统计信息也只是收集而不启用，这样会不会造成执行计划的效率变差呢？我觉得可以分两种情况来考虑：
+1）数据分布发生了很大的改变
+在数据库参数没有改变，且统计信息保持不变的情况下，sql的执行计划也是不变的，但是数据分布已经发生变化了，原先可能是正确的执行计划，现在可能已经是一个效率较差的执行计划了，这时候就需要考虑是否对这张表重新收集统计信息或者导入最新的统计信息，前提是需要做影响分析。
+2）虽然数据量变化很大，但是数据分布改变不大
+这种情况下，原先的执行计划还是正确的执行计划，就无需启用新的统计信息。
+
+
+平安的统计信息收集策略
+从oracle 10g开始，oracle会自动进行统计信息收集工作，看起来这个功能不错，遗憾的是，往往这个自动收集会带来很多问题，比如执行时间过长，在生产库自动收集统计信息导致生产执行计划突变等，所以在平安，除了11g的库以外（11g有强大的SPM），其他版本的数据库是不允许oracle自动收集统计信息的（9i本身就不会自动收集）。
+现在平安的非11g库的统计信息收集工作是由DBA开发的统计信息收集脚步来实现的（11g库在今年也会使用这套脚步），一般原则下，所有的ddl变更，都是需要重新收集统计信息。对于dml变更，程序会判断数据的变化量，如果达到10%（这个标准和oracle的自动收集标准是一致的），就会自动备份当前统计信息，然后调用我们的给的规范收集统计信息，再根据当前库的收集策略是收集启用还是收集不启用来判断是否需要启用新的统计信息。
+
+
+表的数据量大不代表性能就一定差，可能我们只是在数据量为1亿的表中查找几条数据，如果是在走索引的情况下，和在100W表的表中查询几条数据的效率几乎是没有区别的。这和索引的结构有关系，见下页的图。
+这是一个常见的高度为3的B树索引，有根节点、子节点和叶节点，在这样的索引中，查询一条只需要4个IO，根节点一个IO，子节点一个IO，叶节点一个IO，根据得到的ROWID直接定位到表块又是一个IO。这种看的话，对于数据量是一亿或100万，所消耗的IO是一样的，不存在大表的查询慢的问题，对于小范围的索引扫描，也同样适用。关于索引的问题，有大师专门写了一本书，要讲的话需要单独做培训。
+当然，查询如果需要用到全表扫描时，大表和小表的区别还是非常明显的。
+OLTP
+OLAP
+
+相同的一个说法是走全表的一定是不好的。真的是这样吗？不尽然。
+刚我们看到了索引的高效，在一百万甚至更大的表中查询一条记录，如果通过索引扫描，只需要4个IO即可搞定，那么索引应该是最优的选择啊。这个还是要看情况，对于OLTP系统中，可能我只要在大表中查询几条数据，这种情况索引的确适用，但是在一些跑批或olap系统中的统计sql，我可能需要查询表中大部分的数据，比如表中有1年的数据，我可能需要扫描其中半年的数据，这时候再用索引做扫描就不合适了（如果select后的字段就是索引中的字段，那么走INDEX FAST FULL SCAN而不需要访问表块则另当别论）。那么什么时候使用索引，什么时候使用全表扫描，有这样一个阀值吗？
+一般我们认为，索引在查询表中某个阀值（一般这个阀值被认为在10%至20%之间）以下的数据量时是比较快的，这个时候走索引比全表扫描要更优，扫描的范围越小，性能也越好。但是当查询的结果集大于阀值时，全表扫描的性能就好于索引扫描了，我们也可以在MIS系统中经常看到全表扫描的场景。
+
+
+这个阀值也只是大家的经验值，我们还需要考虑数据的分布问题，举一个极端的情况，需要查询的数据为整张表的1%，按经验，走索引会比全表好，如果这1%的数据分布在大部分的表块中呢？即使走了索引，还是需要读取大部分的表块，而且还是单块读（一次IO只能读取一个块），而全表扫描是多块读（一次IO读取多个块），全表扫描的效率反而优于索引扫描。
+还有一种情况，对于在几十条数据的表中查询一条记录，按经验看，符合走索引扫描的法则，这时候的索引应该是一个blevel为0的索引，那么查询到数据需要2个IO。对于字段较少且字段长度较短的表，几十条数据在几个块中甚至就在一个块中，这时候走全表扫描只需要一个IO即可搞定，没有必要走索引。
+
+相关知识点：
+db file sequential read：
+db文件顺序读取，一次IO只能读取一个块。索引扫描使用的就是db file sequential read，index fast full scan是个例外。
+db file scattered read：
+DB文件分散读取，一次IO可以读取多个块。全表扫描使用的多块读，读取的块数受db_file_multiblock_read_count的限制，同时也受到操作系统I/O的限制。
+
+一般认为，驱动表的结果集比较小的情况使用nested loop会比较好，我觉得这是条件一，条件二是被驱动表是走索引唯一性扫描或较小范围的索引范围扫描。如果被驱动表很大的话，并且使用的范围扫描且这个范围扫描的范围很大的话，nested loop也可能不如hash join。
+
+
+经常听到开发同事说，我的表很大，有几亿条数据，需要做分区，但是大表一定适合做分区吗？我觉得不是一概而论的。
+首先我们来了解下分区表可以解决什么样的问题：
+1）数据清理
+经常会有定期清理数据的需求，大家普遍的做法是把需要清理的数据用delete来做清理，这种做法没有错，但delete操作本身会使用大量的undo段，delete操作产生的undo量是三张DML操作中最多的。所以大家会觉得这种操作非常耗时，如果是大数据量的删除，还需要分段提交以免undo段不够用。
+这时候，表是分区表，且可以按照分区来清理数据时，比如我的表是按月分区的，要清理3个月前的数据，那么只需要简单地truncate或者drop无用的分区即可而不需要做delete，效率非常高，不会消耗很多的undo，产生的redo也非常少。需要注意的是，这种情况下，全局索引可能会变成无效，需要重建的。
+
+2）分区扫描
+经常会有这样的需求，一张大表存有一年的数据，而查询的时间范围是3个月，那么这种情况下，是不适合走索引的，会走全表扫描，扫描整张表12个月的数据，其实我们只要扫描3个月的数据即可，其余的9个月数据是没有必要扫描的。如果表按月来分区，那么oracle只会扫描这三个月对应的分区，并且可以开并行扫描，效率和之前的整张表的扫描差别还是非常大的。
+Partition pruning （分区消除）
+
+当然，我举的都是简单的例子，大家一眼就能看出来可以用分区表来提高性能的。实际的情况往往没有那么简单，这个就需要具体分析，其中分区键的选择以及索引的创建是非常重要的。
+
+执行计划中的cost高低是执行计划优劣的依据
+
+我发现很多开发同事在做sql调优时，把cost的高低作为执行计划好坏的一个判断标准。很遗憾的是，这个cost往往会误导大家。Cost是指cbo中这一步所耗费的资源，是cbo根据统计信息计算出来，cost的计算是非常复杂的算法，就算统计信息是最新的，生成的cost也是有可能不准确的，所以cost的高低不能成为判断执行计划优劣的依据。而是应该通过访问路径、连接方式等来判断。
+Explain plan看到的Cost的值是一个估算值而不是实际值，同样，实际执行后看到的执行计划中的cost同样也是一个估算值。Oracle只有在实际执行sql后才能知道执行计划的优劣，下面介绍的性能调优工具也是需要实际执行sql才能判断执行计划的优劣。
+
+总是使用高选择率的column作为复合索引的引导列
+在创建复合索引前，我们要考虑多种因素，列的选择率高低，列在其他sql中出现的情况等。
+如：
+有列col1、col2，col1和col2的选择率都还可以，col1的选择率略高于col2，看到这里为止，col1应该更适合于做引导列。在其他sql中，col1不单独出现，而col2却有单独出现的情况，且在对应的sql中没有其他索引可以用，这时候col2做为复合索引的引导列会比较合适，这样对于那些col2单独出现的sql也可以使用到索引，而使用col1做为引导列的话，则不会。
+
+索引必须定期重建
+频繁dml（insert、update、delete）的表，对应的索引会出现碎片率上升的情况，很多同事认为索引碎片的上升会影响性能，需要定期重建，真是这样吗？我们需要从使用情况结合索引的结构来分析。
+1）Index unique scan：
+如果是索引唯一性扫描，对于一个blevel为2的索引，只需要4个IO即可得到结果（如果我们要的结果在索引中，那么只需要3个IO），除非因为大量的dml导致索引的blevel增加，增加1级blevel增加一个IO，不过blevel的增加是几何级的概念，这个可能性非常小。
+2）index range scan
+碎片率上升后，索引块中的数据会比较分散，所以在这种情况下，性能可能会有下降，这个程度和索引块中的行数、扫描扫描大小有关。
+3）查询中大部分都是表块
+如果sql查询中，大部分IO都是在查表块，那么重建索引对于性能提升用处也不大。
+
+开发在写sql时不用了解数据的分布
+了解了数据的分布，才可以写出正确的sql，最简单的就是直方图的问题。不光开发，开发dba和DA也同样需要了解。
+
+
+创建临时表存放中间结果
+如果中间结果是在一个sql中多次用到，可以用with as缓存在内容中来代替，如果是在package中多个sql用到，则可以创建。
+
+应使用GTT（Global Temporary Table）来代替普通表作为临时数据存放的表。
+
