@@ -1,0 +1,4644 @@
+大数据项目之_15_电信客服分析平台_01&02_项目背景+项目架构+项目实现+数据生产+数据采集/消费(存储)
+文章目录
+
+一、项目背景
+二、项目架构
+三、项目实现
+3.1、数据生产
+3.2、数据采集/消费(存储)
+
+
+一、项目背景
+二、项目架构
+三、项目实现
+3.1、数据生产
+3.1.1、数据结构
+3.1.2、编写代码
+3.1.3、打包测试
+3.2、数据采集/消费(存储)
+3.2.1、数据采集：采集实时产生的数据到 kafka 集群
+3.2.2、编写代码：数据消费（HBase）
+3.2.3、编写测试单元：范围查找数据（本方案已弃用，但需掌握）
+3.2.4、运行测试：HBase 消费数据
+3.2.5、编写代码：优化数据存储方案
+3.2.6、运行测试：协处理器
+3.2.7、编写测试单元：范围查找数据
+
+回到顶部
+一、项目背景
+  通信运营商每时每刻会产生大量的通信数据，例如：通话记录，短信记录，彩信记录，第三方服务资费等等繁多信息。数据量如此巨大，除了要满足用户的实时查询和展示之外，还需要定时定期的对已有数据进行离线的分析处理。例如：当日话单，月度话单，季度话单，年度话单，通话详情，通话记录等等。我们以此为背景，寻找一个切入点，学习其中的方法论。
+
+回到顶部
+二、项目架构
+
+回到顶部
+三、项目实现
+系统环境：
+
+系统	版本
+windows 10	专业版(建议)
+linux	CentOS 6.8 or CentOS 7.2(1611 内核)
+开发工具：
+
+工具	版本
+idea	2017.2.5 旗舰版
+maven	3.3.9
+JDK	1.8+
+尖叫提示：idea2017.2.5 必须使用 maven3.3.9，不要使用 maven3.5，有部分兼容性问题。
+
+集群环境（CDH版）：
+尖叫提示：学习的时候使用的普通版本的，企业开发中使用的是 CDH 版本的。
+
+框架	版本
+hadoop	cdh5.3.6-2.5.0
+zookeeper	cdh5.3.6-3.4.5
+hbase	cdh5.3.6-0.98
+hive	cdh5.3.6-0.13.1
+flume	cdh5.3.6-1.5.0（学习使用版本 1.7.0）
+kafka	kafka_2.10-0.8.2.1（学习使用版本 2.11-0.11.0.2）
+硬件环境：
+
+硬件	hadoop102	hadoop103	hadoop104
+内存	4G	2G	2G
+CPU	2核	1核	1核
+硬盘	50G	50G	50G
+3.1、数据生产
+  此情此景，对于该模块的业务，即数据生产过程，一般并不会让你来进行操作，数据生产是一套完整且严密的体系，这样可以保证数据的鲁棒性。但是如果涉及到项目的一体化方案的设计（数据的产生、存储、分析、展示），则必须清楚每一个环节是如何处理的，包括其中每个环境可能隐藏的问题；数据结构，数据内容可能出现的问题。
+
+3.1.1、数据结构
+  我们将在 HBase 中存储两个电话号码，以及通话建立的时间和通话持续时间，最后再加上一个 flag 作为判断第一个电话号码是否为主叫。姓名字段的存储我们可以放置于另外一张表做关联查询，当然也可以插入到当前表中。如下图所示：
+
+
+数据结构如下：
+
+列名	解释	举例
+call1	第一个手机号码	15369468720
+call1_name	第一个手机号码人姓名(非必须)	李雁
+call2	第二个手机号码	19920860202
+call2_name	第二个手机号码人姓名(非必须)	卫艺
+build_time	建立通话的时间	20171017081520
+build_time_ts	建立通话的时间（时间戳形式）	毫秒数
+duration	通话持续时间（秒）	0600
+flag	用于标记本次通话第一个字段(call1)是主叫还是被叫	1为主叫，0为被叫
+3.1.2、编写代码
+思路：
+  a) 创建 Java 集合类存放模拟的电话号码和联系人；
+  b) 随机选取两个手机号码当做“主叫”与“被叫”（注意判断两个手机号不能重复），产出 call1 与 call2 字段数据；
+  c) 创建随机生成通话建立时间的方法，可指定随机范围，最后生成通话建立时间，产出 date_time 字段数据；
+  d) 随机一个通话时长，单位：秒，产出 duration 字段数据；
+  e) 将产出的一条数据拼接封装到一个字符串中；
+  f) 使用 IO 操作将产出的一条通话数据写入到本地文件中。（一定要手动 flush，这样能确保每条数据写入到文件一次）
+
+新建 module 项目：ct_producer
+pom.xml 文件配置：
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <!-- https://mvnrepository.com/artifact/junit/junit -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.12.4</version>
+                <configuration>
+                    <!-- 设置打包时跳过test包里面的代码 -->
+                    <skipTests>true</skipTests>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+1) 随机输入一些手机号码以及联系人，保存于 Java 的集合中。
+  新建类：ProductLog
+
+/**
+ * @author chenmingjun
+ * 2019-03-13 13:35
+ */
+public class ProductLog {
+
+    /**
+     * 生产数据
+     */
+
+    private String startTime = "2017-01-01";
+    private String endTime = "2017-12-31";
+
+    // 用于存放待随机的联系人电话
+    private List<String> phoneList = new ArrayList<>();
+
+    // 用于存放联系人电话与姓名的映射
+    private Map<String, String> phoneNameMap = new HashMap<>();
+
+    /**
+     * 初始化随机的电话号码和姓名
+     */
+    public void initPhone() {
+        phoneList.add("13242820024");
+        phoneList.add("14036178412");
+        phoneList.add("16386074226");
+        phoneList.add("13943139492");
+        phoneList.add("18714767399");
+        phoneList.add("14733819877");
+        phoneList.add("13351126401");
+        phoneList.add("13017498589");
+        phoneList.add("16058589347");
+        phoneList.add("18949811796");
+        phoneList.add("13558773808");
+        phoneList.add("14343683320");
+        phoneList.add("13870632301");
+        phoneList.add("13465110157");
+        phoneList.add("15382018060");
+        phoneList.add("13231085347");
+        phoneList.add("13938679959");
+        phoneList.add("13779982232");
+        phoneList.add("18144784030");
+        phoneList.add("18637946280");
+
+        phoneNameMap.put("13242820024", "李雁");
+        phoneNameMap.put("14036178412", "卫艺");
+        phoneNameMap.put("16386074226", "仰莉");
+        phoneNameMap.put("13943139492", "陶欣悦");
+        phoneNameMap.put("18714767399", "施梅梅");
+        phoneNameMap.put("14733819877", "金虹霖");
+        phoneNameMap.put("13351126401", "魏明艳");
+        phoneNameMap.put("13017498589", "华贞");
+        phoneNameMap.put("16058589347", "华啟倩");
+        phoneNameMap.put("18949811796", "仲采绿");
+        phoneNameMap.put("13558773808", "卫丹");
+        phoneNameMap.put("14343683320", "戚丽红");
+        phoneNameMap.put("13870632301", "何翠柔");
+        phoneNameMap.put("13465110157", "钱溶艳");
+        phoneNameMap.put("15382018060", "钱琳");
+        phoneNameMap.put("13231085347", "缪静欣");
+        phoneNameMap.put("13938679959", "焦秋菊");
+        phoneNameMap.put("13779982232", "吕访琴");
+        phoneNameMap.put("18144784030", "沈丹");
+        phoneNameMap.put("18637946280", "褚美丽");
+    }
+2) 创建随机生成通话时间的方法：randomBuildTime()
+  该时间生成后的格式为：yyyy-MM-dd HH:mm:ss，并使之可以根据传入的起始时间和结束时间来随机生成。
+
+    /**
+     * 根据传入的时间区间，在此范围内随机产生通话建立的时间
+     * 公式：startDate.getTime() + (endDate.getTime() - startDate.getTime()) * Math.random()
+     *
+     * @param startTime
+     * @param endTime
+     * @return
+     */
+    public String randomBuildTime(String startTime, String endTime) {
+        try {
+            SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd");
+            Date startDate = sdf1.parse(startTime);
+            Date endDate = sdf1.parse(endTime);
+
+            if (endDate.getTime() <= startDate.getTime()) {
+                return null;
+            }
+
+            long randomTS = startDate.getTime() + (long) ((endDate.getTime() - startDate.getTime()) * Math.random());
+
+            Date resultDate = new Date(randomTS);
+            SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            String resultTimeString = sdf2.format(resultDate);
+
+            return resultTimeString;
+
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+3) 创建生产日志一条日志的方法：productLog()
+  随机抽取两个电话号码，随机产生通话建立时间，随机通话时长，将这几个字段拼接成一个字符串，然后return，便可以产生一条通话的记录。需要注意的是，如果随机出的两个电话号码一样，需要重新随机（随机过程可优化，但并非此次重点）。通话时长的随机为30分钟以内，即：60秒 * 30，并格式化为4位数字，例如：0600(10分钟)。
+
+    /**
+     * 生产数据的形式：13651311090,18611213803,2017-10-17 08:15:20,0360
+     */
+    public String productLog() {
+
+        String caller = null;
+        String callee = null;
+
+        String callerName = null;
+        String calleeName = null;
+
+        // 随机获取主叫手机号
+        int callerIndex = (int) (Math.random() * phoneList.size()); // [0, 20)
+        caller = phoneList.get(callerIndex);
+        callerName = phoneNameMap.get(caller);
+
+        // 随机获取被叫手机号
+        while (true) {
+            int calleeIndex = (int) (Math.random() * phoneList.size()); // [0, 20)
+            callee = phoneList.get(calleeIndex);
+            calleeName = phoneNameMap.get(callee);
+
+            if (!caller.equals(callee)) {
+                break;
+            }
+        }
+
+        // 随机获取通话建立的时间
+        String buildTime = randomBuildTime(startTime, endTime);
+
+        // 随机获取通话的时长
+        DecimalFormat df = new DecimalFormat("0000");
+        String duration = df.format((int) (30 * 60 * Math.random()));
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(caller + ",").append(callee + ",").append(buildTime + ",").append(duration);
+        return sb.toString();
+
+        // System.out.println(caller + "," + callerName + "," + callee + "," + calleeName + "," + buildTime + "," + duration);
+    }
+4) 创建写入日志方法：writeLog()
+  productLog() 方法每产生一条日志，便将日志写入到本地文件中，所以建立一个专门用于日志写入的方法，需要涉及到 IO 操作，需要注意的是，输出流每次写一条日之后需要 flush，不然可能导致积攒多条数据才输出一次。最后需要将 productLog() 方法放置于 while 死循环中执行。
+
+    /**
+     * 将数据写入到文件中
+     */
+    public void writeLog(String filePath) {
+        try {
+            OutputStreamWriter osw = new OutputStreamWriter(new FileOutputStream(filePath), "UTF-8");
+
+            while (true) {
+                Thread.sleep(200);
+
+                String log = productLog();
+                System.out.println(log);
+
+                osw.write(log + "\n");
+                osw.flush(); // 一定要手动flush，这样能确保每条数据写入到文件一次
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+5) 在主函数中初始化以上逻辑，并测试：
+
+    public static void main(String[] args) throws InterruptedException {
+
+        if (args == null || args.length <= 0) {
+            System.out.println("No arguments");
+            return;
+        }
+
+        ProductLog productLog = new ProductLog();
+        productLog.initPhone();
+        productLog.writeLog(args[0]);
+
+        // 测试
+        // String logPath = "d:\\temp\\ct_log\\log.csv";
+        // productLog.writeLog(logPath);
+    }
+3.1.3、打包测试
+1) 打包方式
+如果在 eclipse 中，则需要如下 maven 参数进行打包：
+
+-P local clean package：不打包第三方依赖
+-P dev clean package install：打包第三方依赖
+如果在 idea 中，则需要在 maven project 视图中一次选择如下按钮进行打包：详细操作请参看课堂演示
+
+LifeCycle --> package(双击)
+分别在 Windows 上和 Linux 中进行测试：
+
+Windows：
+
+java -cp ct_producer-1.0-SNAPSHOT.jar producer.ProductLog /本地目录/callLog.csv
+2) 为日志生成任务编写 bash 脚本：productLog.sh，文件内容如下，该文件放在 /opt/module/flume/job/ct/ 目录下，并授予执行权限。
+
+#!/bin/bash
+java -cp /opt/module/flume/job/ct/ct_producer-1.0-SNAPSHOT.jar com.china.producer.ProductLog /opt/module/flume/job/ct/calllog.csv
+3.2、数据采集/消费(存储)
+  欢迎来到数据采集模块（消费），在企业中你要清楚流式数据采集框架 flume 和 kafka 的定位是什么。我们在此需要将实时数据通过 flume 采集到 kafka 然后供给给 hbase 消费。
+
+flume：Cloudera 公司研发
+  适合采集文件中的数据；
+  适合下游数据消费者不多的情况；
+  适合数据安全性要求不高的操作；
+  适合与 Hadoop 生态圈对接的操作。
+
+kafka：Linkedin 公司研发
+  适合数据下游消费众多的情况；
+  适合数据安全性要求较高的操作（支持 replication(副本)）。
+
+HBase：实时保存一条一条流入的数据（万金油）
+情景：
+  适用于在线业务
+  适用于离线业务
+  适用于非结构化数据
+  适用于结构化数据
+
+因此我们常用的一种模型是：
+  线上数据 --> flume --> kafka --> flume(根据情景增删该流程) --> HDFS （最常用）
+  线上数据 --> flume --> kafka --> 根据kafka的API自己写 --> HDFS
+  线上数据 --> kafka --> HDFS
+  线上数据 --> kafka --> Spark/Storm
+
+消费存储模块流程图：
+
+
+公司中的业务情景：
+  1、公司已经设计好架构了，耐心了解每一个框架应对的是哪一个业务的功能，之后按照框架进行分层。
+  2、公司没有架构，需要自己搭建，需要按照客户的需求，先对需求进行分层，根据需求用对应的框架实现，之后对框架进行分层。（架构师的思想：宏观格局，5万的月薪，这样才刺激！）
+
+3.2.1、数据采集：采集实时产生的数据到 kafka 集群
+思路：
+  a) 配置 kafka，启动 zookeeper 和 kafka 集群；
+  b) 创建 kafka 主题；
+  c) 启动 kafka 控制台消费者（此消费者只用于测试使用）；
+  d) 配置 flume，监控日志文件；
+  e) 启动 flume 监控任务；
+  f) 运行日志生产脚本；
+  g) 观察测试。
+
+1) 配置 kafka
+使用新版本 kafka_2.11-0.11.0.2，不使用老版本 kafka_2.10-0.8.2.1。
+
+新旧版本的区别：
+新：能配置 delete.topic.enable=true 删除topic功能使能，老版本没有，不过配置了也生效。
+旧：需要配置 port=9092，host.name=hadoop102，新版本的不需要。
+新：设置读取偏移地址的位置 auto.offset.reset 默认值是 latest，还可以填写 earliest。
+旧：设置读取偏移地址的位置 auto.offset.reset 默认值是 largest，还可以填写 smallest。
+server.properties
+
+############################# Server Basics #############################
+
+# The id of the broker. This must be set to a unique integer for each broker.
+broker.id=0
+
+# Switch to enable topic deletion or not, default value is false（此处的配置打开）
+delete.topic.enable=true
+
+############################# Socket Server Settings #############################
+
+# The address the socket server listens on. It will get the value returned from
+# java.net.InetAddress.getCanonicalHostName() if not configured.
+#   FORMAT:
+#     listeners = listener_name://host_name:port
+#   EXAMPLE:
+#     listeners = PLAINTEXT://your.host.name:9092
+#listeners=PLAINTEXT://:9092
+
+# Hostname and port the broker will advertise to producers and consumers. If not set,
+# it uses the value for "listeners" if configured.  Otherwise, it will use the value
+# returned from java.net.InetAddress.getCanonicalHostName().
+#advertised.listeners=PLAINTEXT://your.host.name:9092
+
+# Maps listener names to security protocols, the default is for them to be the same. See the config documentation for more details
+#listener.security.protocol.map=PLAINTEXT:PLAINTEXT,SSL:SSL,SASL_PLAINTEXT:SASL_PLAINTEXT,SASL_SSL:SASL_SSL
+
+# The number of threads that the server uses for receiving requests from the network and sending responses to the network
+num.network.threads=3
+
+# The number of threads that the server uses for processing requests, which may include disk I/O
+num.io.threads=8
+
+# The send buffer (SO_SNDBUF) used by the socket server
+socket.send.buffer.bytes=102400
+
+# The receive buffer (SO_RCVBUF) used by the socket server
+socket.receive.buffer.bytes=102400
+
+# The maximum size of a request that the socket server will accept (protection against OOM)
+socket.request.max.bytes=104857600
+
+
+############################# Log Basics #############################
+
+# A comma seperated list of directories under which to store log files （此处的配置写具体的路径）
+# log.dirs=/tmp/kafka-logs
+log.dirs=/opt/module/kafka/logs
+
+# The default number of log partitions per topic. More partitions allow greater
+# parallelism for consumption, but this will also result in more files across
+# the brokers.
+num.partitions=1
+
+# The number of threads per data directory to be used for log recovery at startup and flushing at shutdown.
+# This value is recommended to be increased for installations with data dirs located in RAID array.
+num.recovery.threads.per.data.dir=1
+
+############################# Internal Topic Settings  #############################
+# The replication factor for the group metadata internal topics "__consumer_offsets" and "__transaction_state"
+# For anything other than development testing, a value greater than 1 is recommended for to ensure availability such as 3.
+offsets.topic.replication.factor=1
+transaction.state.log.replication.factor=1
+transaction.state.log.min.isr=1
+
+############################# Log Flush Policy #############################
+
+# Messages are immediately written to the filesystem but by default we only fsync() to sync
+# the OS cache lazily. The following configurations control the flush of data to disk.
+# There are a few important trade-offs here:
+#    1. Durability: Unflushed data may be lost if you are not using replication.
+#    2. Latency: Very large flush intervals may lead to latency spikes when the flush does occur as there will be a lot of data to flush.
+#    3. Throughput: The flush is generally the most expensive operation, and a small flush interval may lead to exceessive seeks.
+# The settings below allow one to configure the flush policy to flush data after a period of time or
+# every N messages (or both). This can be done globally and overridden on a per-topic basis.
+
+# The number of messages to accept before forcing a flush of data to disk
+#log.flush.interval.messages=10000
+
+# The maximum amount of time a message can sit in a log before we force a flush
+#log.flush.interval.ms=1000
+
+############################# Log Retention Policy #############################
+
+# The following configurations control the disposal of log segments. The policy can
+# be set to delete segments after a period of time, or after a given size has accumulated.
+# A segment will be deleted whenever *either* of these criteria are met. Deletion always happens
+# from the end of the log.
+
+# The minimum age of a log file to be eligible for deletion due to age
+log.retention.hours=168
+
+# A size-based retention policy for logs. Segments are pruned from the log as long as the remaining
+# segments don't drop below log.retention.bytes. Functions independently of log.retention.hours.
+#log.retention.bytes=1073741824
+
+# The maximum size of a log segment file. When this size is reached a new log segment will be created.
+log.segment.bytes=1073741824
+
+# The interval at which log segments are checked to see if they can be deleted according
+# to the retention policies
+log.retention.check.interval.ms=300000
+
+############################# Zookeeper #############################
+
+# Zookeeper connection string (see zookeeper docs for details).
+# This is a comma separated host:port pairs, each corresponding to a zk
+# server. e.g. "127.0.0.1:3000,127.0.0.1:3001,127.0.0.1:3002".
+# You can also append an optional chroot string to the urls to specify the
+# root directory for all kafka znodes.
+# zookeeper.connect=localhost:2181 （此处的配置写集群的地址）
+zookeeper.connect=hadoop102:2181,hadoop103:2181,hadoop104:2181
+
+# Timeout in ms for connecting to zookeeper（此处的时间配置大一些）
+zookeeper.connection.timeout.ms=60000
+
+
+############################# Group Coordinator Settings #############################
+
+# The following configuration specifies the time, in milliseconds, that the GroupCoordinator will delay the initial consumer rebalance.
+# The rebalance will be further delayed by the value of group.initial.rebalance.delay.ms as new members join the group, up to a maximum of max.poll.interval.ms.
+# The default value for this is 3 seconds.
+# We override this to 0 here as it makes for a better out-of-the-box experience for development and testing.
+# However, in production environments the default value of 3 seconds is more suitable as this will help to avoid unnecessary, and potentially expensive, rebalances during application startup.
+group.initial.rebalance.delay.ms=0
+配置环境变量，并使得配置后的环境变量生效
+
+[atguigu@hadoop102 module]$ sudo vim /etc/profile
+
+#KAFKA_HOME
+export KAFKA_HOME=/opt/module/kafka
+export PATH=$PATH:$KAFKA_HOME/bin
+
+[atguigu@hadoop102 module]$ source /etc/profile
+分发安装包或者同步复制到 hadoop103 和 hadoop104
+
+[atguigu@hadoop102 module]$ xsync /opt/module/kafka/
+
+或者
+
+[atguigu@hadoop102 module]$ scp -r /opt/module/kafka/ hadoop103:/opt/module/
+[atguigu@hadoop102 module]$ scp -r /opt/module/kafka/ hadoop104:/opt/module/
+注意：分发之后记得配置其他机器的环境变量。
+分别在 hadoop103 和 hadoop104 上修改配置文件 /opt/module/kafka/config/server.properties 中的 broker.id=1、broker.id=2
+注意：broker.id 不得重复。
+
+2) 先启动 zookeeper 集群 (kafka 集群 依赖于 zookeeper 集群)，再启动 kafka 集群（即启动 3 台 kafka 的 broker 服务）
+
+[atguigu@hadoop102 kafka]$ /opt/module/kafka/bin/kafka-server-start.sh /opt/module/kafka/config/server.properties &
+[atguigu@hadoop103 kafka]$ /opt/module/kafka/bin/kafka-server-start.sh /opt/module/kafka/config/server.properties &
+[atguigu@hadoop104 kafka]$ /opt/module/kafka/bin/kafka-server-start.sh /opt/module/kafka/config/server.properties &
+3) 创建 kafka 主题
+
+$ /opt/module/kafka/bin/kafka-topics.sh --zookeeper hadoop102:2181 \
+--create --replication-factor 1 --partitions 3 --topic calllog
+检查一下是否创建主题成功：
+
+$ /opt/module/kafka/bin/kafka-topics.sh --zookeeper hadoop102:2181 --list
+删除topic
+
+$ /opt/module/kafka/bin/kafka-topics.sh --zookeeper hadoop102:2181 \
+--delete --topic calllog
+注意：需要 server.properties 中设置 delete.topic.enable=true 否则只是标记删除或者直接重启。
+
+4) 启动 kafka 控制台消费者，等待 flume 信息的输入
+
+$ /opt/module/kafka/bin/kafka-console-consumer.sh --zookeeper hadoop102:2181 \
+--topic calllog --from-beginning
+5) 配置 flume(flume-kafka.conf)
+在 hadoop102 的 /opt/module/flume/job 目录下创建一个 ct 文件夹，进入该文件夹，创建一个文件 flume-kafka.conf，文件内容如下：
+
+# define
+a1.sources = r1
+a1.sinks = k1
+a1.channels = c1
+
+# source
+a1.sources.r1.type = exec
+a1.sources.r1.command = tail -F -c +0 /opt/module/flume/job/ct/calllog.csv
+a1.sources.r1.shell = /bin/bash -c
+
+# sink
+a1.sinks.k1.type = org.apache.flume.sink.kafka.KafkaSink
+a1.sinks.k1.kafka.bootstrap.servers = hadoop102:9092,hadoop103:9092,hadoop104:9092
+a1.sinks.k1.kafka.topic = calllog
+a1.sinks.k1.kafka.flumeBatchSize = 20
+a1.sinks.k1.kafka.producer.acks = 1
+a1.sinks.k1.kafka.producer.linger.ms = 1
+
+# channel
+a1.channels.c1.type = memory
+a1.channels.c1.capacity = 1000
+a1.channels.c1.transactionCapacity = 100
+
+# bind
+a1.sources.r1.channels = c1
+a1.sinks.k1.channel = c1
+注意：需要使用新版本的 flume 的配置文件参考案列。（版本：apache-flume-1.7.0）
+
+6) 进入 flume 根目录下，启动 flume
+
+$ bin/flume-ng agent --conf conf/ --name a1 --conf-file ./job/ct/flume-kafka.conf
+7) 运行生产日志的任务脚本，观察 kafka 控制台消费者是否成功显示产生的数据
+
+$ sh productlog.sh
+3.2.2、编写代码：数据消费（HBase）
+  如果以上操作均成功，则开始编写操作 HBase 的代码，用于消费数据，将产生的数据实时存储在 HBase 中。
+思路：
+  a) 编写 kafka 消费者(使用新API)，读取 kafka 集群中缓存的消息，并打印到控制台以观察是否成功；
+  b) 既然能够读取到 kafka 中的数据了，就可以将读取出来的数据写入到 HBase 中，所以编写调用 HBase API 相关方法，将从 Kafka 中读取出来的数据写入到 HBase；
+  c) 以上两步已经足够完成消费数据，存储数据的任务，但是涉及到解耦，所以过程中需要将一些属性文件外部化，HBase 通用性方法封装到某一个类中。
+
+创建新的 module 项目：ct_consumer
+pom.xml 文件配置：
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.china</groupId>
+    <artifactId>ct_consumer</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <dependencies>
+        <!-- https://mvnrepository.com/artifact/junit/junit -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.apache.kafka/kafka-clients -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>0.11.0.2</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.apache.hbase/hbase-client -->
+        <dependency>
+            <groupId>org.apache.hbase</groupId>
+            <artifactId>hbase-client</artifactId>
+            <version>1.3.1</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.apache.hbase/hbase-server -->
+        <dependency>
+            <groupId>org.apache.hbase</groupId>
+            <artifactId>hbase-server</artifactId>
+            <version>1.3.1</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.12.4</version>
+                <configuration>
+                    <!-- 设置打包时跳过test包里面的代码 -->
+                    <skipTests>true</skipTests>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+1) 新建类：HBaseConsumer
+该类主要用于读取 kafka 中缓存的数据，然后调用 HBase API，持久化数据。
+
+package com.china.kafka;
+
+import com.china.hbase.HBaseDao;
+import com.china.utils.PropertiesUtil;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+
+import java.util.Arrays;
+
+/**
+ * @author chenmingjun
+ * 2019-03-14 20:38
+ */
+public class HBaseConsumer {
+
+    public static void main(String[] args) {
+
+        // 编写 kafka 消费者，读取 kafka 集群中缓存的消息，并打印到控制台以观察是否成功
+
+        KafkaConsumer<String, String> kafkaConsumer = new KafkaConsumer<>(PropertiesUtil.properties);
+        kafkaConsumer.subscribe(Arrays.asList(PropertiesUtil.getProperty("kafka.topics")));
+
+        HBaseDao hBaseDao = new HBaseDao();
+
+        while (true) {
+            // 读取数据，读取超时时间为100ms
+            ConsumerRecords<String, String> records = kafkaConsumer.poll(100);
+
+            for (ConsumerRecord<String, String> record : records) {
+                // 测试
+                System.out.println(record.value());
+
+                // 将从 Kafka 中读取出来的数据写入到 HBase
+                String oriValue = record.value();
+                hBaseDao.put(oriValue);
+            }
+        }
+    }
+}
+2) 新建类：PropertiesUtil
+该类主要用于将常用的项目所需的参数外部化，解耦，方便配置。
+
+package com.china.utils;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
+
+/**
+ * @author chenmingjun
+ * 2019-03-14 23:22
+ */
+public class PropertiesUtil {
+
+    public static Properties properties = null;
+
+    static {
+        // 加载配置文件的属性
+        InputStream is = ClassLoader.getSystemResourceAsStream("kafka.properties");
+        properties = new Properties();
+        try {
+            properties.load(is);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static String getProperty(String key) {
+        return properties.getProperty(key);
+    }
+}
+3) 创建 kafka.properties 文件，并放置于 resources 目录下
+
+# 设置 kafka 服务的地址，不需要将所有 broker 指定上
+bootstrap.servers=hadoop102:9092,hadoop103:9092,hadoop104:9092
+
+# 设置消费者所属的消费者组
+group.id=hbase_consumer_group
+
+# 设置是否自动确认 offset
+enable.auto.commit=true
+
+# 设置自动确认 offset 的时间间隔
+auto.commit.interval.ms=30000
+
+# 设置 key 和 value 的反序列化类的全类名
+key.deserializer=org.apache.kafka.common.serialization.StringDeserializer
+value.deserializer=org.apache.kafka.common.serialization.StringDeserializer
+
+########## 以下为自定义的属性设置##########
+# 设置本次消费的主题
+kafka.topics=calllog
+
+# 设置 HBase 的一些变量
+hbase.calllog.namespace=ns_ct
+hbase.calllog.tableName=ns_ct:calllog
+hbase.calllog.regions.count=6
+4) 将 hdfs-site.xml、core-site.xml、hbase-site.xml、log4j.properties 放置于 resources 目录
+
+5) 新建类：HBaseUtil
+该类主要用于封装一些 HBase 的常用操作，比如：创建命名空间、创建表等等。
+
+package com.china.utils;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.NamespaceDescriptor;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Admin;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.util.Bytes;
+
+import java.io.IOException;
+import java.text.DecimalFormat;
+import java.util.Iterator;
+import java.util.TreeSet;
+
+/**
+ * @author chenmingjun
+ * 2019-03-15 12:26
+ */
+public class HBaseUtil {
+
+    /**
+     * 判断 HBase 表是否存在（使用新 HBase 的 API）
+     * 小知识：当前代码块对该异常没有处理能力(业务处理能力)的时候，我们就要抛出去。
+     *
+     * @param conf      HBaseConfiguration
+     * @param tableName
+     * @return
+     */
+    public static boolean isExistTable(Configuration conf, String tableName) throws IOException {
+
+        Connection conn = ConnectionFactory.createConnection(conf);
+        Admin admin = conn.getAdmin();
+
+        boolean result = admin.tableExists(TableName.valueOf(tableName));
+
+        admin.close();
+        conn.close();
+
+        return result;
+    }
+
+    /**
+     * 初始化命名空间
+     *
+     * @param conf
+     * @param namespace
+     */
+    public static void initNamespace(Configuration conf, String namespace) throws IOException {
+
+        Connection conn = ConnectionFactory.createConnection(conf);
+        Admin admin = conn.getAdmin();
+
+        // 命名空间类似于关系型数据库中的 schema，可以想象成文件夹
+        // 创建命名空间描述器
+        NamespaceDescriptor nd = NamespaceDescriptor
+                .create(namespace)
+                .addConfiguration("CREATE_TIME", String.valueOf(System.currentTimeMillis()))
+                .addConfiguration("AUTHOR", "chenmingjun")
+                .build();
+
+        admin.createNamespace(nd);
+
+        admin.close();
+        conn.close();
+    }
+
+    /**
+     * 创建表+预分区键
+     *
+     * @param conf
+     * @param tableName
+     * @param regions
+     * @param columnFamily
+     * @throws IOException
+     */
+    public static void creatTable(Configuration conf, String tableName, int regions, String... columnFamily) throws IOException {
+
+        Connection conn = ConnectionFactory.createConnection(conf);
+        Admin admin = conn.getAdmin();
+
+        if (isExistTable(conf, tableName)) {
+            System.out.println("表 " + tableName + " 已存在！");
+            return;
+        }
+
+        // 创建表描述器（即通过表名实例化表描述器）
+        HTableDescriptor htd = new HTableDescriptor(TableName.valueOf(tableName));
+
+        // 添加列族
+        for (String cf : columnFamily) {
+            // 创建列族描述器
+            HColumnDescriptor hcd = new HColumnDescriptor(cf);
+            // 可以设置保存的版本个数，默认是1个
+            // hcd.setMaxVersions(3);
+            htd.addFamily(hcd);
+        }
+
+        // 创建表操作（简单表）
+        // admin.createTable(htd);
+
+        // 为该表设置协处理器
+        // htd.addCoprocessor("com.china.hbase.CalleeWriteObserver");
+
+        // 创建表操作（加预分区）
+        admin.createTable(htd, genSplitKeys(regions));
+
+        System.out.println("表" + tableName + "创建成功！");
+
+        admin.close();
+        conn.close();
+    }
+
+    /**
+     * 生成预分区键
+     * 例如：{"00|", "01|", "02|", "03|", "04|", "05|"}
+     *
+     * @param regions
+     * @return
+     */
+    public static byte[][] genSplitKeys(int regions) {
+
+        // 定义一个存放预分区键的数组
+        String[] keys = new String[regions];
+
+        // 这里默认不会超过两位数的分区，如果超过，需要变更设计
+        // 假设我们的 region 个数不超过两位数，所以 region 的预分区键我们格式化为两位数字所代表的字符串
+        DecimalFormat df = new DecimalFormat("00");
+        for (int i = 0; i < regions; i++) {
+            // 例如：如果 regions = 6，则：{"00|", "01|", "02|", "03|", "04|", "05|"}
+            keys[i] = df.format(i) + "|";
+        }
+        // 测试
+        // System.out.println(Arrays.toString(keys));
+
+        byte[][] splitKeys = new byte[regions][];
+
+        // 生成 byte[][] 类型的预分区键的时候，一定要先保证预分区键是有序的
+        TreeSet<byte[]> treeSet = new TreeSet<>(Bytes.BYTES_COMPARATOR);
+        for (int i = 0; i < regions; i++) {
+            treeSet.add(Bytes.toBytes(keys[i]));
+        }
+
+        // 将排序好的预分区键放到 splitKeys 中，使用迭代器方式
+        Iterator<byte[]> splitKeysIterator = treeSet.iterator();
+        int index = 0;
+        while (splitKeysIterator.hasNext()) {
+            byte[] b = splitKeysIterator.next();
+            splitKeys[index++] = b;
+        }
+        /*// 测试
+        for (byte[] a : splitKeys) {
+            System.out.println(Arrays.toString(a));
+        }*/
+
+        return splitKeys;
+    }
+
+    /**
+     * 生成 RowKey
+     * 形式为：regionCode_call1_buildTime_call2_flag_duration
+     *
+     * @param regionCode
+     * @param call1
+     * @param buildTime
+     * @param call2
+     * @param flag
+     * @param duration
+     * @return
+     */
+    public static String genRowKey(String regionCode, String call1, String buildTime, String call2, String flag, String duration) {
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(regionCode + "_")
+                .append(call1 + "_")
+                .append(buildTime + "_")
+                .append(call2 + "_")
+                .append(flag + "_")
+                .append(duration);
+
+        return sb.toString();
+    }
+
+    /**
+     * 生成分区号
+     * 手机号：15837312345
+     * 通话建立的时间：2017-01-10 11:20:30 -> 201701
+     *
+     * @param call1
+     * @param buildTime
+     * @param regions
+     * @return
+     */
+    public static String genRegionCode(String call1, String buildTime, int regions) {
+
+        int len = call1.length();
+
+        // 取出手机号码后四位
+        String lastPhone = call1.substring(len - 4);
+
+        // 取出通话建立时间的年月即可，例如：201701
+        String ym = buildTime.replaceAll("-", "").substring(0, 6);
+
+        // 离散操作1
+        Integer x = Integer.valueOf(lastPhone) ^ Integer.valueOf(ym);
+        // 离散操作2
+        int y = x.hashCode();
+
+        // 生成分区号操作，与初始化设定的 region 个数求模
+        int regionCode = y % regions;
+
+        // 格式化分区号
+        DecimalFormat df = new DecimalFormat("00");
+        return df.format(regionCode);
+    }
+
+    /*public static void main(String[] args) {
+        // 测试生成预分区键
+        // genSplitKeys(6);
+    }*/
+}
+工作经验小结：针对于一张表，一台服务器(regionServer)维护2到3个region。
+
+1百万条数据大小50M到100M。假设我们取平均值75M。
+1个region维护的数据量是1G到10G。假设我们取1G。1024/75=14百万条数据=1千4百万条数据。
+假设数据量有10亿条，那么需要region的数量是：10/0.14=72个。数据量大小大约是72G。
+一般而言，我们的region不超过2位数，即一共能有100个region。则能处理的数据量是：100G到1000G。
+
+对于 flume 而言，数据处理速度要小于 50M/s，flume 就会非常稳定，大于 70M/s flume 就会开始丢包，大于 100M/s 的时候 flume 就没法用了，此时需要修改 flume 源码。
+
+6) 新建类：HBaseDAO（完成以下内容后，考虑数据 put 的效率如何优化）
+该类主要用于执行具体的保存数据的操作，rowkey 的生成规则等等。
+
+package com.china.hbase;
+
+import com.china.utils.HBaseUtil;
+import com.china.utils.PropertiesUtil;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.util.Bytes;
+
+import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+
+/**
+ * @author chenmingjun
+ * 2019-03-15 12:24
+ */
+public class HBaseDao {
+
+    public static Configuration conf;
+
+    private Connection conn;
+
+    private Table table;
+
+    private String namespace;
+
+    private String tableName;
+
+    private int regions;
+
+    private SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+    private SimpleDateFormat sdf2 = new SimpleDateFormat("yyyyMMddHHmmss");
+
+    static {
+        conf = HBaseConfiguration.create();
+    }
+
+    public HBaseDao() {
+        try {
+
+            // 获取配置文件
+            namespace = PropertiesUtil.getProperty("hbase.calllog.namespace");
+            tableName = PropertiesUtil.getProperty("hbase.calllog.tableName");
+            regions = Integer.valueOf(PropertiesUtil.getProperty("hbase.calllog.regions.count"));
+
+            // 实例化 Connection 对象
+            conn = ConnectionFactory.createConnection(conf);
+            // 实例化表对象
+            table = conn.getTable(TableName.valueOf(tableName));
+
+            if (!HBaseUtil.isExistTable(conf, tableName)) {
+
+                HBaseUtil.initNamespace(conf, namespace);
+                HBaseUtil.creatTable(conf, tableName, regions, "f1", "f2");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    /**
+     * 将当前数据put到HTable中
+     *
+     * 原始数据 oriValue 形式：13231085347,18637946280,2017-06-18 20:47:26,0616
+     * RowKey 形式：01_13231085347_20170618204726_18637946280_1_0616
+     * HBase 表的列的形式：call1   call2   build_time  build_time_ts   flag    duration
+     *
+     * @param oriValue
+     */
+    public void put(String oriValue) {
+
+
+        try {
+
+            // 切割原始数据
+            String[] splitOri = oriValue.split(",");
+
+            // 取值赋值
+            String call1 = splitOri[0];
+            String call2 = splitOri[1];
+            String buildTime = splitOri[2]; // 2017-06-18 20:47:26
+            String duration = splitOri[3];
+
+            // 将 2017-06-18 20:47:26 转换为 20170618204726
+            String buildTimeRep = sdf2.format(sdf1.parse(buildTime));
+
+            String flag = "1";
+
+            // 生成时间戳
+            String buildTime_ts = String.valueOf(sdf1.parse(buildTime).getTime());
+
+            // 生成分区号
+            String regionCode = HBaseUtil.genRegionCode(call1, buildTime, regions);
+
+            // 拼接数据，生成 RowKey
+            String rowKey = HBaseUtil.genRowKey(regionCode, call1, buildTimeRep, call2, flag, duration);
+
+            // 向 HBase 表中插入该条数据
+            Put callerPut = new Put(Bytes.toBytes(rowKey));
+            callerPut.addColumn(Bytes.toBytes("f1"), Bytes.toBytes("call1"), Bytes.toBytes(call1));
+            callerPut.addColumn(Bytes.toBytes("f1"), Bytes.toBytes("call2"), Bytes.toBytes(call2));
+            callerPut.addColumn(Bytes.toBytes("f1"), Bytes.toBytes("build_time"), Bytes.toBytes(buildTime));
+            callerPut.addColumn(Bytes.toBytes("f1"), Bytes.toBytes("build_time_ts"), Bytes.toBytes(buildTime_ts));
+            callerPut.addColumn(Bytes.toBytes("f1"), Bytes.toBytes("flag"), Bytes.toBytes(flag));
+            callerPut.addColumn(Bytes.toBytes("f1"), Bytes.toBytes("duration"), Bytes.toBytes(duration));
+
+            table.put(callerPut);
+
+            // 向 HBase 表中插入数据（被叫）
+            // Put calleePut = new Put(Bytes.toBytes(rowKey));
+            // ......
+            // table.put(calleePut);
+            // 这种方法不好，我们使用协处理器
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+    }
+}
+注意：生成的时间戳要是 string 类型的。不能是 long 类型的。
+注意："xxx".getBytes(); 与 Bytes.toBytes("xxx"); 有区别，
+Bytes.toBytes("xxx"); 的底层默认是 "xxx".getBytes(UTF8_CHARSET);，
+而 "xxx".getBytes(); 底层默认是 "xxx".getBytes(ISO-8859-1_CHARSET);
+二者编码不一样，混着用，就会出现中文乱码！！！
+
+3.2.3、编写测试单元：范围查找数据（本方案已弃用，但需掌握）
+  使用 scan 查看 HBase 中是否正确存储了数据，同时尝试使用过滤器查询扫描指定通话时间点的数据。进行该单元测试前，需要先运行数据采集任务，确保 HBase 中已有数据存在。
+新建工具过滤器工具类：HBaseFilterUtil
+
+package com.china.utils;
+
+import org.apache.hadoop.hbase.filter.*;
+import org.apache.hadoop.hbase.util.Bytes;
+
+import java.util.Collection;
+
+/**
+ * @author chenmingjun
+ * 2019-03-18 14:05
+ */
+public class HBaseFilterUtil {
+
+    /**
+     * 获得相等过滤器。相当于SQL的 [字段] = [值]
+     *
+     * @param cf    列族名
+     * @param col   列名
+     * @param val   值
+     * @return      过滤器
+     */
+    public static Filter eqFilter(String cf, String col, byte[] val) {
+        SingleColumnValueFilter f = new SingleColumnValueFilter(Bytes.toBytes(cf), Bytes.toBytes(col), CompareFilter.CompareOp.EQUAL, val);
+        f.setLatestVersionOnly(true);
+        f.setFilterIfMissing(true);
+        return f;
+    }
+
+    /**
+     * 获得大于过滤器。相当于SQL的 [字段] > [值]
+     *
+     * @param cf    列族名
+     * @param col   列名
+     * @param val   值
+     * @return      过滤器
+     */
+    public static Filter gtFilter(String cf, String col, byte[] val) {
+        SingleColumnValueFilter f = new SingleColumnValueFilter(Bytes.toBytes(cf), Bytes.toBytes(col), CompareFilter.CompareOp.GREATER, val);
+        f.setLatestVersionOnly(true);
+        f.setFilterIfMissing(true);
+        return f;
+    }
+
+    /**
+     * 获得大于等于过滤器。相当于SQL的 [字段] >= [值]
+     *
+     * @param cf    列族名
+     * @param col   列名
+     * @param val   值
+     * @return      过滤器
+     */
+    public static Filter gteqFilter(String cf, String col, byte[] val) {
+        SingleColumnValueFilter f = new SingleColumnValueFilter(Bytes.toBytes(cf), Bytes.toBytes(col), CompareFilter.CompareOp.GREATER_OR_EQUAL, val);
+        f.setLatestVersionOnly(true);
+        f.setFilterIfMissing(true);
+        return f;
+    }
+
+    /**
+     * 获得小于过滤器。相当于SQL的 [字段] < [值]
+     *
+     * @param cf    列族名
+     * @param col   列名
+     * @param val   值
+     * @return      过滤器
+     */
+    public static Filter ltFilter(String cf, String col, byte[] val) {
+        SingleColumnValueFilter f = new SingleColumnValueFilter(Bytes.toBytes(cf), Bytes.toBytes(col), CompareFilter.CompareOp.LESS, val);
+        f.setLatestVersionOnly(true);
+        f.setFilterIfMissing(true);
+        return f;
+    }
+
+    /**
+     * 获得小于等于过滤器。相当于SQL的 [字段] <= [值]
+     *
+     * @param cf    列族名
+     * @param col   列名
+     * @param val   值
+     * @return      过滤器
+     */
+    public static Filter lteqFilter(String cf, String col, byte[] val) {
+        SingleColumnValueFilter f = new SingleColumnValueFilter(Bytes.toBytes(cf), Bytes.toBytes(col), CompareFilter.CompareOp.LESS_OR_EQUAL, val);
+        f.setLatestVersionOnly(true);
+        f.setFilterIfMissing(true);
+        return f;
+    }
+
+    /**
+     * 获得不等于过滤器。相当于SQL的 [字段] != [值]
+     *
+     * @param cf    列族名
+     * @param col   列名
+     * @param val   值
+     * @return      过滤器
+     */
+    public static Filter neqFilter(String cf, String col, byte[] val) {
+        SingleColumnValueFilter f = new SingleColumnValueFilter(Bytes.toBytes(cf), Bytes.toBytes(col), CompareFilter.CompareOp.NOT_EQUAL, val);
+        f.setLatestVersionOnly(true);
+        f.setFilterIfMissing(true);
+        return f;
+    }
+
+    /**
+     * 和过滤器 相当于SQL的 的 and
+     *
+     * @param filters   多个过滤器
+     * @return          过滤器
+     */
+    public static Filter andFilter(Filter... filters) {
+        FilterList filterList = new FilterList(FilterList.Operator.MUST_PASS_ALL);
+        if (filters != null && filters.length > 0) {
+            if (filters.length > 1) {
+                for (Filter f : filters) {
+                    filterList.addFilter(f);
+                }
+            }
+            if (filters.length == 1) {
+                return filters[0];
+            }
+        }
+        return filterList;
+    }
+
+    /**
+     * 和过滤器 相当于SQL的 的 and
+     *
+     * @param filters   多个过滤器
+     * @return          过滤器
+     */
+    public static Filter andFilter(Collection<Filter> filters) {
+        return andFilter(filters.toArray(new Filter[0]));
+    }
+
+
+    /**
+     * 或过滤器 相当于SQL的 or
+     *
+     * @param filters   多个过滤器
+     * @return          过滤器
+     */
+    public static Filter orFilter(Filter... filters) {
+        FilterList filterList = new FilterList(FilterList.Operator.MUST_PASS_ONE);
+        if (filters != null && filters.length > 0) {
+            for (Filter f : filters) {
+                filterList.addFilter(f);
+            }
+        }
+        return filterList;
+    }
+
+    /**
+     * 或过滤器 相当于SQL的 or
+     *
+     * @param filters   多个过滤器
+     * @return          过滤器
+     */
+    public static Filter orFilter(Collection<Filter> filters) {
+        return orFilter(filters.toArray(new Filter[0]));
+    }
+
+    /**
+     * 非空过滤器 相当于SQL的 is not null
+     *
+     * @param cf    列族
+     * @param col   列
+     * @return      过滤器
+     */
+    public static Filter notNullFilter(String cf, String col) {
+        SingleColumnValueFilter filter = new SingleColumnValueFilter(Bytes.toBytes(cf), Bytes.toBytes(col), CompareFilter.CompareOp.NOT_EQUAL, new NullComparator());
+        filter.setFilterIfMissing(true);
+        filter.setLatestVersionOnly(true);
+        return filter;
+    }
+
+    /**
+     * 空过滤器 相当于SQL的 is null
+     *
+     * @param cf    列族
+     * @param col   列
+     * @return      过滤器
+     */
+    public static Filter nullFilter(String cf, String col) {
+        SingleColumnValueFilter filter = new SingleColumnValueFilter(Bytes.toBytes(cf), Bytes.toBytes(col), CompareFilter.CompareOp.EQUAL, new NullComparator());
+        filter.setFilterIfMissing(false);
+        filter.setLatestVersionOnly(true);
+        return filter;
+    }
+
+    /**
+     * 子字符串过滤器 相当于SQL的 like '%[val]%'
+     *
+     * @param cf    列族
+     * @param col   列
+     * @param sub   子字符串
+     * @return      过滤器
+     */
+    public static Filter subStringFilter(String cf, String col, String sub) {
+        SingleColumnValueFilter filter = new SingleColumnValueFilter(Bytes.toBytes(cf), Bytes.toBytes(col), CompareFilter.CompareOp.EQUAL, new SubstringComparator(sub));
+        filter.setFilterIfMissing(true);
+        filter.setLatestVersionOnly(true);
+        return filter;
+    }
+
+    /**
+     * 正则过滤器 相当于SQL的 rlike '[regex]'
+     *
+     * @param cf    列族
+     * @param col   列
+     * @param regex 正则表达式
+     * @return      过滤器
+     */
+    public static Filter regexFilter(String cf, String col, String regex) {
+        SingleColumnValueFilter filter = new SingleColumnValueFilter(Bytes.toBytes(cf), Bytes.toBytes(col), CompareFilter.CompareOp.EQUAL, new RegexStringComparator(regex));
+        filter.setFilterIfMissing(true);
+        filter.setLatestVersionOnly(true);
+        return filter;
+    }
+}
+新建单元测试类：HBaseScanTest1（这是个当前情景被废弃的方案，现用方案：HBaseScanTest2 后续讲解）
+
+package com.china;
+
+import com.china.utils.ConnectionInstance;
+import com.china.utils.HBaseFilterUtil;
+import com.china.utils.PropertiesUtil;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.filter.Filter;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.junit.Test;
+
+import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+
+/**
+ * @author chenmingjun
+ * 2019-03-18 14:05
+ */
+public class HBaseScanTest1 {
+
+    private static Configuration conf = null;
+
+    private Connection conn;
+
+    private HTable hTable;
+
+    static {
+        conf = HBaseConfiguration.create();
+    }
+
+    @Test
+    public void scanTest() throws IOException {
+
+        // 实例化 Connection 对象
+        conn = ConnectionInstance.getConnection(conf);
+        // 实例化表对象（注意：此时必须是 HTable）
+        hTable = (HTable) conn.getTable(TableName.valueOf(PropertiesUtil.getProperty("hbase.calllog.tableName")));
+
+        Scan scan = new Scan();
+
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd");
+        String startTimePoint = null;
+        String endTimePoint = null;
+        try {
+            startTimePoint = String.valueOf(simpleDateFormat.parse("2017-01-1").getTime());
+            endTimePoint = String.valueOf(simpleDateFormat.parse("2017-03-01").getTime());
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+
+        Filter filter1 = HBaseFilterUtil.gteqFilter("f1", "date_time_ts", Bytes.toBytes(startTimePoint));
+        Filter filter2 = HBaseFilterUtil.ltFilter("f1", "date_time_ts", Bytes.toBytes(endTimePoint));
+        Filter filterList = HBaseFilterUtil.andFilter(filter1, filter2);
+        scan.setFilter(filterList);
+
+        ResultScanner resultScanner = hTable.getScanner(scan);
+        // 每一个 rowkey 对应一个 result
+        for (Result result : resultScanner) {
+            // 每一个 rowkey 里面包含多个 cell
+            Cell[] cells = result.rawCells();
+            for (Cell c : cells) {
+                // System.out.println("行：" + Bytes.toString(CellUtil.cloneRow(c)));
+                // System.out.println("列族：" + Bytes.toString(CellUtil.cloneFamily(c)));
+                // System.out.println("列：" + Bytes.toString(CellUtil.cloneQualifier(c)));
+                // System.out.println("值：" + Bytes.toString(CellUtil.cloneValue(c)));
+                System.out.println(Bytes.toString(CellUtil.cloneRow(c))
+                        + ","
+                        + Bytes.toString(CellUtil.cloneFamily(c))
+                        + ":"
+                        + Bytes.toString(CellUtil.cloneQualifier(c))
+                        + ","
+                        + Bytes.toString(CellUtil.cloneValue(c)));
+            }
+        }
+    }
+}
+3.2.4、运行测试：HBase 消费数据
+尖叫提示：请将 Linux 允许打开的文件个数和进程数进行优化，优化 RegionServer 与 Zookeeper 会话的超时时间。（参考 HBase 文档中优化章节）
+项目成功后，则将项目打包后在 linux 中运行测试。
+
+1) 打包 HBase 消费者代码
+a) 在 windows 中，进入工程的 pom.xml 所在目录下（建议将该工程的 pom.xml 文件拷贝到其他临时目录中，例如我把 pom.xml 文件拷贝到了 C:\Users\bruce\Desktop\maven-lib 目录下），然后使用 mvn 命令下载工程所有依赖的 jar 包
+
+mvn -DoutputDirectory=C:\Users\bruce\Desktop\maven-lib\lib -DgroupId=com.china -DartifactId=ct_consumer -Dversion=1.0-SNAPSHOT dependency:copy-dependencies
+b) idea 中使用 maven 打包工程
+
+c) 测试执行该 jar 包（在两种环境下测试）
+
+方案一：推荐使用 * 通配符，将所有依赖加入到 classpath 中，不可使用 *.jar的方式。
+尖叫提示：如果是在 Linux 中测试运行，注意文件夹之间的分隔符。自己的工程要单独在 cp 中指定，不要直接放在依赖的 /lib 目录下（即在 Linux 环境下，工程 ct_consumer-1.0-SNAPSHOT.jar 与所依赖的 jar 不能放在同一的目录中）。
+
+当工程 ct_consumer-1.0-SNAPSHOT.jar 与所依赖的 jar 分别放在不同的目录中
+java -cp C:\Users\bruce\Desktop\maven-lib\ct_consumer-1.0-SNAPSHOT.jar;C:\Users\bruce\Desktop\maven-lib\lib\* com.china.kafka.HBaseConsumer
+
+当工程 ct_consumer-1.0-SNAPSHOT.jar 与所依赖的 jar 放在同一的目录中
+java -cp C:\Users\bruce\Desktop\maven-lib\lib\* com.china.kafka.HBaseConsumer
+方案二：最最推荐，使用 java.ext.dirs 参数将所有依赖的目录添加进 classpath 中。
+注意：在 Linux 环境下：-Djava.ext.dirs=属性后边的路径必须使用绝对路径。
+
+在 windows 环境下：
+java -Djava.ext.dirs=C:\Users\bruce\Desktop\maven-lib\lib\ -cp C:\Users\bruce\Desktop\maven-lib\ct_consumer-1.0-SNAPSHOT.jar com.china.kafka.HBaseConsumer
+
+在 Linux 环境下：
+java -Djava.ext.dirs=/opt/module/flume/job/ct/lib/ -cp /opt/module/flume/job/ct/ct_consumer-1.0-SNAPSHOT.jar com.china.kafka.HBaseConsumer
+方案三：不推荐，将所有依赖的 jar 包直接以绝对路径的方式添加进 classpath 中，以下 为 windows 中的示例，linux 中需要把分号替换为冒号。
+
+示例部分使用的 CDH 版本的，内容过多，这里不作粘贴了。
+3.2.5、编写代码：优化数据存储方案
+  现在我们要使用 HBase 查找数据时，尽可能的使用 rowKey 去精准的定位数据位置，而非使用 ColumnValueFilter 或者 SingleColumnValueFilter，按照单元格 Cell 中的 Value 过滤数据，这样做在数据量巨大的情况下，效率是极低的！如果要涉及到全表扫描。所以尽量不要做这样可怕的事情。注意，这并非 ColumnValueFilter 就无用武之地。现在，我们将使用协处理器，将数据一分为二。
+思路：
+  a) 编写协处理器类，用于协助处理 HBase 的相关操作（增删改查）。
+  b) 在协处理器中，一条主叫日志成功插入后，将该日志切换为被叫视角再次插入一次，放入到与主叫日志不同的列族中。
+  c) 重新创建 hbase 表，并为该表注册协处理器。
+  d) 编译项目，发布协处理器的 jar 包到 hbase 的 lib 目录下，并群发该 jar 包。
+  e) 修改 hbase-site.xml 文件，设置协处理器，并群发该 hbase-site.xml 文件。
+编码：
+1) 新建协处理器类：CalleeWriteObserver，并覆写 postPut() 方法，该方法会在数据成功插入之后被回调
+协处理器的使用步骤：
+  1、编写代码 extends BaseRegionObserver
+  2、打包jar
+  3、重新创建表，将表在创建的时候，挂载(注册)该处理器。（如何挂载：即把协处理器的全类名添加到配置）
+  4、表在挂载协处理器的时候，会去HBase的根目录下的lib目录下的jar包里，找到相应的协处理器类的路径
+
+package com.china.hbase;
+
+import com.china.utils.HBaseUtil;
+import com.china.utils.PropertiesUtil;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Durability;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.coprocessor.BaseRegionObserver;
+import org.apache.hadoop.hbase.coprocessor.ObserverContext;
+import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
+import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
+import org.apache.hadoop.hbase.util.Bytes;
+
+import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+
+/**
+ * 在协处理器中，一条主叫日志成功插入后，将该日志切换为被叫视角再次插入一次，放入到与主叫日志不同的列族中。
+ *
+ * @author chenmingjun
+ * 2019-03-16 0:07
+ */
+public class CalleeWriteObserver extends BaseRegionObserver {
+
+    @Override
+    public void postPut(ObserverContext<RegionCoprocessorEnvironment> e, Put put, WALEdit edit, Durability durability)
+            throws IOException {
+        super.postPut(e, put, edit, durability);
+
+        // 1、获取你想要操作的目标表的名称
+        String targetTableName = PropertiesUtil.getProperty("hbase.calllog.tableName");
+
+        // 2、获取当前操作的表的表名
+        String currentTableName = e.getEnvironment().getRegion().getRegionInfo().getTable().getNameAsString();
+
+        // 3、判断需要操作的表是否就是当前表，如果不是，则直接 return
+        if (!targetTableName.equals(currentTableName)) {
+            return;
+        }
+
+        // 4、得到当前插入数据的值并封装新的数据，
+        // oriRowkey举例：01_15369468720_20170727081033_13720860202_1_0180
+        String oriRowkey = Bytes.toString(put.getRow());
+
+        String[] splits = oriRowkey.split("_");
+
+        // 如果当前插入的是被叫数据，则直接返回(因为默认提供的数据全部为主叫数据)，
+        // 又因为我们使用的协处理器的方法是postPut()，即每次插入一条主叫数据后，都会调用该方法插入一条被叫数据。
+        // 插入一条被叫数据后，又会继续调用该方法，此时插入的数据是被叫数据，需要及时停掉，否则会形成死循环！
+        String oldFlag = splits[4];
+        if (oldFlag.equals("0")) {
+            return;
+        }
+
+        // 组装新的数据所在分区号
+        int regions = Integer.valueOf(PropertiesUtil.getProperty("hbase.calllog.regions.count"));
+
+        String call1 = splits[1];
+        String call2 = splits[3];
+        String buildTime = splits[2];
+        String duration = splits[5];
+
+        String newFlag = "0";
+
+        // 生成时间戳
+        String buildTime_ts = null;
+        try {
+            buildTime_ts = String.valueOf(new SimpleDateFormat("yyyyMMddHHmmss").parse(buildTime).getTime());
+        } catch (ParseException e1) {
+            e1.printStackTrace();
+        }
+
+        // 生成新的分区号
+        String regionCode = HBaseUtil.genRegionCode(call2, buildTime, regions);
+
+        // 拼接数据，生成新的 RowKey
+        // 新 RowKey 形式：03_13720860202_20170727081033_15369468720_0_0180
+        String rowKey = HBaseUtil.genRowKey(regionCode, call2, buildTime, call1, newFlag, duration);
+
+        // 向 HBase 表中插入数据（被叫）
+        Put calleePut = new Put(Bytes.toBytes(rowKey));
+        calleePut.addColumn(Bytes.toBytes("f2"), Bytes.toBytes("call1"), Bytes.toBytes(call2));
+        calleePut.addColumn(Bytes.toBytes("f2"), Bytes.toBytes("call2"), Bytes.toBytes(call1));
+        calleePut.addColumn(Bytes.toBytes("f2"), Bytes.toBytes("build_time"), Bytes.toBytes(buildTime));
+        calleePut.addColumn(Bytes.toBytes("f2"), Bytes.toBytes("build_time_ts"), Bytes.toBytes(buildTime_ts));
+        calleePut.addColumn(Bytes.toBytes("f2"), Bytes.toBytes("flag"), Bytes.toBytes(newFlag));
+        calleePut.addColumn(Bytes.toBytes("f2"), Bytes.toBytes("duration"), Bytes.toBytes(duration));
+
+        Table table = e.getEnvironment().getTable(TableName.valueOf(targetTableName));
+        table.put(calleePut);
+
+        table.close();
+    }
+}
+在执行代码之前，我们先手动删除 hbase 上的表 和 命名空间，命令如下：
+
+hbase(main):002:0> disable 'ns_ct:calllog'
+hbase(main):003:0> drop 'ns_ct:calllog'
+
+hbase(main):005:0> drop_namespace 'ns_ct'
+2) 执行代码：重新创建 hbase 表，并为该表注册协处理器。在“表描述器”中调用 addCoprocessor() 方法进行协处理器的设置，大概是这样的：（你需要找到你的建表的那部分代码，添加如下逻辑）
+
+    // 为该表设置协处理器
+    htd.addCoprocessor("com.china.hbase.CalleeWriteObserver");
+3.2.6、运行测试：协处理器
+重新编译项目，发布 jar 包到 hbase 的 lib 目录下（注意需群发）：
+
+$ scp /opt/module/hbase/lib/ct_consumer-1.0-SNAPSHOT.jar hadoop103:/opt/module/hbase/lib/
+$ scp /opt/module/hbase/lib/ct_consumer-1.0-SNAPSHOT.jar hadoop104:/opt/module/hbase/lib/
+重新修改hbase-site.xml：
+
+<property>
+    <name>hbase.coprocessor.region.classes</name>
+    <value>com.china.hbase.CalleeWriteObserver</value>
+</property>
+修改后群发：
+
+$ scp -r /opt/module/hbase/conf hadoop103:/opt/module/hbase/
+$ scp -r /opt/module/hbase/conf hadoop104:/opt/module/hbase/
+完成以上步骤后，重新消费数据进行测试。
+
+3.2.7、编写测试单元：范围查找数据
+思路：
+  a) 已知要查询的手机号码以及起始时间节点和结束时间节点，查询该节点范围内的该手机号码的通话记录。
+  b) 拼装 startRowKey 和 stopRowKey，即扫描范围，要想拼接出扫描范围，首先需要了解 rowkey 组成结构，我们再来复习一下，举个大栗子：
+
+rowkey：
+分区号_手机号码1_通话建立时间_手机号码2_主(被)叫标记_通话持续时间
+01_15837312345_20170527081033__1_0180
+  c) 比如按月查询通话记录，则startRowKey举例：
+
+regionCode_158373123456_201705010
+stopRowKey举例：
+
+regionCode_158373123456_201706010
+如下图所示：
+
+
+注意：startRowKey 和 stopRowKey 设计时，后面的部分已经被去掉。
+尖叫提示：rowKey 的扫描范围为前闭后开。
+尖叫提示：rowKey 默认是有序的，排序规则为字符的按位比较。
+
+d) 如果查找所有的，需要多次 scan 表，每次 scan 设置为下一个时间窗口即可，该操作可放置于 for 循环中。
+编码：
+1) 新建工具类：ScanRowkeyUtil
+该类主要用于根据传入指定的查询时间，生成若干组 startRowKey 和 stopRowKey
+
+package com.china.utils;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+
+/**
+ * 该类主要用于根据用户传入的手机号以及开始和结束时间点，按月生成多组 rowKey
+ *
+ * @author chenmingjun
+ * 2019-03-18 14:31
+ */
+public class ScanRowkeyUtil {
+
+    private String telephone;
+    private String startDateString;
+    private String stopDateString;
+    List<String[]> list = null;
+
+    int index = 0;
+
+    private SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd");
+    private SimpleDateFormat sdf2 = new SimpleDateFormat("yyyyMMddHHmmss");
+
+    public ScanRowkeyUtil(String telephone, String startDateString, String stopDateString) {
+        this.telephone = telephone;
+        this.startDateString = startDateString;
+        this.stopDateString = stopDateString;
+
+        list = new ArrayList<>();
+        genRowKeys();
+    }
+
+    // 01_15837312345_201711
+    // 15837312345 2017-01-01 2017-05-01
+    public void genRowKeys() {
+        int regions = Integer.valueOf(PropertiesUtil.getProperty("hbase.calllog.regions.count"));
+        try {
+            Date startDate = sdf1.parse(startDateString);
+            Date stopDate = sdf1.parse(stopDateString);
+
+            // b当前开始时间
+            Calendar currentStartCalendar = Calendar.getInstance();
+            currentStartCalendar.setTimeInMillis(startDate.getTime());
+            // 当前结束时间
+            Calendar currentStopCalendar = Calendar.getInstance();
+            currentStopCalendar.setTimeInMillis(startDate.getTime());
+            currentStopCalendar.add(Calendar.MONTH, 1);
+
+            while (currentStopCalendar.getTimeInMillis() <= stopDate.getTime()) {
+
+                String regionCode = HBaseUtil.genRegionCode(telephone, sdf2.format(new Date(currentStartCalendar.getTimeInMillis())), regions);
+                // 01_15837312345_201711
+                String startRowKey = regionCode + "_" + telephone + "_" + sdf2.format(new Date(currentStartCalendar.getTimeInMillis()));
+                String stopRowKey = regionCode + "_" + telephone + "_" + sdf2.format(new Date(currentStopCalendar.getTimeInMillis()));
+
+                String[] rowkeys = {startRowKey, stopRowKey};
+                list.add(rowkeys);
+                currentStartCalendar.add(Calendar.MONTH, 1);
+                currentStopCalendar.add(Calendar.MONTH, 1);
+            }
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 判断 list 集合中是否还有下一组 rowKey
+     *
+     * @return
+     */
+    public boolean hasNext() {
+
+        if (index < list.size()) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * 取出 list 集合中存放的下一组 rowKey
+     *
+     * @return
+     */
+    public String[] next() {
+
+        String[] rowkeys = list.get(index);
+        index++;
+        return rowkeys;
+    }
+}
+2) 新建测试单元类 ：HBaseScanTest2
+
+package com.china;
+
+import com.china.utils.ConnectionInstance;
+import com.china.utils.PropertiesUtil;
+import com.china.utils.ScanRowkeyUtil;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.junit.Test;
+
+import java.io.IOException;
+import java.text.ParseException;
+
+/**
+ * @author chenmingjun
+ * 2019-03-18 14:37
+ */
+public class HBaseScanTest2 {
+
+    private static Configuration conf = null;
+
+    private Connection conn;
+
+    private HTable hTable;
+
+    static {
+        conf = HBaseConfiguration.create();
+    }
+
+    @Test
+    public void scanTest() throws IOException, ParseException {
+
+        String call = "14473548449";
+        String startPoint = "2017-01-01";
+        String stopPoint = "2017-09-01";
+
+        // 实例化 Connection 对象
+        conn = ConnectionInstance.getConnection(conf);
+        // 实例化表对象（注意：此时必须是 HTable）
+        hTable = (HTable) conn.getTable(TableName.valueOf(PropertiesUtil.getProperty("hbase.calllog.tableName")));
+
+        Scan scan = new Scan();
+        ScanRowkeyUtil scanRowkeyUtil = new ScanRowkeyUtil(call, startPoint, stopPoint);
+        while (scanRowkeyUtil.hasNext()) {
+
+            String[] rowKeys = scanRowkeyUtil.next();
+            scan.setStartRow(Bytes.toBytes(rowKeys[0]));
+            scan.setStopRow(Bytes.toBytes(rowKeys[1]));
+
+            System.out.println("时间范围" + rowKeys[0].substring(15, 21) + "---" + rowKeys[1].substring(15, 21));
+
+            ResultScanner resultScanner = hTable.getScanner(scan);
+            // 每一个 rowkey 对应一个 result
+            for (Result result : resultScanner) {
+                // 每一个 rowkey 里面包含多个 cell
+                Cell[] cells = result.rawCells();
+                StringBuilder sb = new StringBuilder();
+                sb.append(Bytes.toString(result.getRow())).append(",");
+
+                for (Cell c : cells) {
+                    sb.append(Bytes.toString(CellUtil.cloneValue(c))).append(",");
+                }
+                System.out.println(sb.toString());
+            }
+        }
+    }
+}
+3) 运行测试
+观察是否已经按照时间范围查询出对应的数据。
+
+开启集群顺序：
+  1、开启 HDFS、Zookeeper 集群
+  2、开启 Kafka 集群
+  3、开启 Flume
+  4、开启 HBase 集群
+  5、开启数据生产
+  6、开启 HBase 数据消费
+
+在开启数据生产，执行 HBase 数据消费代码之前，我们先手动删除 hbase 上的表 和 命名空间，命令如下：
+
+hbase(main):002:0> disable 'ns_ct:calllog'
+hbase(main):003:0> drop 'ns_ct:calllog'
+
+hbase(main):005:0> drop_namespace 'ns_ct'
+
+
+3.3、数据分析
+  我们的数据已经完整的采集到了 HBase 集群中，这次我们需要对采集到的数据进行分析，统计出我们想要的结果。注意，在分析的过程中，我们不一定会采取一个业务指标对应一个 mapreduce-job 的方式，如果情景允许，我们会采取一个 mapreduce 分析多个业务指标的方式来进行任务。具体何时采用哪种方式，我们后续会详细探讨。
+
+  分析模块流程图：
+
+
+业务指标：
+  a) 用户每天主叫通话个数统计，通话时间统计。
+  b) 用户每月通话记录统计，通话时间统计。
+  c) 用户之间亲密关系统计。（通话次数与通话时间体现用户亲密关系）
+
+3.3.1、Mysql 表结构设计
+  我们将分析的结果数据保存到 Mysql 中，以方便 Web 端进行查询展示。
+
+思路讨论：
+
+
+1) 表：db_telecom.tb_call
+用于存放【某个查询人维度下】和【某个时间维度下】通话次数与通话时长的总和。
+
+
+2) 表：db_telecom.tb_contacts
+用于存放【查询人维度】的相关数据（用户手机号码与查询人姓名）。
+
+
+3) 表：db_telecom.tb_dimension_date
+用于存放【时间维度】的相关数据（年、月、日）。
+
+
+4) 表：db_telecom.tb_intimacy
+
+
+用于存放所有用户【用户关系】的结果数据。（作业中使用）
+3.3.2、需求：按照不同的维度统计通话
+  根据需求目标，设计出如上表结构。我们需要按照查询人范围和时间范围（年月日），结合 MapReduce 统计出所属时间范围内所有手机号码的通话次数总和以及通话时长总和。
+
+思路：
+  a) 维度，即某个角度，某个视角，按照时间维度来统计通话，比如我想统计 2017 年所有月份所有日子的通话记录，那这个维度我们大概可以表述为 2017 年*月*日。
+  b) 通过 Mapper 将数据按照不同维度聚合给 Reducer。
+  c) 通过 Reducer 拿到按照各个维度聚合过来的数据，进行汇总，输出。
+  d) 根据业务需求，将 Reducer 的输出通过 Outputformat 把数据输出到 Mysql。
+
+数据输入：HBase
+数据输出：Mysql
+
+HBase 中数据源结构：
+
+
+思路：
+  a) 已知目标，那么需要结合目标思考已有数据是否能够支撑目标实现；
+  b) 根据目标数据结构，构建 Mysql 表结构，建表；
+  c) 思考代码需要涉及到哪些功能模块，建立不同功能模块对应的包结构。
+  d) 描述数据，一定是基于某个维度（视角）的，所以构建维度类。比如按照“手机号码”与“年”的组合作为 key 聚合所有的数据，便可以统计这个手机号码，这一年的相关结果。
+  e) 自定义 OutputFormat 用于对接 Mysql，使数据输出。
+  f) 创建相关工具类。
+
+MySQL 结果表的创建
+
+/*
+Navicat MySQL Data Transfer
+
+Source Server         : 192.168.25.102
+Source Server Version : 50173
+Source Host           : 192.168.25.102:3306
+Source Database       : db_telecom
+
+Target Server Type    : MYSQL
+Target Server Version : 50173
+File Encoding         : 65001
+
+Date: 2019-03-19 16:11:44
+*/
+
+SET FOREIGN_KEY_CHECKS=0;
+
+-- ----------------------------
+-- Table structure for tb_call
+-- ----------------------------
+DROP TABLE IF EXISTS `tb_call`;
+CREATE TABLE `tb_call` (
+  `id_contact_date` varchar(255) NOT NULL,
+  `id_dimension_contact` int(11) NOT NULL,
+  `id_dimension_date` int(11) NOT NULL,
+  `call_sum` int(11) NOT NULL,
+  `call_duration_sum` int(11) NOT NULL,
+  PRIMARY KEY (`id_contact_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- ----------------------------
+-- Table structure for tb_dimension_contacts
+-- ----------------------------
+DROP TABLE IF EXISTS `tb_dimension_contacts`;
+CREATE TABLE `tb_dimension_contacts` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `telephone` varchar(255) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- ----------------------------
+-- Table structure for tb_dimension_date
+-- ----------------------------
+DROP TABLE IF EXISTS `tb_dimension_date`;
+CREATE TABLE `tb_dimension_date` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `year` int(11) NOT NULL,
+  `month` int(11) NOT NULL,
+  `day` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- ----------------------------
+-- Table structure for tb_intimacy
+-- ----------------------------
+DROP TABLE IF EXISTS `tb_intimacy`;
+CREATE TABLE `tb_intimacy` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `intimacy_rank` int(11) NOT NULL,
+  `contact_id1` int(11) NOT NULL,
+  `contact_id2` int(11) NOT NULL,
+  `call_count` int(11) NOT NULL,
+  `call_duration_count` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+注意：字段名为什么加反引号？
+ 答：因为 Mysql 中 sql 语法是不区分大小写的，而 Mysql 有一个优化机制，关键字用小写，表名和字段名用小写；关键字用大写，表名和字段名用大写；会提高 sql 执行的效率。
+ 加反引号的意思是：不让其对字段进行大小写的优化。
+
+使用 Navicat 创建数据库和表，如下：
+
+
+3.3.3、环境准备
+1) idea 中 新建 module：ct_analysis
+pom.xml 文件配置如下：
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.china</groupId>
+    <artifactId>ct_analysis</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>5.1.27</version>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.apache.hbase/hbase-client -->
+        <dependency>
+            <groupId>org.apache.hbase</groupId>
+            <artifactId>hbase-client</artifactId>
+            <version>1.3.1</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.apache.hbase/hbase-server -->
+        <dependency>
+            <groupId>org.apache.hbase</groupId>
+            <artifactId>hbase-server</artifactId>
+            <version>1.3.1</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.12.4</version>
+                <configuration>
+                    <!-- 设置打包时跳过test包里面的代码 -->
+                    <skipTests>true</skipTests>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+2) 创建包结构，根包：com.china，如下图所示：
+
+
+3) 类表，如下图所示：
+
+
+3.3.4、编写代码：数据分析
+1) 创建类：CountDurationMapper（数据分析的Mapper类，继承自 TableMapper）
+
+package com.china.analysis.mapper;
+
+import com.china.analysis.kv.key.ComDimension;
+import com.china.analysis.kv.key.ContactDimension;
+import com.china.analysis.kv.key.DateDimension;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
+import org.apache.hadoop.hbase.mapreduce.TableMapper;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.io.Text;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * @author chenmingjun
+ * 2019-03-19 10:26
+ */
+public class CountDurationMapper extends TableMapper<ComDimension, Text> {
+
+    private ComDimension comDimension = new ComDimension();
+
+    private Text durationText = new Text();
+
+    // 用于存放联系人电话与姓名的映射
+    private Map<String, String> phoneNameMap = null;
+
+    @Override
+    protected void setup(Context context) throws IOException, InterruptedException {
+        phoneNameMap = new HashMap<>();
+
+        phoneNameMap.put("13242820024", "李雁");
+        phoneNameMap.put("14036178412", "卫艺");
+        phoneNameMap.put("16386074226", "仰莉");
+        phoneNameMap.put("13943139492", "陶欣悦");
+        phoneNameMap.put("18714767399", "施梅梅");
+        phoneNameMap.put("14733819877", "金虹霖");
+        phoneNameMap.put("13351126401", "魏明艳");
+        phoneNameMap.put("13017498589", "华贞");
+        phoneNameMap.put("16058589347", "华啟倩");
+        phoneNameMap.put("18949811796", "仲采绿");
+        phoneNameMap.put("13558773808", "卫丹");
+        phoneNameMap.put("14343683320", "戚丽红");
+        phoneNameMap.put("13870632301", "何翠柔");
+        phoneNameMap.put("13465110157", "钱溶艳");
+        phoneNameMap.put("15382018060", "钱琳");
+        phoneNameMap.put("13231085347", "缪静欣");
+        phoneNameMap.put("13938679959", "焦秋菊");
+        phoneNameMap.put("13779982232", "吕访琴");
+        phoneNameMap.put("18144784030", "沈丹");
+        phoneNameMap.put("18637946280", "褚美丽");
+    }
+
+    @Override
+    protected void map(ImmutableBytesWritable key, Result value, Context context) throws IOException, InterruptedException {
+
+        // 01_15837312345_20170810141024_13738909097_1_0180
+
+        // 获取数据
+        String roeKey = Bytes.toString(value.getRow());
+
+        // 切割
+        String[] splits = roeKey.split("_");
+
+        // 只拿到主叫数据即可
+        String flag = splits[4];
+        if (flag.equals("0")) return;
+
+        String call1 = splits[1];
+        String call2 = splits[3];
+        String bulidTime = splits[2];
+        String duration = splits[5];
+
+        durationText.set(duration);
+
+        int year = Integer.valueOf(bulidTime.substring(0, 4));
+        int month = Integer.valueOf(bulidTime.substring(4, 6));
+        int day = Integer.valueOf(bulidTime.substring(6, 8));
+
+        // 组装-时间维度类DateDimension
+        DateDimension yearDimension = new DateDimension(year, -1, -1);
+        DateDimension monthDimension = new DateDimension(year, month, -1);
+        DateDimension dayDimension = new DateDimension(year, month, day);
+
+        // 组装-联系人维度类ContactDimension
+        ContactDimension call1ContactDimension = new ContactDimension(call1, phoneNameMap.get(call1)); // 实际业务做法：1、不写name。2、在Mapper这里调用HBase的API去HBase中将名字和手机号的映射读出来。
+        ContactDimension call2ContactDimension = new ContactDimension(call2, phoneNameMap.get(call2)); // 学习阶段，为了数据好看和省事，我们简单做一下
+
+        // 组装-组合维度类ComDimension
+        // 聚合主叫数据
+        comDimension.setContactDimension(call1ContactDimension);
+        // 年
+        comDimension.setDateDimension(yearDimension);
+        context.write(comDimension, durationText);
+        // 月
+        comDimension.setDateDimension(monthDimension);
+        context.write(comDimension, durationText);
+        // 日
+        comDimension.setDateDimension(dayDimension);
+        context.write(comDimension, durationText);
+
+        // 聚合被叫数据
+        comDimension.setContactDimension(call2ContactDimension);
+        // 年
+        comDimension.setDateDimension(yearDimension);
+        context.write(comDimension, durationText);
+        // 月
+        comDimension.setDateDimension(monthDimension);
+        context.write(comDimension, durationText);
+        // 日
+        comDimension.setDateDimension(dayDimension);
+        context.write(comDimension, durationText);
+    }
+}
+2) 创建类：CountDurationReducer（数据分析的Reducer类，继承自 Reduccer）
+
+package com.china.analysis.reducer;
+
+import com.china.analysis.kv.key.ComDimension;
+import com.china.analysis.kv.value.CountDurationValue;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Reducer;
+
+import java.io.IOException;
+
+/**
+ * @author chenmingjun
+ * 2019-03-19 16:30
+ */
+public class CountDurationReducer extends Reducer<ComDimension, Text, ComDimension, CountDurationValue> {
+
+    private CountDurationValue countDurationValue = new CountDurationValue();
+
+    @Override
+    protected void reduce(ComDimension key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+
+        int callSum = 0;
+        int callDurationSum = 0;
+        for (Text text : values) {
+            callSum++;
+            callDurationSum += Integer.valueOf(text.toString());
+        }
+
+        countDurationValue.setCallSum(callSum);
+        countDurationValue.setCallDurationSum(callDurationSum);
+
+        context.write(key, countDurationValue);
+    }
+}
+3) 创建类：CountDurationRunner（数据分析的驱动类，组装 Job）
+
+package com.china.analysis.runner;
+
+import com.china.analysis.kv.key.ComDimension;
+import com.china.analysis.kv.value.CountDurationValue;
+import com.china.analysis.mapper.CountDurationMapper;
+import com.china.analysis.outputformat.MySQLOutputFormat;
+import com.china.analysis.reducer.CountDurationReducer;
+import com.china.constants.Constants;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Admin;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.mapreduce.TableMapReduceUtil;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
+
+import java.io.IOException;
+
+/**
+ * @author chenmingjun
+ * 2019-03-19 16:41
+ */
+public class CountDurationRunner implements Tool {
+
+    private Configuration conf = null;
+
+    @Override
+    public void setConf(Configuration conf) {           // conf默认是从resources中加载，加载文件的顺序是：
+        this.conf = HBaseConfiguration.create(conf);    // core-default.xml -> core-site.xml -> hdfs-default.xml -> hdfs-site.xml -> hbase-default.xml -> hbase-site.xml
+    }
+
+    @Override
+    public Configuration getConf() {
+        return this.conf;
+    }
+
+    @Override
+    public int run(String[] strings) throws Exception {
+        // 得到conf
+        // 实例化Job
+        Job job = Job.getInstance(conf, "CALLLOG_ANALYSIS");
+        job.setJarByClass(CountDurationRunner.class);
+
+        // 组装Mapper Inputformat（注意：Inputformat 需要使用 HBase 提供的 HBaseInputformat 或者使用自定义的 Inputformat）
+        initHBaseInputConfig(job);
+
+        // 组装Reducer Outputformat
+        initReducerOutputConfig(job);
+
+        return job.waitForCompletion(true) ? 0 : 1;
+    }
+
+    private void initHBaseInputConfig(Job job) {
+
+        Connection conn = null;
+        Admin admin = null;
+
+        try {
+            conn = ConnectionFactory.createConnection(conf);
+            admin = conn.getAdmin();
+
+            if (!admin.tableExists(TableName.valueOf(Constants.SCAN_TABLE_NAME))) {
+                throw new RuntimeException("无法找到目标表");
+            }
+
+            Scan scan = new Scan();
+            // 可以对Scan进行优化
+            // scan.setAttribute(Scan.SCAN_ATTRIBUTES_TABLE_NAME, Bytes.toBytes(Constants.SCAN_TABLE_NAME));
+
+            TableMapReduceUtil.initTableMapperJob(
+                    Constants.SCAN_TABLE_NAME,  // 数据源的表名
+                    scan,                       // scan扫描控制器
+                    CountDurationMapper.class,  // 设置Mapper类
+                    ComDimension.class,         // 设置Mapper输出key类型
+                    Text.class,                 // 设置Mapper输出value值类型
+                    job,                        // 设置给哪个Job
+                    true
+            );
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (admin != null) {
+                    admin.close();
+                }
+                if (conn != null && conn.isClosed()) {
+                    conn.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void initReducerOutputConfig(Job job) {
+        job.setReducerClass(CountDurationReducer.class);
+
+        job.setOutputKeyClass(ComDimension.class);
+        job.setOutputValueClass(CountDurationValue.class);
+
+        job.setOutputFormatClass(MySQLOutputFormat.class);
+    }
+
+    public static void main(String[] args) {
+        try {
+            int status = ToolRunner.run(new CountDurationRunner(), args);
+            System.exit(status);
+            if (status == 0) {
+                System.out.println("运行成功");
+            } else {
+                System.out.println("运行失败");
+            }
+        } catch (Exception e) {
+            System.out.println("运行失败");
+            e.printStackTrace();
+        }
+    }
+}
+注意：conf默认是从resources中加载，加载文件的顺序是：core-default.xml -> core-site.xml -> hdfs-default.xml -> hdfs-site.xml -> hbase-default.xml -> hbase-site.xml
+
+4) 创建类：MySQLOutputFormat（自定义 Outputformat，对接 Mysql）
+
+package com.china.analysis.outputformat;
+
+import com.china.analysis.converter.impl.DimensionConverterImpl;
+import com.china.analysis.kv.base.BaseDimension;
+import com.china.analysis.kv.base.BaseValue;
+import com.china.analysis.kv.key.ComDimension;
+import com.china.analysis.kv.value.CountDurationValue;
+import com.china.constants.Constants;
+import com.china.utils.JDBCCacheBean;
+import com.china.utils.JDBCUtil;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.mapreduce.*;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputCommitter;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+/**
+ * @author chenmingjun
+ * 2019-03-19 19:01
+ */
+public class MySQLOutputFormat extends OutputFormat<BaseDimension, BaseValue> {
+
+    private OutputCommitter committer = null;
+
+    @Override
+    public RecordWriter<BaseDimension, BaseValue> getRecordWriter(TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
+        // 初始化JDBC连接器对象
+        Connection conn = null;
+        try {
+            conn = JDBCCacheBean.getInstance();
+            // 关闭自动提交，以便于批量提交
+            conn.setAutoCommit(false);
+        } catch (SQLException e) {
+            throw new IOException(e);
+        }
+
+        return new MysqlRecordWriter(conn);
+    }
+
+    @Override
+    public void checkOutputSpecs(JobContext jobContext) throws IOException, InterruptedException {
+        // 校验输出
+    }
+
+    @Override
+    public OutputCommitter getOutputCommitter(TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
+        // 根据源码怎么实现的模仿写
+        if (committer == null) {
+            String name = taskAttemptContext.getConfiguration().get(FileOutputFormat.OUTDIR);
+            Path outputPath = name == null ? null : new Path(name);
+            committer = new FileOutputCommitter(outputPath, taskAttemptContext);
+        }
+        return committer;
+    }
+
+    static class MysqlRecordWriter extends RecordWriter<BaseDimension, BaseValue> {
+
+        private Connection conn = null;
+
+        private DimensionConverterImpl dci = null;
+
+        private PreparedStatement ps = null;
+
+        private String insertSQL = null;
+
+        private int count = 0;
+
+        private int batchNumber = 0;
+
+        public MysqlRecordWriter(Connection conn) {
+            this.conn = conn;
+            this.dci = new DimensionConverterImpl();
+            this.batchNumber = Constants.JDBC_DEFAULT_BATCH_NUMBER;
+        }
+
+        @Override
+        public void write(BaseDimension key, BaseValue value) throws IOException, InterruptedException {
+            try {
+                // 向Mysql中tb_call表写入数据
+                // tb_call：id_contact_date, id_dimension_contact, id_dimension_date, call_sum, call_duration_sum
+
+                // 封装SQL语句
+                if (insertSQL == null) {
+                    insertSQL = "INSERT INTO `tb_call` (`id_contact_date`, `id_dimension_contact`, `id_dimension_date`, `call_sum`, `call_duration_sum`) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE `id_contact_date`=?;";
+                }
+
+                // 执行插入操作
+                if (ps == null) {
+                    ps = conn.prepareStatement(insertSQL);
+                }
+
+
+                ComDimension comDimension = (ComDimension) key;
+                CountDurationValue countDurationValue = (CountDurationValue) value;
+
+                // 封装要写入的数据
+                int id_dimension_contact = dci.getDimensionId(comDimension.getContactDimension());
+                int id_dimension_date = dci.getDimensionId(comDimension.getDateDimension());
+
+                String id_contact_date = id_dimension_contact + "_" + id_dimension_date;
+
+                int call_sum = countDurationValue.getCallSum();
+                int call_duration_sum = countDurationValue.getCallDurationSum();
+
+                // 本次SQL
+                int i = 0;
+                ps.setString(++i, id_contact_date);
+                ps.setInt(++i, id_dimension_contact);
+                ps.setInt(++i, id_dimension_date);
+                ps.setInt(++i, call_sum);
+                ps.setInt(++i, call_duration_sum);
+
+                // 有则插入，无则更新的判断依据
+                ps.setString(++i, id_contact_date);
+
+                ps.addBatch();
+
+                // 当前缓存了多少个sql语句，等待批量执行，计数器
+                count++;
+                if (count >= this.batchNumber) {
+                    // 批量插入
+                    ps.executeBatch();
+                    // 连接提交
+                    conn.commit();
+                    count = 0;
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+
+        @Override
+        public void close(TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
+            try {
+                if (ps != null) {
+                    ps.executeBatch();
+                    this.conn.commit();
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            } finally {
+                JDBCUtil.close(conn, ps, null);
+            }
+        }
+    }
+}
+5) 创建类：BaseDimension（维度（key）基类，为了便于扩展）
+
+package com.china.analysis.kv.base;
+
+import org.apache.hadoop.io.WritableComparable;
+
+/**
+ * @author chenmingjun
+ * 2019-03-19 10:42
+ */
+public abstract class BaseDimension implements WritableComparable<BaseDimension> {}
+6) 创建类：BaseValue（值（value）基类，为了便于扩展）
+
+package com.china.analysis.kv.base;
+
+import org.apache.hadoop.io.Writable;
+
+/**
+ * @author chenmingjun
+ * 2019-03-19 10:43
+ */
+public abstract class BaseValue implements Writable {}
+7) 创建类：ContactDimension（联系人维度，封装 Mapper 输出的 key）
+
+package com.china.analysis.kv.key;
+
+import com.china.analysis.kv.base.BaseDimension;
+
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+
+/**
+ * 联系人维度类
+ *
+ * @author chenmingjun
+ * 2019-03-19 10:49
+ */
+public class ContactDimension extends BaseDimension {
+
+    // 联系人维度主键
+    private int id;
+
+    // 联系人维度：手机号码
+    private String telephone;
+
+    // 联系人维度：姓名
+    private String name;
+
+    public ContactDimension() {
+        super();
+    }
+
+    public ContactDimension(String telephone, String name) {
+        super();
+        this.telephone = telephone;
+        this.name = name;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String getTelephone() {
+        return telephone;
+    }
+
+    public void setTelephone(String telephone) {
+        this.telephone = telephone;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        ContactDimension that = (ContactDimension) o;
+
+        if (telephone != null ? !telephone.equals(that.telephone) : that.telephone != null) return false;
+        return name != null ? name.equals(that.name) : that.name == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = telephone != null ? telephone.hashCode() : 0;
+        result = 31 * result + (name != null ? name.hashCode() : 0);
+        return result;
+    }
+
+    @Override
+    public int compareTo(BaseDimension o) {
+        if (o == this) return 0;
+        ContactDimension anotherContactDimension = (ContactDimension) o;
+
+        int result = Integer.compare(this.id, anotherContactDimension.getId());
+        if (result != 0) return result;
+
+        result= this.telephone.compareTo(anotherContactDimension.getTelephone());
+        if (result != 0) return result;
+
+        result = this.name.compareTo(anotherContactDimension.getName());
+        return result;
+    }
+
+    @Override
+    public void write(DataOutput dataOutput) throws IOException {
+        dataOutput.writeInt(this.id);
+        dataOutput.writeUTF(this.telephone);
+        dataOutput.writeUTF(this.name);
+    }
+
+    @Override
+    public void readFields(DataInput dataInput) throws IOException {
+        this.id = dataInput.readInt();
+        this.telephone = dataInput.readUTF();
+        this.name = dataInput.readUTF();
+    }
+
+    @Override
+    public String toString() {
+        return "ContactDimension{" +
+                "id=" + id +
+                ", telephone='" + telephone + '\'' +
+                ", name='" + name + '\'' +
+                '}';
+    }
+}
+8) 创建类：DateDimension（时间维度，封装 Mapper 输出的 key）
+
+package com.china.analysis.kv.key;
+
+import com.china.analysis.kv.base.BaseDimension;
+
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+
+/**
+ * 时间维度类
+ *
+ * @author chenmingjun
+ * 2019-03-19 11:36
+ */
+public class DateDimension extends BaseDimension {
+
+    // 时间维度主键
+    private int id;
+
+    // 时间维度：当前通话信息所在年
+    private int year;
+
+    // 时间维度：当前通话信息所在月，如果按照年来统计信息，则month为-1
+    private int month;
+
+    // 时间维度：当前通话信息所在日，如果按照年或者月来统计信息，则day为-1
+    private int day;
+
+    public DateDimension() {
+        super();
+    }
+
+    public DateDimension(int year, int month, int day) {
+        super();
+        this.year = year;
+        this.month = month;
+        this.day = day;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public int getYear() {
+        return year;
+    }
+
+    public void setYear(int year) {
+        this.year = year;
+    }
+
+    public int getMonth() {
+        return month;
+    }
+
+    public void setMonth(int month) {
+        this.month = month;
+    }
+
+    public int getDay() {
+        return day;
+    }
+
+    public void setDay(int day) {
+        this.day = day;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        DateDimension that = (DateDimension) o;
+
+        if (year != that.year) return false;
+        if (month != that.month) return false;
+        return day == that.day;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = year;
+        result = 31 * result + month;
+        result = 31 * result + day;
+        return result;
+    }
+
+    @Override
+    public int compareTo(BaseDimension o) {
+        if (o == this) return 0;
+        DateDimension anotherDateDimension = (DateDimension) o;
+
+        int result = Integer.compare(this.id, anotherDateDimension.getId());
+        if (result != 0) return result;
+
+        result = Integer.compare(this.year, anotherDateDimension.getYear());
+        if (result != 0) return result;
+
+        result = Integer.compare(this.month, anotherDateDimension.getMonth());
+        if (result != 0) return result;
+
+        result = Integer.compare(this.day, anotherDateDimension.getDay());
+        return result;
+    }
+
+    @Override
+    public void write(DataOutput dataOutput) throws IOException {
+        dataOutput.writeInt(this.id);
+        dataOutput.writeInt(this.year);
+        dataOutput.writeInt(this.month);
+        dataOutput.writeInt(this.day);
+    }
+
+    @Override
+    public void readFields(DataInput dataInput) throws IOException {
+        this.id = dataInput.readInt();
+        this.year = dataInput.readInt();
+        this.month = dataInput.readInt();
+        this.day = dataInput.readInt();
+    }
+
+    @Override
+    public String toString() {
+        return "DateDimension{" +
+                "id=" + id +
+                ", year=" + year +
+                ", month=" + month +
+                ", day=" + day +
+                '}';
+    }
+}
+9) 创建类：ComDimension（时间维度+联系人维度的组合维度，封装 Mapper 输出的 组合key）
+
+package com.china.analysis.kv.key;
+
+import com.china.analysis.kv.base.BaseDimension;
+
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+
+/**
+ * 时间维度+联系人维度的组合维度类（包装类）
+ *
+ * @author chenmingjun
+ * 2019-03-19 11:42
+ */
+public class ComDimension extends BaseDimension {
+
+    // 联系人维度
+    private ContactDimension contactDimension = new ContactDimension();
+
+    // 时间维度
+    private DateDimension dateDimension = new DateDimension();
+
+    public ComDimension() {
+        super();
+    }
+
+    public ComDimension(ContactDimension contactDimension, DateDimension dateDimension) {
+        super();
+        this.contactDimension = contactDimension;
+        this.dateDimension = dateDimension;
+    }
+
+    public ContactDimension getContactDimension() {
+        return contactDimension;
+    }
+
+    public void setContactDimension(ContactDimension contactDimension) {
+        this.contactDimension = contactDimension;
+    }
+
+    public DateDimension getDateDimension() {
+        return dateDimension;
+    }
+
+    public void setDateDimension(DateDimension dateDimension) {
+        this.dateDimension = dateDimension;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        ComDimension that = (ComDimension) o;
+
+        if (contactDimension != null ? !contactDimension.equals(that.contactDimension) : that.contactDimension != null)
+            return false;
+        return dateDimension != null ? dateDimension.equals(that.dateDimension) : that.dateDimension == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = contactDimension != null ? contactDimension.hashCode() : 0;
+        result = 31 * result + (dateDimension != null ? dateDimension.hashCode() : 0);
+        return result;
+    }
+
+    @Override
+    public int compareTo(BaseDimension o) {
+        if (this == o) return 0;
+        ComDimension anotherComDimension = (ComDimension) o;
+
+        int result = this.dateDimension.compareTo(anotherComDimension.getDateDimension());
+        if (result != 0) return result;
+
+        result = this.contactDimension.compareTo(anotherComDimension.getContactDimension());
+        return result;
+    }
+
+    @Override
+    public void write(DataOutput dataOutput) throws IOException {
+        this.contactDimension.write(dataOutput);
+        this.dateDimension.write(dataOutput);
+    }
+
+    @Override
+    public void readFields(DataInput dataInput) throws IOException {
+        this.contactDimension.readFields(dataInput);
+        this.dateDimension.readFields(dataInput);
+    }
+
+    @Override
+    public String toString() {
+        return "ComDimension{" +
+                "contactDimension=" + contactDimension +
+                ", dateDimension=" + dateDimension +
+                '}';
+    }
+}
+10) 创建类：CountDurationValue（通话次数与通话时长的封装，封装 Reducer 输出的 value）
+
+package com.china.analysis.kv.value;
+
+import com.china.analysis.kv.base.BaseValue;
+
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+
+/**
+ * @author chenmingjun
+ * 2019-03-19 15:26
+ */
+public class CountDurationValue extends BaseValue {
+
+    // 某个维度通话次数总和
+    private int callSum;
+
+    // 某个维度通话时间总和
+    private int callDurationSum;
+
+    public CountDurationValue() {
+        super();
+    }
+
+    public CountDurationValue(int callSum, int callDurationSum) {
+        super();
+        this.callSum = callSum;
+        this.callDurationSum = callDurationSum;
+    }
+
+    public int getCallSum() {
+        return callSum;
+    }
+
+    public void setCallSum(int callSum) {
+        this.callSum = callSum;
+    }
+
+    public int getCallDurationSum() {
+        return callDurationSum;
+    }
+
+    public void setCallDurationSum(int callDurationSum) {
+        this.callDurationSum = callDurationSum;
+    }
+
+    @Override
+    public void write(DataOutput dataOutput) throws IOException {
+        dataOutput.writeInt(callSum);
+        dataOutput.writeInt(callDurationSum);
+    }
+
+    @Override
+    public void readFields(DataInput dataInput) throws IOException {
+        this.callSum = dataInput.readInt();
+        this.callDurationSum = dataInput.readInt();
+    }
+
+    @Override
+    public String toString() {
+        return "CountDurationValue{" +
+                "callSum=" + callSum +
+                ", callDurationSum=" + callDurationSum +
+                '}';
+    }
+}
+11) 创建类：JDBCUtil（封装 JDBC 和 关闭数据库连接资源操作）
+
+package com.china.utils;
+
+import java.sql.*;
+
+/**
+ * @author chenmingjun
+ * 2019-03-19 9:56
+ */
+public class JDBCUtil {
+
+    private static final String MYSQL_DRIVER_CLASS = "com.mysql.jdbc.Driver";
+
+    private static final String MYSQL_URL = "jdbc:mysql://hadoop102:3306/db_telecom?userUnicode=true&characterEncoding=UTF-8";
+
+    private static final String MYSQL_USERNAME = "root";
+
+    private static final String MYSQL_PASSWORD = "123456";
+
+
+    /**
+     * 实例化 JDBC 连接器对象
+     *
+     * @return
+     */
+    public static Connection getConnection() {
+
+        try {
+            Class.forName(MYSQL_DRIVER_CLASS);
+            return DriverManager.getConnection(MYSQL_URL, MYSQL_USERNAME, MYSQL_PASSWORD);
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    /**
+     * 关闭数据库连接器释放资源
+     *
+     * @param conn
+     * @param stat
+     * @param rs
+     */
+    public static void close(Connection conn, Statement stat, ResultSet rs) {
+
+        try {
+            if (rs != null && !rs.isClosed()) {
+                rs.close();
+            }
+
+            if (stat != null && !stat.isClosed()) {
+                stat.close();
+            }
+
+            if (conn != null && !conn.isClosed()) {
+                conn.close();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+}
+12) 创建类：JDBCCacheBean（单例 JDBC 连接器）
+
+package com.china.utils;
+
+import java.sql.Connection;
+import java.sql.SQLException;
+
+/**
+ * 单例 JDBC 连接器
+ *
+ * @author chenmingjun
+ * 2019-03-19 10:18
+ */
+public class JDBCCacheBean {
+
+    private static Connection conn = null;
+
+    private JDBCCacheBean() {}
+
+    public static Connection getInstance() {
+
+        try {
+            if (conn == null || conn.isClosed() || conn.isValid(3)) {
+                conn = JDBCUtil.getConnection();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return conn;
+    }
+}
+13) 创建类：DimensionConverter
+
+package com.china.analysis.converter;
+
+import com.china.analysis.kv.base.BaseDimension;
+
+/**
+ * @author chenmingjun
+ * 2019-03-19 22:15
+ */
+public interface DimensionConverter {
+
+    /**
+     * 根据传入的 baseDimension 对象，获取数据库中对应该对象数据的id，如果不存在，则插入该数据再返回
+     */
+    int getDimensionId(BaseDimension baseDimension);
+}
+14) 创建类：DimensionConverterImpl
+
+package com.china.analysis.converter.impl;
+
+import com.china.analysis.converter.DimensionConverter;
+import com.china.analysis.kv.base.BaseDimension;
+import com.china.analysis.kv.key.ContactDimension;
+import com.china.analysis.kv.key.DateDimension;
+import com.china.utils.JDBCCacheBean;
+import com.china.utils.JDBCUtil;
+import com.china.utils.LRUCache;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+/**
+ * 维度转换实现类：维度对象转维度id类
+ *
+ * @author chenmingjun
+ * 2019-03-19 22:24
+ */
+public class DimensionConverterImpl implements DimensionConverter {
+
+    // 日志记录类，注意导包的正确性
+    private static final Logger looger = LoggerFactory.getLogger(DimensionConverterImpl.class); // 打印 DimensionConverterImpl 的日志
+
+    // 为每个线程保留自己的 Connection 实例（JDBC连接器）
+    private ThreadLocal<Connection> threadLocalConnection = new ThreadLocal<>();
+
+    // 创建数据缓存队列
+    private LRUCache<String, Integer> lruCache = new LRUCache<>(3000);
+
+    public DimensionConverterImpl() {
+        looger.info("stopping mysql connection ...");
+
+        // 设置 JVM 关闭时，尝试关闭数据库连接资源
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> JDBCUtil.close(threadLocalConnection.get(), null, null)));
+
+        looger.info("mysql connection is successful closed");
+    }
+
+    /**
+     * 根据传入的维度对象，得到该维度对象对应的在表中的主键id（如果数据量特别大，需要用到缓存）
+     * 1、内存缓存，LRUCache
+     *      1.1 缓存中有数据：直接返回id
+     *      1.2 缓存中没有数据：
+     *          1.1.1 查询Mysql
+     *              1.1.1.1 Mysql中有该条数据，直接返回id，将本次读取到的id缓存到内存中
+     *              1.1.1.2 Mysql中没有该数据，插入该条数据，插入成功后，再次反查该数据，得到id并返回，缓存到内存中
+     *
+     * @param baseDimension
+     * @return
+     */
+    @Override
+    public int getDimensionId(BaseDimension baseDimension) {
+        // LRUCache 中缓存数据的格式
+        // 时间维度：date_dimension_year_month_day,10
+        // 查询人维度：contact_dimension_telphone_name,12
+
+        // 1、根据传入的维度对象取得该维度对象对应的 cacheKey
+        String cackeKey = genCacheKey(baseDimension);
+
+        // 2、判断缓存中是否存在该 cacheKey 缓存，有数据就直接返回id
+        if (lruCache.containsKey(cackeKey)) {
+            return lruCache.get(cackeKey);
+        }
+
+        // 3、缓存中没有，就去查询数据库，执行 select 操作
+        // sqls 中包含了一组sql语句：分别是查询和插入
+        String[] sqls = null;
+        if (baseDimension instanceof DateDimension) {
+            // 时间维度表 tb_dimension_date
+            sqls = genDateDimensionSQL();
+        } else if (baseDimension instanceof ContactDimension) {
+            // 查询人维度表 tb_dimension_contacts
+            sqls = genContactDimensionSQL();
+        } else {
+            // 抛出 Checked 异常，提醒调用者可以自行处理。
+            throw new RuntimeException("Cannot match the dimession, unknown dimension.");
+        }
+
+        // 4、准备对 MySQL 中的表进行操作，先查询，有可能再插入
+        Connection conn = this.getConnection();
+        int id = -1;
+        synchronized (this) {
+            id = execSQL(conn, sqls, baseDimension);
+        }
+
+        // 将查询到的id缓存到内存中
+        lruCache.put(cackeKey, id);
+
+        return id;
+    }
+
+    /**
+     * 尝试获取数据库连接对象：先从线程缓冲中获取，没有可用连接则创建新的单例连接器对象。
+     *
+     * @return
+     */
+    private Connection getConnection() {
+        Connection conn = null;
+        try {
+            conn = threadLocalConnection.get();
+            if (conn == null || conn.isClosed() || conn.isValid(3)) {
+                conn = JDBCCacheBean.getInstance();
+            }
+            threadLocalConnection.set(conn);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return conn;
+    }
+
+    /**
+     * 执行 SQL 语句
+     *
+     * @param conn  JDBC 连接器
+     * @param sqls  长度为2，第一个为查询语句，第二个为插入语句
+     * @param baseDimension 对应维度所保存的数据
+     * @return
+     */
+    private int execSQL(Connection conn, String[] sqls, BaseDimension baseDimension) {
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            // 1、假设数据库中有该条数据
+            // 封装查询的sql语句
+            ps = conn.prepareStatement(sqls[0]);
+            // 根据不同的维度，封装不同维度的sql查询语句
+            setArguments(ps, baseDimension);
+            // 执行查询
+            rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1); // 注意：结果集的列的索引从1开始
+            }
+
+            // 2、假设数据库中没有该条数据
+            // 封装插入的sql语句
+            ps = conn.prepareStatement(sqls[1]);
+            // 根据不同的维度，封装不同维度的sql插入语句
+            setArguments(ps, baseDimension);
+            // 执行插入
+            ps.executeUpdate();
+
+            // 3、释放资源
+            JDBCUtil.close(null, ps, rs);
+
+            // 4、此时数据库中有该条数据了，重新获取id，调用自己即可
+            // 封装查询的sql语句
+            ps = conn.prepareStatement(sqls[0]);
+            // 根据不同的维度，封装不同维度的sql查询语句
+            setArguments(ps, baseDimension);
+            // 执行查询
+            rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1); // 注意：结果集的列的索引从1开始
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            // 释放资源
+            JDBCUtil.close(null, ps, rs);
+        }
+
+        throw new RuntimeException("Failed to get id!");
+    }
+
+    /**
+     * 根据不同的维度，封装不同维度的sql语句
+     *
+     * @param ps
+     * @param baseDimension
+     */
+    private void setArguments(PreparedStatement ps, BaseDimension baseDimension) {
+        int i = 0;
+        try {
+            if (baseDimension instanceof  DateDimension) {
+                DateDimension dateDimension = (DateDimension) baseDimension;
+                ps.setInt(++i, dateDimension.getYear());
+                ps.setInt(++i, dateDimension.getMonth());
+                ps.setInt(++i, dateDimension.getDay());
+            } else if (baseDimension instanceof  ContactDimension) {
+                ContactDimension contactDimension = (ContactDimension) baseDimension;
+                ps.setString(++i, contactDimension.getTelephone());
+                ps.setString(++i, contactDimension.getName());
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 生成查询人维度表的数据库查询语句和插入语句
+     *
+     * @return
+     */
+    private String[] genContactDimensionSQL() {
+        String query = "SELECT `id` FROM `tb_dimension_contacts` WHERE `telephone`=? AND `name`=? ORDER BY `id`;";
+        String insert = "INSERT INTO `tb_dimension_contacts` (`telephone`, `name`) VALUES (?, ?);";
+        return new String[]{query, insert};
+    }
+
+    /**
+     * 生成时间维度表的数据库查询语句和插入语句
+     *
+     * @return
+     */
+    private String[] genDateDimensionSQL() {
+        String query = "SELECT `id` FROM `tb_dimension_date` WHERE `year`=? AND `month`=? AND `day`=? ORDER BY `id`;";
+        String insert = "INSERT INTO `tb_dimension_date` (`year`, `month`, `day`) VALUES (?, ?, ?);";
+        return new String[]{query, insert};
+    }
+
+    /**
+     * 根据传入的维度对象取得该维度对象对应的 cacheKey
+     * LRUCACHE 中缓存的键值对形式例如：<date_dimension20170820, 3> 或者 <contact_dimension15837312345张三, 12>
+     *
+     * @param baseDimension
+     * @return
+     */
+    private String genCacheKey(BaseDimension baseDimension) {
+
+        StringBuilder sb = new StringBuilder();
+
+        if (baseDimension instanceof DateDimension) {
+            DateDimension dateDimension = (DateDimension) baseDimension;
+            // 拼装缓存 id 对应的 key
+            sb.append("date_dimension");
+            sb.append(dateDimension.getYear()).append(dateDimension.getMonth()).append(dateDimension.getDay());
+        } else if (baseDimension instanceof ContactDimension) {
+            ContactDimension contactDimension = (ContactDimension) baseDimension;
+            // 拼装缓存 id 对应的 key
+            sb.append("contact_dimension");
+            sb.append(contactDimension.getTelephone()).append(contactDimension.getName());
+        }
+
+        if (sb.length() <= 0) {
+            throw new RuntimeException("Cannot create cacheKey." + baseDimension);
+        }
+
+        return sb.toString();
+    }
+}
+15) 创建类：LRUCache
+
+package com.china.utils;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * @author chenmingjun
+ * 2019-03-19 22:59
+ */
+public class LRUCache<K, V> extends LinkedHashMap<K, V> {
+
+    private static final long serialVersionUID = 1L;
+
+    protected int maxElements;
+
+    public LRUCache(int maxSize) {
+        super(maxSize, 0.75F, true);
+        this.maxElements = maxSize;
+    }
+
+    protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
+        return this.size() > this.maxElements;
+    }
+}
+16) 创建类：Constants（常量类）
+
+package com.china.constants;
+
+/**
+ * @author chenmingjun
+ * 2019-03-19 9:57
+ */
+public class Constants {
+
+    public static final int JDBC_DEFAULT_BATCH_NUMBER = 500;
+
+    public static final String SCAN_TABLE_NAME = "ns_ct:calllog";
+}
+3.3.5、运行测试
+0) 将 core-site.xml、hdfs-site.xml、log4j.properties、hbase-site.xml 拷贝到 \ct\ct_analysis\src\main\resources 目录下
+
+1) 在 hadoop-env.sh 添加内容：
+
+[atguigu@hadoop102 hadoop]$ pwd
+/opt/module/hadoop-2.7.2/etc/hadoop
+[atguigu@hadoop102 hadoop]$ vim hadoop-env.sh
+
+export HADOOP_CLASSPATH=$HADOOP_CLASSPATH:/opt/module/hbase/lib/*
+注意：修改配置后，需要配置分发，然后重启集群，方可生效！！！
+注意：修改配置后，需要配置分发，然后重启集群，方可生效！！！
+注意：修改配置后，需要配置分发，然后重启集群，方可生效！！！
+
+2) 将 mysql 驱动包放入到 /opt/module/flume/job/ct/lib 测试目录下
+
+[atguigu@hadoop102 ct]$ pwd
+/opt/module/flume/job/ct
+[atguigu@hadoop102 ct]$ cp -a /opt/software/mysql-libs/mysql-connector-java-5.1.27/mysql-connector-java-5.1.27-bin.jar ./lib/
+3) 将要运行的 ct_analysis-1.0-SNAPSHOT.jar 拷贝至 /opt/module/hbase/lib 目录下，然后同步到其他机器或者配置分发
+
+[atguigu@hadoop102 ~]$ scp -r /opt/module/hbase/lib/ct_analysis-1.0-SNAPSHOT.jar hadoop103:/opt/module/hbase/lib/
+[atguigu@hadoop102 ~]$ scp -r /opt/module/hbase/lib/ct_analysis-1.0-SNAPSHOT.jar hadoop104:/opt/module/hbase/lib/
+或者
+[atguigu@hadoop102 ~]$ xsync /opt/module/hbase/lib/ct_analysis-1.0-SNAPSHOT.jar
+4) 提交任务
+
+[atguigu@hadoop102 ct]$ pwd
+/opt/module/flume/job/ct
+[atguigu@hadoop102 ct]$ /opt/module/hadoop-2.7.2/bin/yarn jar ./ct_analysis-1.0-SNAPSHOT.jar com.china.analysis.runner.CountDurationRunner -libjars ./lib/mysql-connector-java-5.1.27-bin.jar
+5) 观察 Mysql 中的结果：
+
+
+简单测试下数据：
+
+3.3.6、bug 解决
+1、Mysql 连接的 URL 中加入了数据库，所以后边的表就不能使用：【数据库.表名】这样的形式了。
+2、-libjars 这个属性，必须显示的指定到具体的 Mysql 驱动包的位置。
+3、自己写的代码 ct_analysis.jar 类找不到，原因是因为该 jar 包没有添加到 hadoop 的 classpath 中。
+解决方案：将该 jar 包 拷贝到 HBase 的 lib 目录下（`注意`：添加 jar 后需要分发并重启 Hbase 集群）。
+
+3.4、数据展示
+  令人兴奋的时刻马上到了，接下来我们需要将某人按照不同维度查询出来的结果，展示到 web 页面上。
+数据展示模块流程图：
+
+
+3.4.1、环境准备
+1) idea 新建 module 或项目：ct_web
+pom.xml 配置文件：
+
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.china</groupId>
+    <artifactId>ct_web</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>war</packaging>
+
+    <name>ct_web Maven Webapp</name>
+    <!-- FIXME change it to the project's website -->
+    <url>http://www.example.com</url>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>1.7</maven.compiler.source>
+        <maven.compiler.target>1.7</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <!-- https://mvnrepository.com/artifact/junit/junit -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>5.1.27</version>
+        </dependency>
+
+        <dependency>
+            <groupId>c3p0</groupId>
+            <artifactId>c3p0</artifactId>
+            <version>0.9.1.2</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mybatis</groupId>
+            <artifactId>mybatis</artifactId>
+            <version>3.2.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context-support</artifactId>
+            <version>4.3.3.RELEASE</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-jdbc</artifactId>
+            <version>4.3.3.RELEASE</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webmvc</artifactId>
+            <version>4.3.3.RELEASE</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mybatis</groupId>
+            <artifactId>mybatis-spring</artifactId>
+            <version>1.3.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+            <version>1.8.10</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>servlet-api</artifactId>
+            <version>2.5</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>jstl</artifactId>
+            <version>1.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.2.4</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>ct_web</finalName>
+        <pluginManagement><!-- lock down plugins versions to avoid using Maven defaults (may be moved to parent pom) -->
+            <plugins>
+                <plugin>
+                    <artifactId>maven-clean-plugin</artifactId>
+                    <version>3.1.0</version>
+                </plugin>
+                <!-- see http://maven.apache.org/ref/current/maven-core/default-bindings.html#Plugin_bindings_for_war_packaging -->
+                <plugin>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>3.0.2</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.8.0</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>2.22.1</version>
+                    <configuration>
+                        <skipTests>true</skipTests>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-war-plugin</artifactId>
+                    <version>3.2.2</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-install-plugin</artifactId>
+                    <version>2.5.2</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-deploy-plugin</artifactId>
+                    <version>2.8.2</version>
+                </plugin>
+                <!-- idea 专业版不需要此配置，idea 社区版需要配置
+                <plugin>
+                    <groupId>org.apache.tomcat.maven</groupId>
+                    <artifactId>tomcat7-maven-plugin</artifactId>
+                    <version>2.2</version>
+                    <configuration>
+                        <path>/</path>
+                        <port>8080</port>
+                        <uriEncoding>UTF-8</uriEncoding>
+                    </configuration>
+                </plugin>
+                -->
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>
+2) 创建包结构，根包：com.china
+
+
+3) 类表
+
+
+4) web目录结构，web部分的根目录：webapp
+
+
+5) resources 目录下创建 spring 相关配置文件
+dbconfig.properties 用于存放数据库连接配置
+
+jdbc.user=root
+jdbc.password=123456
+jdbc.jdbcUrl=jdbc:mysql://hadoop102:3306/db_telecom?userUnicode=true&characterEncoding=UTF-8
+jdbc.driverClass=com.mysql.jdbc.Driver
+applicationContext.xml 用于 Spring 和 SpringMVC 配置
+
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:p="http://www.springframework.org/schema/p"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+       http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd
+       http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd
+       http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee.xsd
+       http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd">
+
+    <!-- 加载配置文件 -->
+    <context:property-placeholder location="classpath:dbconfig.properties"/>
+
+    <!-- 配置连接池 -->
+    <bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+        <property name="user" value="${jdbc.user}"/>
+        <property name="password" value="${jdbc.password}"/>
+        <property name="jdbcUrl" value="${jdbc.jdbcUrl}"/>
+        <property name="driverClass" value="${jdbc.driverClass}"/>
+    </bean>
+
+    <bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+        <constructor-arg name="dataSource" value="#{dataSource}"></constructor-arg>
+    </bean>
+
+    <bean id="namedParameterJdbcTemplate" class="org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate">
+        <constructor-arg name="dataSource" value="#{dataSource}"></constructor-arg>
+    </bean>
+
+    <!-- 配置包扫描 -->
+    <context:component-scan base-package="com.china.controller"></context:component-scan>
+    <context:component-scan base-package="com.china.dao"></context:component-scan>
+
+    <!-- 配置视图解析器-->
+    <bean id="viewResolver" class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+        <property name="prefix" value="/"/>
+        <property name="suffix" value=".jsp"/>
+    </bean>
+
+    <!-- 配置静态资源映射，也可以配置在 web.xml 中 -->
+    <!--<mvc:annotation-driven />-->
+    <!--<mvc:default-servlet-handler />-->
+    <!--<mvc:resources location="/images/" mapping="/images/**"/>-->
+    <!--<mvc:resources location="/js/" mapping="/js/**"/>-->
+    <!--<mvc:resources location="/css/" mapping="/css/**"/>-->
+</beans>
+6) WEB-INF 目录下创建 web 相关配置
+web.xml：
+
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd"
+         version="3.1">
+
+    <display-name>ct_wed</display-name>
+
+    <welcome-file-list>
+        <welcome-file>index.jsp</welcome-file>
+    </welcome-file-list>
+
+    <!-- 配置springmvc的前端控制器 -->
+    <servlet>
+        <servlet-name>dispatcherServlet</servlet-name>
+        <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+        <init-param>
+            <param-name>contextConfigLocation</param-name>
+            <param-value>classpath:applicationContext.xml</param-value>
+        </init-param>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>dispatcherServlet</servlet-name>
+        <!-- /表示拦截所有请求，但不拦截jsp，/*表示拦截所有请求 -->
+        <url-pattern>/</url-pattern>
+    </servlet-mapping>
+
+    <!-- 配置解决post乱码的过滤器 -->
+    <filter>
+        <filter-name>CharacterEncodingFilter</filter-name>
+        <filter-class>org.springframework.web.filter.CharacterEncodingFilter</filter-class>
+        <init-param>
+            <param-name>encoding</param-name>
+            <param-value>utf-8</param-value>
+        </init-param>
+        <init-param>
+            <param-name>forceEncoding</param-name>
+            <param-value>true</param-value>
+        </init-param>
+    </filter>
+    <filter-mapping>
+        <filter-name>CharacterEncodingFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+    <!-- 配置静态资源映射，也可以配置在 applicationContext.xml 中 -->
+    <servlet-mapping>
+        <servlet-name>default</servlet-name>
+        <url-pattern>*.jpg</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>default</servlet-name>
+        <url-pattern>*.js</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>default</servlet-name>
+        <url-pattern>*.css</url-pattern>
+    </servlet-mapping>
+</web-app>
+7) 拷贝 js 框架到 js 目录下
+js 框架名称：
+
+echarts.min.js
+jquery-3.2.0.min.js
+3.4.2、编写代码
+思路：
+  a) 首先测试数据通顺以及完整性，写一个查询联系人的测试用例。
+  b) 测试通过后，通过输入手机号码以及时间参数，查询指定维度的数据，并以图表展示。
+
+代码：
+1) 新建类：CallLog
+
+package com.china.bean;
+
+/**
+ * 封装从Mysql中取出来的数据
+ *
+ * @author chenmingjun
+ * 2019-03-21 18:38
+ */
+public class CallLog {
+
+    private String id_contact_date;
+
+    private int id_dimension_contact;
+
+    private int id_dimension_date;
+
+    private int call_sum;
+
+    private int call_duration_sum;
+
+    private String telephone;
+
+    private String name;
+
+    private int year;
+
+    private int month;
+
+    private int day;
+
+    public String getId_contact_date() {
+        return id_contact_date;
+    }
+
+    public void setId_contact_date(String id_contact_date) {
+        this.id_contact_date = id_contact_date;
+    }
+
+    public int getId_dimension_contact() {
+        return id_dimension_contact;
+    }
+
+    public void setId_dimension_contact(int id_dimension_contact) {
+        this.id_dimension_contact = id_dimension_contact;
+    }
+
+    public int getId_dimension_date() {
+        return id_dimension_date;
+    }
+
+    public void setId_dimension_date(int id_dimension_date) {
+        this.id_dimension_date = id_dimension_date;
+    }
+
+    public int getCall_sum() {
+        return call_sum;
+    }
+
+    public void setCall_sum(int call_sum) {
+        this.call_sum = call_sum;
+    }
+
+    public int getCall_duration_sum() {
+        return call_duration_sum;
+    }
+
+    public void setCall_duration_sum(int call_duration_sum) {
+        this.call_duration_sum = call_duration_sum;
+    }
+
+    public String getTelephone() {
+        return telephone;
+    }
+
+    public void setTelephone(String telephone) {
+        this.telephone = telephone;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getYear() {
+        return year;
+    }
+
+    public void setYear(int year) {
+        this.year = year;
+    }
+
+    public int getMonth() {
+        return month;
+    }
+
+    public void setMonth(int month) {
+        this.month = month;
+    }
+
+    public int getDay() {
+        return day;
+    }
+
+    public void setDay(int day) {
+        this.day = day;
+    }
+
+    @Override
+    public String toString() {
+        return "CallLog{" +
+                "id_contact_date='" + id_contact_date + '\'' +
+                ", id_dimension_contact=" + id_dimension_contact +
+                ", id_dimension_date=" + id_dimension_date +
+                ", call_sum=" + call_sum +
+                ", call_duration_sum=" + call_duration_sum +
+                ", telephone='" + telephone + '\'' +
+                ", name='" + name + '\'' +
+                ", year=" + year +
+                ", month=" + month +
+                ", day=" + day +
+                '}';
+    }
+}
+2) 新建类：Contact
+
+package com.china.bean;
+
+/**
+ * @author chenmingjun
+ * 2019-03-22 0:17
+ */
+public class Contact {
+
+    private int id;
+
+    private String telephone;
+
+    private String name;
+
+    public Contact() {
+    }
+
+    public Contact(int id, String telephone, String name) {
+        this.id = id;
+        this.telephone = telephone;
+        this.name = name;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String getTelephone() {
+        return telephone;
+    }
+
+    public void setTelephone(String telephone) {
+        this.telephone = telephone;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    @Override
+    public String toString() {
+        return "Contact{" +
+                "id=" + id +
+                ", telephone='" + telephone + '\'' +
+                ", name='" + name + '\'' +
+                '}';
+    }
+}
+3) 新建类：QueryInfo
+
+package com.china.bean;
+
+/**
+ * 封装用于用户传递过来的数据
+ *
+ * @author chenmingjun
+ * 2019-03-21 18:43
+ */
+public class QueryInfo {
+
+    private String telephone;
+
+    private String year;
+
+    private String month;
+
+    private String day;
+
+    public QueryInfo() {
+    }
+
+    public QueryInfo(String telephone, String year, String month, String day) {
+        this.telephone = telephone;
+        this.year = year;
+        this.month = month;
+        this.day = day;
+    }
+
+    public String getTelephone() {
+        return telephone;
+    }
+
+    public void setTelephone(String telephone) {
+        this.telephone = telephone;
+    }
+
+    public String getYear() {
+        return year;
+    }
+
+    public void setYear(String year) {
+        this.year = year;
+    }
+
+    public String getMonth() {
+        return month;
+    }
+
+    public void setMonth(String month) {
+        this.month = month;
+    }
+
+    public String getDay() {
+        return day;
+    }
+
+    public void setDay(String day) {
+        this.day = day;
+    }
+
+    @Override
+    public String toString() {
+        return "QueryInfo{" +
+                "telephone='" + telephone + '\'' +
+                ", year='" + year + '\'' +
+                ", month='" + month + '\'' +
+                ", day='" + day + '\'' +
+                '}';
+    }
+}
+4) 新建类：CallLogDao
+
+package com.china.dao;
+
+import com.china.bean.CallLog;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.stereotype.Repository;
+
+import java.util.HashMap;
+import java.util.List;
+
+/**
+ * @author chenmingjun
+ * 2019-03-21 18:48
+ */
+
+@Repository
+public class CallLogDao {
+
+    // 自动装载
+    @Autowired
+    private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+
+    public List<CallLog> getCallLogList(HashMap<String, String> paramsMap) {
+
+        // 按照年统计：统计某个用户，1年12个月的所有的数据（不精确到天）
+        String sql = "SELECT `name`, `telephone`, `call_sum`, `call_duration_sum`, `year`, `month`, `day` FROM `tb_dimension_date` t4 INNER JOIN ( SELECT `id_dimension_date`, `call_sum`, `call_duration_sum`, `telephone`, `name` FROM `tb_call` t2 INNER JOIN ( SELECT `id`, `telephone`, `name` FROM `tb_dimension_contacts` WHERE `telephone` = :telephone ) t1 ON t2.id_dimension_contact = t1.id ) t3 ON t4.id = t3.id_dimension_date WHERE (`year` = :year AND `month` != :month AND `day` = :day) ORDER BY `year`, `month`;";
+
+        BeanPropertyRowMapper<CallLog> beanPropertyRowMapper = new BeanPropertyRowMapper<>(CallLog.class);
+        List<CallLog> list = namedParameterJdbcTemplate.query(sql, paramsMap, beanPropertyRowMapper);
+
+        return list;
+    }
+}
+5) 新建类：ContactDao
+
+package com.china.dao;
+
+import com.china.bean.Contact;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.stereotype.Repository;
+
+import java.util.HashMap;
+import java.util.List;
+
+/**
+ * @author chenmingjun
+ * 2019-03-22 0:19
+ */
+@Repository
+public class ContactDAO {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+
+    public List<Contact> getContacts() {
+        String sql = "SELECT `id`, `telephone`, `name` FROM `tb_dimension_contacts`;";
+        BeanPropertyRowMapper<Contact> contactBeanPropertyRowMapper = new BeanPropertyRowMapper<>(Contact.class);
+        List<Contact> contactList = jdbcTemplate.query(sql, contactBeanPropertyRowMapper);
+        return contactList;
+    }
+
+    public List<Contact> getContactWithId(HashMap<String, String> hashMap) {
+        String sql = "SELECT `id`, `telephone`, `name` FROM `tb_dimension_contacts` WHERE `id` = :id;";
+        BeanPropertyRowMapper<Contact> contactBeanPropertyRowMapper = new BeanPropertyRowMapper<>(Contact.class);
+        List<Contact> contactList = namedParameterJdbcTemplate.query(sql, hashMap, contactBeanPropertyRowMapper);
+        return contactList;
+    }
+}
+6) 新建类：CallLogController
+
+package com.china.controller;
+
+import com.china.bean.CallLog;
+import com.china.bean.Contact;
+import com.china.bean.QueryInfo;
+import com.china.dao.CallLogDao;
+import com.china.dao.ContactDAO;
+import com.google.gson.Gson;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.servlet.ModelAndView;
+
+import java.util.HashMap;
+import java.util.List;
+
+/**
+ * @author chenmingjun
+ * 2019-03-21 20:53
+ */
+
+@Controller
+public class CallLogController {
+
+    @RequestMapping("/queryContact")
+    public ModelAndView query(Contact contact) {
+        ApplicationContext applicationContext = new ClassPathXmlApplicationContext("applicationContext.xml");
+        ContactDAO contactDAO = applicationContext.getBean(ContactDAO.class);
+
+        HashMap<String, String> paramMap = new HashMap<>();
+        paramMap.put("id", String.valueOf(contact.getId()));
+
+        List<Contact> contactList = contactDAO.getContactWithId(paramMap);
+
+        ModelAndView modelAndView = new ModelAndView();
+        modelAndView.setViewName("jsp/queryContact");
+        modelAndView.addObject("contacts", contactList);
+
+        return modelAndView;
+    }
+
+    @RequestMapping("/queryContactList")
+    public ModelAndView querylist() {
+        ApplicationContext applicationContext = new ClassPathXmlApplicationContext("applicationContext.xml");
+        ContactDAO contactDAO = applicationContext.getBean(ContactDAO.class);
+
+        List<Contact> contactList = contactDAO.getContacts();
+
+        ModelAndView modelAndView = new ModelAndView();
+        modelAndView.setViewName("jsp/queryContact");
+        modelAndView.addObject("contacts", contactList);
+
+        return modelAndView;
+    }
+
+    @RequestMapping("/queryCallLogList")
+    public ModelAndView queryCallLog(QueryInfo queryInfo) {
+        ApplicationContext applicationContext = new ClassPathXmlApplicationContext("applicationContext.xml");
+        CallLogDao callLogDao = applicationContext.getBean(CallLogDao.class);
+
+        HashMap<String, String> paramMap = new HashMap<>();
+        paramMap.put("telephone", String.valueOf(queryInfo.getTelephone()));
+        paramMap.put("year", String.valueOf(queryInfo.getYear()));
+        paramMap.put("day", String.valueOf(queryInfo.getDay()));
+
+        List<CallLog> callLogList = callLogDao.getCallLogList(paramMap);
+
+        Gson gson = new Gson();
+        String resultList = gson.toJson(callLogList);
+
+        ModelAndView modelAndView = new ModelAndView();
+        modelAndView.setViewName("jsp/callLogList");
+        modelAndView.addObject("callLogList", resultList);
+
+        return modelAndView;
+    }
+
+    @RequestMapping("/queryCallLogList2")
+    public String queryCallLog2(Model model, QueryInfo queryInfo) {
+        ApplicationContext applicationContext = new ClassPathXmlApplicationContext("applicationContext.xml");
+        CallLogDao callLogDao = applicationContext.getBean(CallLogDao.class);
+
+        // 封装传过来的数据
+        HashMap<String, String> paramMap = new HashMap<>();
+        paramMap.put("telephone", queryInfo.getTelephone());
+        paramMap.put("year", String.valueOf(queryInfo.getYear()));
+        paramMap.put("month", String.valueOf(queryInfo.getMonth()));
+        paramMap.put("day", String.valueOf(queryInfo.getDay()));
+
+        List<CallLog> callLogList = callLogDao.getCallLogList(paramMap);
+
+        StringBuilder dateString = new StringBuilder();
+        StringBuilder callSumString = new StringBuilder();
+        StringBuilder callDurationSumString = new StringBuilder();
+
+        // 1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月,
+        for (int i = 0; i < callLogList.size(); i++) {
+            CallLog callLog = callLogList.get(i);
+            if (Integer.valueOf(callLog.getMonth()) > 0) {
+                dateString.append(callLog.getMonth()).append("月").append(",");
+                callSumString.append(callLog.getCall_sum()).append(",");
+                callDurationSumString.append(callLog.getCall_duration_sum() / 60f).append(",");
+            }
+        }
+
+        dateString.deleteCharAt(dateString.length() - 1);
+        callSumString.deleteCharAt(callSumString.length() - 1);
+        callDurationSumString.deleteCharAt(callDurationSumString.length() - 1);
+
+        // 封装返回去的数据
+        model.addAttribute("telephone", callLogList.get(0).getTelephone());
+        model.addAttribute("name", callLogList.get(0).getName());
+        model.addAttribute("date", dateString.toString());
+        model.addAttribute("count", callSumString.toString());
+        model.addAttribute("duration", callDurationSumString.toString());
+
+        return "jsp/callLogListEchart";
+    }
+}
+7) 新建类：Contants
+  暂时没用上，也可以用上，主要用于存放一些常量。
+
+8) 新建：index.jsp
+
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ page language="java" contentType="text/html; charset=utf-8" pageEncoding="utf-8" %>
+<%
+    String path = request.getContextPath();
+%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Show Time</title>
+</head>
+<body>
+    <form action="/queryContact">
+        id:<input type="text" name="id"/>
+        telephone:<input type="text" name="telephone"/>
+        <input type="submit" value="查询当前联系人"/>
+    </form>
+
+    <br/>
+
+    <form action="/queryContactList">
+        <input type="submit" value="查询所有联系人"/>
+    </form>
+    <br/>
+
+    <%--<form action='<c:url value="/queryCallLogList2"/>' method="post">--%>
+    <form action=/queryCallLogList2 method="post">
+        telephone:<input type="text" name="telephone"/>
+        year:<input type="text" name="year"/>
+        month:<input type="text" name="month"/>
+        day:<input type="text" name="day"/>
+        <input type="submit" value="查询该联系人的通话记录"/>
+    </form>
+</body>
+</html>
+9) 新建：queryContact.jsp
+
+<%--
+  Created by IntelliJ IDEA.
+  User: bruce
+  Date: 2019/3/22
+  Time: 0:25
+  To change this template use File | Settings | File Templates.
+--%>
+<%@ page contentType="text/html;charset=UTF-8" language="java" isELIgnored = "false" %>
+<html>
+<head>
+    <title>查询联系人</title>
+</head>
+<body>
+    查询结果：<br/>
+    <h3>${requestScope.contacts}</h3>
+</body>
+</html>
+10) 新建：callLogList.jsp
+
+<%--
+  Created by IntelliJ IDEA.
+  User: bruce
+  Date: 2019/3/22
+  Time: 0:28
+  To change this template use File | Settings | File Templates.
+--%>
+<%@ page contentType="text/html;charset=UTF-8" language="java" isELIgnored = "false" %>
+<html>
+<head>
+    <title>显示通话记录</title>
+</head>
+<body>
+    查询结果：<br/>
+    <h3>${requestScope.callLogList}</h3>
+</body>
+</html>
+11) 新建：callLogListEchart.jsp
+
+<%--
+  Created by IntelliJ IDEA.
+  User: bruce
+  Date: 2019/3/21
+  Time: 21:09
+  To change this template use File | Settings | File Templates.
+--%>
+<%@ page contentType="text/html;charset=UTF-8" language="java" isELIgnored="false" %>
+<html>
+<head>
+    <meta http-equiv="Content-Type" , content="text/html" charset="UTF-8">
+    <title>显示通话记录</title>
+    <script type="text/javascript" src="../js/echarts.min.js"></script>
+    <%--<script type="text/javascript" src="${pageContext.request.contextPath}/js/echarts.min.js"></script>--%>
+    <%--<script type="text/javascript" src="${pageContext.request.contextPath}/jquery-3.2.0.min.js"></script>--%>
+    <%--<script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/echarts-all-3.js"></script>--%>
+</head>
+<body style="height: 100%; margin: 0; background-color:#2B2B2B ">
+
+<style type="text/css">
+    h3 {
+        font-size: 14px;
+        color: #ffffff;
+        display: inline;
+    }
+</style>
+<h4 style="color: #ffffff;text-align:center">通话月单查询：${requestScope.name}</h4>
+<%--<h3 style="margin-left: 70%">通话次数</h3>--%>
+<%--<h3 style="margin-left: 20%">通话时长</h3>--%>
+<div id="container1" style="height: 80%; width: 50%; float:left"></div>
+<div id="container2" style="height: 80%; width: 50%; float:right"></div>
+<script type="text/javascript">
+    var telephone = "${requestScope.telephone}"
+    var name = "${requestScope.name}"
+
+    var date = "${requestScope.date}"//1月,2月,3月,xxxxx
+    var count = "${requestScope.count}"
+
+    var duration = "${requestScope.duration}"
+    var pieData = converterFun(duration.split(","), date.split(","))
+    callog1();
+    callog2();
+
+    function converterFun(duration, date) {
+        var array = [];
+        for (var i = 0; i < duration.length; i++) {
+            var map = {};
+            map['value'] = parseFloat(duration[i]);
+            map['name'] = date[i];
+            array.push(map);
+        }
+        return array;
+    }
+
+    function callog1() {
+        var dom = document.getElementById("container1");
+        var myChart = echarts.init(dom);
+        myChart.showLoading();
+        var option = {
+            title: {
+                text: '通话次数',
+                textStyle: {
+                    //文字颜色
+                    color: '#ffffff',
+                    //字体风格,'normal','italic','oblique'
+                    fontStyle: 'normal',
+                    //字体粗细 'normal','bold','bolder','lighter',100 | 200 | 300 | 400...
+                    fontWeight: 'bold',
+                    //字体系列
+                    fontFamily: 'sans-serif',
+                    //字体大小
+                    fontSize: 13
+                },
+                itemGap: 12,
+            },
+            grid: {
+                x: 80,
+                y: 60,
+                x2: 80,
+                y2: 60,
+                backgroundColor: 'rgba(0,0,0,0)',
+                borderWidth: 1,
+                borderColor: '#ffffff'
+            },
+            tooltip: {
+                trigger: 'axis'
+            },
+            legend: {
+                borderColor: '#ffffff',
+                itemGap: 10,
+                data: ['通话次数'],
+                textStyle: {
+                    color: '#ffffff'// 图例文字颜色
+                }
+            },
+            toolbox: {
+                show: false,
+                feature: {
+                    dataZoom: {
+                        yAxisIndex: 'none'
+                    },
+                    dataView: {readOnly: false},
+                    magicType: {type: ['line', 'bar']},
+                    restore: {},
+                    saveAsImage: {}
+                }
+            },
+            xAxis: {
+                data: date.split(","),
+                axisLine: {
+                    lineStyle: {
+                        color: '#ffffff',
+                        width: 2
+                    }
+                }
+            },
+            yAxis: {
+                axisLine: {
+                    lineStyle: {
+                        color: '#ffffff',
+                        width: 2
+                    }
+                }
+            },
+            series: [
+                {
+                    type: 'line',
+                    data: count.split(","),
+                    itemStyle: {
+                        normal: {
+                            color: '#ffca29',
+                            lineStyle: {
+                                color: '#ffd80d',
+                                width: 2
+                            }
+                        }
+                    },
+                    markPoint: {
+                        data: [
+                            {type: 'max', name: '最大值'},
+                            {type: 'min', name: '最小值'}
+                        ]
+                    },
+                    markLine: {
+                        data: [
+                            {type: 'average', name: '平均值'}
+                        ]
+                    }
+                }
+            ]
+        };
+        if (option && typeof option === "object") {
+            myChart.setOption(option, true);
+        }
+        myChart.hideLoading()
+    }
+
+    function callog2() {
+        var dom = document.getElementById("container2");
+        var myChart = echarts.init(dom);
+        myChart.showLoading();
+        var option = {
+            title: {
+                text: '通话时长',
+                textStyle: {
+                    //文字颜色
+                    color: '#ffffff',
+                    //字体风格,'normal','italic','oblique'
+                    fontStyle: 'normal',
+                    //字体粗细 'normal','bold','bolder','lighter',100 | 200 | 300 | 400...
+                    fontWeight: 'bold',
+                    //字体系列
+                    fontFamily: 'sans-serif',
+                    //字体大小
+                    fontSize: 13
+                },
+                itemGap: 12,
+            },
+            tooltip: {
+                trigger: 'item',
+                formatter: "{a} <br/>{b} : {c} ({d}%)"
+            },
+            visualMap: {
+                show: false,
+                min: Math.min.apply(null, duration.split(",")),
+                max: Math.max.apply(null, duration.split(",")),
+                inRange: {
+                    colorLightness: [0, 0.5]
+                }
+            },
+            series: [
+                {
+                    name: '通话时长',
+                    type: 'pie',
+                    radius: '55%',
+                    center: ['50%', '50%'],
+                    data: pieData.sort(function (a, b) {
+                        return a.value - b.value;
+                    }),
+                    roseType: 'radius',
+                    label: {
+                        normal: {
+                            textStyle: {
+                                color: 'rgba(255, 255, 255, 0.3)'
+                            }
+                        }
+                    },
+                    labelLine: {
+                        normal: {
+                            lineStyle: {
+                                color: 'rgba(255, 255, 255, 0.3)'
+                            },
+                            smooth: 0.2,
+                            length: 10,
+                            length2: 20
+                        }
+                    },
+                    itemStyle: {
+                        normal: {
+                            color: '#01c1c2',
+                            shadowBlur: 200,
+                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        }
+                    },
+
+                    animationType: 'scale',
+                    animationEasing: 'elasticOut',
+                    animationDelay: function (idx) {
+                        return Math.random() * 200;
+                    }
+                }
+            ]
+        };
+        if (option && typeof option === "object") {
+            myChart.setOption(option, true);
+        }
+        myChart.hideLoading()
+    }
+</script>
+</body>
+</html>
+3.4.3、最终预览
+前端界面：
+
+
+查询人通话时长与通话次数统计大概如下所示，统一展示：
+
+
+3.5、定时任务
+  新的数据每天都会产生，所以我们每天都需要更新离线的分析结果，所以此时我们可以用各种各样的定时任务调度工具来完成此操作。此例我们使用 crontab 来执行该操作。
+
+1) 编写任务脚本：analysis.sh
+
+#!/bin/bash
+/opt/module/hadoop-2.7.2/bin/yarn jar ./ct_analysis-1.0-SNAPSHOT.jar com.china.analysis.runner.CountDurationRunner -libjars /opt/module/flume/job/ct/lib/mysql-connector-java-5.1.27-bin.jar
+2) 制定 crontab 任务
+
+# .------------------------------------------minute(0~59)
+# | .----------------------------------------hours(0~23)
+# | | .--------------------------------------day of month(1~31)
+# | | | .------------------------------------month(1~12)
+# | | | | .----------------------------------day of week(0~6)
+# | | | | | .--------------------------------command
+# | | | | | |
+# | | | | | |
+0 0 * * * /opt/module/flume/job/ct/analysis.sh
+3) 考虑数据处理手段是否安全
+  a、定时任务统计结果是否会重复
+  b、定时任务处理的数据是否全面
+
+回到顶部
+四、项目总结
+重新总结梳理整个项目流程和方法论。
+  1、实现月查询（某个月每一天的数据展示：重新编写 sql 语句即可实现）。
+  2、用户亲密度展示。
+  3、考虑 Hive 实现。
+  4、用户按照时间区间，查找所有的通话数据。
+
+复制代码
+电信项目：
+    一、idea 项目构建
+        1、安装 jdk 并配置环境变量。
+        2、安装 maven，解压离线仓库，并设置 settings。
+            ** conf 目录下的 setttings.xml 文件复制到离线仓库的 m2 目录下，并修改 mirror 标签以及离线仓库路径。
+            ** 设置 idea 工具的 maven 选项，涉及到 4 个地方：Work offline（脱网工作/离线模式），以及 3 个 maven 设置。注意：Override 选项。
+        3、新建 ct 主项目目录(相当于 eclipse 的 workset)。
+            ** 一个项目对应一个文件夹，举例：
+                workspace：
+                    ct：
+                        ct_producer：
+                            该项目的各种包
+                        ct_analysis：
+                            该项目的各种包
+        4、新建 ct_producer 模块，用于数据生产代码的编写或构建。
+            ** 构建该项目选择 maven，ct 项目下所有的模块（module）都是 maven 工程。（maven 要是用 3.3.9 的，maven3.5，有部分兼容性问题）
+        5、设置常用选项
+            ** View -> Toolbar 和 Tool Buttons 勾选上
+            ** 取消 idea 自动打开之前项目的功能（搜索 Reopen，关闭相关标签即可）
+            ** 设置字体大小（Editor -> Font -> Size）进行设置
+            ** 设置字符编码：搜索：File Encodings，3 个位置全部改为 UTF-8
+            ** 自动导包以及自动提示设置(搜索 Auto，设置自动导包为 Ask，代码自动提示为 First letter)
+        尖叫提示：
+            ** idea -> File -> Setttings 设置的是当前项目的配置（只针对当前项目生效）
+            ** idea -> File -> Others Setttings -> Default settings 设置的是全局默认配置（也就是说，以后新建项目都是按照这个默认配置）
+
+    二、数据生产
+        1、新建Producer.java
+            ** 初始化联系人集合用于随机数据使用
+            ** 随机两个电话号码
+            ** 随机通话建立的时间，返回 String，格式：yyyy-MM-dd HH:mm:ss
+            ** 随机通话持续时间
+            ** 将产生的数据写入到本地磁盘中(日志文件)
+
+    三、数据消费（数据存储）
+        flume：Cloudera 公司研发
+            适合下游数据消费者不多的情况；
+            适合数据安全性要求不高的操作；
+            适合与 Hadoop 生态圈对接的操作。
+        kafka：Linkedin 公司研发
+            适合数据下游消费众多的情况；
+            适合数据安全性要求较高的操作（支持 Replication）。
+
+        1、安装运行 zookeeper
+
+        2、安装配置 kafka，此时我使用的版本是 2.11-0.11.0.2
+            ** 修改 server.properties ，配置分发，重启 kafka 集群
+
+        3、启动 kafka 集群
+            ** 启动 kafka 集群，分别在 3 台机器上执行：
+                $ /opt/module/kafka/bin/kafka-server-start.sh /opt/module/kafka/config/server.properties
+            ** 创建 kafka 主题：calllog
+                $ /opt/module/kafka/bin/kafka-topics.sh --zookeeper hadoop102:2181 --topic calllog --create --replication-factor 1 --partitions 3
+            ** 查看主题列表
+                $ /opt/module/kafka/bin/kafka-topics.sh --zookeeper hadoop102:2181 --list
+            ** 启动 kafka 控制台消费者，用于测试
+                $ /opt/module/kafka/bin/kafka-console-consumer.sh --zookeeper hadoop102:2181 --topic calllog --from-beginning
+
+        4、配置 flume，用于监听实时产生的数据文件
+            ** 创建 flume 的 job 配置文件
+                尖叫提示：由于在配置 flume 的过程中，涉及到了数据监听读取方式的操作“tail -F -c +0”，即每次读取完整的文件，
+                所以修改了 java 代码中，输出流的写出方式为：非追加，即覆盖文件。
+            ** 启动 flume 服务
+                $ /opt/module/flume/bin/flume-ng agent --conf conf/ --name a1 --conf-file /opt/module/flume/jobs/ct/flume-kafka.conf
+
+        5、生产日志
+
+        6、使用 Java KafkaAPI 读取 Kafka 中缓存的数据
+            ** 通过 https://mvnrepository.com/ 网站找到你需要使用的依赖
+            ** 导入依赖
+            ** 建立包结构
+
+        7、成功拿到数据之后，使用 Java HBaseAPI 将数据放入
+            ** 拿到一条数据，我要把这条数据放到 Hbase 表中
+                ** 创建表（粘！）
+                ** 突然发现没有命名空间，粘命名空间初始化方法（粘！）
+                ** 预分区键生成的方法（粘！）
+                ** 创建 rowkey 的分区号
+                ** 创建 rowkey
+                ** 使用 Put 对象插入数据，需要 rowkey
+
+        8、写入数据到 HBase 中
+            ** 先确保表是成功创建的
+            ** 检查 Hbase 各个节点均为正常，通过浏览器：http://hadoop102:16010/master-status 查看
+            ** maven 导包，不要导错了，不要重复导包，不要导错版本
+            ** 代码逻辑执行顺序要注意
+            ** 超时时间设置：
+                *** kafka 根目录下的 config 目录下，修改 server.properties文 件对于 zookeeper 超时时间的限定
+                *** 项目的 resoureces 目录下的 kafka.properties 文件中，关于 zookeeper 超时的设置（设置自动确认 offset 的时间间隔）
+                以上两个值，设置都稍大一些，比如 50000
+            ** 思路没有捋清楚：
+                1、创建命名空间
+                2、创建表（先不要添加协处理器）（注意，需要预分区）
+                3、创建 rowkey 生成方法
+                4、创建预分区号生成方法
+                5、在 HBaseDAO 中的构造方法里，初始化命名空间，初始化表（注意判断表是否存在）
+                6、在 HBaseDao 中创建 put 方法，用于存放数据
+                7、在 kafka 取得数据时，使用 HbaseDao 的实例化对象，调用 put 方法，将数据存入即可。
+
+        9、优化数据存储方案：使用协处理器
+            1、同一条数据，存储两遍。
+                rowkey：实现了针对某个人，查询该人范围时间内的所有通话记录
+                    分区号 + call1 + buildTime + call2 + flag + duration
+                    15837312345_20170101000000_13733991234
+            2、讨论使用协处理器的原因
+            3、操作过程
+                ** 创建协处理器类：CalleeWriteObserver extends BaseRegionObserver
+                ** 覆写 postPut 方法
+                ** 编写代码一大堆（实现将被叫数据存入）
+                ** 找到你的建表的那部分代码，在创建表方法中：添加你成功创建的协处理器
+                ** 修改 resources 中 hbase-site.xml 配置文件（即注册）
+                ** 打包
+                ** 将包分别放于 3 台机器中的 hbase 根目录中的 lib 目录下
+                ** 3 台机器中的 hbase-site.xml 文件要注册协处理器
+                ** 重启 hbase
+                ** 测试
+                ** 如果测试成功，记得把表初始化一下
+            4、打包，执行消费数据方法
+                方式一：
+                    在 windows 环境下：
+                        java -Djava.ext.dirs=C:\Users\bruce\Desktop\maven-lib\lib\ -cp C:\Users\bruce\Desktop\maven-lib\ct_consumer-1.0-SNAPSHOT.jar com.china.kafka.HBaseConsumer
+                    在 Linux 环境下：
+                        java -Djava.ext.dirs=/opt/module/flume/job/ct/lib/ -cp /opt/module/flume/job/ct/ct_consumer-1.0-SNAPSHOT.jar com.china.kafka.HBaseConsumer
+                方式二：
+                    windows:当工程 ct_consumer-1.0-SNAPSHOT.jar 与所依赖的 jar 放在同一的目录中
+                        java -cp C:\Users\bruce\Desktop\maven-lib\lib\* com.china.kafka.HBaseConsumer
+                    linux:
+                        java -cp /opt/module/flume/job/ct/lib/*:ct_consumer-1.0-SNAPSHOT.jar com.china.kafka.HBaseConsumer
+            5、idea 打包，并提交到 linux 执行
+                ** 打包，并将打好的包以及第三方依赖整个拷贝出来
+                ** 上传该文件夹（ct_consumer-1.0-SNAPSHOT.jar）到 linux 中
+                ** 运行：java -Djava.ext.dirs=/opt/module/flume/job/ct/lib/ -cp /opt/module/flume/job/ct/ct_consumer-1.0-SNAPSHOT.jar com.china.kafka.HBaseConsumer
+            6、某个用户，传入指定的时间范围，查询该时间范围内的该用户的所有通话记录（包含主叫和被叫）
+                15837312345 2017-01-01 2017-05-01
+                rowkey：01_15837312345_20171102181630_13737312345_1_0180
+                ** scan.setStartRow
+                        2017-01-01
+                ** scan.setStopRow
+                        2017-02-01
+                ** 组装 rowkey
+                    01_15837312345_201711
+                    01_15837312345_201712
+            7、Filter 测试讲解
+    四、数据分析
+        1、统计所有用户每月通话记录（通话次数，通话时长）
+        2、统计所有用户每日通话记录（通话次数，通话时长）
+        3、导入 Mysql 建表语句（db_telecom.sql）
+        4、新建项目，构建包结构，创建能够想到的需要使用的类，不需要任何实现
+        5、整理思路：
+            ** Key：电话号码 + 时间
+            ** Value：本次通话（1） + 通话时间
+        6、复习第三天内容：
+            ** 构建数据分析项目
+            ** 构建数据表结构
+            ** Mapper、Reducer
+            ** 封装各种 JavaBean，KeyClasss，ValueCalss
+            ** 自定义 OutPutFormat（对数据的操作）
+            ** 根据维度对象查询数据库得到已有维度对象的id（如果没有则新增一条，并返回 id，封装 Convert）
+                （考虑数据插入时批处理）
+            ** 工具类：
+                *** JDBCUtil
+                *** LRUCache
+            ** Runner 组装 Job 任务
+                ** 初始化 Mapper
+                    ** 设置键值对 class
+                ** 初始化 Reducer
+                    ** 设置键值对 class
+                ** 设置 OutputForamt
+                ** 提交运行 job
+            ** 将 Linux 上配置文件拷贝到 resources 文件夹中
+            ** 运行测试
+                问题总结：
+                    1、ComDimension 构造方法中，实例化时间维度和联系人维度对象。
+                    2、MySQLOutputformat 的 close 方法中，没有关闭资源，关闭：JDBCUtil.close(conn, ps, null);
+                    3、Runner，Mapper，Reducer 中的泛型，不要使用抽象类
+                    4、DimensionConverterImpl 中的 genSQL方法写反了，需要调换位置。
+                    5、DimensionConverterImpl 中设置 JVM 退出时，关闭资源，如：Runtime.getRuntime().addShutdownHook(new Thread(() -> JDBCUtil.close(threadLocal.get(), null, null)));
+                    6、Mysql 的 url 连接一定要是具体的主机名或者IP地址
+                    7、DimensionConverterImpl 中的 close 方法关闭数据库连接
+                    8、调试时，打包 jar，上传到 linux，拔掉网线，进行测试。
+                    9、数据库连接到底何时关闭，要梳理清楚。解决 Too many connections;
+                        MySQLOutputformat -> MysqlRecordWriter -> DimensionConverterImpl
+                    10、mysql-driver 包没有导入成功
+    五、数据展示
+        1、展示数据所需要的字段都有哪些：
+            call_sum,call_duration_sum,telephone,name,year,month,day
+        2、通话通话次数与通话时长，展示用户关系。
+        3、通过表格，展示一个人当年所有的话单信息。
+
+IDEA 常用快捷键：
+    Alt + Enter ：智能修复
+    Ctrl + Alt + V ：自动生成当前对象名
+    Ctrl + Alt + T ：自动呼出包裹菜单
+    Ctrl + O ：呼出覆写菜单
+    Ctrl + Alt + L ：格式化代码
+    Ctrl + Shift + Enter ：自动补全当前行代码缺失的符号
+
+IDEA 方式导出工程所依赖的 jar 包：
+    File 选项卡 -> Project Structure -> Artifacts -> 点击加号 -> Jar -> From modules with dependencies -> 选择对应的 Module 工程 ->
+    勾选 copy to the output directory and link via manifest -> Ok -> Ok -> Build 选项卡 -> Build Artifacts -> Build 或者 Rebuild -> 在工程目录下出现 out 文件夹
+
+IDEA 中配置 web 服务器（Tomcat）：
+    Run 选项卡 ->  Edit Configurations -> 点击“+”按钮 -> Tomcat Server -> Local -> Name(自定义名称) -> 选择 Tomcat 的安装目录 -> Fix -> 选择 xxx exploded ->
+    Update classes and resources -> Update classes and resources -> Ok
+

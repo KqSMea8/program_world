@@ -1,0 +1,802 @@
+10.1 需求描述
+统计硅谷影音视频网站的常规指标，各种TopN指标：
+
+统计视频观看数Top10
+统计视频类别热度Top10
+统计出视频观看数最高的20个视频的所属视频类别以及对应视频类别的个数
+统计视频观看数Top50所关联视频的所属类别Rank
+统计每个类别中的视频热度Top10
+统计每个类别中视频流量Top10
+统计上传视频最多的用户Top10以及他们上传的视频
+统计每个类别视频观看数Top10
+10.2 项目
+10.2.1 数据结构
+1、视频表
+
+字段	备注	详细描述
+video id	视频唯一id	11位字符串
+uploader	视频上传者	上传视频的用户名String
+age	视频年龄	视频在平台上的整数天
+category	视频类别	上传视频指定的视频分类
+length	视频长度	整形数字标识的视频长度
+views	观看次数	视频被浏览的次数
+rate	视频评分	满分5分
+ratings	流量	视频的流量，整型数字
+conments	评论数	一个视频的整数评论数
+related ids	相关视频id	相关视频的id，最多20个
+2、用户表
+
+字段	备注	字段类型
+uploader	上传者用户名	string
+videos	上传视频数	int
+friends	朋友数量	int
+10.2.2 ETL原始数据
+  通过观察原始数据形式，可以发现，视频可以有多个所属分类，每个所属分类用&符号分割，且分割的两边有空格字符，同时相关视频也是可以有多个元素，多个相关视频又用“\t”进行分割。为了分析数据时方便对存在多个子元素的数据进行操作，我们首先进行数据重组清洗操作。即：将所有的类别用“&”分割，同时去掉两边空格，多个相关视频id也使用“&”进行分割。
+0、添加依赖pom.xml
+
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>RELEASE</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>2.8.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+            <version>2.7.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-client</artifactId>
+            <version>2.7.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-hdfs</artifactId>
+            <version>2.7.2</version>
+        </dependency>
+    </dependencies>
+1、ETL之ETLUtil
+
+package com.atguigu;
+
+import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
+
+/**
+ * @author chenmingjun
+ * @date 2019-03-01 15:48
+ */
+public class ETLUtil {
+
+    public static String oriString2ETLString(String ori) {
+
+        // 0.切割数据
+        String[] fields = ori.split("\t");
+
+        // 1.过滤脏数据（不符合要求的数据）
+        if (fields.length < 9) {
+            return null;
+        }
+
+        // 2.将类别字段中的" " 替换为""（即去掉类别字段中的空格）
+        fields[3] = fields[3].replace(" ", "");
+
+        // 3.替换关联视频字段分隔符"\t"替换为"&"
+        StringBuffer sb = new StringBuffer();
+
+        for (int i = 0; i < fields.length; i++) {
+            // 关联视频字段之间的数据
+            if (i < 9) {
+                if (i == fields.length -1) {
+                    sb.append(fields[i]);
+                } else {
+                    sb.append(fields[i] + "\t");
+                }
+            } else {
+                // 关联视频字段的数据
+                if (i == fields.length -1) {
+                    sb.append(fields[i]);
+                } else {
+                    sb.append(fields[i] + "&");
+                }
+            }
+        }
+        // 得到的数据格式为：bqZauhidT1w    bungloid    592 Film&Animation  28  374550  4.19    3588    1763    QJ5mXzC1YbQ&geEBYTZ4EB8
+        return sb.toString();
+    }
+}
+2、ETL之Mapper
+
+package com.atguigu;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+
+import java.io.IOException;
+
+/**
+ * @author chenmingjun
+ * @date 2019-02-28 23:32
+ */
+public class VideoETLMapper extends Mapper<LongWritable, Text, Text, NullWritable> {
+
+    private Text k = new Text();
+
+    @Override
+    protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+
+        // 1.获取一行数据
+        String ori = value.toString();
+
+        // 2.清洗数据
+        String etlString = ETLUtil.oriString2ETLString(ori);
+
+        // 3.写出
+        if (StringUtils.isBlank(etlString)) {
+            return;
+        }
+        k.set(etlString);
+        context.write(k, NullWritable.get().get());
+    }
+}
+3、ETL之Runner
+
+package com.atguigu;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
+
+/**
+ * @author chenmingjun
+ * @date 2019-03-01 16:55
+ */
+public class VideoETLRunner implements Tool {
+
+    private Configuration conf = null;
+
+    public void setConf(Configuration conf) {
+        this.conf = conf;
+    }
+
+    public Configuration getConf() {
+        return this.conf;
+    }
+
+    public int run(String[] args) throws Exception {
+        // 1、获取配置信息对象以及封装任务
+        // Configuration conf = new Configuration();
+        Job job = Job.getInstance(getConf());
+
+        // 2、设置jar的加载路径
+        job.setJarByClass(VideoETLRunner.class);
+
+        // 3、设置map和reduce类
+        job.setMapperClass(VideoETLMapper.class);
+        // job.setReducerClass(WordcountReducer.class);
+
+        // 4、设置map输出的key和value类型
+        job.setMapOutputKeyClass(Text.class);
+        job.setMapOutputValueClass(NullWritable.class);
+
+        // 5、设置最终输出的key和value类型
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(NullWritable.class);
+
+        // 6、设置输入和输出路径
+        FileInputFormat.setInputPaths(job, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+
+        // 因为这里我们不使用Reduce
+        job.setNumReduceTasks(0);
+
+        // 7、提交job
+        // job.submit();
+        boolean result = job.waitForCompletion(true);
+        return result ? 0 : 1;
+    }
+
+    public static void main(String[] args) {
+        int resultCode  = 0;
+        try {
+            resultCode = ToolRunner.run(new VideoETLRunner(), args);
+            if (resultCode == 0) {
+                System.out.println("Success!");
+            } else {
+                System.out.println("Fail!");
+            }
+            System.exit(resultCode);
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+    }
+}
+4、打好jar包，修改jar包名称为VideoETL.jar，然后将要清洗的数据和VideoETL.jar从本地上传至Linux系统上，再将要清洗的数据推送至HDFS集群上。操作如下：
+
+[atguigu@hadoop102 datas]$ hadoop fs -put user/ /guliData/input
+[atguigu@hadoop102 datas]$ hadoop fs -put video/ /guliData/input
+5、执行ETL
+
+[atguigu@hadoop102 hadoop-2.7.2]$ bin/yarn jar /opt/module/datas/VideoETL.jar com.atguigu.VideoETLRunner /guliData/input/video/2008/0222 /guliData/output/video/2008/0222
+10.3 准备工作
+10.3.1 创建表
+创建原始表：gulivideo_ori，gulivideo_user_ori
+创建目标表：gulivideo_orc，gulivideo_user_orc
+gulivideo_ori：
+
+create table gulivideo_ori(
+  videoId string,
+  uploader string,
+  age int,
+  category array<string>,
+  length int,
+  views int,
+  rate float,
+  ratings int,
+  comments int,
+  relatedId array<string>
+)
+row format delimited
+fields terminated by "\t" -- 字段与字段之间的数据按/t分割
+collection items terminated by "&" -- 数组中的数据是按&分割
+stored as textfile;
+gulivideo_user_ori：
+
+create table gulivideo_user_ori(
+  uploader string,
+  videos int,
+  friends int
+)
+row format delimited
+fields terminated by "\t"
+stored as textfile;
+gulivideo_orc：
+
+create table gulivideo_orc(
+  videoId string,
+  uploader string,
+  age int,
+  category array<string>,
+  length int,
+  views int,
+  rate float,
+  ratings int,
+  comments int,
+  relatedId array<string>
+)
+clustered by(uploader) into 8 buckets -- 按照字段uploader分成8个桶
+row format delimited
+fields terminated by "\t"
+collection items terminated by "&"
+stored as orc;
+gulivideo_user_orc：
+
+create table gulivideo_user_orc(
+  uploader string,
+  videos int,
+  friends int
+)
+row format delimited
+fields terminated by "\t"
+stored as orc;
+10.3.2 导入ETL后的数据到原始表
+gulivideo_ori：
+
+load data inpath '/guliData/output/video/2008/0222' into table gulivideo_ori;
+gulivideo_user_ori：
+
+load data inpath "/guliData/input/user/2008/0903" into table gulivideo_user_ori;
+10.3.3 向ORC表插入数据
+gulivideo_orc：
+
+insert into table gulivideo_orc select * from gulivideo_ori;
+gulivideo_user_orc：
+
+insert into table gulivideo_user_orc select * from gulivideo_user_ori;
+10.4 业务分析
+10.4.1 统计视频观看数Top10
+思路：使用order by按照 views 字段做一个全局排序即可，同时我们设置只显示前10条。为了便于显示，我们显示的字段不包含每个视频对应的关联视频字段。
+最终代码：
+
+select
+  videoId,
+  uploader,
+  age,
+  category,
+  length,
+  views,
+  rate,
+  ratings,
+  comments
+from
+  gulivideo_orc
+order by
+  views desc
+limit
+  10;
+10.4.2 统计视频类别热度Top10
+思路：炸开数组【视频类别】字段，然后按照类别分组，最后按照热度(视频个数)排序。
+  1) 即统计每个类别有多少个视频，显示出包含视频最多的前10个类别。
+  2) 我们需要按照类别 group by 聚合，然后count组内的videoId个数即可。
+  3) 因为当前表结构为：一个视频对应一个或多个类别。所以如果要 group by 类别，需要先将类别进行列转行(展开)，然后再进行count即可。
+  4) 最后按照热度排序，显示前10条。
+最终代码：
+
+第1步：炸裂视频类别
+select
+  videoId, category_name
+from
+  gulivideo_orc lateral view explode(category) category_t as category_name
+limit
+  100; t1
+------------------------------------------------------------------------------------
+第2步：统计每种视频类别下的视频数
+select
+  category_name, count(*) hot
+from
+  (select
+    videoId, category_name
+  from
+    gulivideo_orc lateral view explode(category) category_t as category_name
+  limit
+    100) t1
+group by
+  category_name; t2
+------------------------------------------------------------------------------------
+第3步：视频类别热度Top10
+select
+  category_name, hot
+from
+  (select
+    category_name, count(*) hot
+  from
+    (select
+      videoId, category_name
+    from
+      gulivideo_orc lateral view explode(category) category_t as category_name) t1
+  group by
+    category_name) t2
+order by
+  hot desc
+limit
+  10;
+
++----------------+---------+--+
+| category_name  |   hot   |
++----------------+---------+--+
+| Music          | 179049  |
+| Entertainment  | 127674  |
+| Comedy         | 87818   |
+| Animation      | 73293   |
+| Film           | 73293   |
+| Sports         | 67329   |
+| Gadgets        | 59817   |
+| Games          | 59817   |
+| Blogs          | 48890   |
+| People         | 48890   |
++----------------+---------+--+
+注意：第1步和第2步测试先使用100条数据，测试通过后第3步使用全部数据。
+
+10.4.3 统计出视频观看数最高的20个视频的所属视频类别以及对应视频类别的个数
+思路：
+  1) 先找到观看数最高的20个视频所属条目的所有信息，降序排列
+  2) 把这20条信息中的category分裂出来(列转行)
+  3) 最后查询视频分类名称和该分类下有多少个Top20的视频
+最终代码：
+
+统计出视频观看数最高的20个视频的所属类别
+
+第1步：统计出视频观看数最高的20个视频
+select
+  *
+from
+  gulivideo_orc
+order by
+  views desc
+limit
+  20; t1
+------------------------------------------------------------------------------------
+第2步：把这20条信息中的category分裂出来(列转行)
+select
+  videoId,
+  category_name
+from
+  (select
+    *
+  from
+    gulivideo_orc
+  order by
+    views desc
+  limit
+    20) t1 lateral view explode(category) category_t as category_name; t2
+
++--------------+----------------+--+
+|   videoid    | category_name  |
++--------------+----------------+--+
+| dMH0bHeiRNg  | Comedy         |
+| 0XxI-hvPRRA  | Comedy         |
+| 1dmVU08zVpA  | Entertainment  |
+| RB-wUgnyGv0  | Entertainment  |
+| QjA5faZF1A8  | Music          |
+| -_CSo1gOd48  | People         |
+| -_CSo1gOd48  | Blogs          |
+| 49IDp76kjPw  | Comedy         |
+| tYnn51C3X_w  | Music          |
+| pv5zWaTEVkI  | Music          |
+| D2kJZOfq7zk  | People         |
+| D2kJZOfq7zk  | Blogs          |
+| vr3x_RRJdd4  | Entertainment  |
+| lsO6D1rwrKc  | Entertainment  |
+| 5P6UU6m3cqk  | Comedy         |
+| 8bbTtPL1jRs  | Music          |
+| _BuRwH59oAo  | Comedy         |
+| aRNzWyD7C9o  | UNA            |
+| UMf40daefsI  | Music          |
+| ixsZy2425eY  | Entertainment  |
+| MNxwAU_xAMk  | Comedy         |
+| RUCZJVJ_M8o  | Entertainment  |
++--------------+----------------+--+
+------------------------------------------------------------------------------------
+第3步：根据视频分类名称进行去重
+select
+  distinct category_name
+from
+  t2;
+-------------------------------------------
+完整板
+select
+  distinct category_name
+from
+  (select
+    videoId,
+    category_name
+  from
+    (select
+      *
+    from
+      gulivideo_orc
+    order by
+      views desc
+    limit
+      20) t1 lateral view explode(category) category_t as category_name) t2;
+-------------------------------------------
+简易版
+select
+  distinct category_name
+from
+  (select
+    *
+  from
+    gulivideo_orc
+  order by
+    views desc
+  limit
+    20) t1 lateral view explode(category) category_t as category_name;
+
++----------------+--+
+| category_name  |
++----------------+--+
+| Blogs          |
+| Comedy         |
+| Entertainment  |
+| Music          |
+| People         |
+| UNA            |
++----------------+--+
+
+------------------------------------------------------------------------------------
+类别包含Top20视频的个数
+select
+  category_name,
+  count(t2.videoId) as hot_with_views
+from
+  (select
+    videoId,
+    category_name
+  from
+    (select
+      *
+    from
+      gulivideo_orc
+    order by
+      views desc
+    limit
+      20) t1 lateral view explode(category) category_t as category_name) t2
+group by
+  category_name
+order by
+  hot_with_views desc;
+
++----------------+-----------------+--+
+| category_name  | hot_with_views  |
++----------------+-----------------+--+
+| Entertainment  | 6               |
+| Comedy         | 6               |
+| Music          | 5               |
+| People         | 2               |
+| Blogs          | 2               |
+| UNA            | 1               |
++----------------+-----------------+--+
+10.4.4 统计视频观看数Top50所关联视频的所属类别rank
+思路分析如下图所示：
+
+
+思路：
+1) 查询出观看数最多的前50个视频的所有信息(当然包含了每个视频对应的关联视频)，记为临时表t1
+  t1：观看数前50的视频
+select
+  videoId, views, category, relatedId
+from
+  gulivideo_orc
+order by
+  views desc
+limit
+  50; t1
+2) 将找到的50条视频信息的相关视频relatedId列转行，记为临时表t2
+  t2：将相关视频的id进行列转行操作
+
+炸裂关联视频id
+select
+  explode(relatedId) as videoId
+from
+  t1; t2
+
+或者
+
+select
+  distinct videoId
+from
+  t1 lateral view explode(relatedId) relatedId_t as videoId; t2
+3) 将关联视频的id和gulivideo_orc表进行inner join操作，得到每个关联视频id的详细数据
+
+select
+  *
+from
+  t2
+inner join
+  gulivideo_orc t3 on t2.videoId=t3.videoId; t4
+4) 炸裂关联视频的类别
+
+select
+  *
+from
+  t4 lateral view explode(category) category_t as category_name; t5
+5) 统计类别个数
+
+select
+  category_name,
+  count(*) hot
+from
+  t5
+group by
+  category_name; t6
+6) 统计类别的热度排名（即rank）
+
+select
+  *
+from
+  t6
+order by
+  hot desc;
+10.4.5 统计每个类别中的视频热度Top10，以Music为例
+思路：
+  1) 要想统计Music类别中的视频热度Top10，需要先找到Music类别，那么就需要将category展开，所以可以创建一张表用于存放categoryId展开的数据。
+  2) 向category展开的表中插入数据。
+  3) 统计对应类别（Music）中的视频热度。
+最终代码：
+创建表--类别表：
+
+create table gulivideo_category(
+  videoId string,
+  uploader string,
+  age int,
+  categoryId string,
+  length int,
+  views int,
+  rate float,
+  ratings int,
+  comments int,
+  relatedId array<string>
+)
+row format delimited
+fields terminated by "\t"
+collection items terminated by "&"
+stored as orc;
+向类别表中插入数据：
+
+insert into table
+  gulivideo_category
+select
+  videoId,
+  uploader,
+  age,
+  categoryId,
+  length,
+  views,
+  rate,
+  ratings,
+  comments,
+  relatedId
+from
+  gulivideo_orc lateral view explode(category) catetory_t as categoryId;
+统计Music类别的Top10（也可以统计其他）
+
+select
+  videoId,
+  views
+from
+  gulivideo_category
+where
+  categoryId="Music"
+order by
+  views desc
+limit
+  10;
+10.4.6 统计每个类别中视频流量Top10，以Music为例
+思路：
+  1) 创建视频类别展开表（categoryId列转行后的表）
+  2) 按照ratings排序即可
+最终代码：
+
+select
+  videoId,
+  views
+from
+  gulivideo_category
+where
+  categoryId="Music"
+order by
+  ratings desc
+limit
+  10;
+10.4.7 统计上传视频最多的用户Top10以及他们上传的观看次数在前20的视频
+思路：
+1) 先找到上传视频最多的10个用户的用户信息
+
+select
+  *
+from
+  gulivideo_user_orc
+order by
+  videos desc
+limit
+  10; t1
+2) 通过uploader字段与gulivideo_orc表进行join，得到的信息按照views观看次数进行排序即可。
+最终代码：
+
+select
+  t2.videoId,
+  t2.views,
+  t2.ratings,
+  t1.videos,
+  t1.friends
+from
+  t1
+join
+  gulivideo_orc t2
+on
+  t1.uploader=t2.uploader
+order by
+  t2.views desc
+limit
+  20;
+10.4.8 统计每个类别视频观看数Top10
+思路：
+  1) 先得到categoryId展开的表数据。
+  2) 子查询按照categoryId进行分区，然后分区内排序降序，并生成递增数字，该递增数字这一列起名为rank列。
+  3) 通过子查询产生的临时表，查询rank值小于等于10的数据行即可。
+最终代码：
+创建表--类别表：
+
+create table gulivideo_category(
+  videoId string,
+  uploader string,
+  age int,
+  categoryId string,
+  length int,
+  views int,
+  rate float,
+  ratings int,
+  comments int,
+  relatedId array<string>
+)
+row format delimited
+fields terminated by "\t"
+collection items terminated by "&"
+stored as orc;
+向类别表中插入数据：
+
+insert into table
+  gulivideo_category
+select
+  videoId,
+  uploader,
+  age,
+  categoryId,
+  length,
+  views,
+  rate,
+  ratings,
+  comments,
+  relatedId
+from
+  gulivideo_orc lateral view explode(category) catetory_t as categoryId;
+代码：
+
+第1步：
+select
+  videoId,
+  categoryId,
+  views,
+  row_number() over(partition by categoryId order by views desc) rank
+from
+  gulivideo_category; t1
+
+第2步：
+select
+  t1.*
+from
+  t1
+where
+  rank<=10;
+回到顶部
+第11章 常见错误及解决方案
+1）SecureCRT 7.3 出现乱码或者删除不掉数据，免安装版的 SecureCRT 卸载或者用虚拟机直接操作或者换安装版的SecureCRT。
+
+2）连接不上mysql数据库
+  （1）导错驱动包，应该把 mysql-connector-java-5.1.27-bin.jar 导入 /opt/module/hive/lib 的不是这个包。错把 mysql-connector-java-5.1.27.tar.gz 导入 hive/lib 包下。
+  （2）修改user表中的主机名称没有都修改为%，而是修改为 localhost。
+
+3）hive默认的输入格式处理是 CombineHiveInputFormat，会对小文件进行合并。
+
+hive (default)> set hive.input.format;
+hive.input.format=org.apache.hadoop.hive.ql.io.CombineHiveInputFormat
+可以采用 HiveInputFormat 就会根据分区数输出相应的文件。
+
+hive (default)> set hive.input.format=org.apache.hadoop.hive.ql.io.HiveInputFormat;
+4）不能执行mapreduce程序
+  可能是hadoop的yarn没开启。
+
+5）启动mysql服务时，报 MySQL server PID file could not be found! 异常。
+  在 /var/lock/subsys/mysql 路径下创建 hadoop102.pid，并在文件中添加内容：4396
+
+6）报 service mysql status MySQL is not running, but lock file (/var/lock/subsys/mysql[失败])异常。
+  解决方案：在/var/lib/mysql 目录下创建：
+-rw-rw----. 1 mysql mysql 5 12月 22 16:41 hadoop102.pid
+文件，并修改权限为 777。
+
+7）JVM堆内存溢出
+
+描述：java.lang.OutOfMemoryError: Java heap space
+解决：在yarn-site.xml中加入如下代码后，进行分发，重启yarn。
+<property>
+    <name>yarn.scheduler.maximum-allocation-mb</name>
+    <value>2048</value>
+</property>
+<property>
+      <name>yarn.scheduler.minimum-allocation-mb</name>
+      <value>2048</value>
+</property>
+<property>
+    <name>yarn.nodemanager.vmem-pmem-ratio</name>
+    <value>2.1</value>
+</property>
+<property>
+    <name>mapred.child.java.opts</name>
+    <value>-Xmx1024m</value>
+</property>

@@ -1,0 +1,465 @@
+第8章 HBase 实战之谷粒微博
+8.1 需求分析
+  1) 微博内容的浏览，数据库表设计
+  2) 用户社交体现：关注用户，取关用户
+  3) 拉取关注的人的微博内容
+
+数据库表设计：
+
+
+8.2 代码实现
+目录结构：
+
+
+代码如下：
+常量类：
+package com.atguigu.constant;
+
+public class Constant {
+
+    // 命名空间（相当于数据库名称）
+    public static final String NAMESPACE = "weibo";
+
+    // 内容表的表名
+    public static final String CONTENT = "weibo:content";
+
+    // 用户关系表的表名
+    public static final String RELATIONS = "weibo:relations";
+
+    // 微博收件箱表的表名
+    public static final String INBOX = "weibo:inbox";
+}
+工具类：
+
+package com.atguigu.util;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.NamespaceDescriptor;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Admin;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.filter.CompareFilter;
+import org.apache.hadoop.hbase.filter.RowFilter;
+import org.apache.hadoop.hbase.filter.SubstringComparator;
+import org.apache.hadoop.hbase.util.Bytes;
+
+import com.atguigu.constant.Constant;
+
+public class WeiboUtil {
+
+    // 获取配置conf
+    private static Configuration conf = null;
+
+    static {
+        // HBase配置文件
+        conf = HBaseConfiguration.create();
+
+        // 设置zookeeper地址
+        conf.set("hbase.zookeeper.quorum", "192.168.25.102");
+        conf.set("hbase.zookeeper.property.clientPort", "2181");
+    }
+
+    // 创建命名空间
+    public static void createNamespace(String namespace) throws IOException {
+
+        // 创建连接
+        // 注意：关于Util中的异常不要在工具类Util中catch，应该抛出去，因为工具类Util会在业务线上的很多地方调用，每一个业务线对待异常的处理方式不一样。
+        Connection conn = ConnectionFactory.createConnection(conf);
+        Admin admin = conn.getAdmin();
+
+        // 创建命名空间描述器
+        NamespaceDescriptor namespaceDescriptor = NamespaceDescriptor.create(namespace).build();
+
+        // 创建命名空间
+        admin.createNamespace(namespaceDescriptor);
+
+        // 关闭资源
+        admin.close();
+    }
+
+    // 创建表
+    public static void createTable(String tableName, int versions, String... columnFamily) throws IOException {
+
+        // 创建连接
+        Connection conn = ConnectionFactory.createConnection(conf);
+        Admin admin = conn.getAdmin();
+
+        // 创建表描述器
+        HTableDescriptor hTableDescriptor = new HTableDescriptor(TableName.valueOf(tableName));
+
+        // 循环添加列族
+        for (String cf : columnFamily) {
+            // 创建列描述器
+            HColumnDescriptor hColumnDescriptor = new HColumnDescriptor(cf);
+            // 指定列族的版本个数，默认是一个
+            hColumnDescriptor.setMaxVersions(versions);
+            hTableDescriptor.addFamily(hColumnDescriptor);
+        }
+
+        // 创建表
+        admin.createTable(hTableDescriptor);
+
+        // 关闭资源
+        admin.close();
+    }
+    /**
+     * 1、更新微博内容表的数据
+     * 2、更新微博收件箱表的数据
+     *      1）从用户关系表中获取当前操作人的fans
+     *      2）去往微博收件箱表中更新数据
+     * @param uid
+     * @param content
+     * @throws IOException
+     */
+    // 发布微博（即插入一条数据）
+    public static void createData(String uid, String content) throws IOException {
+
+        // 创建连接
+        Connection conn = ConnectionFactory.createConnection(conf);
+
+        // 创建Table对象（新API），一共要操作3张表
+        Table conTable = conn.getTable(TableName.valueOf(Constant.CONTENT));
+        Table relaTable = conn.getTable(TableName.valueOf(Constant.RELATIONS));
+        Table inboxTable = conn.getTable(TableName.valueOf(Constant.INBOX));
+
+        // 拼接RowKey
+        long ts = System.currentTimeMillis();
+        String rowKey = uid + "_" + ts;
+
+        Put contentPut = new Put(Bytes.toBytes(rowKey));
+        // 向Put对象中组装数据
+        contentPut.addColumn(Bytes.toBytes("info"), Bytes.toBytes("content"), Bytes.toBytes(content));
+        // 1、往内容表中添加数据
+        conTable.put(contentPut);
+
+        // 2、获取用户关系表的列族fans
+        Get get = new Get(Bytes.toBytes(uid));
+        get.addFamily(Bytes.toBytes("fans"));
+        Result result = relaTable.get(get);
+        Cell[] cells = result.rawCells();
+
+        if (cells.length <= 0) {
+            return;
+        }
+
+        // 3、更新fans的微博收件箱表
+        List<Put> puts = new ArrayList<Put>();
+        for (Cell cell : cells) {
+            // 克隆用户关系表的列，作为收件箱表的RowKey
+            byte[] qualifier = CellUtil.cloneQualifier(cell);
+            Put inboxPut = new Put(qualifier);
+            // 添加列族、列、值
+            inboxPut.addColumn(Bytes.toBytes("info"), Bytes.toBytes(uid), ts, Bytes.toBytes(rowKey));
+            puts.add(inboxPut);
+        }
+        inboxTable.put(puts);
+
+        // 关闭资源
+        conTable.close();
+        relaTable.close();
+        inboxTable.close();
+
+        conn.close();
+    }
+
+    /**
+     * 1、在用户关系表中
+     *      1）添加 操作者要关注人的attends（批量添加）
+     *      2）添加 被关注人的fans
+     * 2、在微博收件箱表中
+     *      1）在微博内容表中获取被关注用户的3条数据（uid_ts）
+     *      2）在微博收件箱表中添加操作人的关注用户信息
+     * @param uid
+     * @param uids
+     * @throws IOException
+     */
+    // 关注用户
+    public static void addAttend(String uid, String... uids) throws IOException {
+
+        // 创建连接
+        Connection conn = ConnectionFactory.createConnection(conf);
+
+        // 创建Table对象（新API），一共要操作3张表
+        Table conTable = conn.getTable(TableName.valueOf(Constant.CONTENT));
+        Table relaTable = conn.getTable(TableName.valueOf(Constant.RELATIONS));
+        Table inboxTable = conn.getTable(TableName.valueOf(Constant.INBOX));
+
+        List<Put> puts = new ArrayList<Put>();
+        // 创建操作者的Put对象
+        Put relaPut = new Put(Bytes.toBytes(uid));
+        for (String s : uids) {
+            // 向Put对象中组装数据
+            relaPut.addColumn(Bytes.toBytes("attends"), Bytes.toBytes(s), Bytes.toBytes(s));
+
+            // 创建被关注者的Put对象
+            Put fansPut = new Put(Bytes.toBytes(s));
+            // 向Put对象中组装数据
+            fansPut.addColumn(Bytes.toBytes("fans"), Bytes.toBytes(uid), Bytes.toBytes(uid));
+            puts.add(fansPut);
+        }
+        puts.add(relaPut);
+        // 执行添加操作
+        relaTable.put(puts);
+
+
+        Put inboxPut = new Put(Bytes.toBytes(uid));
+        for (String s : uids) {
+            // 在微博内容表中获取被关注者的3条数据（uid_ts），一个人对应多条内容表
+            Scan scan = new Scan(Bytes.toBytes(s), Bytes.toBytes(s + "|"));
+            ResultScanner results = conTable.getScanner(scan);
+            for (Result result : results) {
+                String rowStr = Bytes.toString(result.getRow());
+                String[] split = rowStr.split("_"); // 获取发布微博的时间戳
+                byte[] row = result.getRow();
+                inboxPut.addColumn(Bytes.toBytes("info"), Bytes.toBytes(s), Long.parseLong(split[1]), row);
+            }
+        }
+        // 在微博收件箱表中添加操作人的关注者信息
+        inboxTable.put(inboxPut);
+
+        // 关闭资源
+        conTable.close();
+        relaTable.close();
+        inboxTable.close();
+
+        conn.close();
+    }
+
+    /**
+     * 1、用户关系表
+     *      删除操作者attends的待取关用户
+     *      删除待取关用户fans的操作者
+     * 2、微博收件箱表
+     *      删除操作者的待取关用户的信息
+     * @param uid
+     * @param uids
+     * @throws IOException
+     */
+    // 取关用户
+    public static void delAttend(String uid, String...uids) throws IOException {
+        // 创建连接
+        Connection conn = ConnectionFactory.createConnection(conf);
+
+        // 创建Table对象（新API），一共要操作2张表
+        Table relaTable = conn.getTable(TableName.valueOf(Constant.RELATIONS));
+        Table inboxTable = conn.getTable(TableName.valueOf(Constant.INBOX));
+
+        List<Delete> deletes = new ArrayList<Delete>();
+        // 创建操作者的Delete对象
+        Delete relaDel = new Delete(Bytes.toBytes(uid));
+        for (String s : uids) {
+            relaDel.addColumn(Bytes.toBytes("attends"), Bytes.toBytes(s));
+
+            // 创建被取关者的Delete对象
+            Delete fansDel = new Delete(Bytes.toBytes(s));
+            fansDel.addColumn(Bytes.toBytes("fans"), Bytes.toBytes(uid));
+            deletes.add(fansDel);
+        }
+        deletes.add(relaDel);
+        // 执行删除操作
+        relaTable.delete(deletes);
+
+        // 删除微博邮件收件箱表的信息
+        Delete inboxDel = new Delete(Bytes.toBytes(uid));
+        for (String s : uids) {
+            inboxDel.addColumns(Bytes.toBytes("info"), Bytes.toBytes(s)); // 注意：删除所有版本 addColumns
+        }
+        // 执行删除操作
+        inboxTable.delete(inboxDel);
+
+
+        // 关闭资源
+        relaTable.close();
+        inboxTable.close();
+
+        conn.close();
+    }
+
+    // 获取微博内容（初始化页面内容）
+    public static void getInitData(String uid) throws IOException {
+        // 创建连接
+        Connection conn = ConnectionFactory.createConnection(conf);
+
+        // 创建Table对象
+        Table inboxTable = conn.getTable(TableName.valueOf(Constant.INBOX));
+        Table conTable = conn.getTable(TableName.valueOf(Constant.CONTENT));
+
+        // 获取微博收件箱表数据
+        Get inboxGet = new Get(Bytes.toBytes(uid));
+        inboxGet.getMaxVersions();
+
+        Result result = inboxTable.get(inboxGet);
+
+        // 遍历返回内容并将其封装成内容的Get对象
+        List<Get> gets = new ArrayList<Get>();
+        Cell[] cells = result.rawCells();
+        for (Cell cell : cells) {
+            Get contGet = new Get(CellUtil.cloneValue(cell));
+            gets.add(contGet);
+        }
+
+        // 根据微博收件箱获取的值去往微博内容表上去获取具体内容
+        Result[] results = conTable.get(gets);
+        for (Result result2 : results) {
+            Cell[] cell2 = result2.rawCells();
+            for (Cell cell : cell2) {
+                System.out.println("行键：" + Bytes.toString(CellUtil.cloneRow(cell))
+                                + " 值：" + Bytes.toString(CellUtil.cloneValue(cell)));
+            }
+        }
+
+        // 关闭资源
+        conTable.close();
+        inboxTable.close();
+
+        conn.close();
+    }
+
+    // 获取微博内容（查看某个人所有微博内容）
+    public static void getData(String uid) throws IOException {
+
+        // 创建连接
+        Connection conn = ConnectionFactory.createConnection(conf);
+
+        // 创建Table对象
+        Table conTable = conn.getTable(TableName.valueOf(Constant.CONTENT));
+
+        // 扫描（过滤器）
+        Scan scan = new Scan();
+        RowFilter rowFilter = new RowFilter(CompareFilter.CompareOp.EQUAL, new SubstringComparator(uid + "_"));
+        scan.setFilter(rowFilter);
+        ResultScanner results = conTable.getScanner(scan);
+
+        // 遍历打印
+        for (Result result : results) {
+            Cell[] cells = result.rawCells();
+            for (Cell cell : cells) {
+                System.out.println("行键：" + Bytes.toString(CellUtil.cloneRow(cell))
+                                + " 值：" + Bytes.toString(CellUtil.cloneValue(cell)));
+            }
+        }
+
+        // 关闭资源
+        conTable.close();
+
+        conn.close();
+    }
+}
+测试类：
+
+package com.atguigu.weibo;
+
+import java.io.IOException;
+
+import com.atguigu.constant.Constant;
+import com.atguigu.util.WeiboUtil;
+
+public class Weibo {
+
+    public static void init() throws IOException {
+        // 创建相关命名空间和表
+        WeiboUtil.createNamespace(Constant.NAMESPACE);
+
+        // 创建微博内容表
+        WeiboUtil.createTable(Constant.CONTENT, 1, "info");
+
+        // 创建用户关系表
+        WeiboUtil.createTable(Constant.RELATIONS, 1, "attends", "fans");
+
+        // 创建微博邮件箱表（多版本）
+        WeiboUtil.createTable(Constant.INBOX, 3, "info");
+    }
+
+    public static void main(String[] args) throws IOException {
+        // 测试（手动调用）
+        // init();
+
+        // 测试：1001,1002,1003，发布微博
+        // WeiboUtil.createData("1001", "天气好");
+        // WeiboUtil.createData("1002", "天气好吗");
+        // WeiboUtil.createData("1003", "天气不好吗");
+
+        // 测试：1001关注1002、1003和1004
+        // WeiboUtil.addAttend("1001", "1002", "1003", "1004");
+
+        // 测试：获取1001初始化页面信息
+        // WeiboUtil.getInitData("1001");
+
+        // 测试：1004发布微博
+        // WeiboUtil.createData("1004", "have a good weather!!!");
+        // WeiboUtil.createData("1004", "good weather");
+        // WeiboUtil.createData("1004", "weather");
+
+        // 测试：获取1001初始化页面信息
+        WeiboUtil.getInitData("1001");
+
+        // 测试：获取1001发布的微博信息
+        // WeiboUtil.getData("1004");
+
+        // 测试：取消关注
+        WeiboUtil.delAttend("1001", "1004");
+
+        // 测试：获取1001初始化页面信息
+        WeiboUtil.getInitData("1001");
+    }
+}
+回到顶部
+第9章 扩展知识
+9.1 HBase 在商业项目中的能力
+每天：
+  1) 消息量：发送和接收的消息数超过60亿
+  2) 将近1000亿条数据的读写
+  3) 高峰期每秒150万左右操作
+  4) 整体读取数据占有约55%，写入占有45%
+  5) 超过2PB的数据，涉及冗余共6PB数据
+  6) 数据每月大概增长300千兆字节(300000M=300G)
+
+9.2 布隆过滤器
+  在日常生活中，包括在设计计算机软件时，我们经常要判断一个元素是否在一个集合中。比如在字处理软件中，需要检查一个英语单词是否拼写正确（也就是要判断它是否在已知的字典中）；在 FBI，一个嫌疑人的名字是否已经在嫌疑名单上；在网络爬虫里，一个网址是否被访问过等等。最直接的方法就是将集合中全部的元素存在计算机中，遇到一个新元素时，将它和集合中的元素直接比较即可。一般来讲，计算机中的集合是用哈希表（hash table）来存储的。它的好处是快速准确，缺点是费存储空间。当集合比较小时，这个问题不显著，但是当集合巨大时，哈希表存储效率低的问题就显现出来了。比如说，一个像 Yahoo、Hotmail 和 Gmail 那样的公众电子邮件（email）提供商，总是需要过滤来自发送垃圾邮件的人（spamer）的垃圾邮件。一个办法就是记录下那些发垃圾邮件的 email 地址。由于那些发送者不停地在注册新的地址，全世界少说也有几十亿个发垃圾邮件的地址，将他们都存起来则需要大量的网络服务器。如果用哈希表，每存储一亿个 email 地址， 就需要 1.6GB 的内存（用哈希表实现的具体办法是将每一个 email 地址对应成一个八字节的信息指纹googlechinablog.com/2006/08/blog-post.html，然后将这些信息指纹存入哈希表，由于哈希表的存储效率一般只有 50%，因此一个 email 地址需要占用十六个字节。一亿个地址大约要 1.6GB， 即十六亿字节的内存）。因此存贮几十亿个邮件地址可能需要上百 GB 的内存。除非是超级计算机，一般服务器是无法存储的。
+  布隆过滤器只需要哈希表 1/8 到 1/4 的大小就能解决同样的问题。
+  Bloom Filter 是一种空间效率很高的随机数据结构，它利用位数组很简洁地表示一个集合，并能判断一个元素是否属于这个集合。Bloom Filter 的这种高效是有一定代价的：在判断一个元素是否属于某个集合时，有可能会把不属于这个集合的元素误认为属于这个集合（false positive）。因此，Bloom Filter 不适合那些“零错误”的应用场合。而在能容忍低错误率的应用场合下，Bloom Filter 通过极少的错误换取了存储空间的极大节省。
+  下面我们具体来看 Bloom Filter 是如何用位数组表示集合的。初始状态时，Bloom Filter 是一个包含 m 位的位数组，每一位都置为 0，如下图所示。
+
+
+  为了表达 S={x1, x2, … ,xn} 这样一个 n 个元素的集合，Bloom Filter 使用 k 个相互独立的哈希函数（Hash Function），它们分别将集合中的每个元素映射到{1, … , m}的范围中。对任意一个元素 x，第 i 个哈希函数映射的位置 hi(x) 就会被置为 1（1≤i≤k）。注意，如果一个位置多次被置为 1，那么只有第一次会起作用，后面几次将没有任何效果。如下图所示，k=3，且有两个哈希函数选中同一个位置（从左边数第五位）。
+
+  在判断 y 是否属于这个集合时，我们对 y 应用 k 次哈希函数，如果所有 hi(y) 的位置都是 1（1≤i≤k），那么我们就认为 y 是集合中的元素，否则就认为 y 不是集合中的元素。如图下图所示，y1 就不是集合中的元素。y2 或者属于这个集合，或者刚好是一个 false positive。
+
+详解如下：
+  为了 add 一个元素，用 k 个 hash function 将它 hash 得到 bloom filter 中 k 个 bit 位，将这 k 个 bit 位置 1。
+  为了 query 一个元素，即判断它是否在集合中，用 k 个 hash function 将它 hash 得到 k 个 bit 位。若这 k bits 全为 1，则此元素在集合中；若其中任一位不为 1，则此元素比不在集合中（因为如果在，则在 add 时已经把对应的 k 个 bits 位置为 1）。
+  不允许 remove 元素，因为那样的话会把相应的 k 个 bits 位置为 0，而其中很有可能有其他元素对应的位。因此 remove 会引入 false negative，这是绝对不被允许的。
+  布隆过滤器决不会漏掉任何一个在黑名单中的可疑地址。但是，它有一条不足之处，也就是它有极小的可能将一个不在黑名单中的电子邮件地址判定为在黑名单中，因为有可能某个好的邮件地址正巧对应一个八个都被设置成一的二进制位。好在这种可能性很小，我们把它称为误识概率。
+  布隆过滤器的好处在于快速，省空间，但是有一定的误识别率，常见的补救办法是在建立一个小的白名单，存储那些可能个别误判的邮件地址。
+  布隆过滤器具体算法高级内容，如错误率估计，最优哈希函数个数计算，位数组大小计算，请参见 http://blog.csdn.net/jiaomeng/article/details/1495500。
+
+
+9.3 HBase2.0 新特性
+  2017年8月22日凌晨2点左右，HBase发布了2.0.0 alpha-2，相比于上一个版本，修复了500个补丁，我们来了解一下2.0版本的HBase新特性。
+最新文档：
+  http://hbase.apache.org/book.html#ttl
+官方发布主页：
+  http://mail-archives.apache.org/mod_mbox/www-announce/201708.mbox/<CADcMMgFzmX0xYYso-UAYbU7V8z-Obk1J4pxzbGkRzbP5Hps+iA@mail.gmail.com
+
+举例：
+1) region 进行了多份冗余
+  主 region 负责读写，从 region 维护在其他 HregionServer 中，负责读以及同步主 region 中的信息，如果同步不及时，是有可能出现 client 在从 region 中读到了脏数据（主 vregion 还没来得及把 memstore 中的变动的内容 flush）。
+2) 更多变动
+  https://issues.apache.org/jira/secure/ReleaseNote.jspa?version=12340859&styleName=&projectId=12310753&Create=Create&atl_token=A5KQ-2QAV-T4JA-FDED%7Ce6f233490acdf4785b697d4b457f7adb0a72b69f%7Clout
