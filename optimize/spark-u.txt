@@ -1,0 +1,73 @@
+executor 5 core
+一半或者2/3
+
+20 * 32
+
+executor meomory  >= 4g
+
+memoryoverhead 01. * exe mem
+
+
+集群机器数/5 10个executor
+
+executor core 5
+
+
+spark.driver.cores 4
+
+spark.driver.maxResultSize
+
+
+spark.dynamicAllocation.enabled=true
+
+spark.shuffle.service.enabled=true
+
+
+
+memory overhead =
+Max(MEMORY_OVERHEAD_FACTOR x requested memory, MEMORY_OVERHEAD_MINIMUM).
+
+Where MEMORY_OVERHEAD_FACTOR = 0.10 and
+
+MEMORY_OVERHEAD_MINIMUM = 384 mb.
+
+
+cache an RDD without allowing any
+partitions to be evicted from memory
+
+LRU caching
+
+R = spark.executor.memory x spark.memory.fraction x spark.memory.storageFraction
+
+----------------------
+
+
+memory_for_compute (M) < (spark.executor.memory - over head) * spark.memory.fraction
+
+if there is cached data:
+
+memory_for_compute (M - R) < (spark.executor.memory - overhead) x spark.memory.fraction x (1 - spark.memory.storage.fraction).
+
+-------------
+
+spark.default.parallelism?
+
+memory_per_task = memory_for_compute / spark.executor.cores
+
+number_of_partitions =    size of shuffle stage / memory per task.(集群机器数/5)
+
+
+rate of in-memory expansion = Shuffle spill (memory) /Shuffle spill (disk)
+
+Size of shuffle in-memory = shuffle write * Shuffle spill (memory) / Shuffle spill (disk).
+
+
+序列化
+
+spark.kryo.unsafe=true
+
+
+log4j.logger.org.apache.spark.repl.Main=ERROR
+
+yarn.nodemanager.delete.debug-delay-sec
+
