@@ -1,3 +1,7 @@
+
+
+
+
 --https://github.com/LucaCanali/Oracle_DBA_scripts
 
 DECLARE
@@ -1125,3 +1129,283 @@ Begin  pro_phone_grade(0); end; ..... Begin pro_phone_grade(7); end;
 
 
 
+--1.联合数组：
+
+DECLARE
+
+  TYPE ind_tab_type IS TABLE OF VARCHAR2(2000)
+                    INDEX BY BINARY_INTEGER;
+  ind_tab           ind_tab_type;
+
+BEGIN
+
+  ind_tab(1) := 'lubinsu';--这里的下标可以随意指定，可以通过循环来获取
+  ind_tab(2) := 'luzhou';
+  --dbms_output.put_line(ind_tab(0));
+  --dbms_output.put_line(ind_tab(1));
+  FOR i IN ind_tab.first..ind_tab.last LOOP
+    dbms_output.put_line('ind_tab(' || i || '):' || ind_tab(i));
+  END LOOP;
+
+END;
+
+
+
+
+--2.嵌套表的初始化1
+
+--嵌套表的下标默认为1开始，也可以自己指定任意值  www.2cto.com
+
+DECLARE
+
+  TYPE nest_tab_type IS TABLE OF VARCHAR2(2000) NOT NULL; --如果设置not null条件那么在初始化的时候不可以设置null
+
+  nest_tab nest_tab_type := nest_tab_type('lubinsu', 'luzhou'); --初始化的时候只要在集合变量之后使用空的构造函数或者直接赋值即可
+
+BEGIN
+
+  FOR i IN nest_tab.first .. nest_tab.last LOOP
+
+    dbms_output.put_line('nest_tab(' || i || ') value is ' || nest_tab(i));
+
+  END LOOP;
+
+END;
+
+
+
+
+
+--3.嵌套表和的初始化2
+
+DECLARE
+
+  TYPE nest_tab_type IS TABLE OF VARCHAR2(2000) NOT NULL; --如果设置not null条件那么在初始化的时候不可以设置null
+
+  nest_tab nest_tab_type := nest_tab_type(); --初始化的时候只要在集合变量之后使用空的构造函数或者直接赋值即可
+
+BEGIN
+
+  nest_tab.extend;
+
+  nest_tab(1) := 'lubinsu';
+
+  nest_tab.extend;
+
+  nest_tab(2) := 'luzhou';
+
+  FOR i IN nest_tab.first .. nest_tab.last LOOP
+
+    dbms_output.put_line('nest_tab(' || i || '):' || nest_tab(i));
+
+  END LOOP;
+
+END;
+
+
+
+--如果设置not null条件那么在初始化的时候不可以设置null,如：nest_tab(1) := null;否则出错提示；
+
+ORA-06550: line 7, column 18:
+
+PLS-00382: expression is of wrong type
+
+ORA-06550: line 7, column 3:
+
+PLSQL: Statement ignored
+
+--赋值的时候必须使用extend来扩展集合的容量否则会如下错误
+
+ERROR at line 1:
+
+ora-06533: subscript beyond count
+
+ora-06512: at line 6
+
+
+
+
+
+--4.变长数组类似于PLSQL表，每个元素都被分配了一个连续的下标，从1开始
+
+--4.变长数组的初始化(与嵌套表的初始化方式一样)
+
+DECLARE
+
+  TYPE varray_tab_type IS VARRAY(10) OF VARCHAR2(2000);
+
+  varray_tab varray_tab_type :=  varray_tab_type('lubinsu', 'luzhou'); --初始化的时候只要在集合变量之后使用空的构造函数或者直接赋值即可
+
+BEGIN
+
+  varray_tab.extend;
+
+  varray_tab(3) := 'zengq';
+
+  varray_tab.extend;
+
+  varray_tab(4) := 'buwei';
+
+  FOR i IN varray_tab.first .. varray_tab.last LOOP
+
+    dbms_output.put_line('varray_tab(' || i || '):' || varray_tab(i));
+
+  END LOOP;
+
+END;
+
+
+
+
+
+--5.集合与集合之间的赋值必须是相同的TYPE
+
+DECLARE
+
+  TYPE type1 IS TABLE OF NUMBER(2);
+
+  TYPE type2 IS TABLE OF NUMBER(2);
+
+  type1_tab  type1 := type1(1, 2, 3);
+
+  type1_tab2 type1 := type1(4, 5, 6);
+
+  type2_tab  type2 := type2(3, 2, 1);
+
+BEGIN
+
+  type1_tab2 := type1_tab;
+
+  --type1_tab2 := type2_tab; 不可用
+
+  FOR i IN type1_tab2.first .. type1_tab2.last LOOP
+
+    dbms_output.put_line('type1_tab2(' || i || '):' || type1_tab2(i));
+
+  END LOOP;
+
+END;
+
+
+
+--type1_tab2 := type2_tab;报错
+
+ORA-06550: line 10, column 17:
+
+PLS-00382: expression is of wrong type
+
+ORA-06550: line 10, column 3:
+
+PLSQL: Statement ignored
+
+
+
+RESULT:
+
+type1_tab2(1):1
+
+type1_tab2(2):2
+
+type1_tab2(3):3
+
+
+
+
+
+--6.使用null值为集合赋值
+
+DECLARE
+
+  TYPE type1 IS TABLE OF NUMBER(2);
+
+  type1_tab  type1 := type1();--已经初始化，不为空，虽然没有赋值
+
+  type1_tab2 type1;--未初始化，为空
+
+BEGIN
+
+  IF type1_tab IS NOT NULL THEN
+
+    dbms_output.put_line('type1_tab is not null');
+
+  END IF;
+
+
+
+  --type1_tab := NULL;
+
+  --或者
+
+  type1_tab := type1_tab2;
+
+
+
+  IF type1_tab IS NULL THEN
+
+    dbms_output.put_line('type1_tab is null');
+
+  END IF;
+
+END;
+
+
+
+
+
+--7.超出变长数组长度的值将会被丢弃
+
+--8.记录类型的嵌套表的初始化，赋值以及元素的引用
+
+DECLARE
+
+  TYPE object_rec IS RECORD(
+
+    object_id   all_objects_loc.object_id%TYPE,
+
+    object_name all_objects_loc.object_name%TYPE,
+
+    object_type all_objects_loc.object_type%TYPE);
+
+
+
+  TYPE object_tab_type IS TABLE OF object_rec;
+
+
+
+  object_tab object_tab_type;
+
+
+
+  TYPE obj_cur_type IS REF CURSOR; --声明游标变量类型
+
+  obj_cur obj_cur_type;
+
+BEGIN
+
+  OPEN obj_cur FOR
+
+    SELECT a.object_id, a.object_name, a.object_type
+
+    FROM   all_objects_loc a
+
+    WHERE  rownum <= 10;
+
+
+
+  FETCH obj_cur BULK COLLECT
+
+    INTO object_tab;
+
+  CLOSE obj_cur;
+
+  FOR i IN 1 .. object_tab.count LOOP
+
+    dbms_output.put_line('object_tab(' || i || '):' || object_tab(i)
+
+                         .object_id || ',' || object_tab(i).object_name || ',' || object_tab(i)
+
+                         .object_type);
+
+  END LOOP;
+
+END;

@@ -1,0 +1,200 @@
+预测每个分数的转换率 重新排名
+
+1.为每个浏览器提取分数
+在设定的一段时间内跟踪它们
+
+例如5天 并记录下它们所需的动作 然后转换
+
+scoretable
+------------------
+score 由初始算法产生的分数 这个分数没有合理排序
+convert 转换的变量是一个二进制变量 值为1
+如果独立浏览在随后5天内执行了指定的动作
+反之如果没有执行 值为0
+
+
+分区
+date 浏览被赋予特定分数的日期
+offer  一次出现的ID
+
+
+SELECT score,convert
+FROM scoretable
+WHERE date >= (...) AND date <= (...)
+AND offer = (...);
+
+
+加载到R中生成GAM曲线  预测前面所述表中不同级别分数的预测转换率
+
+library(mgcv)
+g1 =gam(convert~s(score),family=binomial,date=[date frame name])
+
+-------------------
+简单分析hive中提取数据
+利用mgcv中提供的game函数允许频率权重的功能
+
+通过在hive中获取分数的最近近似值
+为每个近似值估算一个频率权重
+通过group by 语句转换组合
+
+library(mgcv)
+
+g2=gam(convert~s(socre),~family=binomial,weights=freq,
+data=[frequency weight data frame name])
+
+
+p_rank_demo
+
+类别
+
+ADD JAR p-rank-demo.jar;
+
+create temporary function p_rank as 'demo.PsuedoRank';
+
+select
+ category,country,product,sales,rank
+FROM(
+    select
+        category,country,product,sales,p_rank(category,country) rank
+    from (
+        select
+         category,country,product,sales
+        FROM p_rank_demo
+        distribute by
+            category,country
+        sort by
+            category,country,sales desc) t1) t2
+ WHERE rank <=3
+
+
+package com.spark.hive;
+
+import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
+import org.apache.hadoop.hive.ql.metadata.HiveException;
+import org.apache.hadoop.hive.ql.udf.generic.GenericUDF;
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
+
+/**
+ * Created by xiaoyuzhou on 2018/11/9.
+ */
+public class PsuedoRank extends GenericUDF {
+
+    private long rank;
+    private String[] groupKey;
+
+    @Override
+    public ObjectInspector initialize(ObjectInspector[] oi)
+            throws UDFArgumentException {
+        return PrimitiveObjectInspectorFactory.javaLongObjectInspector;
+    }
+
+    public Object evaluate(DeferredObject[] currentkey) throws
+            HiveException {
+
+        if (!sameAsPreviousKey(currentkey)) {
+            rank = 1;
+        }
+
+        return new Long(rank++);
+
+    }
+
+
+    private boolean sameAsPreviousKey(DeferredObject[] currentkey)
+            throws HiveException {
+        if (null == currentkey && null == groupKey) {
+            return true;
+        }
+
+        String[] previousKey = groupKey;
+        copy(currentkey);
+
+        if (null == groupKey && null == previousKey) {
+            return false;
+        }
+
+        if (groupKey.length != previousKey.length) {
+            return false;
+        }
+
+        for (int index = 0; index < previousKey.length; index++) {
+            if (!groupKey[index].equals(previousKey[index])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void copy(DeferredObject[] currentkey) throws HiveException {
+        if (null == currentkey) {
+            groupKey = null;
+        } else {
+            groupKey = new String[currentkey.length];
+            for (int index = 0; index < currentkey.length; index++) {
+                groupKey[index] = String.valueOf(currentkey[index].get());
+            }
+        }
+
+    }
+
+    @Override
+    public String getDisplayString(String[] children) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("PsuedoRank (");
+        for (int i = 0; i < children.length; i++) {
+            if (i > 0) {
+                sb.append(", ");
+            }
+            sb.append(children[i]);
+        }
+
+        sb.append(")");
+        return sb.toString();
+    }
+
+}
+
+
+
+
+1.hive跨集群查询
+
+set fs.default.name = hdfs://hdfs.hadoop.pvt:54300
+
+set  mapred.job.tracker=jt.hadoop.pvt:54311
+
+
+describe extended zz_mid_set;
+
+select count(1) from zz_mid_set;
+
+
+set fs.default.name = hdfs://rs01.hadoop.pvt:34310;
+
+set mapred.job.tracker = rjt.hadoop.pvt:34311
+
+create
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
