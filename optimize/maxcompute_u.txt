@@ -1,0 +1,1139 @@
+HBO
+
+HBO 是根据任务历史执行情况为任务分配更合理的资源，
+包括内存、CPU 以及Instance 个数。
+
+HBO 是对集群资源分配的一种优化，
+概括起来就是：任务执行历史＋集群状态信息＋优化规则→更优的执行配置。
+
+1 背景
+( 1) MaxCompute 原资源分配策略
+首先看一下Max Compute 最初是如何分配MR 执行过程的I nstance
+个数的。默认的Instance 分配算法如表13.1 所示。
+表13.1 默认的Instance 分配算法
+Task 类型｜最大l『a『ice 个蚊｜ In阳臼分配算j去
+Ma内
+ReduceTask/JoinTask I 1111 ｜ 主要依掘父Ta业的Instance 的数虽进行评估
+在这个分配算法的基础上，根据历史数据统计，各个Instance 处理
+的数据量分布如下：
+
+Map Instance
+>fiven um(r ound (rt ♀ map input bytes/1024/1024 , 2))
+[l) 0. 00 4 . 11 16 . 59 ’ 60.66 4921.94
+Reduce Instance
+>fivenum (round(rt$reduce input bytes/1024/1024,2))
+[l] 0.00 0.00 0.75 24.87 192721.83
+• Join Instance
+>fivenum (round(rt$j oin input bytes/1024/1024,2))
+[l] 0 . 00 0.02 1.82 22.15 101640 . 31
+
+
+
+
+
+HBO 是根据任务历史执行情况为任务分配更合理的资源，包括内存、CPU 以及Instance 个数。
+HBO 是对集群资源分配的一种优化，概括起来就是：
+
+任务执行历史＋集群状态信息＋优化规则→更优的执行配置。
+
+
+1 背景
+( 1) MaxCompute 原资源分配策略
+首先看一下Max Compute 最初是如何分配MR 执行过程的I nstance
+个数的。默认的Instance 分配算法如表13.1 所示。
+表13.1 默认的Instance 分配算法
+Task 类型｜最大l『a『ice 个蚊｜ In阳臼分配算j去
+Ma内
+ReduceTask/JoinTask I 1111 ｜ 主要依掘父Ta业的Instance 的数虽进行评估
+在这个分配算法的基础上，根据历史数据统计，各个Instance 处理
+的数据量分布如下：
+• Map Instance
+>fiven um(round (rt ♀ map input bytes/1024/1024 , 2))
+[l) 0. 00 4 . 11 16 . 59 ’ 60.66 4921.94
+
+• Reduce Instance
+>fivenum (round(rt$reduce input bytes/1024/1024,2))
+[l] 0.00 0.00 0.75 24.87 192721.83
+• Join Instance
+>fivenum (round(rt$j oin input bytes/1024/1024,2))
+[l] 0 . 00 0.02 1.82 22.15 101640 . 31
+注解： fivenum 是R 语言中统计数据分布的函数，统计值有5 个，
+分别是最小值、下四分位数、中位数、上四分位数、最大值。
+
+
+$map input_ bytes 、$reduce_input_ bytes 、$j o in_input_bytes 分别表示
+Map 、Reduce 、Join 三种Task 的输入数据量（ B ytes ）。
+从上面内容可以看出，大部分Instance 处理的数据量远远没有达到预期，即一个Instance 处理256MB 的数据。同时有些Instance 处理的
+数据量很大，很容易导致任务长尾。
+
+假如把处理数据量小的任务称作小任务，
+处理数据量大的任务称作大任务，
+总结：在默认的Instance 算法下，小任务存在资源浪费，而大任务却资源不足。
+综上所述，需要有更合理的方法来进行资源分配，HBO 应运而生。
+
+
+通过数据分析，发现在系统中存在大量的周期性调度的脚本（物理计划稳定），且这些脚本的输入一般比较稳定，如果能对这部分脚本进
+行优化，那么对整个集群的计算资源的使用率将会得到显著提升。
+
+由此，我们想到了HBO ，根据任务的执行历史为其分配更合理的计算资源。
+
+HBO 一般通过自造应调整系统参数来达到控制计算资源的目的。
+
+-------------------------------------------------------------------
+
+2 . HBO 原理
+
+HBO 分配资源的步骤如下：
+
+·前提：最近7 天内任务代码没有发生变更且任务运行4 次。
+
+• Instance 分配逻辑：基础资源估算值＋加权资源估算值。
+
+(I ）基础资源数量的逻辑
+
+·对于Map Task ，系统需要初始化不同的输入数据量，
+
+期望的每个Map 能处理的数据量+用户提交任务的输入数据量=> 用户提交的任务所需要的Map 数量。
+
+为了保证集群上任务的整体吞吐量，保证集群的资源不会被一些超大任务占有，
+
+我们采用分层的方式，提供平均每个Map 能处理的数据量。
+
+·对于Reduce Task ，
+
+比较Hive 使用Map 输入数据量，
+
+Reduce的输入数据量:
+MaxCompute使用最近7 天Reduce 对应Map 的平均输出数据量作为Reduce的输入数据量，用于计算Instance 的数量。
+
+对于Reduce 个数的估算与Map 估算基本相同，不再赘述。
+
+
+(2 ）加权资源数量的逻辑
+·对于Map Task ，系统需要初始化期望的每个Map 能处理的数据量。
+通过该Map 在最近一段时间内的平均处理速度与系统设定的期望值做比较，
+如果平均处理速度小于期望值，则按照同等比例对基础资源数量进行加权，估算出该Map 的加权资源数量。
+
+·对于Reduce Task ，方法同上。
+最终的Instance 个数为：基础资源估算值＋加权资源估算值。
+
+• CPU／内存分配逻辑：
+类似于Instance 分配逻辑，也是采用基础资源估算值＋加权资源估算值的方法。
+
+3. HBO 效果
+
+(I ）提高CPU 利用率
+
+通过适当降低每个Instance 的CPU 资源数，集群利用率从40%提升到80% 。
+
+其中早上4:00-7 :00 节省的CPU 资源可以供6 万个Instance并发使用。
+
+
+(2 ）提高内存利用率
+
+在保障并行度，同时又能提高执行效率的基础上，合理分配内存，
+
+早上4:00-7:00 节省的内存资源可以供4 万个Instance 并发使用。
+
+第13 章计算管理寸一
+
+( 3 ）提高Instance 并发数
+合理设置Task 的Instance 个数， Instance 峰值并发数提升了57% 。
+
+
+(4） 降低执行时长
+
+在某机器上测试效果很明显。
+
+该集群有3 700 台机器，任务数约16万个，
+总执行时长减少4472 小时
+（没有开启HBO 时总执行时长是8356小时，开启HBO 后总执行时长为3884 小时）。
+
+4. HBO 改进与优化
+HBO 是基于执行历史来设置计划的，对于日常来说，数据量波动不大，工作良好。
+
+但是某些任务在特定场合下依旧有数据量暴涨的情况发生，尤其是在大促“双l l ”和“双12”期间，这个日常生成的HBO计划就不适用了。
+针对这个问题， HBO 也增加了根据数据量动态调整Instance 数的功能，主要依据Map 的数据量增长情况进行调整。
+
+
+
+
+CBO　
+
+根据收集的统计信息来计算每种执行方式的代价，进而选择最优的执行方式。
+
+该优化器对性能提升做出了卓越改进。通过性能评测，
+
+MaxCompute 2.0 离线计算比同类产品Hive 2.0 on Tez 快90% 以上。
+
+
+1 .优化器原理
+
+优化器（ Optimizer ）引人了Volcano 模型
+
+（请参考论文： The VolcanoOptimizer Generαtor: Extensibility and ξfficient Search ），
+
+该模型是基于代价的优化器（ CBO ），
+并且引人了重新排序Join (Join Reorder ）和
+自动MapJoin (Auto MapJoin ）优化规则等，
+同时基于Volcano 模型的优化器会尽最大的搜索宽度来获取最优计划。
+
+优化器有多个模块相互组合协调工作，
+包括
+
+Meta Manager （元数据）、
+
+Statistics （统计信息）、
+
+Rule Set （优化规则集）、
+
+Volcano Planner Core（核心计划器）等，如图13.1 所示。
+
+(1) Meta Manager
+Meta 模块主要提供元数据信息，包括
+表的元数据、统计信息元数据等。
+
+当优化器在选择计划时，需要根据元数据的一些信息进行优化。
+
+比如表分区裁剪（ TableScan Part 山on Prunning ）优化时，
+
+需要通过Meta信息获取表数据有哪些分区，然后根据过滤条件来裁剪分区。
+
+同时还有一些基本的元数据，如
+表是否是分区表、表有哪些列等。
+
+对于Meta 的管理，
+Max Compute 提供了Meta Manager 与优化器进行交互。
+
+Meta Manager 与底层的Meta 部分对接，提供了优化器所需要的信息。
+
+
+(2) Statistics
+Statistics 主要是帮助优化器选择计划时，提供准确的统计信息，
+如表的Count 值、列的Distinct 值、TopN 值等。
+
+比如Join 是选择Hash Join 还是Merge Join ，优化器会根据Join 的输入数据量（ 即Count 值）来进行选择。
+
+优化器提供了UDF 来收集统计信息，包括Distinct 值、TopN 值等，
+而Count 值等统计信息是由底层Meta 直接提供的。
+
+(3) Rule Set
+
+优化规则是根据不同情况选择不同的优化点，
+然后由优化器根据代价模型（ Cost Model ）来选择启用哪些优化规则。
+
+比如
+工程合并规则(Project Merge Rule ）， 将临近的两个Project 合并成一个Project ；
+过滤条件下推规则（ Fi lter Push Down ），将过滤条件尽量下推，使得数据先进行过滤，然后再进行其他计算，以减少其他操作的数据量。这些所有的优化都放置在优化规则集中。
+
+Max Compute 优化器提供了大量的优化规则，用户也可以通过set等命令来控制所使用的规则。
+
+规则被分为
+Substitute Rule （被认为是优化了肯定好的规则）、
+Explore Rule （优化后需要考虑多种优化结果）、
+Build Rule （可以认为优化后的结果不能再次使用规则进行优化）。
+
+(4) Volcano Planner Core
+
+Volcano Planner 是整个优化器的灵魂，
+
+它会将所有信息（ Meta 信息、统计信息、规则）统一起来处理，然后根据代价模型的计算，获得一个最优计划。
+
+① 代价模型。
+
+代价模型会根据不同操作符（如Join 、Pr时ect 等）计算不同的代价，然后计算出整个计划中最小代价的计划。
+
+MaxCompt出代价模型目前提供的Cost
+由三个维度组成，即行数、1/0 开销、CPU 开销，
+
+通过这三个维度来衡量每一个操作符的代价。
+
+②工作原理。
+
+假设Planner 的输入是一棵由Compiler 解析好的计划树，简称RelNode 树，每个节点简称Re!Node 。
+
+• Volcanno Planner 创建
+Planner 的创建主要是将Planner 在优化过程中要用到的信息传递给执
+行计划器，比如规则集，用户指定要使用的规划：
+
+Meta Provider ，每个ReIN ode 的Meta 计算，如RowCount 值计算、Distinct 值计算等；
+代价模型，计算每个RelNode 的代价等。这些都是为以后Planner 提供的必要信息。
+
+
+• Planner 优化
+
+规则匹配（ Rule Match ）：是指RelNode 满足规则的优化条件而建立的一种匹配关系。
+
+Planner 首先将整个Re!Node 树的每一个ReIN ode注册到Planner 内部，同时在注册过程中，会在规则集中找到与每个Re!Node 匹配的规则，然后加入到规则应用（ Rule Apply ）的队列中。
+
+所以整个注册过程处理结束后，所有与RelNode可以匹配的规则全部加入到队列中，以后应用时只要从队列中取出来就可以了。
+
+规则应用（ Rule Apply ）：
+
+是指从规则队列（ Rule Queue ）中弹出（ Pop)一个已经匹配成功的规则进行优化。
+当获取到一个已经匹配的规则进行处理时，如果规则优化成功，则肯定会产生至少一个新的Re!Node ，
+因为进行了优化，所以与之前未优化时的ReIN ode 有差异。
+
+这时需要再次进行注册以及规则匹配操作，把与新产生的Re!Node 匹配的规则加入到规则队列中，然后接着下次规则应用。
+
+Planner 会一直应用所有的规则，包括后来叠加的规则，直到不会有新的规则匹配到。
+至此，整个优化结束，这时就可以找到一个最优计划。
+
+代价计算（ Cost Compute ）
+每当规则应用之后，如果规则优化成功，则会产生新的ReIN ode 。
+
+在新的ReIN ode 注册过程中，有一个步骤是计算RelNode 的代价。
+
+代价计算由代价模型对每个Re!Node 的代价进行估算。
+
+如果不存在代价，或者Child 的代价还没有估算（默认是最大值），则忽略。
+
+如果存在代价，则会将本身的代价和Child （即输入的所有
+RelNode ）的代价进行累加， 若小于Best ，则认为优化后的
+Re IN ode 是当前最优的。并且会对其Parent 进行递归估算代
+价，即传播代价计算（ Propagate Calculate Cost ）。
+比如计划： Project->TableScan ，
+当TableScan 计算代价为l 时，则会继续估算Project 的代价，
+假设为1 ，则整个Project 的代价就是1+1=2 。
+也就是说，当ReIN ode 本身的代价估算出来后，会递归地对Parent
+进行代价估算，这样就可以对整条链路的计划进行估算。
+
+在这个估算过程中借助了Meta Manager 和Statistics 提供的信息（见图13.2 ）。
+
+
+
+优化器新特性
+( 1 ）重新排序Join Join Reorder
+将Join 的所有不同输入进行一个全排列，
+然后找到代价最小的一个排列。
+
+之前仅仅保持了用户书写SQL 语句的Join 顺序，这样的Join 顺序不一定是最优的，
+所以通过重新排序Join规则可以实现更好的选择，提供更优的性能。
+
+
+(2 ）自动MapJoin
+Join 实现算法有多种，目前主要有Merge Join 和MapJoin 。
+对于小数据量， MapJoin 比Merge Join 性能更优。
+之前是通过Hint 方式来指定是否使用MapJoin ，这样对用户不是很友好，且使用不方便。
+
+自动MapJoin 充分利用优化器的代价模型进行估算，获得更优的MapJoin 方式，
+而不是通过Hint 方式来进行处理。
+
+3 . 优化器使用
+
+将内部已经实现的优化规则进行分类，并且提供set 等命令方便用户使用。
+一些基础优化规则都会默认打开，用户也可以自己任意搭配使用。
+
+优化器提供的Flag 有：
+
+规则白名单一一odps.optimizer.cbo.rule. filter.white
+规则黑名单一－ odps.optimizer.cbo.rule.filter.black
+
+使用方法很简单，如果用户需要使用哪些优化规则，只要将规则的缩写名称加人白名单即可；
+反之，需要关闭哪些优化规则，只要将名称加入黑名单即可。
+比如set odps.optimizer.cbo.rule.filter.black=xxx ,yyy;,
+就表示将xxx,yyy 对应的优化规则关闭。
+
+
+对于重新排序Join 和自动MapJoin ，对应的标记分别是porj 和hj 。
+
+即如果想使用上述优化，则可以进行如下设置：
+set odps. optimizer . cbo. rule.filter . white = poj r, hj;
+
+注：优化规则之间请使用“，”分隔。
+
+下面列举TPC-H 的一些测试结果，如图13.3 所示。
+’∞
+600
+500
+<00
+300
+X>O
+100
+0
+.... 254
+QOl Q03 Q05 Q07 Q09 Qll Ql3 QlS Ql 7 Q19 Q21
+图13 .3 TPC-H 测试对比图
+优化前： 5129s ，优化后： 3814s ，性能提升： 25.7% 。
+
+
+4 . 注意事项
+由于用户书写SQL 语句时可能存在一些不确定因素，所以应尽量
+避免这些因素带来的性能影响，甚至结果非预期。
+
+Optimizer 会提供谓词下推（Predicate Push Down）优化，
+主要目的是尽量早地进行谓词过滤，以减少后续操作的数据量，提高性能。
+
+但需要注意的是：
+
+(1) UDF
+
+对于UDF 是否下推，优化器做了限制，不会任意下推这种带有用户意图的函数，
+主要是因为不同用户书写的函数含义不一样，不可以一概而论。
+如果用户需要下推UDF ，
+则要自己改动SQL ，这样做主要的
+好处是用户自己控制UDF 执行的逻辑，最了解自己的UDF 使用在SQL
+的哪个部分，而不是优化器任意下推等。
+
+例如U DF 可能和数据顺序有关，下推和不下推会导致出现不同的结果。
+理论上，过滤条件可以下推到Exchange 之后，
+但不是所有UDF 都是这样的z 否则会导致结果违背了用户书写SQL 语句的本意。
+
+
+(2 ）不确定函数
+对于不确定函数，优化器也不会任意下推，比如sample 函数，
+
+如果用户将其写在where 子句中，同时语句存在Join ，则优化器是不会下推到TableScan 的，因为这样可能改变了原意。
+
+例如：
+SELECT *
+FROM tl
+JOIN t2
+ON tl. cl=t2 . dl
+WHERE sample(4, 1) =true ;
+则sample 函数在Join 之后执行，
+而不会直接在TableScan 后执行。
+
+如果用户需要对Table Scan 进行抽样，则需要自己修改SQL 来达到
+目的；否则优化器进行下推可能会错误地理解用户的意图。
+
+对上述SQL 语句修改如下：
+SELECT *
+FROM
+SELECT *
+FROM t1
+WHERE sample(4 , 1) =true
+) t1
+JOIN t2
+ON tl. cl=t2 . dl ;
+
+(3 ）隐式类型转换
+书写SQL 语句时， 应尽量避免Join Key 存在隐式类型转换。
+例如String = Bigint ，在这种情况下会转换为ToDouble(String)=ToDouble( Bigint），
+这是不是用户原本的意图，数据库本身不得而知。
+这样可能引发的后果有两种： 一种是转换失败，
+报错：另一种是虽然执行成功了，但结果与用户期望的不一致
+
+
+
+======================
+
+任务优化
+
+下面给出一个SQL/MR
+从提交到最后执行在MaxCompute 中的细分步骤
+
+SQLMR ->MaxCompute instance ->Fuxi job ->Fuxi Task ->Fuxi Instance
+
+
+SQL/MR 作业一般会生成MapReduce 任务，在MaxCompute 中则会生成MaxCompute Instance ，通过唯一ID 进行标识。
+• Fuxi Job ：对于MaxCompute Instance ，则会生成一个或多个由
+Fuxi Task 组成的有向无环图，即Fuxi Job 。MaxCompute Instance
+和Fuxi Job 类似于Hive 中Job 的概念。
+• Fuxi Task ：
+主要包含三种类型，分别是Map 、Reduce 和Join ,
+类似于Hive 中Task 的概念。
+
+• Fuxi Instance ： 真正的计算单元，和Hive 中的概念类似， 一般和槽位（ slot ）对应
+
+
+Map 倾斜
+1. 背景
+Map 端是MR 任务的起始阶段， Map 端的主要功能是从磁盘中将
+数据读人内存， Map 端的两个主要过程如图13.5 所示。
+
+
+
+input split->Map->环形内存缓冲区->分区 排序 磁盘分割 -->磁盘合并 复制->合并->排序->合并->reduce 输出
+
+每个输入分片会让一个Map Instance 来处理，
+在默认情况下，以
+Pangu 文件系统的一个文件块的大小（默认为256MB ）为一个分片。
+1.Map Instance 输出的结果会暂时放在一个环形内存缓冲区中
+2.当该缓冲区快要溢出时会在本地文件系统中创建一个溢出文件，即Write Dump
+在Map 读数据阶段，可以通过
+
+“ setodps.mapper.split.size=256 ”来调节Map Instance 的个数，提高数据读人的效率，
+同时也可以通过“ set odps.mapper.merg e.limit.size=64 ”来控制Map Instance 读取文件的个数。
+如果输入数据的文件大小差异比较大，那么每个Map Instance 读取的数据量和读取时间差异也会很大。
+
+
+在写人磁盘之前，
+线程首先根据Reduce Instance 的个数划分分
+区，数据将会根据Key 值Hash 到不同的分区上，一个ReduceInstance 对应一个分区的数据。
+
+Map 端也会做部分聚合操作，以减少输入Reduce 端的数据量。
+由于数据是根据Hash 分配的，因此也会导致有些Reduce Instance 会分配到大量数据，
+而有些Reduce Instance 却分配到很少数据，甚至没有分配到数据。
+
+在Map 端读数据时，由于读人数据的文件大小分布不均匀，因此会导致有些Map Instance 读取并且处理的数据特别多，
+而有些MapInstance 处理的数据特别少，造成Map 端长尾。
+
+-------------------------------
+
+以下两种情况可能会导致Map 端长尾：
+
+·上游表文件的大小特别不均匀，并且小文件特别多，导致当前表
+
+第一种情况导致的Map 端长尾，可通过对上游合并小文件，同时
+调节本节点的小文件的参数来进行优化，
+即通过设置“ set odps.sql.
+mapper.merge.limit.size = 64 ”和“ set odps .s ql.mapper.split.size=256 ”
+两个参数来调节，
+其中第一个参数用于调节Map 任务的Map Instance 的
+个数：
+第二个参数用于调节单个Map Instance 读取的小文件个数，防止由于小文件过多导致Map Instance 读取的数据量很不均匀；两个参数配
+合调整。
+
+
+-------------------------------------
+Map 端读取的数据分布不均匀，引起长尾。
+
+• Map 端做聚合时，由于某些Map Instance 读取文件的某个值特别多而引起长尾，
+主要是指Count Distinct 操作。
+
+
+===================================================================
+
+如下代码的作用是获取手机APP 日志明细中的前一个页面的页面组信息，
+其中
+pre_page 是前一个页面的页面标识，
+page_ut 表是存储的手机APP 的页面组，
+pre_page 只能通过匹配正则或者所属的页面组信息，进行笛卡儿积Join
+
+
+Ll_Stg4 是MapJoin 小表的分发阶段：
+
+M3_Stg l 是读取明细日志表的Map 阶段，
+与MapJoin 小表的Join 操作也发生在这个阶段： R5 _3 _Stg2
+是进行分组排序的阶段。通过日志发现， M3_Stgl 阶段单个Instance 的处理时间达到了40分钟，
+而且长尾的Instance 个数比较固定，应是不同的Map 读人的文
+件块分布不均匀导致的，文件块大的Map 数据量比较大，在与小表进
+行笛卡儿积操作时，非常耗时，造成Map 端长尾。针对这种情况，可
+以使用“ distribute by rand （）”来打乱数据分布，使数据尽可能分布均匀
+
+-------------
+
+select ...
+from
+(
+select ds,unique_id,pre_page from tmp_app_out_1 where ds = '${bizdate}' AND pre_page is not null
+) a
+left outer join
+(
+select t.*,length(t.page_type_rule) rule_length
+from page_ut t
+where ds = '${bizdate}'
+AND is_enable = 'Y'
+
+) b
+on 1=1
+where a.pre_page rlike b.page_typle_rule ;
+
+
+--------
+
+select ...
+from
+(
+  select ds,unique_id,pre_page from tmp_app_ut1 where ds = '${bizdate}' AND pre_page is not null
+  distribute by rand()
+
+) a
+left outer join
+(
+    select t.*,length(t.page_type_rule) rule_length
+    from page_ut t
+    where ds= '${bizdate}'
+    AND is_enable = 'Y'
+) b
+b
+on 1=1
+where a.pre_page rlike b.page_typle_rule ;
+
+通过“ distribute by rand （）”会将Map 端分发后的数据重新按照随
+机值再进行一次分发。原先不加随机分发函数时， Map 阶段需要与使用
+MapJoin 的小表进行笛卡儿积操作， Map 端完成了大小表的分发和笛卡
+儿积操作。使用随机分布函数后， Map 端只负责数据的分发，不再有复
+杂的聚合或者笛卡儿积操作，因此不会导致Map 端长尾。
+
+
+Map 端长尾的根本原因是由于读人的文件块的数据分布不均匀，再
+加上U DF 函数性能、Join 、聚合操作等，导致读人数据量大的Map
+lnstance 耗时较长。
+
+在开发过程中如果遇到Map 端长尾的情况，首先考虑如何让Map Instance 读取的数据量足够均匀，然后判断是哪些操作导
+致Map Instance 比较慢，
+最后考虑这些操作是否必须在Map 端完成，在其他阶段是否会做得更好。
+
+
+------------------------
+
+Join 倾斜
+
+1 . 背景
+Join 操作需要参与Map 和Reduce 的整个阶段。首先通过一段Join
+的SQL 来看整个Map 和Reduce 阶段的执行过程以及数据的变化，进
+而对Join 的执行原理有所了解。
+
+
+假设有下面一段Join 的SQL:
+course id
+LEFT JOIN student course
+ON student . student id = student course . student id;
+student name, SELECT student id ,
+student FROM
+通过上面的执行过程可以看出，
+MaxCompute SQL 在Join 执行阶段
+会将Join Key 相同的数据分发到同一个执行Instance 上处理。
+
+如果某个Key 上的数据量比较大，则会导致该Instance 执行时间较长。其表现为：
+在执行日志中该Join Task 的大部分Instance 都已执行完成，但少数几
+个Instance 一直处于执行中（这种现象称之为长尾）。
+
+因为数据倾斜导致长尾的现象比较普遍，严重影响任务的执行时
+间，尤其是在“双l l ”等大型活动期间，长尾程度比平时更严重。比
+如某些大型店铺的PV 远远超过一般店铺的PV ，当用浏览日志数据和
+卖家维表关联时，会按照卖家ID 进行分发，导致某些大卖家所在
+Instance 处理的数据量远远超过其他Instance ，而整个任务会因为这个
+长尾的Instance 迟迟无法结束。
+
+
+本文的目的就是对MaxCompute SQL 执行中Join 阶段的数据倾斜
+情况进行分析总结，根据不同的倾斜原因给出对应的解决方案。这里主
+要讲述三种常见的倾斜场景。
+• Join 的某路输入比较小，可以采用MapJoin ，避免分发引起长尾。
+• Join 的每路输入都较大，且长尾是空值导致的，可以将空值处理
+成随机值，避免聚集。
+• Join 的每路输入都较大，且长尾是热点值导致的，可以对热点值
+和非热点值分别进行处理，再合并数据。
+下面会针对这三种场景给出具体的解决方案。首先我们了解一下如
+何确认Join 是否发生数据倾斜。
+打开MaxCompute SQL 执行时产生的Log View 日志，点开日志会
+看到每个Fuxi Task 的详细执行信息，如图13.9 所示。
+
+
+
+
+Join 倾斜
+
+假设有下面一段Join 的SQL:
+course id
+LEFT JOIN student course
+ON student . student id = student course . student id;
+student name, SELECT student id ,
+student FROM
+通过上面的执行过程可以看出， MaxCompute SQL 在Join 执行阶段
+会将Join Key 相同的数据分发到同一个执行Instance 上处理。如果某个
+Key 上的数据量比较大，则会导致该Instance 执行时间较长。其表现为：
+在执行日志中该Join Task 的大部分Instance 都已执行完成，但少数几
+个Instance 一直处于执行中（这种现象称之为长尾）。
+
+
+因为数据倾斜导致长尾的现象比较普遍，严重影响任务的执行时
+间，尤其是在“双l l ”等大型活动期间，长尾程度比平时更严重。比
+如某些大型店铺的PV 远远超过一般店铺的PV ，当用浏览日志数据和
+卖家维表关联时，会按照卖家ID 进行分发，导致某些大卖家所在
+Instance 处理的数据量远远超过其他Instance ，而整个任务会因为这个
+长尾的Instance 迟迟无法结束。
+----------------------------------
+
+• Join 的某路输入比较小，可以采用MapJoin ，避免分发引起长尾。
+Join 倾斜时，如果某路输入比较小，则可以采用MapJoin 避免倾斜。
+MapJoin 的原理是将Join 操作提前到Map 端执行， 将小表读人内存，
+顺序扫描大表完成Join 。这样可以避免因为分发key 不均匀导致数据倾
+斜。但是MapJoin 的使用有限制，必须是Join 中的从表比较小才可用。
+所谓从表，即左外连接中的右表，或者右外连接中的左表。
+MapJoin 的使用方法非常简单，在代码中select 后加上“／＊＋
+ma 问oin(a) ＊／”即可，其中a 代表小表（或者子查询）的别名。
+现在Max Compute 已经可以自动选择是否使用MapJoin ，可以不使用显式Hint
+
+SELECT /*+MAPJOIN (b) * /
+a.c2
+,b. c3
+FROM
+SELECT cl
+, c2
+FROM t1
+) a
+LEFT OUTER JOIN
+SELECT cl
+,c3
+FROM t2
+) b
+on a.cl = b.cl;
+
+，使用MapJoin 时对小表的大小有限制，默认小表读人内存后
+的大小不能超过512MB ，但是用户可以通过设置“ set odps.sql.mapjoin.
+memory.max=2048 ”加大内存，最大为2048MB
+
+
+------------
+
+• Join 的每路输入都较大，且长尾是空值导致的，可以将空值处理
+成随机值，避免聚集。
+
+另外，数据表中经常出现空值的数据，如果关联key 为空值且数据
+量比较大， Join 时就会因为空值的聚集导致长尾，针对这种情况可以将
+空值处理成随机值。因为空值无法关联上，只是分发到一处， 因此处理
+成随机值既不会影响关联结果，也能很好地避免聚焦导致长尾。例如：
+SELECT
+...
+FROM
+table a
+LEFT OUTER JOIN
+table b
+ON coalesce(table_a.key,rand()*9999}=table_b.key －－ 当
+key 为空值时用随机值替代
+
+------------
+• Join 的每路输入都较大，且长尾是热点值导致的，可以对热点值
+和非热点值分别进行处理，再合并数据。
+
+如果是因为热点值导致的长尾，并且Join 的输入比较大无法使用
+MapJoin ，则可以先将热点key 取出，
+
+对于主表数据用热点key 切分成热点数据和非热点数据两部分分别处理，最后合并。
+
+这里以淘宝的PV日志表关联商品维表取商品属性为例进行介绍。
+
+
+取热点key ：将PV 大于50000 的商品ID 取出到临时表中。
+INSERT OVERWRITE TABLE topk_item
+SELECT iterm id
+FROM
+(
+SELECT iterm id,count(l) as cnt
+FROM pv --pv 表
+WHERE ds = '${ bizdate }'
+AND url type = 'ipv'
+AND item id is not null
+GROUP BY item id
+) a
+WHERE cnt >= 50000
+
+
+取出非热点数据。
+
+将主表（pv表）和热点key 表（topk_item表）外关联后，通过条
+件“ bl.item_id is null ，取关联不到的数据即非热点商品的日志数据，此
+时需要使用MapJoin 。
+
+再用非热点数据关联商品维表，因为已经排除了热点数据，所以不会存在长尾。
+
+select ...
+from
+(
+    select * from item where ds = '${bizdate}'
+) a
+right outer join
+(
+   select /*+MAPJOIn(b1)*/
+   b2.*
+   from
+   (
+    select item_id
+    from topk_item --热点表
+    where ds = '${bizdate}'
+   ) b1
+   right outer join
+   (
+    select *
+    from pv
+    where ds = '${bizdate}'
+    AND url_type = 'ipv'
+
+   ) b2
+   on b1.item_id = coalesce(b2.item_id,concat("tbcdm",rand())
+   where b1.item_id is null
+) l
+ON a.item_id = coalesce(l.item_id,concat("tbcdm",rand())
+
+
+取出热点数据。
+
+将主表（ pv 表）和热点key 表（ topk _item 表）内关联，此时需要
+使用MapJoin ，取到热点商品的日志数据。
+
+同时，需要将商品维表（ item‘ 266 表）和热点key 表（ topk_item 表）内关联，
+取到热点商品的维表数据。
+
+然后将第一部分数据外关联第二部分数据，
+
+因为第二部分数据只有热点商品的维表， 数据量比较小，可以使用MapJoin 避免长尾。
+
+select /*+MAPJOIN(a)*/
+...
+FROM
+(
+     select /*+MAPJOIn(b1)*/
+       b2.*
+       from
+       (
+        select item_id
+        from topk_item --热点表
+        where ds = '${bizdate}'
+       ) b1
+       JOIN
+       (
+
+        select *
+        from pv
+        where ds = '${bizdate}'
+        AND url_type = 'ipv'
+        AND item_id is not null
+       ) b2
+       ON (b1.item_id = b2.item_id)
+) 1
+
+left OUTER JOIN
+(
+select /*+MAPJOIN(a1)*/a2.*
+from
+(
+    select item_id
+    from topk_item
+    where ds = '${bizdate}'
+) a1
+JOIN
+(
+    select *
+    from item --商品表
+    where ds = '${bizdate}'
+) a2
+ON (a1.item_id = a2.item_id)
+) a
+on a.item_id = l.item_id
+
+将上面取到的非热点数据和热点数据通过“ union all ”合并后即
+得到完整的日志数据，并且关联了商品信息。
+
+
+针对倾斜问题， Max Compute 系统也提供了专门的参数用来解决长
+尾问题，如下所示。
+·开启功能：
+set odps.sql . skewjoin=true/false
+·设置倾斜的key 及对应的值：
+set odps.sql.skewinfo=skewed_src: (skewed_key)[( ” skewed value " )]
+其中skewe d_key 代表倾斜的列， skewed_value 代表倾斜列上的倾
+斜值。
+
+设置参数的好处很明显，简单方便z 坏处是如果倾斜值发生变化需
+要修改代码， 而且一般无法提前知道变化。另外，如果倾斜值比较多也
+不方便在参数中设置。
+
+需要根据实际情况选择拆分代码或者设置参数。
+
+当大表和大表Join 因为热点值发生倾斜时，虽然可以通过修改代
+码来解决，但是修改起来很麻烦，代码改动也很大，且影响阅读。而
+Max Compute 现有的参数设置使用不够灵活，倾斜值多的时候不可能将
+所有值都列在参数中，且倾斜值可能经常变动。因此，我们还一直在探
+索和思考，期望有更好的、更智能的解决方案，如生成统计信息，
+Max Compute 内部根据统计信息来自动生成解决倾斜的代码，避免投入
+过多的人力。
+
+
+
+--------------
+
+Reduce 倾斜
+
+
+Reduce 端负责的是对Map 端梳理后的有．序key-value 键值对进行聚
+合，即进行Count 、Sum 、Avg 等聚合操作，得到最终聚合的结果。
+
+Distinct 是MaxCompute SQL 中支持的语法，用于对字段去重。比
+如计算在某个时间段内支付买家数、访问UV 等，都是需要用Distinct
+进行去重的。
+
+
+MaxCom pute 中Distinct 的执行原理是将需要去重的宇段
+以及Group By 宇段联合作为key 将数据分发到Reduce 端。
+
+因为Distinct 操作，数据无法在Map 端的Shuffle 阶段根据Group By
+先做一次聚合操作，以减少传输的数据量，而是将所有的数据都传输到
+Reduce 端，当key 的数据分发不均匀时，就会导致Reduce 端长尾。
+
+Reduce 端产生长尾的主要原因就是key 的数据分布不均匀。
+比如
+有些Reduce 任务Instance 处理的数据记录多，有些处理的数据记录少，
+造成Reduce 端长尾。
+如下几种情况会造成Reduce 端长尾：
+
+-----------------------------------------
+
+· 对同一个表按照维度对不同的列进行Count Distinct 操作，造成
+Map 端数据膨胀，从而使得下游的Join 和Red uce 出现链路上的
+长尾。
+
+-------------------------
+
+• Map 端直接做聚合时出现key 值分布不均匀，造成Reduce 端长尾。
+
+可以对热点key 进行单独处理，然后通
+过“ U nion All ”合并。这种解决方案已经在“ Join 倾斜”一节中介绍过。
+
+------------------------------------------
+
+．动态分区数过多时可能造成小文件过多，从而引起Reduce 端长尾。
+．多个Distinct 同时出现在一段SQL 代码中时，数据会被分发多次，
+不仅会造成数据膨胀N 倍，还会把长尾现象放大N 倍
+
+
+对于上面提到的第三种情况，可以把符合不同条件的数据放到不同
+的分区，
+
+避免通过多次“ Insert Overwrite ，，写人表中，特别是分区数比
+较多时，能够很好地简化代码。但是动态分区也有可能会带来小文件过
+多的困扰。以最简SQL 为例：
+
+insert overwrite table part_test partition(ds)
+select *
+from part_test;
+
+
+那么在最坏的情况下，可能产生KxN 个小文件，而过多的小文件
+会对文件系统造成巨大的管理压力，
+因此Max Compute 对动态分区的处理是引人额外一级的Reduce Task，
+
+把相同的目标分区交由同一个（或少量几个） Reduce Instance 来写人，
+避免小文件过多，并且这个Reduce
+肯定是最后一个Reduce Task 操作。Max Compute 是默认开启这个功能
+的，也就是将下面参数设置为true 。
+
+set odps.sql.reshuffle.dynamicpt=true;
+
+设置这个参数引人额外一级的Reduce Task 的初衷是为了解决小文
+件过多的问题，
+那么如果目标分区数比较少，根本就不会造成小文件过
+多，这时候默认开启这个功能不仅浪费了计算资源，而且还降低了性能。
+因此，在此种情况下关闭这个功能：
+set odps.sql.reshuffle.dynamicpt=false
+
+--------------------------------------------------------------
+
+这里重点介绍第四种情况。
+如图13.1 l 所示这段代码是在7 天、30 天等时间范围内，
+
+分PC 端、无线端、所有终端，计算支付买家数和支付商品数，
+其中支付买家数和支付商品数指标需要去重。
+
+因为需要根据日期、终端等多种条件组合对买家和商品进行去重计算，
+因此有12 个Count Distinct 计算。
+
+在计算过程中会根据12 个组合key 分发数据来统计支付买家数和支付商品数。
+
+这样做使得节点运行效率变低。
+
+
+
+如图13.12 所示是该代码的运行Log View 日志，节点运行时长为lh14min ，数据膨胀。
+
+
+针对上面的问题，
+可以先分别进行查询，
+执行Group By 原表粒度+ buyer_id ，计算出PC 端、无线端、所有终端以及在7 天、30 天等统
+计口径下的buyer_id （这里可以理解为买家支付的次数），
+
+然后在子查询外Group By 原表粒度，
+当上一步的Count 值大于0 时，说明这一买家在这个统计口径下有过支付，计人支付买家数，否则不计人。
+计算支付商品数采用同样的处理方式。
+最后对支付商品数和支付买家数进行Join 操作。
+
+
+按上述方案修改后的代码如下（仅示例支付买家数的计算）：
+
+
+SELECT
+t2.seller id,
+t2.price_seg_id,
+SUM (case when pay ord byr cnt lw 001>0 then 1 else 0 e 口d) AS pay ord byr cnt lw 001 一最近7 天支付买家数,
+SUM ( case when pay ord byr cnt lw 002>0 then 1 else 0 end) AS pay_ord_byr_cnt_lw_002 一最近7 天PC 端支付买家数,
+SUM (case when pay ord byr cnt lw 003>0 then 1 else 0 eηd) AS pay_ord_byr_cnt_lw_003 一最近7 天无线端支付买家数,
+SUM (case when pay ord byr cnt lm 002>0 then 1 else 0 end) AS pay ord byr cnt lm 002 一最近30 天支付买家数
+, SUM (case when pay ord byr cnt lm 003>0 then 1 else 0 end) AS pay ord byr c口t lm 003 一最近30 天PC 端支付买家数
+, SUM (case when pay ord byr cnt lm 004>0 then 1 else 0 end) AS pay ord byr cnt lm 004 一最近30 天无线端支付买家数
+FROM
+--30 天支付买家数
+SELECT
+al.seller id,
+a2.price seg id,
+buyer_id,
+COUNT(buyer_id) AS pay_ord_byr_cnt_lm_002 一最近,
+COUNT(CASE WHEN is_wireless = ’N ’ THEN buyer_id
+ELSE NULL END) AS pay一ord_byr_cnt_lm_003 一最近30 天PC 端支付买家数,
+COUNT(CASE WHEN 工S wireless = ’ Y ’ THEN buyer id
+ELSE NULL END) AS pay ord byr cnt lm 004 一最近30 天无线端支付买家
+数
+, COUNT(case
+when al.ds>=TO CHAR(DATEADD(TO DATE
+(’${ bizdate }’,’ yyyymmdd ’) , - 6,’dd ’ ),’ yyyymmdd ’ ) then buyer id
+else null
+end) AS pay_ord_byr_cηt_lw一001 一最近7 天支
+付买家数
+, COUNT(CASE WHEN al . ds>=TO CHAR (DATEADD(TO DATE
+（’♀｛ bizdate ｝’，’ yyyymmdd ’） , - 6, ’ dd’),’ yyyymmdd ’) and
+is wireless =’N ’ THEN buyer id
+ELSE NULL
+END) AS pay ord byr cnt lw 002 一最近7 天PC
+端支付买家数
+, COUNT(CASE WHEN al . ds>=TO CHAR(DATEADD(TO DATE
+('${bizdate ｝勺’ yyyymmdd ’） , - 6, ’ dd ’ ),’ yyyymmdd ’ ) and
+is wireless = ’ Y’ THEN buyer_id
+ELSE NULL
+END) AS pay ord byr cnt lw 003 一最近7 天无
+线端支付买家数
+FROM
+) t2
+select *
+from table pay
+)al
+JOIN ( SELECT item id
+, price_seg_id
+FROM tag itm
+WHERE ds = ’ ${ bizdate ) ’
+) a2
+－－支付表
+一商品tag 表
+ON ( al. item id = a2. item id )
+GROUP BY al . seller id 一原表粒度
+, a2 . price seg id 一原表粒度
+, buyer id
+GROUP BY t2 . seller id 一原表粒度
+,t2 . price seg id ; 一原表粒度
+
+经测试，修改后的运行时间为13min ， 优化后的效果还是非常明显
+的。整体运行的L o gVi ew 日志如图13 . 13 所示，可以看到和Count Distinct
+计算方式相比数据没有膨胀，约为原方式的1/ 10 。
+
+
+对Multi D i stinct 的思考如下：
+上述方案中
+如果出现多个需要去重的指标，
+那么在把不同指标Join 在一起之前， 一定要确保指标的粒度是原始表的数据粒度。
+比如支付买家数和支付商品数，在子查询中指标粒度分别是：
+原始表的数据粒度＋ buyer_id 和原始表的数据粒度＋ item_id ，
+这时两个指标不是同一数据粒度，所以不能Join ，需要再套一层代码，
+分别把指标Group By 到“原始表的数据粒度”，
+然后再进行Join操作。
+
+
+·修改前的Multi Distinct 代码的可读性比较强，代码简洁，便于
+维护；
+
+修改后的代码较为复杂。当出现的Distinct 个数不多、表的数据量也不是很大、表的数据分布较均匀时，不使用Multi
+Distinct 的计算效果也是可以接受的。
+
+所以，在性能和代码简洁、可维护之间需要根据具体情况进行权衡。
+另外，这种代码改动还是比较大的，需要投入一定的时间成本，因此可以考虑做成自动化，通过检测代码、优化代码自动生成将会更加方便。
+
+
+·当代码比较膝肿时，也可以将上述子查询落到中间表里，这样数据模型更合理、复用性更强、层次更清晰。
+当需要去除类似的多个Distinct 时，也可以查一下是否有更细粒度的表可用，避免重复计算。
+
+
+
+目前Reduce 端数据倾斜很多是由Count Distinct 问题引起的，
+因此在ETL 开发工作中应该予以重视Count Distinct 问题，避免数据膨胀。
+对于一些表的Join 阶段的Null 值问题，应该对表的数据分布要有清楚
+的认识，在开发时解决这个问题。
+
+====================================
+
+存储和成本管理
+
+有效地降低存储资源的消耗，节省存储成本
+
+从数据压缩
+
+。目前Max Compute 中提供了archive 压缩方法，它采用了具
+有更高压缩比的压缩算法，可以将数据保存为RAID file 的形式，数据
+不再简单地保存为3 份，而是使用盘古RAID file 的默认值（ 6 ,3 ）格式
+的文件，即6 份数据＋3 份校验块的方式，
+
+这样能够有效地将存储比约为1 :3 提高到1: 1.5 ，大约能够省下一半的物理空间。
+
+当然，使用a rch ive压缩方式也有一定的风险，如果某个数据块出现了损坏或者某台机器着机损坏了，恢复数据块的时间将要比原来的方式更长，读的性能会有一
+定的损失。
+
+因此，目前一般将archive 压缩方法应用在冷备数据与日志数据的压缩存储上。
+例如，
+一些非常大的淘系日志数据，底层数据超过一定的时间期限后使用的频率非常低，但是又是属于不可恢复的重要数
+据，对于这部分数据就可以考虑对历史数据的分区进行archive 压缩，使用RAID file 来存储，以此来节省存储空间
+
+alter table A partition(ds = ’ 20130101 ’) archive ;
+
+
+--------------------
+数据重分布
+
+在Max Compute 中主要采用基于列存储的方式，由于每个表的数据
+分布不同，插人数据的顺序不一样，会导致压缩效果有很大的差异，
+因此通过修改表的数据重分布，避免列热点，将会节省一定的存储空间。
+
+目前我们主要通过修改distribute by 和sort by 字段的方法进行数据重分布
+
+存储治理项优化
+
+
+生命周期管理
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
