@@ -374,10 +374,6 @@
 
 
 
-
-
-
-
 第2章　创建和销毁对象 4
 
 第1条：用静态工厂方法代替构造器 4
@@ -385,6 +381,51 @@
 第2条：遇到多个构造器参数时要考虑使用构建器 8
 
 第3条：用私有构造器或者枚举类型强化Singleton属性 13
+
+public enum StatusCodeEnum {
+ // 基础状态码
+ SUCCESS(100200, "操作成功"),
+ FAIL(100201, "接口调用失败"),
+ EXCEPTION(100501, "操作失败，请联系管理员"),
+ PARAM_ERROR(100202, "请求参数为空"),
+
+ //版本管理
+ TASKNAME_ERROR(101202, "该任务字段名已存在"),
+ RUNTASK_ERROR(101203, "任务正在执行"),
+ RELOADTASK_ERROR(101204, "任务重跑失败,有上层关联任务正在执行"),
+ TASK_NOT_EXIST_ERROR(101205, "任务信息不存在"),
+
+ //流程控制
+ TASK_NAME_ERROR(102201,"该任务名错误;"),
+ RUN_TASK_ERROR(102202,"任务正在执行;"),
+ PROC_DATA_ERROR(102203,"执行数据版本频率字段procData，配置错误;");
+
+
+
+ private int code;
+ private String msg;
+
+ StatusCodeEnum(int code, String msg){
+  this.code = code;
+  this.msg = msg;
+ }
+
+ public int getCode() {
+  return code;
+ }
+ public void setCode(int code) {
+  this.code = code;
+ }
+
+ public String getMsg() {
+  return msg;
+ }
+ public void setMsg(String msg) {
+  this.msg = msg;
+ }
+
+}
+
 
 第4条：通过私有构造器强化不可实例化的能力 15
 

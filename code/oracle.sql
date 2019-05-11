@@ -1,3 +1,41 @@
+
+任一  所有
+
+
+
+ select p.*,
+            case
+              when c.ispaa is null then
+               '新契约'
+              else
+               c.ispaa
+            end new_pol_category
+
+       from pol_init_endorse_is_newpol p
+       left join (select polno, rank, '保证续保' as ispaa
+                    from pol_init_endorse_is_newpol
+                   where is_paa = '保证续保'
+                   group by polno, rank
+
+                  union all
+
+                  select a.polno, a.rank, 'PAA' as ispaa
+                    from (select polno, rank, count(plan_code) as cnt
+                            from pol_init_endorse_is_newpol
+                           where is_paa = 'PAA'
+                           group by polno, rank) a,
+                         (select polno, rank, count(plan_code) as cnt
+                            from pol_init_endorse_is_newpol
+                           group by polno, rank) b
+                   where a.polno = b.polno
+                     and a.rank = b.rank
+                     and a.cnt = b.cnt
+
+                  ) c
+         on p.polno = c.polno
+        and p.rank = c.rank;
+
+
 Oracle查询优化改写  技巧与案例
 https://blog.csdn.net/jgmydsai/article/category/2239703
 ============================================

@@ -1,0 +1,230 @@
+package lamada;
+
+import org.junit.Test;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+public class ParallelTest {
+
+    public static void main(String[] args) throws IOException {
+
+
+        IntStream.range(1, 100).parallel().count();
+
+//             int N = 100;
+//        double fraction = 1.0 / N;
+//        IntStream.range(0, N)
+//                .parallel()
+//                .mapToObj(twoDiceThrows())
+//                .collect(groupingBy(side -> side,
+//                        summingDouble(n -> fraction)));
+////
+//
+
+
+//        values.parallelStream()
+//                .mapToInt(i -> i)
+//                .sum();
+
+
+//        double[] values = new double[100];
+//        Arrays.parallelSetAll(values, i -> i + 1);
+//        Arrays.stream(values).forEach(System.out::println);
+
+
+        String contents = new String(Files.readAllBytes(Paths.get("alice.txt")), StandardCharsets.UTF_8); // Read file into string
+        String[] words = contents.split("[\\P{L}]+"); // Split along nonletters
+        Arrays.parallelSort(words);
+
+//        values.parallelSort(values.length / 2, values.length); // 对上半部排序
+
+
+//        Arrays.parallelSetAll(values, i -> i % 10);
+
+
+//        Arrays.parallelPrefix(values, (x, y) -> x * y)
+
+
+//        CompletableFuture<String> contents = readPage(url);
+//        CompletableFuture<List<String>> links = contents.thenApply(Parser::getLinks);
+//
+
+//        CompletableFuture<String> contents
+//                = CompletableFuture.supplyAsync(() -> blockingReadPage(url));
+
+//        CompletableFuture<Void> links
+//                = CompletableFuture.supplyAsync(() -> blockingReadPage(url))
+//                .thenApply(Parser::getLinks)
+//                .thenAccept(System.out::println);
+
+//
+//        CompletableFuture<List<Artist>> artistLookup
+//                = loginTo("artist")
+//                .thenCompose(artistLogin -> lookupArtists(albumName, artistLogin));
+//
+//        loginTo("track")
+//                .thenCompose(trackLogin -> lookupTracks(albumName, trackLogin))
+//                .thenCombine(artistLookup, (tracks, artists)
+//                        -> new Album(albumName, tracks, artists))
+//                .join();
+
+
+//
+//        CompletableFuture<Artist> createFuture(String id) {
+//            CompletableFuture<Artist> future = new CompletableFuture<>();
+//            startJob(future);
+//            return future;
+//        }
+
+
+//        future.complete(artist);
+
+
+//        CompletableFuture<Track> lookupTrack (String id){
+//            return CompletableFuture.supplyAsync(() -> {
+//// 这里会做一些繁重的工作
+//// ...
+//                return track;
+//            }, service);
+//        }
+
+
+//        future.completeExceptionally(new AlbumLookupException("Unable to find " + name));
+
+
+
+    //　响应式编程
+
+
+//        observer.onNext("a");
+//        observer.onNext("b");
+//        observer.onNext("c");
+//        observer.onCompleted();
+//        observer.onError(new Exception());
+//
+
+
+        IntStream.range(0, 100).map(x -> x * x).sum();
+
+        Integer[] a = new Integer[10];
+
+        Arrays.stream(Collections.emptyList().toArray(a)).reduce(5, (acc, x) -> x * acc);
+
+//        linkedListOfNumbers.parallelStream()
+//                .map(x -> x * x)
+//                .reduce(0, (acc, x) -> acc + x);
+//
+
+//        Logger logger = new Logger();
+//        logger.debug(() -> "Look at this: " + expensiveOperation());
+
+
+        ThreadLocal<DateFormat> localFormatter = ThreadLocal.withInitial(() -> new SimpleDateFormat());
+        localFormatter.get();
+
+    }
+
+
+    //简单滑动窗口平均数
+    public static double[] simpleMovingAverage(double[] values, int n) {
+        double[] sums = Arrays.copyOf(values, values.length);
+        Arrays.parallelPrefix(sums, Double::sum);
+        int start = n - 1;
+        return IntStream
+                .range(start, sums.length)
+                .mapToDouble(i -> {
+                    double prefix = i == start ? 0 : sums[i - n];
+                    return (sums[i] - prefix) / n;
+                })
+                .toArray();
+    }
+
+
+    public static List<String> allToUpperCase(List<String> words) {
+        return words.stream()
+                .map(string -> string.toUpperCase())
+                .collect(Collectors.<String>toList());
+    }
+
+
+//    @Test
+//    public void multipleWordsToUppercase() {
+//        List<String> input = Arrays.asList("a", "b", "hello");
+//        List<String> result = Testing.allToUpperCase(input);
+//        assertEquals(asList("A", "B", "HELLO"), result);
+//    }
+
+
+//将列表中元素的第一个字母转换成大写
+
+
+    public static List<String> elementFirstToUpperCaseLambdas(List<String> words) {
+        return words.stream()
+                .map(value -> {
+                    char firstChar = Character.toUpperCase(value.charAt(0));
+                    return firstChar + value.substring(1);
+                })
+                .collect(Collectors.<String>toList());
+    }
+
+
+//    public static List<String> elementFirstToUppercase(List<String> words) {
+//        return words.stream()
+//                .map(Testing::firstToUppercase)
+//                .collect(Collectors.<String>toList());
+//    }
+//
+//    public static String firstToUppercase(String value) { 􀁮
+//        char firstChar = Character.toUpperCase(value.charAt(0));
+//        return firstChar + value.substring(1);
+//    }
+
+
+//    @Test
+//    public void twoLetterStringConvertedToUppercase() {
+//        String input = "ab";
+//        String result = Testing.firstToUppercase(input);
+//        assertEquals("Ab", result);
+//    }
+//
+
+
+//    @Test
+//    public void canCountFeatures() {
+//        OrderDomain order = new OrderDomain(asList(
+//                newAlbum("Exile on Main St."),
+//                newAlbum("Beggars Banquet"),
+//                newAlbum("Aftermath"),
+//                newAlbum("Let it Bleed")));
+//        assertEquals(8, order.countFeature(album -> 2));
+//    }
+
+
+//
+//    List<String> list = mock(List.class);
+//    when(list.size()).thenAnswer(inv -> otherList.size());
+//    assertEquals(3, list.size());
+
+
+    //　使用peek 方法记录中间值
+//    Set<String> nationalities
+//            = album.getMusicians()
+//            .filter(artist -> artist.getName().startsWith("The"))
+//            .map(artist -> artist.getNationality())
+//            .peek(nation -> System.out.println("Found nationality: " + nation))
+//            .collect(Collectors.<String>toSet());
+
+
+}
