@@ -1,0 +1,84 @@
+hdfs
+    体系结构
+    基本概念
+    通信
+        rpc接口
+        流式接口
+    流程
+        读
+
+
+
+        写
+
+
+
+        追加写
+
+
+            与Namenode交互包括
+                         通过DataNodeProtocol.versionRequest()获取Namenode版本号及存储信息
+                         对Namenode当前软件版本号和Datanode当前软件 版本号比较  确保一致
+
+                         DatanodeProtocol.register()向Namenode注册
+                         Namenode接收到注册请求 判断当前Datanode配置是否属于这个集群 版本号是否一致
+
+                     注册成功
+                         Datanode系那个数据块及缓存的数据块上报到Namenode
+                         Namenode利用这些信息重建内存中数据块与Datanode对应关系
+
+                      心跳
+                         Namenode指导Datanode进行数据块复制 删除 恢复操作
+                         DatannodeCommand
+                         Datanode成功添加一个新的数据块或删除了一个已有数据块时
+
+                         需要通过DatanodeProtocol.blockReceivedAndDelete()方法向Namenode汇报
+                         Namenode会更新Namenode内存中数据块与数据节点之间对应关系
+
+
+
+
+
+
+        ha 切换
+    hadoop rpc
+        rpc 框架
+        hadoop rpc
+        定义rpc协议
+        客户端获取proxy对象
+        服务器获取server对象
+    hadoop rpc实现
+        rpc类实现
+        client
+        server
+     Namenode
+        文件系统
+            INode
+            Feature
+            FSEditlog
+            FSImage
+            FSDirectory
+        数据节点
+            DatanodeDescriptor
+            DatanodeStorageInfo
+            DatanodeManager
+        数据块
+            block replica blocksMap
+            数据块副本状态
+            blockManager类 done
+        租约管理
+            leaseManager.lease
+            leaseManager
+        缓存管理
+            概念
+            管理命令
+            集中式缓存
+            CacheManager类实现
+            CacheReplicationMonitor
+        clientProtocal实现
+            创建文件
+            追加写文件
+            创建新的数据块
+            放弃数据块
+            关闭文件
+
