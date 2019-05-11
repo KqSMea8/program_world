@@ -1,0 +1,381 @@
+package lamada;
+
+import com.google.common.collect.Lists;
+
+import java.awt.event.ActionEvent;
+import java.util.*;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static java.util.stream.Collectors.counting;
+
+/**
+* <p>Title: LamadaTest</p>
+* <p>Description: </p>
+* <p>Copyright: Copyright (c) 2019</p>
+* <p>Company: 寿险总部核心系统开发部后端批处理系统开发团队再保精算开发组</p>
+*
+* @author EX-ZHANGYONGTIAN001
+* @version 1.0.0
+* @date 2019-3-11  9:27
+*/
+public class LamadaTest {
+
+    public static void main(String[] args) {
+        long startTime = System.currentTimeMillis();
+//        ActionEvent localEvent = null;
+//        button.addActionListener(event -> {
+//            localEvent = event;
+//        });
+
+
+//        artists.collect(partitioningBy(artist -> artist.isSolo()));
+//        artists.collect(partitioningBy(Artist::isSolo))
+
+//        albums.collect(groupingBy(album -> album.getMainMusician()))
+
+//        String result = artists
+//                .stream()
+//                .map(Artist::getName)
+//                .collect(Collectors.joining(", ", "[", "]"));
+
+//        albums.collect(groupingBy(album -> album.getMainMusician(),
+//                counting()));
+
+
+//        albums.collect(groupingBy(Album::getMainMusician,mapping(Album::getName, toList())));
+
+//        StringCombiner combined = artists.stream()
+//                        .map(Artist::getName)
+//                        .reduce(new StringCombiner(", ", "[", "]"),
+//                                StringCombiner::add,
+//                                StringCombiner::merge);
+//        String result = combined.toString();
+
+
+//        String result =
+//                artists.stream()
+//                        .map(Artist::getName)
+//                        .collect(new StringCollector(", ", "[", "]"));
+
+//        () -> new StringCombiner(delim, prefix, suffix
+
+//        String result =
+//                artists.stream()
+//                        .map(Artist::getName)
+//                        .collect(Collectors.reducing(
+//                                new StringCombiner(", ", "[", "]"),
+//                                name -> new StringCombiner(", ", "[", "]").add(name),
+//                                StringCombiner::merge))
+//                        .toString();
+
+
+        //缓存
+//        artistCache.computeIfAbsent(name, this::readArtistFromDB);
+
+//        Map<Artist, Integer> countOfAlbums = new HashMap<>();
+//        albumsByArtist.forEach((artist, albums) -> {
+//            countOfAlbums.put(artist, albums.size());
+//        });
+
+
+//        Stream<String> names = Stream.of("John Lennon", "Paul McCartney",
+//                "George Harrison", "Ringo Starr", "Pete Best", "Stuart Sutcliffe");
+
+
+        //串行化计算专辑曲目长度
+//        albums.stream()
+//                .flatMap(Album::getTracks)
+//                .mapToInt(Track::getLength)
+//                .sum();
+
+        //并行化计算专辑曲目长度
+//        albums.parallelStream()
+//                .flatMap(Album::getTracks)
+//                .mapToInt(Track::getLength)
+//                .sum();
+
+//    Runnable runnable = ()->System.out.println("haha");
+//    runnable.run();
+
+
+//        Arrays.sort(players, (String s1, String s2) -> (s1.compareTo(s2)));
+
+
+//        Arrays.sort(players, (String s1, String s2) ->
+//                (s1.substring(s1.indexOf(" ")).compareTo(s2.substring(s2.indexOf(" "))))
+//        );
+
+//        Arrays.sort(players, (String s1, String s2) -> (s1.length() - s2.length()));
+
+//        Arrays.sort(players, (String s1, String s2) -> (s1.charAt(s1.length() - 1) - s2.charAt(s2.length() - 1)));
+
+
+        List<Person> javaProgrammers = new ArrayList<Person>() {
+            {
+                add(new Person("Elsdon", "Jaycob", "Java programmer", "male", 43, 2000));
+                add(new Person("Tamsen", "Brittany", "Java programmer", "female", 23, 1500));
+                add(new Person("Floyd", "Donny", "Java programmer", "male", 33, 1800));
+                add(new Person("Sindy", "Jonie", "Java programmer", "female", 32, 1600));
+                add(new Person("Vere", "Hervey", "Java programmer", "male", 22, 1200));
+                add(new Person("Maude", "Jaimie", "Java programmer", "female", 27, 1900));
+                add(new Person("Shawn", "Randall", "Java programmer", "male", 30, 2300));
+                add(new Person("Jayden", "Corrina", "Java programmer", "female", 35, 1700));
+                add(new Person("Palmer", "Dene", "Java programmer", "male", 33, 2000));
+                add(new Person("Addison", "Pam", "Java programmer", "female", 34, 1300));
+            }
+        };
+
+        List<Person> phpProgrammers = new ArrayList<Person>() {
+            {
+                add(new Person("Jarrod", "Pace", "PHP programmer", "male", 34, 1550));
+                add(new Person("Clarette", "Cicely", "PHP programmer", "female", 23, 1200));
+                add(new Person("Victor", "Channing", "PHP programmer", "male", 32, 1600));
+                add(new Person("Tori", "Sheryl", "PHP programmer", "female", 21, 1000));
+                add(new Person("Osborne", "Shad", "PHP programmer", "male", 32, 1100));
+                add(new Person("Rosalind", "Layla", "PHP programmer", "female", 25, 1300));
+                add(new Person("Fraser", "Hewie", "PHP programmer", "male", 36, 1100));
+                add(new Person("Quinn", "Tamara", "PHP programmer", "female", 21, 1000));
+                add(new Person("Alvin", "Lance", "PHP programmer", "male", 38, 1600));
+                add(new Person("Evonne", "Shari", "PHP programmer", "female", 40, 1800));
+            }
+        };
+
+//        System.out.println("所有程序员的姓名:");
+//        javaProgrammers.forEach((p) -> System.out.printf("%s %s; ", p.getFirstName(), p.getLastName()));
+//        phpProgrammers.forEach((p) -> System.out.printf("%s %s; ", p.getFirstName(), p.getLastName()));
+//
+//
+//        System.out.println("给程序员加薪 5% :");
+//        Consumer<Person> giveRaise = e -> e.setSalary(e.getSalary() / 100 * 5 + e.getSalary());
+//        javaProgrammers.forEach(giveRaise);
+//        phpProgrammers.forEach(giveRaise);
+//
+//        System.out.println("下面是月薪超过 $1,400 的PHP程序员:");
+//        phpProgrammers.stream()
+//                .filter((p) -> (p.getSalary() > 1400))
+//                .forEach((p) -> System.out.printf("%s %s; ", p.getFirstName(), p.getLastName()));
+//
+//
+//        // 定义 filters
+//        Predicate<Person> ageFilter = (p) -> (p.getAge() > 25);
+//        Predicate<Person> salaryFilter = (p) -> (p.getSalary() > 1400);
+//        Predicate<Person> genderFilter = (p) -> ("female".equals(p.getGender()));
+//
+//        System.out.println("下面是年龄大于 24岁且月薪在$1,400以上的女PHP程序员:");
+//        phpProgrammers.stream()
+//                .filter(ageFilter)
+//                .filter(salaryFilter)
+//                .filter(genderFilter)
+//                .forEach((p) -> System.out.printf("%s %s; ", p.getFirstName(), p.getLastName()));
+//
+//        // 重用filters
+//        System.out.println("年龄大于 24岁的女性 Java programmers:");
+//        javaProgrammers.stream()
+//                .filter(ageFilter)
+//                .filter(genderFilter)
+//                .forEach((p) -> System.out.printf("%s %s; ", p.getFirstName(), p.getLastName()));
+//
+//
+//
+//
+//        System.out.println("最前面的3个 Java programmers:");
+//        javaProgrammers.stream()
+//                .limit(3)
+//                .forEach((p) -> System.out.printf("%s %s; ", p.getFirstName(), p.getLastName()));
+//
+//
+//        System.out.println("最前面的3个女性 Java programmers:");
+//        javaProgrammers.stream()
+//                .filter(genderFilter)
+//                .limit(3)
+//                .forEach((p) -> System.out.printf("%s %s; ", p.getFirstName(), p.getLastName()));
+
+
+//        System.out.println("根据 name 排序,并显示前5个 Java programmers:");
+//        List<Person> sortedJavaProgrammers = javaProgrammers
+//                .stream()
+//                .sorted((p, p2) -> (p.getFirstName().compareTo(p2.getFirstName())))
+//                .limit(5)
+//                .collect(toList());
+//
+//        sortedJavaProgrammers.forEach((p) -> System.out.printf("%s %s; %n", p.getFirstName(), p.getLastName()));
+//
+//        System.out.println("根据 salary 排序 Java programmers:");
+//        sortedJavaProgrammers = javaProgrammers
+//                .stream()
+//                .sorted( (p, p2) -> (p.getSalary() - p2.getSalary()) )
+//                .collect(toList() );
+
+//        sortedJavaProgrammers.forEach((p) -> System.out.printf("%s %s; %n", p.getFirstName(), p.getLastName()));
+
+
+//        System.out.println("工资最低的 Java programmer:");
+//        Person pers = javaProgrammers
+//                .stream()
+//                .min((p1, p2) -> (p1.getSalary() - p2.getSalary()))
+//                .get();
+//
+//        System.out.printf("Name: %s %s; Salary: $%,d.", pers.getFirstName(), pers.getLastName(), pers.getSalary())
+//
+//        System.out.println("工资最高的 Java programmer:");
+//        Person person = javaProgrammers
+//                .stream()
+//                .max((p, p2) -> (p.getSalary() - p2.getSalary()))
+//                .get();
+//
+//        System.out.printf("Name: %s %s; Salary: $%,d.", person.getFirstName(), person.getLastName(), person.getSalary())
+
+
+//        System.out.println("将 PHP programmers 的 first name 拼接成字符串:");
+//        String phpDevelopers = phpProgrammers
+//                .stream()
+//                .map(Person::getFirstName)
+//                .collect(joining(" ; ")); // 在进一步的操作中可以作为标记(token)
+//
+//        System.out.println("将 Java programmers 的 first name 存放到 Set:");
+//        Set<String> javaDevFirstName = javaProgrammers
+//                .stream()
+//                .map(Person::getFirstName)
+//                .collect(toSet());
+//
+//        System.out.println("将 Java programmers 的 first name 存放到 TreeSet:");
+//        TreeSet<String> javaDevLastName = javaProgrammers
+//                .stream()
+//                .map(Person::getLastName)
+//                .collect(toCollection(TreeSet::new));
+
+
+//        System.out.println("计算付给 Java programmers 的所有money:");
+//        javaProgrammers
+//                .parallelStream()
+//                .mapToInt(p -> p.getSalary())
+//                .sum();
+
+//        javaProgrammers
+//                .stream()
+//                .mapToInt(p -> p.getSalary())
+//                .sum();
+
+//        System.out.println(System.currentTimeMillis() - startTime);
+
+
+        //计算 count, min, max, sum, and average for numbers
+//        IntSummaryStatistics stats = Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+//                .stream()
+//                .mapToInt((x) -> x)
+//                .summaryStatistics();
+//
+//        System.out.println("List中最大的数字 : " + stats.getMax());
+//        System.out.println("List中最小的数字 : " + stats.getMin());
+//        System.out.println("所有数字的总和   : " + stats.getSum());
+//        System.out.println("所有数字的平均值 : " + stats.getAverage());
+
+
+//        List<String> proNames = Arrays.asList(new String[]{"Ni", "Hao", "Lambda"});
+//        List<String> lowercaseNames1 = proNames.stream().map(name -> {
+//            return name.toLowerCase();
+//        }).collect(Collectors.toList());
+//
+
+//        List<String> lowercaseNames2 = proNames.stream().map(name -> name.toLowerCase()).collect(Collectors.toList());
+//        List<String> lowercaseNames3 = proNames.stream().map(String::toLowerCase).collect(Collectors.toList());
+
+
+        //因为变量waibu被lambda表达式引用，所以编译器会隐式的把其当成final来处理
+//        String waibu = "lambda :";
+//        List<String> proStrs = Arrays.asList(new String[]{"Ni", "Hao", "Lambda"});
+//        List<String> execStrs = proStrs
+//                .stream()
+//                .map(chuandi -> {
+//                    Long zidingyi = System.currentTimeMillis();
+//                    return waibu + chuandi + " -----:" + zidingyi;
+//                }).collect(Collectors.toList());
+//        execStrs.forEach(System.out::println);
+
+//        proStrs.stream().map(str -> {
+//            System.out.println(this.getClass().getName());
+//            return str.toLowerCase();
+//        }).collect(Collectors.toList());
+//        execStrs.forEach(System.out::println);
+//
+
+//        List<Integer> nums = Lists.newArrayList(1,null,3,4,null,6);
+//        nums.stream().filter(num -> num != null).count();
+//
+//
+//        Stream<Integer> integerStream = Stream.of(1, 2, 3, 5);
+//        Stream<String> stringStream = Stream.of("taobao");
+
+//        Stream.generate(() -> Math.random());
+//        Stream.generate(Math::random);
+
+//        Stream.generate(Math::random).limit(10).collect(Collectors.toList()).forEach(System.out::println);
+//
+//        Stream.iterate(1, item -> item + 1).limit(10).forEach(System.out::println);
+//
+//        Stream<List<Integer>> inputStream = Stream.of(
+//                Arrays.asList(1),
+//                Arrays.asList(2, 3),
+//                Arrays.asList(4, 5, 6)
+//        );
+//        Stream<Integer> outputStream = inputStream.
+//                flatMap((childList) -> childList.stream());
+
+//        List<Integer> nums = Lists.newArrayList(1,1,null,2,3,4,null,5,6,7,8,9,10);
+//        nums.stream().filter(num -> num != null).distinct().mapToInt(num -> num * 2).peek(System.out::println).skip(2).limit(4).sum();
+
+
+        //把Stream中的要有元素收集到一个结果容器中（比如Collection）。先看一下最通用的collect方法的定义（还有其他override方法）：
+//        Supplier supplier是一个工厂函数，用来生成一个新的容器；BiConsumer accumulator也是一个函数，用来把Stream中的元素添加到结果容器中；BiConsumer combiner还是一个函数，用来把中间状态的多个结果容器合并成为一个（并发的时候会用到）
+
+//        对一个元素是Integer类型的List，先过滤掉全部的null，然后把剩下的元素收集到一个新的List中。进一步看一下collect方法的三个参数，都是lambda形式的函数。
+//
+//        第一个函数生成一个新的ArrayList实例；
+//        第二个函数接受两个参数，第一个是前面生成的ArrayList对象，二个是stream中包含的元素，函数体就是把stream中的元素加入ArrayList对象中。第二个函数被反复调用直到原stream的元素被消费完毕；
+//        第三个函数也是接受两个参数，这两个都是ArrayList类型的，函数体就是把第二个ArrayList全部加入到第一个中；
+//        但是上面的collect方法调用也有点太复杂了，没关系！我们来看一下collect方法另外一个override的版本，其依赖[Collector](http://docs.oracle.com/javase/8/docs/api/java/util/stream/Collector.html)。
+//
+//<R, A> R collect(Collector<? super T, A, R> collector);
+//        这样清爽多了！Java8还给我们提供了Collector的工具类–[Collectors](http://docs.oracle.com/javase/8/docs/api/java/util/stream/Collectors.html)，其中已经定义了一些静态工厂方法，比如：Collectors.toCollection()收集到Collection中, Collectors.toList()收集到List中和Collectors.toSet()收集到Set中。这样的静态方法还有很多，这里就不一一介绍了，大家可以直接去看JavaDoc
+//
+//
+
+//        List<Integer> nums = Lists.newArrayList(1, 1, null, 2, 3, 4, null, 5, 6, 7, 8, 9, 10);
+//        List<Integer> numsWithoutNull =
+//                nums.stream()
+//                        .filter(num -> num != null).
+//                        collect(() ->
+//                                        new ArrayList<Integer>(),
+//                                (list, item) -> list.add(item),
+//                                (list1, list2) -> list1.addAll(list2));
+//        numsWithoutNull.forEach(System.out::println);
+
+//        List<Integer> numsWithoutNull = nums.stream().filter(num -> num != null).
+//                collect(Collectors.toList());
+//        List<Integer> ints = Lists.newArrayList(1,2,3,4,5,6,7,8,9,10);
+//        ints.stream().reduce((sum, item) -> sum + item).get();
+
+
+//        allMatch：是不是Stream中的所有元素都满足给定的匹配条件
+//        – anyMatch：Stream中是否存在任何一个元素满足匹配条件
+//        – findFirst: 返回Stream中的第一个元素，如果Stream为空，返回空Optional
+//        – noneMatch：是不是Stream中的所有元素都不满足给定的匹配条件
+//        – max和min：使用给定的比较器（Operator），返回Stream中的最大|最小值
+//        List<Integer> ints = Lists.newArrayList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+//        System.out.println(ints.stream().allMatch(item -> item < 100));
+//        ints.stream().max((o1, o2) -> o1.compareTo(o2)).ifPresent(System.out::println);
+
+
+//        final int num = 1;
+//        Converter<Integer, String> s = (param) -> System.out.println(String.valueOf(param + num));
+//        s.convert(2);  // 输出结果为 3
+
+
+
+
+
+    }
+}

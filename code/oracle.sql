@@ -1,7 +1,21 @@
 
 任一  所有
 
+alter table tablename add (column datatype [default value][null/not null],….);
 
+alter table tablename modify (column datatype [default value][null/not null],….);
+
+alter table tablename drop (column);
+
+ALTER TABLE table_name RENAME TO new_table_name;
+
+ALTER TABLE table_name RENAME COLUMN supplier_name to sname;
+
+alter table TABLE_NAME rename column FIELD_NAME to NEW_FIELD_NAME;
+
+comment  on  column  表名.字段名   is  '注释内容';
+
+comment on table 表名  is  '注释内容';
 
  select p.*,
             case
@@ -34,6 +48,11 @@
                   ) c
          on p.polno = c.polno
         and p.rank = c.rank;
+
+
+
+
+
 
 
 Oracle查询优化改写  技巧与案例
