@@ -7,6 +7,7 @@
 1.2　死锁 5
 1.3　资源限制的挑战 6
 1.4　本章小结 7
+
 第2章　Java并发机制的底层实现原理 8
 2.1　volatile的应用 8
 2.2　synchronized的实现原理与应用 11
@@ -14,6 +15,7 @@
 2.2.2　锁的升级与对比 13
 2.3　原子操作的实现原理 16
 2.4　本章小结 20
+
 第3章　Java内存模型 21
 3.1　Java内存模型的基础 21
 3.1.1　并发编程模型的两个关键问题 21
@@ -21,6 +23,7 @@
 3.1.3　从源代码到指令序列的重排序 23
 3.1.4　并发编程模型的分类 24
 3.1.5　happens-before简介 26
+
 3.2　重排序 27
 3.2.1　数据依赖性 28
 3.2.2　as-if-serial语义 28
@@ -91,7 +94,7 @@
 4.4.2　一个简单的数据库连接池示例 106
 4.4.3　线程池技术及其示例 110
 4.4.4　一个基于线程池技术的简单Web服务器 114
-4.5　本章小结 118
+
 第5章　Java中的锁 119
 5.1　Lock接口 119
 5.2　队列同步器 121
@@ -168,7 +171,7 @@
 10.4.1　FutureTask简介 222
 10.4.2　FutureTask的使用 222
 10.4.3　FutureTask的实现 224
-10.5　本章小结 227
+
 第11章　Java并发编程实践 228
 11.1　生产者和消费者模式 228
 11.1.1　生产者消费者模式实战 229
@@ -177,7 +180,6 @@
 11.2　线上问题定位 234
 11.3　性能测试 236
 11.4　异步任务池 238
-11.5　本章小结 240
 
 1.1　并发简史
 1.2　线程的优势
@@ -190,6 +192,7 @@
 1.3.2　活跃性问题
 1.3.3　性能问题
 1.4　线程无处不在
+
 第一部分　基础知识
 第2章　线程安全性
 2.1　什么是线程安全性
@@ -374,11 +377,13 @@
 4.4 This Monitor和Class Monitor的详细介绍 114
 4.4.1 this monitor 114
 4.4.2 class monitor 117
+
 4.5 程序死锁的原因以及如何诊断 120
 4.5.1 程序死锁 120
 4.5.2 程序死锁举例 121
 4.5.3 死锁诊断 124
 4.6 本章总结 126
+
 第5章：线程间通信 127
 5.1 同步阻塞与异步非阻塞 127
 5.1.1 同步阻塞消息处理 127
@@ -1599,6 +1604,7 @@ Fork/Join　框架　142
 3．3．6　数据共享通道：BlockingQueue 130
 3．3．7　随机数据结构：跳表（SkipList） 134
 3．4　参考资料 136
+
 第4章　锁的优化及注意事项 138
 4．1　有助于提高“锁”性能的几点建议 139
 4．1．1　减小锁持有时间 139
@@ -1627,6 +1633,7 @@ Fork/Join　框架　142
 4．4．9　让线程之间互相帮助：细看SynchronousQueue的实现 176
 4．5　有关死锁的问题 179
 4．6　参考文献 183
+
 第5章　并行模式与算法 184
 5．1　探讨单例模式 184
 5．2　不变模式 187
@@ -1654,6 +1661,7 @@ Fork/Join　框架　142
 5．11．1　AIO EchoServer的实现 245
 5．11．2　AIO Echo客户端实现 248
 5．12　参考文献 249
+
 第6章　Java 8与并发 251
 6．1　Java 8的函数式编程简介 251
 6．1．1　函数作为一等公民 252
@@ -1678,6 +1686,7 @@ Fork/Join　框架　142
 6．5．3　流式调用 272
 6．5．4　CompletableFuture中的异常处理 272
 6．5．5　组合多个CompletableFuture 273
+
 6．6　读写锁的改进：StampedLock 274
 6．6．1　StampedLock使用示例 275
 6．6．2　StampedLock的小陷阱 276
@@ -1685,7 +1694,7 @@ Fork/Join　框架　142
 6．7　原子类的增强 281
 6．7．1　更快的原子类：LongAdder 281
 6．7．2　LongAdder的功能增强版：LongAccumulator 287
-6．8　参考文献 288
+
 第7章　使用Akka构建高并发程序 289
 7．1　新并发模型：Actor 290
 7．2　Akka之Hello World 290
@@ -1695,6 +1704,7 @@ Fork/Join　框架　142
 7．6　选择Actor 303
 7．7　消息收件箱（Inbox） 303
 7．8　消息路由 305
+
 7．9　Actor的内置状态转换 308
 7．10　询问模式：Actor中的Future 311
 7．11　多个Actor同时修改数据：Agent 313
@@ -1705,6 +1715,7 @@ Fork/Join　框架　142
 7．13．3　粒子群算法能做什么 322
 7．13．4　使用Akka实现粒子群 323
 7．14　参考文献 330
+
 第8章　并行程序调试 331
 8．1　准备实验样本 331
 8．2　正式起航 332
@@ -3292,6 +3303,629 @@ IO指的就是读入/写出数据的过程，和等待读入/写出数据的过�
 
 
 PS：聪明的你或许发现了我没有提多路复用IO，因为它值得专门撰文一篇。
+
+======================
+
+java并发编程系列：wait/notify机制
+小孩子4919  程序员小灰  今天
+本文转载自公众号  我们都是小青蛙
+
+
+
+如果一个线程从头到尾执行完也不和别的线程打交道的话，那就不会有各种安全性问题了。但是协作越来越成为社会发展的大势，一个大任务拆成若干个小任务之后，各个小任务之间可能也需要相互协作最终才能执行完整个大任务。所以各个线程在执行过程中可以相互通信，所谓通信就是指相互交换一些数据或者发送一些控制指令，比如一个线程给另一个暂停执行的线程发送一个恢复执行的指令，下边详细看都有哪些通信方式。
+
+
+
+volatile和synchronized
+
+
+可变共享变量是天然的通信媒介，也就是说一个线程如果想和另一个线程通信的话，可以修改某个在多线程间共享的变量，另一个线程通过读取这个共享变量来获取通信的内容。
+
+
+
+由于原子性操作、内存可见性和指令重排序的存在，java提供了volatile和synchronized的同步手段来保证通信内容的正确性，假如没有这些同步手段，一个线程的写入不能被另一个线程立即观测到，那这种通信就是不靠谱的～
+
+
+
+wait/notify机制
+
+
+故事背景
+
+
+也不知道是那个遭天杀的给我们学校厕所的坑里塞了个塑料瓶，导致楼道里如黄河泛滥一般，臭味熏天。更加悲催的是整个楼只有这么一个厕所，比这个更悲催的是这个厕所里只有一个坑！！！！！好吧，让我们用java来描述一下这个厕所：
+
+
+
+public class Washroom {
+
+    private volatile boolean isAvailable = false;    //表示厕所是否是可用的状态
+
+    private Object lock = new Object(); //厕所门的锁
+
+    public boolean isAvailable() {
+        return isAvailable;
+    }
+
+    public void setAvailable(boolean available) {
+        this.isAvailable = available;
+    }
+
+    public Object getLock() {
+        return lock;
+    }
+}
+
+
+isAvailable字段代表厕所是否可用，由于厕所损坏，默认是false的，lock字段代表这个厕所门的锁。需要注意的是isAvailable字段被volatile修饰，也就是说有一个线程修改了它的值，它可以立即对别的线程可见～
+
+
+
+由于厕所资源宝贵，英明的学校领导立即拟定了一个修复任务：
+
+
+
+public class RepairTask implements Runnable {
+
+    private Washroom washroom;
+
+    public RepairTask(Washroom washroom) {
+        this.washroom = washroom;
+    }
+
+    @Override
+    public void run() {
+
+        synchronized (washroom.getLock()) {
+            System.out.println("维修工 获取了厕所的锁");
+            System.out.println("厕所维修中，维修厕所是一件辛苦活，需要很长时间。。。");
+
+            try {
+                Thread.sleep(5000L);    //用线程sleep表示维修的过程
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            washroom.setAvailable(true);        //维修结束把厕所置为可用状态
+            System.out.println("维修工把厕所修好了，准备释放锁了");
+        }
+    }
+}
+
+
+这个维修计划的内容就是当维修工进入厕所之后，先把门锁上，然后开始维修，维修结束之后把Washroom的isAvailable字段设置为true，以表示厕所可用。
+
+
+
+与此同时，一群急得像热锅上的蚂蚁的家伙在厕所门前打转转，他们想做神马不用我明说了吧😏😏：
+
+
+
+public class ShitTask implements Runnable {
+
+    private Washroom washroom;
+
+    private String name;
+
+    public ShitTask(Washroom washroom, String name) {
+        this.washroom = washroom;
+        this.name = name;
+    }
+
+    @Override
+    public void run() {
+        synchronized (washroom.getLock()) {
+            System.out.println(name + " 获取了厕所的锁");
+            while (!washroom.isAvailable()) {
+                // 一直等
+            }
+            System.out.println(name + " 上完了厕所");
+        }
+    }
+}
+
+
+这个ShitTask描述了上厕所的一个流程，先获取到厕所的锁，然后判断厕所是否可用，如果不可用，则在一个死循环里不断的判断厕所是否可用，直到厕所可用为止，然后上完厕所释放锁走人。
+
+
+
+然后我们看看现实世界都发生了什么吧：
+
+
+
+public class Test {
+    public static void main(String[] args) {
+        Washroom washroom = new Washroom();
+        new Thread(new RepairTask(washroom), "REPAIR-THREAD").start();
+
+        try {
+            Thread.sleep(1000L);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        new Thread(new ShitTask(washroom, "狗哥"), "BROTHER-DOG-THREAD").start();
+        new Thread(new ShitTask(washroom, "猫爷"), "GRANDPA-CAT-THREAD").start();
+        new Thread(new ShitTask(washroom, "王尼妹"), "WANG-NI-MEI-THREAD").start();
+    }
+}
+
+
+学校先让维修工进入厕所维修，然后包括狗哥、猫爷、王尼妹在内的上厕所大军就开始围着厕所打转转的旅程，我们看一下执行结果：
+
+
+
+维修工 获取了厕所的锁
+厕所维修中，维修厕所是一件辛苦活，需要很长时间。。。
+维修工把厕所修好了，准备释放锁了
+王尼妹 获取了厕所的锁
+王尼妹 上完了厕所
+猫爷 获取了厕所的锁
+猫爷 上完了厕所
+狗哥 获取了厕所的锁
+狗哥 上完了厕所
+
+
+看起来没有神马问题，但是再回头看看代码，发现有两处特别别扭的地方：
+
+
+
+在main线程开启REPAIR-THREAD线程后，必须调用sleep方法等待一段时间才允许上厕所线程开启。
+
+
+
+如果REPAIR-THREAD线程和其他上厕所线程一块儿开启的话，就有可能上厕所的人，比如狗哥先获取到厕所的锁，然后维修工压根儿连厕所也进不去。但是真实情况可能真的这样的，狗哥先到了厕所，然后维修工才到。不过狗哥的处理应该不是一直待在厕所里，而是先出来等着，啥时候维修工说修好了他再进去。所以这点有些别扭～
+
+
+
+在一个上厕所的人获取到厕所的锁的时候，必须不断判断Washroom的isAvailable字段是否为true。
+
+
+
+如果一个人进入到厕所发现厕所仍然处在不可用状态的话，那它应该在某个地方休息，啥时候维修工把厕所修好了，再叫一下等着上厕所的人就好了嘛，没必要自己不停的去检查厕所是否被修好了。
+
+
+
+总结一下，就是一个线程在获取到锁之后，如果指定条件不满足的话，应该主动让出锁，然后到专门的等待区等待，直到某个线程完成了指定的条件，再通知一下在等待这个条件完成的线程，让它们继续执行。
+
+
+
+如果你觉得上边这句话比较绕的话，我来给你翻译一下：当上狗哥获取到厕所门锁之后，如果厕所处于不可用状态，那就主动让出锁，然后到等待上厕所的队伍里排队`等待`，直到维修工把厕所修理好，把厕所的状态置为可用后，维修工再通知需要上厕所的人，然他们正常上厕所。
+
+
+具体使用方式
+
+
+为了实现这个构想，java里提出了一套叫wait/notify的机制。当一个线程获取到锁之后，如果发现条件不满足，那就主动让出锁，然后把这个线程放到一个等待队列里等待去，等到某个线程把这个条件完成后，就通知等待队列里的线程他们等待的条件满足了，可以继续运行啦！
+
+
+
+如果不同线程有不同的等待条件肿么办，总不能都塞到同一个等待队列里吧？是的，java里规定了每一个锁都对应了一个等待队列，也就是说如果一个线程在获取到锁之后发现某个条件不满足，就主动让出锁然后把这个线程放到与它获取到的锁对应的那个等待队列里，另一个线程在完成对应条件时需要获取同一个锁，在条件完成后通知它获取的锁对应的等待队列。这个过程意味着锁和等待队列建立了一对一关联。
+
+
+
+怎么让出锁并且把线程放到与锁关联的等待队列中以及怎么通知等待队列中的线程相关条件已经完成java已经为我们规定好了。我们知道，锁其实就是个对象而已，在所有对象的老祖宗类Object中定义了这么几个方法：
+
+
+
+public final void wait() throws InterruptedException
+public final void wait(long timeout) throws InterruptedException
+public final void wait(long timeout, int nanos) throws InterruptedException
+
+public final void notify();
+public final void notifyAll();
+
+各个方法的详细说明如下：
+
+
+
+方法名	说明
+wait()	在线程获取到锁后，调用锁对象的本方法，线程释放锁并且把该线程放置到与锁对象关联的等待队列
+wait(long timeout)	与wait()方法相似，只不过等待指定的毫秒数，如果超过指定时间则自动把该线程从等待队列中移出
+wait(long timeout, int nanos)	与上边的一样，只不过超时时间粒度更小，即指定的毫秒数加纳秒数
+notify()	通知一个在与该锁对象关联的等待队列的线程，使它从wait()方法中返回继续往下执行
+notifyAll()	与上边的类似，只不过通知该等待队列中的所有线程
+
+
+了解了这些方法的意思以后我们再来改写一下ShitTask：
+
+
+
+public class ShitTask implements Runnable {
+
+    // ... 为节省篇幅，省略相关字段和构造方法
+
+    @Override
+    public void run() {
+        synchronized (washroom.getLock()) {
+            System.out.println(name + " 获取了厕所的锁");
+            while (!washroom.isAvailable()) {
+                try {
+                    washroom.getLock().wait();  //调用锁对象的wait()方法，让出锁，并把当前线程放到与锁关联的等待队列
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            System.out.println(name + " 上完了厕所");
+        }
+    }
+}
+
+
+看，原来我们在判断厕所是否可用的死循环里加了这么一段代码：
+
+
+
+washroom.getLock().wait();
+
+
+这段代码的意思就是让出厕所的锁，并且把当前线程放到与厕所的锁相关联的等待队列里。
+
+
+
+然后我们也需要修改一下维修任务：
+
+
+
+public class RepairTask implements Runnable {
+
+    // ... 为节省篇幅，省略相关字段和构造方法
+
+    @Override
+    public void run() {
+
+        synchronized (washroom.getLock()) {
+            System.out.println("维修工 获取了厕所的锁");
+            System.out.println("厕所维修中，维修厕所是一件辛苦活，需要很长时间。。。");
+
+            try {
+                Thread.sleep(5000L);    //用线程sleep表示维修的过程
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            washroom.setAvailable(true);    //维修结束把厕所置为可用状态
+
+            washroom.getLock().notifyAll(); //通知所有在与锁对象关联的等待队列里的线程，它们可以继续执行了
+            System.out.println("维修工把厕所修好了，准备释放锁了");
+        }
+    }
+}
+
+
+大家可以看出来，我们在维修结束后加了这么一行代码：
+
+
+
+washroom.getLock().notifyAll();
+
+
+这个代码表示将通知所有在与锁对象关联的等待队列里的线程，它们可以继续执行了。
+
+
+
+在使用java的wait/notify机制修改了ShitTask和RepairTask后，我们在复原一下整个现实场景：
+
+
+
+public class Test {
+    public static void main(String[] args) {
+        Washroom washroom = new Washroom();
+        new Thread(new ShitTask(washroom, "狗哥"), "BROTHER-DOG-THREAD").start();
+        new Thread(new ShitTask(washroom, "猫爷"), "GRANDPA-CAT-THREAD").start();
+        new Thread(new ShitTask(washroom, "王尼妹"), "WANG-NI-MEI-THREAD").start();
+
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        new Thread(new RepairTask(washroom), "REPAIR-THREAD").start();
+    }
+}
+
+
+在这个场景中，我们可以刻意让着急上厕所的先到达了厕所，维修工最后抵达厕所，来看一下加了wait/notify机制的代码的执行结果是：
+
+
+
+狗哥 获取了厕所的锁
+猫爷 获取了厕所的锁
+王尼妹 获取了厕所的锁
+维修工 获取了厕所的锁
+厕所维修中，维修厕所是一件辛苦活，需要很长时间。。。
+维修工把厕所修好了，准备释放锁了
+王尼妹 上完了厕所
+猫爷 上完了厕所
+狗哥 上完了厕所
+
+
+从执行结果可以看出来，狗哥、猫爷、王尼妹虽然先到达了厕所并且获取到锁，但是由于厕所处于不可用状态，所以都先调用wait()方法让出了自己获得的锁，然后躲到与这个锁关联的等待队列里，直到维修工修完了厕所，通知了在等待队列中的狗哥、猫爷、王尼妹，他们才又开始继续执行上厕所的程序～
+
+
+
+通用模式
+
+
+经过上边的厕所案例，大家应该对wait/notify机制有了大致了解，下边我们总结一下这个机制的通用模式。首先看一下等待线程的通用模式：
+
+获取对象锁。
+
+如果某个条件不满足的话，调用锁对象的wait方法，被通知后仍要检查条件是否满足。
+
+条件满足则继续执行代码。
+
+
+
+通用的代码如下：
+
+
+
+synchronized (对象) {
+    处理逻辑（可选）
+    while(条件不满足) {
+        对象.wait();
+    }
+    处理逻辑（可选）
+}
+
+
+除了判断条件是否满足和调用wait方法以外的代码，其他的处理逻辑是可选的。
+
+
+
+下边再来看通知线程的通用模式：
+
+获得对象的锁。
+
+完成条件。
+
+通知在等待队列中的等待线程。
+
+
+
+synchronized (对象) {
+    完成条件
+    对象.notifyAll();、
+}
+小贴士：别忘了同步方法也是使用锁的喔，静态同步方法的锁对象是该类的`Class对象`，成员同步方法的锁对象是`this对象`。所以如果没有刻意强调，下边所说的同步代码块也包含同步方法。
+
+
+
+了解了wait/notify的通用模式之后，使用的时候需要特别小心，需要注意下边这些方面：
+
+
+
+必须在同步代码块中调用wait、 notify或者notifyAll方法。
+
+
+
+有的童鞋会有疑问，为啥wait/notify机制的这些方法必须都放在同步代码块中才能调用呢？wait方法的意思只是让当前线程停止执行，把当前线程放在等待队列里，notify方法的意思只是从等待队列里移除一个线程而已，跟加锁有什么关系？
+
+
+
+答：因为wait方法是运行在等待线程里的，notify或者notifyAll是运行在通知线程里的。而执行wait方法前需要判断一下某个条件是否满足，如果不满足才会执行wait方法，这是一个先检查后执行的操作，不是一个原子性操作，所以如果不加锁的话，在多线程环境下等待线程和通知线程的执行顺序可能是这样的：
+
+
+也就是说当等待线程已经判断条件不满足，正要执行wait方法，此时通知线程抢先把条件完成并且调用了notify方法，之后等待线程才执行到wait方法，这会导致等待线程永远停留在等待队列而没有人再去notify它。所以等待线程中的判断条件是否满足、调用wait方法和通知线程中完成条件、调用notify方法都应该是原子性操作，彼此之间是互斥的，所以用同一个锁来对这两个原子性操作进行同步，从而避免出现等待线程永久等待的尴尬局面。
+
+
+
+如果不在同步代码块中调用wait、notify或者notifyAll方法，也就是说没有获取锁就调用wait方法，就像这样：
+
+
+
+对象.wait();
+
+
+是会抛出IllegalMonitorStateException异常的。
+
+
+
+在同步代码块中，必须调用获取的锁对象的wait、 notify或者notifyAll方法。
+
+
+
+也就是说不能随便调用一个对象的wait、notify或者notifyAll方法。比如等待线程中的代码是这样的：
+
+
+
+
+synchronized (对象1) {
+    while(条件不满足) {
+        对象2.wait();    //随便调用一个对象的wait方法
+    }
+}
+
+
+通知线程中的代码是这样的：
+
+
+
+
+
+synchronized (对象1) {
+    完成条件
+    对象2.notifyAll();
+}
+
+
+对于代码对象2.wait()，表示让出当前线程持有的对象2的锁，而当前线程持有的是对象1的锁，所以这么写是错误的，也会抛出IllegalMonitorStateException异常的。意思就是如果当前线程不持有某个对象的锁，那它就不能调用该对象的wait方法来让出该锁。所以如果想让等待线程让出当前持有的锁，只能调用对象1.wait()。然后这个线程就被放置到与对象1相关联的等待队列中，在通知线程中只能调用对象1.notifyAll()来通知这些等待的线程了。
+
+
+
+在等待线程判断条件是否满足时，应该使用while，而不是if。
+
+
+
+也就是说在判断条件是否满足的时候要使用while：
+
+
+while(条件不满足) { //正确✅
+    对象.wait();
+}
+
+
+而不是使用if：
+
+
+
+
+
+if(条件不满足) { //错误❌
+    对象.wait();
+}
+
+
+这个是因为在多线程条件下，可能在一个线程调用notify之后立即又有一个线程把条件改成了不满足的状态，比如在维修工把厕所修好之后通知大家上厕所吧的瞬间，有一个小屁孩以迅雷不及掩耳之势又给厕所坑里塞了个瓶子，厕所又被置为不可用状态，等待上厕所的还是需要再判断一下条件是否满足才能继续执行。
+
+
+
+在调用完锁对象的notify或者notifyAll方法后，等待线程并不会立即从wait()方法返回，需要调用notify()或者notifyAll()的线程释放锁之后，等待线程才从wait()返回继续执行。
+
+
+
+
+
+
+也就是说如果通知线程在调用完锁对象的notify或者notifyAll方法后还有需要执行的代码，就像这样：
+
+
+
+synchronized (对象) {
+    完成条件
+    对象.notifyAll();
+    ... 通知后的处理逻辑
+}
+
+
+需要把通知后的处理逻辑执行完成后，把锁释放掉，其他线程才可以从wait状态恢复过来，重新竞争锁来执行代码。比方说在维修工修好厕所并通知了等待上厕所的人们之后，他还没有从厕所出来，而是在厕所的墙上写了 "XXX到此一游"之类的话之后才从厕所出来，从厕所出来才代表着释放了锁，狗哥、猫爷、王尼妹才开始争抢进入厕所的机会。
+
+
+
+notify方法只会将等待队列中的一个线程移出，而notifyAll方法会将等待队列中的所有线程移出。
+
+
+
+大家可以把上边代码中的notifyAll方法替换称notify方法，看看执行结果～
+
+
+wait和sleep的区别
+
+
+眼尖的小伙伴肯定发现，wait和sleep这两个方法都可以让线程暂停执行，而且都有InterruptedException的异常说明，那么它们的区别是啥呢？
+
+
+
+wait是Object的成员方法，而sleep是Thread的静态方法。
+
+
+
+只要是作为锁的对象都可以在同步代码块中调用自己的wait方法，sleep是Thread的静态方法，表示的是让当前线程休眠指定的时间。
+
+
+
+调用wait方法需要先获得锁，而调用sleep方法是不需要的。
+
+
+
+再一次强调，一定要在同步代码块中调用锁对象的wait方法，前提是要获得锁！前提是要获得锁！前提是要获得锁！而sleep方法随时调用～
+
+
+
+调用wait方法的线程需要用notify来唤醒，而sleep必须设置超时值。
+
+
+
+线程在调用wait方法之后会先释放锁，而sleep不会释放锁。
+
+
+
+这一点可能是最重要的一点不同点了吧，狗哥、猫爷、王尼妹这些线程一开始是获取到厕所的锁了，但是调用了wait方法之后主动把锁让出，从而让维修工得以进入厕所维修。如果狗哥在发现厕所是不可用的条件时选择调用sleep方法的话，线程是不会释放锁的，也就是说维修工无法获得厕所的锁，也就修不了厕所了～ 大家一定要谨记这一点啊！
+
+
+
+总结
+
+
+线程间需要通过通信才能协作解决某个复杂的问题。
+
+
+
+可变共享变量是天然的通信媒介，但是使用的时候一定要保证线程安全性，通常使用volatile变量或synchronized来保证线程安全性。
+
+
+
+一个线程在获取到锁之后，如果指定条件不满足的话，应该主动让出锁，然后到专门的等待区等待，直到某个线程完成了指定的条件，再通知一下在等待这个条件完成的线程，让它们继续执行。这个机制就是wait/notify机制。
+
+
+
+等待线程的通用模式：
+
+
+
+
+
+synchronized (对象) {
+    处理逻辑（可选）
+    while(条件不满足) {
+        对象.wait();
+    }
+    处理逻辑（可选）
+}
+
+
+
+
+可以分为下边几个步骤：
+
+
+
+获取对象锁。
+
+如果某个条件不满足的话，调用锁对象的wait方法，被通知后仍要检查条件是否满足。
+
+条件满足则继续执行代码。
+
+
+
+
+
+
+
+通知线程的通用模式：
+
+
+
+
+
+synchronized (对象) {
+    完成条件
+    对象.notifyAll();、
+}
+
+
+
+
+可以分为下边几个步骤：
+
+获得对象的锁。
+
+完成条件。
+
+通知在等待队列中的等待线程。
+
+
+
+wait和sleep的区别
+
+wait是Object的成员方法，而sleep是Thread的静态方法。
+
+调用wait方法需要先获得锁，而调用sleep方法是不需要的。
+
+调用wait方法的线程需要用notify来唤醒，而sleep必须设置超时值。
+
+线程在调用wait方法之后会先释放锁，而sleep不会释放锁。
+
 
 
 
