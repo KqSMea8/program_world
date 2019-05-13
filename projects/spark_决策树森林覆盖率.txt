@@ -1,0 +1,417 @@
+
+val dataWithoutHeader = spark.read.
+option("inferSchema", true).
+option("header", false).
+csv("hdfs:///user/ds/covtype.data")
+...
+org.apache.spark.sql.DataFrame = [_c0: int, _c1: int ... 53 more fields]
+
+val colNames = Seq(
+"Elevation", "Aspect", "Slope",
+"Horizontal_Distance_To_Hydrology", "Vertical_Distance_To_Hydrology",
+"Horizontal_Distance_To_Roadways",
+"Hillshade_9am", "Hillshade_Noon", "Hillshade_3pm",
+"Horizontal_Distance_To_Fire_Points"
+) ++ (
+(0 until 4).map(i => s"Wilderness_Area_$i")
+) ++ (
+(0 until 40).map(i => s"Soil_Type_$i")
+) ++ Seq("Cover_Type")
+val data = dataWithoutHeader.toDF(colNames:_*).
+withColumn("Cover_Type", $"Cover_Type".cast("double"))
+data.head
+...
+org.apache.spark.sql.Row = [2596,51,3,258,0,510,221,232,148,6279,1,0,0,0,...
+
+
+val Array(trainData, testData) = data.randomSplit(Array(0.9, 0.1))
+trainData.cache()
+testData.cache()
+
+import org.apache.spark.ml.feature.VectorAssembler
+val inputCols = trainData.columns.filter(_ != "Cover_Type")
+val assembler = new VectorAssembler().
+setInputCols(inputCols).
+setOutputCol("featureVector")
+val assembledTrainData = assembler.transform(trainData)
+assembledTrainData.select("featureVector").show(truncate = false)
+
+
+
+import org.apache.spark.ml.classification.DecisionTreeClassifier
+import scala.util.Random
+val classifier = new DecisionTreeClassifier().
+setSeed(Random.nextLong()).
+setLabelCol("Cover_Type").
+setFeaturesCol("featureVector").
+setPredictionCol("prediction")
+val model = classifier.fit(assembledTrainData)
+println(model.toDebugString)
+...
+DecisionTreeClassificationModel (uid=dtc_29cfe1281b30) of depth 5 with 63 nodes
+If (feature 0 <= 3039.0)
+If (feature 0 <= 2555.0)
+If (feature 10 <= 0.0)
+If (feature 0 <= 2453.0)
+If (feature 3 <= 0.0)
+Predict: 4.0
+Else (feature 3 > 0.0)
+Predict: 3.0
+...
+
+model.featureImportances.toArray.zip(inputCols).
+sorted.reverse.foreach(println)
+
+val predictions = model.transform(assembledTrainData)
+predictions.select("Cover_Type", "prediction", "probability").
+show(truncate = false)
+
+import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
+val evaluator = new MulticlassClassificationEvaluator().
+setLabelCol("Cover_Type").
+setPredictionCol("prediction")
+evaluator.setMetricName("accuracy").evaluate(predictions)
+evaluator.setMetricName("f1").evaluate(predictions)
+
+
+
+val colNames = Seq(
+"Elevation", "Aspect", "Slope",
+"Horizontal_Distance_To_Hydrology", "Vertical_Distance_To_Hydrology",
+"Horizontal_Distance_To_Roadways",
+"Hillshade_9am", "Hillshade_Noon", "Hillshade_3pm",
+"Horizontal_Distance_To_Fire_Points"
+) ++ (
+(0 until 4).map(i => s"Wilderness_Area_$i")
+) ++ (
+(0 until 40).map(i => s"Soil_Type_$i")
+) ++ Seq("Cover_Type")
+val data = dataWithoutHeader.toDF(colNames:_*).
+withColumn("Cover_Type", $"Cover_Type".cast("double"))
+data.head
+...
+org.apache.spark.sql.Row = [2596,51,3,258,0,510,221,232,148,6279,1,0,0,0,...
+
+
+val Array(trainData, testData) = data.randomSplit(Array(0.9, 0.1))
+trainData.cache()
+testData.cache()
+
+
+import org.apache.spark.ml.feature.VectorAssembler
+val inputCols = trainData.columns.filter(_ != "Cover_Type")
+val assembler = new VectorAssembler().
+setInputCols(inputCols).
+setOutputCol("featureVector")
+val assembledTrainData = assembler.transform(trainData)
+assembledTrainData.select("featureVector").show(truncate = false)
++------------------------------------------------------------------- ...
+|featureVector ...
++------------------------------------------------------------------- ...
+|(54,[0,1,2,3,4,5,6,7,8,9,13,15],[1863.0,37.0,17.0,120.0,18.0,90.0,2 ...
+|(54,[0,1,2,5,6,7,8,9,13,18],[1874.0,18.0,14.0,90.0,208.0,209.0,135. ...
+|(54,[0,1,2,3,4,5,6,7,8,9,13,18],[1879.0,28.0,19.0,30.0,12.0,95.0,20 ...
+...
+
+
+
+
+import org.apache.spark.ml.classification.DecisionTreeClassifier
+import scala.util.Random
+val classifier = new DecisionTreeClassifier().
+setSeed(Random.nextLong()).
+setLabelCol("Cover_Type").
+setFeaturesCol("featureVector").
+setPredictionCol("prediction")
+val model = classifier.fit(assembledTrainData)
+println(model.toDebugString)
+...
+DecisionTreeClassificationModel (uid=dtc_29cfe1281b30) of depth 5 with 63 nodes
+If (feature 0 <= 3039.0)
+If (feature 0 <= 2555.0)
+If (feature 10 <= 0.0)
+If (feature 0 <= 2453.0)
+If (feature 3 <= 0.0)
+Predict: 4.0
+Else (feature 3 > 0.0)
+Predict: 3.0
+...
+
+
+model.featureImportances.toArray.zip(inputCols).
+sorted.reverse.foreach(println)
+...
+(0.7931809106979147,Elevation)
+(0.050122380231328235,Horizontal_Distance_To_Hydrology)
+(0.030609364695664505,Wilderness_Area_0)
+(0.03052094489457567,Soil_Type_3)
+(0.026170212644908816,Hillshade_Noon)
+(0.024374024564392027,Soil_Type_1)
+(0.01670006142176787,Soil_Type_31)
+(0.012596990926899494,Horizontal_Distance_To_Roadways)
+(0.011205482194428473,Wilderness_Area_2)
+(0.0024194271152490235,Hillshade_3pm)
+(0.0018551637821715788,Horizontal_Distance_To_Fire_Points)
+(2.450368306995527E-4,Soil_Type_8)
+(0.0,Wilderness_Area_3)
+...
+
+
+
+val predictions = model.transform(assembledTrainData)
+predictions.select("Cover_Type", "prediction", "probability").
+show(truncate = false)
+...
++----------+----------+------------------------------------------------ ...
+|Cover_Type|prediction|probability ...
++----------+----------+------------------------------------------------ ...
+|6.0 |3.0 |[0.0,0.0,0.03421818804589827,0.6318547696523378, ...
+|6.0 |4.0 |[0.0,0.0,0.043440860215053764,0.283870967741935, ...
+|6.0 |3.0 |[0.0,0.0,0.03421818804589827,0.6318547696523378, ...
+
+
+import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
+
+val evaluator = new MulticlassClassificationEvaluator().
+setLabelCol("Cover_Type").
+setPredictionCol("prediction")
+evaluator.setMetricName("accuracy").evaluate(predictions)
+evaluator.setMetricName("f1").evaluate(predictions)
+...
+0.6976371385502989
+0.6815943874214012
+
+
+
+import org.apache.spark.mllib.evaluation.MulticlassMetrics
+val predictionRDD = predictions.
+select("prediction", "Cover_Type").
+as[(Double,Double)].
+rdd
+val multiclassMetrics = new MulticlassMetrics(predictionRDD)
+multiclassMetrics.confusionMatrix
+
+143125.0 41769.0 164.0 0.0 0.0 0.0 5396.0
+65865.0 184360.0 3930.0 102.0 39.0 0.0 677.0
+
+
+val confusionMatrix = predictions.
+groupBy("Cover_Type").
+pivot("prediction", (1 to 7)).
+count().
+na.fill(0.0).
+orderBy("Cover_Type")
+confusionMatrix.show()
+...
++----------+------+------+-----+---+---+---+-----+
+|Cover_Type| 1| 2| 3| 4| 5| 6| 7|
++----------+------+------+-----+---+---+---+-----+
+| 1.0|143125| 41769| 164| 0| 0| 0| 5396|
+| 2.0| 65865|184360| 3930|102| 39| 0| 677|
+| 3.0| 0| 5680|25772|674| 0| 0| 0|
+| 4.0| 0| 21| 1481|973| 0| 0| 0|
+| 5.0| 87| 7761| 648| 0| 69| 0| 0|
+| 6.0| 0| 6175| 8902|559| 0| 0| 0|
+| 7.0| 8058| 24| 50| 0| 0| 0|10395|
++----------+------+------+-----+---+---+---+-----+
+
+
+
+import org.apache.spark.sql.DataFrame
+def classProbabilities(data: DataFrame): Array[Double] = {
+val total = data.count()
+data.groupBy("Cover_Type").count().
+orderBy("Cover_Type").
+select("count").as[Double].
+map(_ / total).
+collect()
+}
+
+val trainPriorProbabilities = classProbabilities(trainData)
+val testPriorProbabilities = classProbabilities(testData)
+trainPriorProbabilities.zip(testPriorProbabilities).map {
+case (trainProb, cvProb) => trainProb * cvProb
+}.sum
+
+import org.apache.spark.ml.Pipeline
+val inputCols = trainData.columns.filter(_ != "Cover_Type")
+val assembler = new VectorAssembler().
+setInputCols(inputCols).
+setOutputCol("featureVector")
+val classifier = new DecisionTreeClassifier().
+setSeed(Random.nextLong()).
+setLabelCol("Cover_Type").
+setFeaturesCol("featureVector").
+setPredictionCol("prediction")
+val pipeline = new Pipeline().setStages(Array(assembler, classifier))
+
+import org.apache.spark.ml.tuning.ParamGridBuilder
+val paramGrid = new ParamGridBuilder().
+addGrid(classifier.impurity, Seq("gini", "entropy")).
+addGrid(classifier.maxDepth, Seq(1, 20)).
+addGrid(classifier.maxBins, Seq(40, 300)).
+addGrid(classifier.minInfoGain, Seq(0.0, 0.05)).
+build()
+val multiclassEval = new MulticlassClassificationEvaluator().
+setLabelCol("Cover_Type").
+setPredictionCol("prediction").
+setMetricName("accuracy")
+
+
+
+import org.apache.spark.ml.tuning.TrainValidationSplit
+val validator = new TrainValidationSplit().
+setSeed(Random.nextLong()).
+setEstimator(pipeline).
+setEvaluator(multiclassEval).
+setEstimatorParamMaps(paramGrid).
+setTrainRatio(0.9)
+val validatorModel = validator.fit(trainData)
+
+import org.apache.spark.ml.PipelineModel
+val bestModel = validatorModel.bestModel
+bestModel.asInstanceOf[PipelineModel].stages.last.extractParamMap
+...
+{
+dtc_9136220619b4-cacheNodeIds: false,
+dtc_9136220619b4-checkpointInterval: 10,
+dtc_9136220619b4-featuresCol: featureVector,
+dtc_9136220619b4-impurity: entropy,
+dtc_9136220619b4-labelCol: Cover_Type,
+dtc_9136220619b4-maxBins: 40,
+dtc_9136220619b4-maxDepth: 20,
+dtc_9136220619b4-maxMemoryInMB: 256,
+dtc_9136220619b4-minInfoGain: 0.0,
+dtc_9136220619b4-minInstancesPerNode: 1,
+dtc_9136220619b4-predictionCol: prediction,
+dtc_9136220619b4-probabilityCol: probability,
+dtc_9136220619b4-rawPredictionCol: rawPrediction,
+dtc_9136220619b4-seed: 159147643
+}
+
+
+
+val validatorModel = validator.fit(trainData)
+val paramsAndMetrics = validatorModel.validationMetrics.
+zip(validatorModel.getEstimatorParamMaps).sortBy(-_._1)
+paramsAndMetrics.foreach { case (metric, params) =>
+println(metric)
+println(params)
+println()
+}
+...
+0.9138483377774368
+{
+dtc_3e3b8bb692d1-impurity: entropy,
+dtc_3e3b8bb692d1-maxBins: 40,
+dtc_3e3b8bb692d1-maxDepth: 20,
+dtc_3e3b8bb692d1-minInfoGain: 0.0
+}
+0.9122369506416774
+{
+dtc_3e3b8bb692d1-impurity: entropy,
+dtc_3e3b8bb692d1-maxBins: 300,
+dtc_3e3b8bb692d1-maxDepth: 20,
+dtc_3e3b8bb692d1-minInfoGain: 0.0
+}
+...
+
+validatorModel.validationMetrics.max
+multiclassEval.evaluate(bestModel.transform(testData))
+...
+0.9138483377774368
+0.9139978718291971
+
+
+
+
+
+import org.apache.spark.sql.functions._
+def unencodeOneHot(data: DataFrame): DataFrame = {
+val wildernessCols = (0 until 4).map(i => s"Wilderness_Area_$i").toArray
+val wildernessAssembler = new VectorAssembler().
+setInputCols(wildernessCols).
+setOutputCol("wilderness")
+val unhotUDF = udf((vec: Vector) => vec.toArray.indexOf(1.0).toDouble)
+val withWilderness = wildernessAssembler.transform(data).
+drop(wildernessCols:_*).
+withColumn("wilderness", unhotUDF($"wilderness"))
+val soilCols = (0 until 40).map(i => s"Soil_Type_$i").toArray
+val soilAssembler = new VectorAssembler().
+setInputCols(soilCols).
+setOutputCol("soil")
+soilAssembler.transform(withWilderness).
+drop(soilCols:_*).
+withColumn("soil", unhotUDF($"soil"))
+}
+
+
+
+import org.apache.spark.ml.feature.VectorIndexer
+val inputCols = unencTrainData.columns.filter(_ != "Cover_Type")
+val assembler = new VectorAssembler().
+setInputCols(inputCols).
+setOutputCol("featureVector")
+val indexer = new VectorIndexer().
+setMaxCategories(40).
+setInputCol("featureVector").
+setOutputCol("indexedVector")
+val classifier = new DecisionTreeClassifier().
+setSeed(Random.nextLong()).
+setLabelCol("Cover_Type").
+setFeaturesCol("indexedVector").
+setPredictionCol("prediction")
+val pipeline = new Pipeline().setStages(Array(assembler, indexer, classifier))
+
+
+import org.apache.spark.ml.classification.RandomForestClassifier
+val classifier = new RandomForestClassifier().
+setSeed(Random.nextLong()).
+setLabelCol("Cover_Type").
+setFeaturesCol("indexedVector").
+setPredictionCol("prediction")
+
+
+import org.apache.spark.ml.classification.RandomForestClassificationModel
+val forestModel = bestModel.asInstanceOf[PipelineModel].
+stages.last.asInstanceOf[RandomForestClassificationModel]
+forestModel.featureImportances.toArray.zip(inputCols).
+sorted.reverse.foreach(println)
+...
+(0.28877055118903183,Elevation)
+(0.17288279582959612,soil)
+(0.12105056811661499,Horizontal_Distance_To_Roadways)
+(0.1121550648692802,Horizontal_Distance_To_Fire_Points)
+(0.08805270405239551,wilderness)
+(0.04467393191338021,Vertical_Distance_To_Hydrology)
+(0.04293099150373547,Horizontal_Distance_To_Hydrology)
+(0.03149644050848614,Hillshade_Noon)
+(0.028408483578137605,Hillshade_9am)
+(0.027185325937200706,Aspect)
+(0.027075578474331806,Hillshade_3pm)
+(0.015317564027809389,Slope)
+
+bestModel.transform(unencTestData.drop("Cover_Type")).select("prediction").show()
+...
++----------+
+|prediction|
++----------+
+| 6.0|
++----------+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

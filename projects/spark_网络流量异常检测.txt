@@ -1,0 +1,1084 @@
+
+val dataWithoutHeader = spark.read.
+option("inferSchema", true).
+option("header", false).
+csv("hdfs:///user/ds/kddcup.data")
+val data = dataWithoutHeader.toDF(
+"duration", "protocol_type", "service", "flag",
+"src_bytes", "dst_bytes", "land", "wrong_fragment", "urgent",
+"hot", "num_failed_logins", "logged_in", "num_compromised",
+"root_shell", "su_attempted", "num_root", "num_file_creations",
+"num_shells", "num_access_files", "num_outbound_cmds",
+"is_host_login", "is_guest_login", "count", "srv_count",
+"serror_rate", "srv_serror_rate", "rerror_rate", "srv_rerror_rate",
+"same_srv_rate", "diff_srv_rate", "srv_diff_host_rate",
+"dst_host_count", "dst_host_srv_count",
+"dst_host_same_srv_rate", "dst_host_diff_srv_rate",
+"dst_host_same_src_port_rate", "dst_host_srv_diff_host_rate",
+"dst_host_serror_rate", "dst_host_srv_serror_rate",
+"dst_host_rerror_rate", "dst_host_srv_rerror_rate",
+"label")
+
+
+data.select("label").groupBy("label").count().orderBy($"count".desc).show(25)
+...
++----------------+-------+
+| label| count|
++----------------+-------+
+| smurf.|2807886|
+| neptune.|1072017|
+A First Take on Clustering  |  97
+| normal.| 972781|
+| satan.| 15892|
+...
+| phf.| 4|
+| perl.| 3|
+| spy.| 2|
++----------------+-------+
+
+
+
+import org.apache.spark.ml.Pipeline
+import org.apache.spark.ml.clustering.{KMeans, KMeansModel}
+import org.apache.spark.ml.feature.VectorAssembler
+val numericOnly = data.drop("protocol_type", "service", "flag").cache()
+val assembler = new VectorAssembler().
+setInputCols(numericOnly.columns.filter(_ != "label")).
+setOutputCol("featureVector")
+val kmeans = new KMeans().
+setPredictionCol("cluster").
+setFeaturesCol("featureVector")
+val pipeline = new Pipeline().setStages(Array(assembler, kmeans))
+val pipelineModel = pipeline.fit(numericOnly)
+val kmeansModel = pipelineModel.stages.last.asInstanceOf[KMeansModel]
+kmeansModel.clusterCenters.foreach(println)
+
+
+
+val withCluster = pipelineModel.transform(numericOnly)
+withCluster.select("cluster", "label").
+groupBy("cluster", "label").count().
+orderBy($"cluster", $"count".desc).
+show(25)
+
+
++-------+----------------+-------+
+|cluster| label| count|
++-------+----------------+-------+
+| 0| smurf.|2807886|
+| 0| neptune.|1072017|
+| 0| normal.| 972781|
+| 0| satan.| 15892|
+| 0| ipsweep.| 12481|
+...
+| 0| phf.| 4|
+| 0| perl.| 3|
+| 0| spy.| 2|
+| 1| portsweep.| 1|
++-------+----------------+-------+
+
+
+import org.apache.spark.sql.DataFrame
+def clusteringScore0(data: DataFrame, k: Int): Double = {
+val assembler = new VectorAssembler().
+setInputCols(data.columns.filter(_ != "label")).
+setOutputCol("featureVector")
+val kmeans = new KMeans().
+setSeed(Random.nextLong()).
+setK(k).
+setPredictionCol("cluster").
+setFeaturesCol("featureVector")
+val pipeline = new Pipeline().setStages(Array(assembler, kmeans))
+val kmeansModel = pipeline.fit(data).stages.last.asInstanceOf[KMeansModel]
+kmeansModel.computeCost(assembler.transform(data)) / data.count()
+}
+(20 to 100 by 20).map(k => (k, clusteringScore0(numericOnly, k))).
+foreach(println)
+
+
+
+def clusteringScore1(data: DataFrame, k: Int): Double = {
+...
+setMaxIter(40).
+setTol(1.0e-5)
+...
+}
+(20 to 100 by 20).map(k => (k, clusteringScore1(numericOnly, k))).
+foreach(println)
+
+Sys.setenv(SPARK_HOME = "/path/to/spark")
+Sys.setenv(JAVA_HOME = "/path/to/java")
+library(SparkR, lib.loc = c(file.path(Sys.getenv("SPARK_HOME"), "R", "lib")))
+sparkR.session(master = "local[*]",
+sparkConfig = list(spark.driver.memory = "4g"))
+
+
+
+clusters_data <- read.df("/path/to/kddcup.data", "csv",
+inferSchema = "true", header = "false")
+colnames(clusters_data) <- c(
+"duration", "protocol_type", "service", "flag",
+"src_bytes", "dst_bytes", "land", "wrong_fragment", "urgent",
+"hot", "num_failed_logins", "logged_in", "num_compromised",
+"root_shell", "su_attempted", "num_root", "num_file_creations",
+"num_shells", "num_access_files", "num_outbound_cmds",
+"is_host_login", "is_guest_login", "count", "srv_count",
+"serror_rate", "srv_serror_rate", "rerror_rate", "srv_rerror_rate",
+"same_srv_rate", "diff_srv_rate", "srv_diff_host_rate",
+"dst_host_count", "dst_host_srv_count",
+"dst_host_same_srv_rate", "dst_host_diff_srv_rate",
+"dst_host_same_src_port_rate", "dst_host_srv_diff_host_rate",
+"dst_host_serror_rate", "dst_host_srv_serror_rate",
+"dst_host_rerror_rate", "dst_host_srv_rerror_rate",
+"label")
+numeric_only <- cache(drop(clusters_data,
+c("protocol_type", "service", "flag", "label")))
+kmeans_model <- spark.kmeans(numeric_only, ~ .,
+k = 100, maxIter = 40, initMode = "k-means||")
+
+
+
+
+clustering <- predict(kmeans_model, numeric_only)
+clustering_sample <- collect(sample(clustering, FALSE, 0.01))
+str(clustering_sample)
+...
+'data.frame': 48984 obs. of 39 variables:
+$ duration : int 0 0 0 0 0 0 0 0 0 0 ...
+$ src_bytes : int 181 185 162 254 282 310 212 214 181 ...
+$ dst_bytes : int 5450 9020 4528 849 424 1981 2917 3404 ...
+$ land : int 0 0 0 0 0 0 0 0 0 0 ...
+...
+$ prediction : int 33 33 33 0 0 0 0 0 33 33 ...
+
+clusters <- clustering_sample["prediction"]
+data <- data.matrix(within(clustering_sample, rm("prediction")))
+table(clusters)
+...
+clusters
+0 11 14 18 23 25 28 30 31 33 36 ...
+47294 3 1 2 2 308 105 1 27 1219 15 ...
+
+install.packages("rgl")
+library(rgl)
+
+
+random_projection <- matrix(data = rnorm(3*ncol(data)), ncol = 3)
+random_projection_norm <-
+random_projection / sqrt(rowSums(random_projection*random_projection))
+projected_data <- data.frame(data %*% random_projection_norm)
+
+num_clusters <- max(clusters)
+palette <- rainbow(num_clusters)
+colors = sapply(clusters, function(c) palette[c])
+plot3d(projected_data, col = colors, size = 10)
+
+import org.apache.spark.ml.feature.StandardScaler
+def clusteringScore2(data: DataFrame, k: Int): Double = {
+val assembler = new VectorAssembler().
+setInputCols(data.columns.filter(_ != "label")).
+setOutputCol("featureVector")
+val scaler = new StandardScaler()
+.setInputCol("featureVector")
+.setOutputCol("scaledFeatureVector")
+.setWithStd(true)
+.setWithMean(false)
+val kmeans = new KMeans().
+setSeed(Random.nextLong()).
+setK(k).
+setPredictionCol("cluster").
+setFeaturesCol("scaledFeatureVector").
+setMaxIter(40).
+setTol(1.0e-5)
+val pipeline = new Pipeline().setStages(Array(assembler, scaler, kmeans))
+val pipelineModel = pipeline.fit(data)
+val kmeansModel = pipelineModel.stages.last.asInstanceOf[KMeansModel]
+kmeansModel.computeCost(pipelineModel.transform(data)) / data.count()
+}
+(60 to 270 by 30).map(k => (k, clusteringScore2(numericOnly, k))).
+foreach(println)
+
+
+
+
+import org.apache.spark.ml.feature.{OneHotEncoder, StringIndexer}
+def oneHotPipeline(inputCol: String): (Pipeline, String) = {
+    val indexer = new StringIndexer().
+    setInputCol(inputCol).
+    setOutputCol(inputCol + "_indexed")
+    val encoder = new OneHotEncoder().
+    setInputCol(inputCol + "_indexed").
+    setOutputCol(inputCol + "_vec")
+    val pipeline = new Pipeline().setStages(Array(indexer, encoder))
+    (pipeline, inputCol + "_vec")
+}
+
+def entropy(counts: Iterable[Int]): Double = {
+    val values = counts.filter(_ > 0)
+    val n = values.map(_.toDouble).sum
+    values.map { v =>
+    val p = v / n
+    -p * math.log(p)
+    }.sum
+}
+
+val clusterLabel = pipelineModel.transform(data).
+select("cluster", "label").as[(Int, String)]
+val weightedClusterEntropy = clusterLabel.
+groupByKey { case (cluster, _) => cluster }.
+mapGroups { case (_, clusterLabels) =>
+val labels = clusterLabels.map { case (_, label) => label }.toSeq
+val labelCounts = labels.groupBy(identity).values.map(_.size)
+labels.size * entropy(labelCounts)
+}.collect()
+weightedClusterEntropy.sum / data.count()
+
+val pipelineModel = fitPipeline4(data, 180)
+val countByClusterLabel = pipelineModel.transform(data).
+select("cluster", "label").
+groupBy("cluster", "label").count().
+orderBy("cluster", "label")
+countByClusterLabel.show()
+...
++-------+----------+------+
+|cluster| label| count|
++-------+----------+------+
+| 0| back.| 324|
+| 0| normal.| 42921|
+| 1| neptune.| 1039|
+| 1|portsweep.| 9|
+| 1| satan.| 2|
+| 2| neptune.|365375|
+| 2|portsweep.| 141|
+| 3|portsweep.| 2|
+| 3| satan.| 10627|
+| 4| neptune.| 1033|
+| 4|portsweep.| 6|
+| 4| satan.| 1|
+...
+
+import org.apache.spark.ml.linalg.{Vector, Vectors}
+val kMeansModel = pipelineModel.stages.last.asInstanceOf[KMeansModel]
+val centroids = kMeansModel.clusterCenters
+val clustered = pipelineModel.transform(data)
+val threshold = clustered.
+select("cluster", "scaledFeatureVector").as[(Int, Vector)].
+map { case (cluster, vec) => Vectors.sqdist(centroids(cluster), vec) }.
+orderBy($"value".desc).take(100).last
+
+
+
+val originalCols = data.columns
+val anomalies = clustered.filter { row =>
+val cluster = row.getAs[Int]("cluster")
+val vec = row.getAs[Vector]("scaledFeatureVector")
+Vectors.sqdist(centroids(cluster), vec) >= threshold
+}.select(originalCols.head, originalCols.tail:_*)
+anomalies.first()
+
+def termDocWeight(termFrequencyInDoc: Int, totalTermsInDoc: Int,
+    termFreqInCorpus: Int, totalDocs: Int): Double = {
+    val tf = termFrequencyInDoc.toDouble / totalTermsInDoc
+    val docFreq = totalDocs.toDouble / termFreqInCorpus
+    val idf = math.log(docFreq)
+    tf * idf
+}
+
+
+
+ curl -s -L https://dumps.wikimedia.org/enwiki/latest/\
+$ enwiki-latest-pages-articles-multistream.xml.bz2 \
+$ | bzip2 -cd \
+$ | hadoop fs -put - wikidump.xml
+
+<page>
+<title>Anarchism</title>
+<ns>0</ns>
+<id>12</id>
+<revision>
+<id>584215651</id>
+<parentid>584213644</parentid>
+<timestamp>2013-12-02T15:14:01Z</timestamp>
+<contributor>
+<username>AnomieBOT</username>
+<id>7611264</id>
+</contributor>
+<comment>Rescuing orphaned refs (&quot;autogenerated1&quot; from rev
+584155010; &quot;bbc&quot; from rev 584155010)</comment>
+<text xml:space="preserve">{{Redirect|Anarchist|the fictional character|
+Anarchist (comics)}}
+{{Redirect|Anarchists}}
+{{pp-move-indef}}
+{{Anarchism sidebar}}
+'''Anarchism''' is a [[political philosophy]] that advocates [[stateless society|
+stateless societies]] often defined as [[self-governance|self-governed]]
+voluntary institutions,&lt;ref&gt;&quot;ANARCHISM, a social philosophy that
+rejects authoritarian government and maintains that voluntary institutions are
+best suited to express man's natural social tendencies.&quot; George Woodcock.
+&quot;Anarchism&quot; at The Encyclopedia of Philosophy&lt;/ref&gt;&lt;ref&gt;
+&quot;In a society developed on these lines, the voluntary associations which
+already now begin to cover all the fields of human activity would take a still
+greater extension so as to substitute
+...
+
+
+$ cd ch06-lsa/
+$ mvn package
+$ spark-shell --jars target/ch06-lsa-2.0.0-jar-with-dependencies.jar
+
+
+import edu.umd.cloud9.collection.XMLInputFormat
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.io._
+val path = "wikidump.xml"
+@transient val conf = new Configuration()
+conf.set(XMLInputFormat.START_TAG_KEY, "<page>")
+conf.set(XMLInputFormat.END_TAG_KEY, "</page>")
+val kvs = spark.sparkContext.newAPIHadoopFile(path, classOf[XMLInputFormat],
+classOf[LongWritable], classOf[Text], conf)
+val rawXmls = kvs.map(_._2.toString).toDS()
+
+
+import edu.umd.cloud9.collection.wikipedia.language._
+import edu.umd.cloud9.collection.wikipedia._
+def wikiXmlToPlainText(pageXml: String): Option[(String, String)] = {
+// Wikipedia has updated their dumps slightly since Cloud9 was written,
+// so this hacky replacement is sometimes required to get parsing to work.
+val hackedPageXml = pageXml.replaceFirst(
+"<text xml:space=\"preserve\" bytes=\"\\d+\">",
+"<text xml:space=\"preserve\">")
+val page = new EnglishWikipediaPage()
+WikipediaPage.readPage(page, hackedPageXml)
+if (page.isEmpty) None
+else Some((page.getTitle, page.getContent))
+}
+val docTexts = rawXmls.filter(_ != null).flatMap(wikiXmlToPlainText)
+
+
+import scala.collection.JavaConverters._
+import scala.collection.mutable.ArrayBuffer
+import edu.stanford.nlp.pipeline._
+import edu.stanford.nlp.ling.CoreAnnotations._
+import java.util.Properties
+import org.apache.spark.sql.Dataset
+def createNLPPipeline(): StanfordCoreNLP = {
+val props = new Properties()
+props.put("annotators", "tokenize, ssplit, pos, lemma")
+new StanfordCoreNLP(props)
+}
+def isOnlyLetters(str: String): Boolean = {
+str.forall(c => Character.isLetter(c))
+}
+def plainTextToLemmas(text: String, stopWords: Set[String],
+pipeline: StanfordCoreNLP): Seq[String] = {
+val doc = new Annotation(text)
+pipeline.annotate(doc)
+val lemmas = new ArrayBuffer[String]()
+val sentences = doc.get(classOf[SentencesAnnotation])
+for (sentence <- sentences.asScala;
+    token <- sentence.get(classOf[TokensAnnotation]).asScala) {
+        val lemma = token.get(classOf[LemmaAnnotation])
+        if (lemma.length > 2 && !stopWords.contains(lemma)
+        && isOnlyLetters(lemma)) {
+        lemmas += lemma.toLowerCase
+        }
+    }
+    lemmas
+}
+val stopWords = scala.io.Source.fromFile("stopwords.txt").getLines().toSet
+val bStopWords = spark.sparkContext.broadcast(stopWords)
+val terms: Dataset[(String, Seq[String])] =
+docTexts.mapPartitions { iter =>
+    val pipeline = createNLPPipeline()
+    iter.map { case(title, contents) =>
+    (title, plainTextToLemmas(contents, bStopWords.value, pipeline))
+    }
+}
+
+val termsDF = terms.toDF("title", "terms")
+
+val filtered = termsDF.where(size($"terms") > 1)
+
+import org.apache.spark.ml.feature.CountVectorizer
+val numTerms = 20000
+val countVectorizer = new CountVectorizer().
+setInputCol("terms").setOutputCol("termFreqs").
+setVocabSize(numTerms)
+val vocabModel = countVectorizer.fit(filtered)
+val docTermFreqs = vocabModel.transform(filtered)
+
+docTermFreqs.cache()
+
+import org.apache.spark.ml.feature.IDF
+val idf = new IDF().setInputCol("termFreqs").setOutputCol("tfidfVec")
+val idfModel = idf.fit(docTermFreqs)
+val docTermMatrix = idfModel.transform(docTermFreqs).select("title", "tfidfVec")
+
+
+val termIds: Array[String] = vocabModel.vocabulary
+
+val docIds = docTermFreqs.rdd.map(_.getString(0)).
+zipWithUniqueId().
+map(_.swap).
+collect().toMap
+
+
+import org.apache.spark.mllib.linalg.{Vectors,
+    Vector => MLLibVector}
+    import org.apache.spark.ml.linalg.{Vector => MLVector}
+    val vecRdd = docTermMatrix.select("tfidfVec").rdd.map { row =>
+    Vectors.fromML(row.getAs[MLVector]("tfidfVec"))
+}
+
+
+import org.apache.spark.mllib.linalg.distributed.RowMatrix
+vecRdd.cache()
+val mat = new RowMatrix(vecRdd)
+val k = 1000
+val svd = mat.computeSVD(k, computeU=true )
+
+
+import org.apache.spark.mllib.linalg.{Matrix,
+SingularValueDecomposition}
+import org.apache.spark.mllib.linalg.distributed.RowMatrix
+def topTermsInTopConcepts(
+svd: SingularValueDecomposition[RowMatrix, Matrix],
+numConcepts: Int,
+numTerms: Int, termIds: Array[String])
+: Seq[Seq[(String, Double)]] = {
+val v = svd.V
+val topTerms = new ArrayBuffer[Seq[(String, Double)]]()
+val arr = v.toArray
+for (i <- 0 until numConcepts) {
+    val offs = i * v.numRows
+    val termWeights = arr.slice(offs, offs + v.numRows).zipWithIndex
+    val sorted = termWeights.sortBy(-_._1)
+    topTerms += sorted.take(numTerms).map {
+    case (score, id) => (termIds(id), score)
+}
+}
+topTerms
+}
+
+
+def topDocsInTopConcepts(
+svd: SingularValueDecomposition[RowMatrix, Matrix],
+numConcepts: Int, numDocs: Int, docIds: Map[Long, String])
+: Seq[Seq[(String, Double)]] = {
+val u = svd.U
+val topDocs = new ArrayBuffer[Seq[(String, Double)]]()
+for (i <- 0 until numConcepts) {
+val docWeights = u.rows.map(_.toArray(i)).zipWithUniqueId()
+topDocs += docWeights.top(numDocs).map {
+case (score, id) => (docIds(id), score)
+}
+}
+topDocs
+}
+
+val topConceptTerms = topTermsInTopConcepts(svd, 4, 10, termIds)
+val topConceptDocs = topDocsInTopConcepts(svd, 4, 10, docIds)
+
+for ((terms, docs) <- topConceptTerms.zip(topConceptDocs)) {
+    println("Concept terms: " + terms.map(_._1).mkString(", "))
+    println("Concept docs: " + docs.map(_._1).mkString(", "))
+    println()
+}
+
+
+
+
+def wikiXmlToPlainText(xml: String): Option[(String, String)] = {
+...
+    if (page.isEmpty || !page.isArticle || page.isRedirect ||
+    page.getTitle.contains("(disambiguation)")) {
+    None
+    } else {
+    Some((page.getTitle, page.getContent))
+}
+}
+
+
+
+import breeze.linalg.{DenseMatrix => BDenseMatrix}
+class LSAQueryEngine(
+val svd: SingularValueDecomposition[RowMatrix, Matrix],
+...
+) {
+val VS: BDenseMatrix[Double] = multiplyByDiagonalMatrix(svd.V, svd.s)
+
+val normalizedVS: BDenseMatrix[Double] = rowsNormalized(VS)
+...
+
+val idTerms: Map[String, Int] = termIds.zipWithIndex.toMap
+val idDocs: Map[String, Long] = docIds.map(_.swap)
+
+
+def topTermsForTerm(termId: Int): Seq[(Double, Int)] = {
+val rowVec = normalizedVS(termId, ::).t
+val termScores = (normalizedVS * termRowVec).toArray.zipWithIndex
+termScores.sortBy(-_._1).take(10)
+}
+def printTopTermsForTerm(term: String): Unit = {
+val idWeights = topTermsForTerm(idTerms(term))
+println(idWeights.map { case (score, id) =>
+(termIds(id), score)
+}.mkString(", "))
+}
+
+import com.cloudera.datascience.lsa.LSAQueryEngine
+val termIdfs = idfModel.idf.toArray
+val queryEngine = new LSAQueryEngine(svd, termIds, docIds, termIdfs)
+
+
+queryEngine.printTopTermsForTerm("algorithm")
+(algorithm,1.000000000000002), (heuristic,0.8773199836391916),
+(compute,0.8561015487853708), (constraint,0.8370707630657652),
+(optimization,0.8331940333186296), (complexity,0.823738607119692),
+(algorithmic,0.8227315888559854), (iterative,0.822364922633442),
+(recursive,0.8176921180556759), (minimization,0.8160188481409465)
+queryEngine.printTopTermsForTerm("radiohead")
+
+(radiohead,0.9999999999999993), (lyrically,0.8837403315233519),
+(catchy,0.8780717902060333), (riff,0.861326571452104),
+(lyricsthe,0.8460798060853993), (lyric,0.8434937575368959),
+(upbeat,0.8410212279939793), (song,0.8280655506697948),
+(musically,0.8239497926624353), (anthemic,0.8207874883055177)
+queryEngine.printTopTermsForTerm("tarantino")
+(tarantino,1.0), (soderbergh,0.780999345687437),
+(buscemi,0.7386998898933894), (screenplay,0.7347041267543623),
+(spielberg,0.7342534745182226), (dicaprio,0.7279146798149239),
+(filmmaking,0.7261103750076819), (lumet,0.7259812377657624),
+(directorial,0.7195131565316943), (biopic,0.7164037755577743)
+
+========================================
+
+Document-Document Relevance
+val US: RowMatrix = multiplyByDiagonalRowMatrix(svd.U, svd.s)
+val normalizedUS: RowMatrix = distributedRowsNormalized(US)
+import org.apache.spark.mllib.linalg.Matrices
+def topDocsForDoc(docId: Long): Seq[(Double, Long)] = {
+val docRowArr = normalizedUS.rows.zipWithUniqueId.map(_.swap)
+.lookup(docId).head.toArray
+val docRowVec = Matrices.dense(docRowArr.length, 1, docRowArr)
+val docScores = normalizedUS.multiply(docRowVec)
+val allDocWeights = docScores.rows.map(_.toArray(0)).
+zipWithUniqueId()
+allDocWeights.filter(!_._1.isNaN).top(10)
+}
+def printTopDocsForDoc(doc: String): Unit = {
+val idWeights = topDocsForDoc(idDocs(doc))
+println(idWeights.map { case (score, id) =>
+(docIds(id), score)
+}.mkString(", "))
+}
+
+queryEngine.printTopDocsForDoc("Romania")
+
+(Romania,0.9999999999999994), (Roma in Romania,0.9229332158078395),
+(Kingdom of Romania,0.9176138537751187),
+(Anti-Romanian discrimination,0.9131983116426412),
+(Timeline of Romanian history,0.9124093989500675),
+(Romania and the euro,0.9123191881625798),
+(History of Romania,0.9095848558045102),
+(Romania–United States relations,0.9016913779787574),
+(Wiesel Commission,0.9016106300096606),
+(List of Romania-related topics,0.8981305676612493)
+
+queryEngine.printTopDocsForDoc("Brad Pitt")
+
+(Brad Pitt,0.9999999999999984), (Aaron Eckhart,0.8935447577397551),
+(Leonardo DiCaprio,0.8930359829082504), (Winona Ryder,0.8903497762653693),
+(Ryan Phillippe,0.8847178312465214), (Claudette Colbert,0.8812403821804665),
+(Clint Eastwood,0.8785765085978459), (Reese Witherspoon,0.876540742663427),
+(Meryl Streep in the 2000s,0.8751593996242115),
+(Kate Winslet,0.873124888198288)
+
+queryEngine.printTopDocsForDoc("Radiohead")
+
+(Radiohead,1.0000000000000016), (Fightstar,0.9461712602479349),
+(R.E.M.,0.9456251852095919), (Incubus (band),0.9434650141836163),
+(Audioslave,0.9411291455765148), (Tonic (band),0.9374518874425788),
+(Depeche Mode,0.9370085419199352), (Megadeth,0.9355302294384438),
+(Alice in Chains,0.9347862053793862), (Blur (band),0.9347436350811016)
+
+def topDocsForTerm(termId: Int): Seq[(Double, Long)] = {
+val rowArr = (0 until svd.V.numCols).
+map(i => svd.V(termId, i)).toArray
+    val rowVec = Matrices.dense(termRowArr.length, 1, termRowArr)
+    val docScores = US.multiply(rowVec)
+    val allDocWeights = docScores.rows.map(_.toArray(0)).
+    zipWithUniqueId()
+    allDocWeights.top(10)
+}
+def printTopDocsForTerm(term: String): Unit = {
+val idWeights = topDocsForTerm(US, svd.V, idTerms(term))
+    println(idWeights.map { case (score, id) =>
+    (docIds(id), score)
+    }.mkString(", "))
+}
+
+queryEngine.printTopDocsForTerm("fir")
+(Silver tree,0.006292909647173194),
+(See the forest for the trees,0.004785047583508223),
+(Eucalyptus tree,0.004592837783089319),
+(Sequoia tree,0.004497446632469554),
+(Willow tree,0.004442871594515006),
+(Coniferous tree,0.004429936059594164),
+(Tulip Tree,0.004420469113273123),
+(National tree,0.004381572286629475),
+(Cottonwood tree,0.004374705020233878),
+(Juniper Tree,0.004370895085141889)
+queryEngine.printTopDocsForTerm("graph")
+(K-factor (graph theory),0.07074443599385992),
+(Mesh Graph,0.05843133228896666), (Mesh graph,0.05843133228896666),
+(Grid Graph,0.05762071784234877), (Grid graph,0.05762071784234877),
+(Graph factor,0.056799669054782564), (Graph (economics),0.05603848473056094),
+(Skin graph,0.05512936759365371), (Edgeless graph,0.05507918292342141),
+(Traversable graph,0.05507918292342141)
+
+termIdfs = idfModel.idf.toArray
+
+import breeze.linalg.{SparseVector => BSparseVector}
+def termsToQueryVector(terms: Seq[String])
+: BSparseVector[Double] = {
+val indices = terms.map(idTerms(_)).toArray
+val values = terms.map(idfs(_)).toArray
+new BSparseVector[Double](indices, values, idTerms.size)
+}
+def topDocsForTermQuery(query: BSparseVector[Double])
+: Seq[(Double, Long)] = {
+val breezeV = new BDenseMatrix[Double](V.numRows, V.numCols,
+V.toArray)
+val termRowArr = (breezeV.t * query).toArray
+val termRowVec = Matrices.dense(termRowArr.length, 1, termRowArr)
+val docScores = US.multiply(termRowVec)
+val allDocWeights = docScores.rows.map(_.toArray(0)).
+zipWithUniqueId()
+allDocWeights.top(10)
+}
+
+def printTopDocsForTermQuery(terms: Seq[String]): Unit = {
+val queryVec = termsToQueryVector(terms)
+val idWeights = topDocsForTermQuery(queryVec)
+println(idWeights.map { case (score, id) =>
+(docIds(id), score)
+}.mkString(", "))
+}
+
+queryEngine.printTopDocsForTermQuery(Seq("factorization", "decomposition"))
+(K-factor (graph theory),0.04335677416674133),
+(Matrix Algebra,0.038074479507460755),
+(Matrix algebra,0.038074479507460755),
+Multiple-Term Queries  |  135
+(Zero Theorem,0.03758005783639301),
+(Birkhoff-von Neumann Theorem,0.03594539874814679),
+(Enumeration theorem,0.03498444607374629),
+(Pythagoras' theorem,0.03489110483887526),
+(Thales theorem,0.03481592682203685),
+(Cpt theorem,0.03478175099368145),
+(Fuss' theorem,0.034739350150484904)
+
+
+$ mkdir medline_data
+$ cd medline_data
+$ wget ftp://ftp.nlm.nih.gov/nlmdata/sample/medline/*.gz
+$ gunzip *.gz
+$ ls -ltr
+
+<MedlineCitation Owner="PIP" Status="MEDLINE">
+<PMID Version="1">12255379</PMID>
+<DateCreated>
+<Year>1980</Year>
+<Month>01</Month>
+<Day>03</Day>
+</DateCreated>
+...
+<MeshHeadingList>
+...
+<MeshHeading>
+<DescriptorName MajorTopicYN="N">Humans</DescriptorName>
+</MeshHeading>
+<MeshHeading>
+<DescriptorName MajorTopicYN="Y">Intelligence</DescriptorName>
+</MeshHeading>
+
+<MeshHeading>
+<DescriptorName MajorTopicYN="Y">Rorschach Test</DescriptorName>
+</MeshHeading>
+...
+</MeshHeadingList>
+...
+</MedlineCitation>
+
+ hadoop fs -mkdir medline
+$ hadoop fs -put *.xml medline
+cd ch07-graph/
+$ mvn package
+$ cd target
+$ spark-shell --jars ch07-graph-2.0.0-jar-with-dependencies.jar
+
+
+import edu.umd.cloud9.collection.XMLInputFormat
+import org.apache.spark.sql.{Dataset, SparkSession}
+import org.apache.hadoop.io.{Text, LongWritable}
+import org.apache.hadoop.conf.Configuration
+def loadMedline(spark: SparkSession, path: String) = {
+import spark.implicits._
+@transient val conf = new Configuration()
+conf.set(XMLInputFormat.START_TAG_KEY, "<MedlineCitation ")
+conf.set(XMLInputFormat.END_TAG_KEY, "</MedlineCitation>")
+val sc = spark.sparkContext
+val in = sc.newAPIHadoopFile(path, classOf[XMLInputFormat],
+classOf[LongWritable], classOf[Text], conf)
+in.map(line => line._2.toString).toDS()
+}
+val medlineRaw = loadMedline(spark, "medline")
+
+import scala.xml._
+val cit = <MedlineCitation>data</MedlineCitation>
+
+val rawXml = medlineRaw.take(1)(0)
+val elem = XML.loadString(rawXml)
+elem.label
+elem.attributes
+
+elem \ "MeshHeadingList"
+...
+NodeSeq(<MeshHeadingList>
+<MeshHeading>
+<DescriptorName MajorTopicYN="N">Behavior</DescriptorName>
+</MeshHeading>
+
+
+elem \\ "MeshHeading"
+...
+NodeSeq(<MeshHeading>
+<DescriptorName MajorTopicYN="N">Behavior</DescriptorName>
+</MeshHeading>,
+(elem \\ "DescriptorName").map(_.text)
+...
+List(Behavior, Congenital Abnormalities, ...
+
+def majorTopics(record: String): Seq[String] = {
+val elem = XML.loadString(record)
+val dn = elem \\ "DescriptorName"
+val mt = dn.filter(n => (n \ "@MajorTopicYN").text == "Y")
+mt.map(n => n.text)
+}
+majorTopics(elem)
+
+
+val medline = medlineRaw.map(majorTopics)
+medline.cache()
+medline.take(1)(0)
+medline.count()
+val topics = medline.flatMap(mesh => mesh).toDF("topic")
+
+topics.createOrReplaceTempView("topics")
+val topicDist = spark.sql("""
+SELECT topic, COUNT(*) cnt
+FROM topics
+GROUP BY topic
+ORDER BY cnt DESC""")
+topicDist.count()
+...
+res: Long = 14548
+topicDist.show()
+
+topicDist.createOrReplaceTempView("topic_dist")
+spark.sql("""
+SELECT cnt, COUNT(*) dist
+FROM topic_dist
+GROUP BY cnt
+ORDER BY dist DESC
+LIMIT 10""").show()
+
+val list = List(1, 2, 3)
+val combs = list.combinations(2)
+combs.foreach(println)
+
+
+val combs = list.reverse.combinations(2)
+combs.foreach(println)
+List(3, 2) == List(2, 3)
+
+
+val topicPairs = medline.flatMap(t => {
+t.sorted.combinations(2)
+}).toDF("pairs")
+topicPairs.createOrReplaceTempView("topic_pairs")
+val cooccurs = spark.sql("""
+SELECT pairs, COUNT(*) cnt
+FROM topic_pairs
+GROUP BY pairs""")
+cooccurs.cache()
+cooccurs.count()
+
+cooccurs.createOrReplaceTempView("cooccurs")
+spark.sql("""
+SELECT pairs, cnt
+FROM cooccurs
+ORDER BY cnt DESC
+LIMIT 10""").collect().foreach(println)
+
+[WrappedArray(Demography, Population Dynamics),288]
+[WrappedArray(Government Regulation, Social Control, Formal),254]
+[WrappedArray(Emigration and Immigration, Population Dynamics),230]
+[WrappedArray(Acquired Immunodeficiency Syndrome, HIV Infections),220]
+[WrappedArray(Antibiotics, Antitubercular, Dermatologic Agents),205]
+[WrappedArray(Analgesia, Anesthesia),183]
+[WrappedArray(Economics, Population Dynamics),181]
+[WrappedArray(Analgesia, Anesthesia and Analgesia),179]
+[WrappedArray(Anesthesia, Anesthesia and Analgesia),177]
+[WrappedArray(Population Dynamics, Population Growth),174]
+
+
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
+def hashId(str: String): Long = {
+val bytes = MessageDigest.getInstance("MD5").
+digest(str.getBytes(StandardCharsets.UTF_8))
+(bytes(0) & 0xFFL) |
+((bytes(1) & 0xFFL) << 8) |
+((bytes(2) & 0xFFL) << 16) |
+((bytes(3) & 0xFFL) << 24) |
+((bytes(4) & 0xFFL) << 32) |
+((bytes(5) & 0xFFL) << 40) |
+((bytes(6) & 0xFFL) << 48) |
+((bytes(7) & 0xFFL) << 56)
+}
+import org.apache.spark.sql.Row
+val vertices = topics.map{ case Row(topic: String) =>
+(hashId(topic), topic) }.toDF("hash", "topic")
+val uniqueHashes = vertices.agg(countDistinct("hash")).take(1)
+res: Array[Row] = Array([14548])
+
+
+import org.apache.spark.graphx._
+val edges = cooccurs.map{ case Row(topics: Seq[_], cnt: Long) =>
+    val ids = topics.map(_.toString).map(hashId).sorted
+    Edge(ids(0), ids(1), cnt)
+}
+val vertexRDD = vertices.rdd.map{
+    case Row(hash: Long, topic: String) => (hash, topic)
+}
+
+val topicGraph = Graph(vertexRDD, edges.rdd)
+topicGraph.cache()
+
+vertexRDD.count()
+...
+280464
+topicGraph.vertices.count()
+...
+14548
+
+
+val connectedComponentGraph = topicGraph.connectedComponents()
+
+
+val componentDF = connectedComponentGraph.vertices.toDF("vid", "cid")
+val componentCounts = componentDF.groupBy("cid").count()
+componentCounts.count()
+
+
+componentCounts.orderBy(desc("count")).show()
+
+
+val topicComponentDF = topicGraph.vertices.innerJoin(
+connectedComponentGraph.vertices) {
+(topicId, name, componentId) => (name, componentId.toLong)
+}.toDF("topic", "cid")
+
+
+
+
+topicComponentDF.where("cid = -2062883918534425492").show()
+
+val campy = spark.sql("""
+SELECT *
+FROM topic_dist
+WHERE topic LIKE '%ampylobacter%'""")
+campy.show()
+
+
+
+val degrees: VertexRDD[Int] = topicGraph.degrees.cache()
+degrees.map(_._2).stats()
+...
+(count: 13721, mean: 31.155892,
+stdev: 65.497591, max: 2596.000000,
+min: 1.000000)
+
+val sing = medline.filter(x => x.size == 1)
+sing.count()
+
+
+
+val singTopic = sing.flatMap(topic => topic).distinct()
+singTopic.count()
+
+
+val topic2 = topicPairs.flatMap(_.getAs[Seq[String]](0))
+singTopic.except(topic2).count()
+
+val namesAndDegrees = degrees.innerJoin(topicGraph.vertices) {
+(topicId, degree, name) => (name, degree.toInt)
+}.values.toDF("topic", "degree")
+
+
+
+
+namesAndDegrees.orderBy(desc("degree")).show()
+...
++-------------------+------+
+| topic|degree|
++-------------------+------+
+| Research| 2596|
+
+
+
+val T = medline.count()
+val topicDistRdd = topicDist.map{
+case Row(topic: String, cnt: Long) => (hashId(topic), cnt)
+}.rdd
+
+val topicDistGraph = Graph(topicDistRdd, topicGraph.edges)
+
+def chiSq(YY: Long, YB: Long, YA: Long, T: Long): Double = {
+val NB = T - YB
+val NA = T - YA
+val YN = YA - YY
+val NY = YB - YY
+val NN = T - NY - YN - YY
+val inner = math.abs(YY * NN - YN * NY) - T / 2.0
+T * math.pow(inner, 2) / (YA * NA * YB * NB)
+}
+
+val chiSquaredGraph = topicDistGraph.mapTriplets(triplet => {
+chiSq(triplet.attr, triplet.srcAttr, triplet.dstAttr, T)
+})
+chiSquaredGraph.edges.map(x => x.attr).stats()
+...
+(count: 213745, mean: 877.96,
+stdev: 5094.94, max: 198668.41,
+min: 0.0)
+
+
+val interesting = chiSquaredGraph.subgraph(
+triplet => triplet.attr > 19.5)
+interesting.edges.count
+
+
+val interestingComponentGraph = interesting.connectedComponents()
+val icDF = interestingComponentGraph.vertices.toDF("vid", "cid")
+val icCountDF = icDF.groupBy("cid").count()
+icCountDF.count()
+...
+878
+icCountDF.orderBy(desc("count")).show()
+
+val interestingDegrees = interesting.degrees.cache()
+interestingDegrees.map(_._2).stats()
+...
+(count: 13721, mean: 20.49,
+stdev: 29.86, max: 863.0, min: 1.0)
+
+interestingDegrees.innerJoin(topicGraph.vertices) {
+(topicId, degree, name) => (name, degree)
+}.values.toDF("topic", "degree").orderBy(desc("degree")).show()
+
+
+
+val triCountGraph = interesting.triangleCount()
+triCountGraph.vertices.map(x => x._2).stats()
+val maxTrisGraph = interestingDegrees.mapValues(d => d * (d - 1) / 2.0)
+val clusterCoef = triCountGraph.vertices.
+innerJoin(maxTrisGraph) { (vertexId, triCount, maxTris) => {
+if (maxTris == 0) 0 else triCount / maxTris
+}
+}clusterCoef.map(_._2).sum() / interesting.vertices.count()
+
+
+def mergeMaps(m1: Map[VertexId, Int], m2: Map[VertexId, Int])
+: Map[VertexId, Int] = {
+def minThatExists(k: VertexId): Int = {
+math.min(
+m1.getOrElse(k, Int.MaxValue),
+m2.getOrElse(k, Int.MaxValue))
+}
+(m1.keySet ++ m2.keySet).map {
+k => (k, minThatExists(k))
+}.toMap
+}
+
+
+def update(
+id: VertexId,
+state: Map[VertexId, Int],
+msg: Map[VertexId, Int]) = {
+mergeMaps(state, msg)
+}
+
+def checkIncrement(
+a: Map[VertexId, Int],
+b: Map[VertexId, Int],
+bid: VertexId) = {
+val aplus = a.map { case (v, d) => v -> (d + 1) }
+if (b != mergeMaps(aplus, b)) {
+Iterator((bid, aplus))
+} else {
+Iterator.empty
+}
+}
+
+def iterate(e: EdgeTriplet[Map[VertexId, Int], _]) = {
+checkIncrement(e.srcAttr, e.dstAttr, e.dstId) ++
+checkIncrement(e.dstAttr, e.srcAttr, e.srcId)
+}
+
+
+val fraction = 0.02
+val replacement = false
+val sample = interesting.vertices.map(v => v._1).
+sample(replacement, fraction, 1729L)
+val ids = sample.collect().toSet
+
+val mapGraph = interesting.mapVertices((id, _) => {
+if (ids.contains(id)) {
+Map(id -> 0)
+} else {
+Map[VertexId, Int]()
+}
+})
+
+
+
+
+val start = Map[VertexId, Int]()
+val res = mapGraph.pregel(start)(update, iterate, mergeMaps)
+
+
+val paths = res.vertices.flatMap { case (id, m) =>
+m.map { case (k, v) =>
+if (id < k) {
+(id, k, v)
+} else {
+(k, id, v)
+}
+}
+}.distinct()
+paths.cache()
+
+
+paths.map(_._3).filter(_ > 0).stats()
+...
+(count: 3197372, mean: 3.63, stdev: 0.78, max: 8.0, min: 1.0)
+val hist = paths.map(_._3).countByValue()
+
+
+hist.toSeq.sorted.foreach(println)
+
+
+

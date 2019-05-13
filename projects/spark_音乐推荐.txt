@@ -1,0 +1,201 @@
+val rawUserArtistData =
+spark.read.textFile("hdfs:///user/ds/user_artist_data.txt")
+rawUserArtistData.take(5).foreach(println)
+...
+1000002 1 55
+1000002 1000006 33
+1000002 1000007 8
+1000002 1000009 144
+1000002 1000010 314
+
+val userArtistDF = rawUserArtistData.map { line =>
+val Array(user, artist, _*) = line.split(' ')
+(user.toInt, artist.toInt)
+}.toDF("user", "artist")
+userArtistDF.agg(
+min("user"), max("user"), min("artist"), max("artist")).show()
+...
++---------+---------+-----------+-----------+
+|min(user)|max(user)|min(artist)|max(artist)|
++---------+---------+-----------+-----------+
+| 90| 2443548| 1| 10794401|
++---------+---------+-----------+-----------+
+
+val rawArtistData = spark.read.textFile("hdfs:///user/ds/artist_data.txt")
+rawArtistData.map { line =>
+val (id, name) = line.span(_ != '\t')
+(id.toInt, name.trim)
+}.count()
+...
+java.lang.NumberFormatException: For input string: "Aya Hisakawa"
+
+
+
+val artistByID = rawArtistData.flatMap { line =>
+val (id, name) = line.span(_ != '\t')
+if (name.isEmpty) {
+None
+} else {
+try {
+Some((id.toInt, name.trim))
+} catch {
+case _: NumberFormatException => None
+}
+}
+}.toDF("id", "name")
+
+val rawArtistAlias = spark.read.textFile("hdfs:///user/ds/artist_alias.txt")
+val artistAlias = rawArtistAlias.flatMap { line =>
+val Array(artist, alias) = line.split('\t')
+if (artist.isEmpty) {
+None
+} else {
+Some((artist.toInt, alias.toInt))
+}
+}.collect().toMap
+
+artistAlias.head
+
+
+artistByID.filter($"id" isin (1208690, 1003926)).show()
+
+import org.apache.spark.sql._
+import org.apache.spark.broadcast._
+def buildCounts(
+rawUserArtistData: Dataset[String],
+bArtistAlias: Broadcast[Map[Int,Int]]): DataFrame = {
+rawUserArtistData.map { line =>
+val Array(userID, artistID, count) = line.split(' ').map(_.toInt)
+val finalArtistID =
+bArtistAlias.value.getOrElse(artistID, artistID)
+(userID, finalArtistID, count)
+}.toDF("user", "artist", "count")
+}
+val bArtistAlias = spark.sparkContext.broadcast(artistAlias)
+val trainData = buildCounts(rawUserArtistData, bArtistAlias)
+trainData.cache()
+
+val dict: Seq[String] = ...
+val bDict = spark.sparkContext.broadcast(dict)
+def query(path: String) = {
+spark.read.textFile(path).map(score(_, bDict.value))
+...
+}
+
+
+import org.apache.spark.ml.recommendation._
+import scala.util.Random
+val model = new ALS().
+setSeed(Random.nextLong()).
+setImplicitPrefs(true).
+setRank(10).
+setRegParam(0.01).
+setAlpha(1.0).
+setMaxIter(5).
+setUserCol("user").
+setItemCol("artist").
+setRatingCol("count").
+setPredictionCol("prediction").
+fit(trainData)
+
+model.userFactors.show(1, truncate = false)
+...
++---+----------------------------------------------- ...
+|id |features ...
++---+----------------------------------------------- ...
+|90 |[-0.2738046, 0.03154172, 1.046261, -0.52314466, ...
++---+----------------------------------------------- ...
+val userID = 2093760
+val existingArtistIDs = trainData.
+filter($"user" === userID).
+select("artist").as[Int].collect()
+artistByID.filter($"id" isin (existingArtistIDs:_*)).show()
+
+
+
+def makeRecommendations(
+    model: ALSModel,
+    userID: Int,
+    howMany: Int): DataFrame = {
+    val toRecommend = model.itemFactors.
+    select($"id".as("artist")).
+    withColumn("user", lit(userID))
+    model.transform(toRecommend).
+    select("artist", "prediction").
+    orderBy($"prediction".desc).
+    limit(howMany)
+}
+
+val topRecommendations = makeRecommendations(model, userID, 5)
+topRecommendations.show()
+
+val recommendedArtistIDs =
+topRecommendations.select("artist").as[Int].collect()
+artistByID.filter($"id" isin (recommendedArtistIDs:_*)).show()
+
+def areaUnderCurve(
+positiveData: DataFrame,
+bAllArtistIDs: Broadcast[Array[Int]],
+predictFunction: (DataFrame => DataFrame)): Double = {
+...
+}
+val allData = buildCounts(rawUserArtistData, bArtistAlias)
+val Array(trainData, cvData) = allData.randomSplit(Array(0.9, 0.1))
+trainData.cache()
+cvData.cache()
+val allArtistIDs = allData.select("artist").as[Int].distinct().collect()
+val bAllArtistIDs = spark.sparkContext.broadcast(allArtistIDs)
+val model = new ALS().
+setSeed(Random.nextLong()).
+setImplicitPrefs(true).
+setRank(10).setRegParam(0.01).setAlpha(1.0).setMaxIter(5).
+setUserCol("user").setItemCol("artist").
+setRatingCol("count").setPredictionCol("prediction").
+fit(trainData)
+areaUnderCurve(cvData, bAllArtistIDs, model.transform)
+
+def predictMostListened(train: DataFrame)(allData: DataFrame) = {
+val listenCounts = train.
+groupBy("artist").
+agg(sum("count").as("prediction")).
+select("artist", "prediction")
+allData.
+join(listenCounts, Seq("artist"), "left_outer").
+select("user", "artist", "prediction")
+}
+areaUnderCurve(cvData, bAllArtistIDs, predictMostListened(trainData))
+
+
+val evaluations =
+for (rank <- Seq(5, 30);
+regParam <- Seq(4.0, 0.0001);
+alpha <- Seq(1.0, 40.0))
+yield {
+val model = new ALS().
+setSeed(Random.nextLong()).
+setImplicitPrefs(true).
+setRank(rank).setRegParam(regParam).
+setAlpha(alpha).setMaxIter(20).
+setUserCol("user").setItemCol("artist").
+setRatingCol("count").setPredictionCol("prediction").
+fit(trainData)
+val auc = areaUnderCurve(cvData, bAllArtistIDs, model.transform)
+model.userFactors.unpersist()
+model.itemFactors.unpersist()
+(auc, (rank, regParam, alpha))
+}
+evaluations.sorted.reverse.foreach(println)
+
+val someUsers = allData.select("user").as[Int].distinct().take(100)
+val someRecommendations =
+someUsers.map(userID => (userID, makeRecommendations(model, userID, 5)))
+someRecommendations.foreach { case (userID, recsDF) =>
+val recommendedArtists = recsDF.select("artist").as[Int].collect()
+println(s"$userID -> ${recommendedArtists.mkString(", ")}")
+}
+
+rawArtistData.map { line =>
+    val (id, name) = line.span(_ != '\t')
+    (name.trim, id.int)
+}
+
