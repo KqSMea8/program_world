@@ -1,0 +1,346 @@
+./download-all-symbols.sh
+
+mkdir factors/
+$ ./download-symbol.sh ^GSPC factors
+$ ./download-symbol.sh ^IXIC factors
+$ ./download-symbol.sh ^TYX factors
+$ ./download-symbol.sh ^FVX factors
+
+cd ch09-risk/
+$ mvn package
+$ cd data/
+$ spark-shell --jars ../target/ch09-risk-2.0.0-jar-with-dependencies.jar
+
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+val format = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+LocalDate.parse("2014-10-24")
+res0: java.time.LocalDate = 2014-10-24
+
+import java.io.File
+def readYahooHistory(file: File): Array[(LocalDate, Double)] = {
+val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+val lines = scala.io.Source.fromFile(file).getLines().toSeq
+lines.tail.map { line =>
+val cols = line.split(',')
+val date = LocalDate.parse(cols(0), formatter)
+val value = cols(1).toDouble
+(date, value)
+}.reverse.toArray
+}
+
+
+
+val start = LocalDate.of(2009, 10, 23)
+val end = LocalDate.of(2014, 10, 23)
+val stocksDir = new File("stocks/")
+val files = stocksDir.listFiles()
+val allStocks = files.iterator.flatMap { file =>>
+try {
+Some(readYahooHistory(file))
+} catch {
+case e: Exception => None
+}
+}
+val rawStocks = allStocks.filter(_.size >= 260 * 5 + 10)
+val factorsPrefix = "factors/"
+val rawFactors = Array(
+"^GSPC.csv", "^IXIC.csv", "^TYX.csv", "^FVX.csv").
+map(x => new File(factorsPrefix + x)).
+map(readYahooHistory)
+
+
+def trimToRegion(history: Array[(LocalDate, Double)],
+start: LocalDate, end: LocalDate)
+: Array[(LocalDate, Double)] = {
+var trimmed = history.dropWhile(_._1.isBefore(start)).
+takeWhile(x => x._1.isBefore(end) || x._1.isEqual(end))
+if (trimmed.head._1 != start) {
+trimmed = Array((start, trimmed.head._2)) ++ trimmed
+}
+if (trimmed.last._1 != end) {
+trimmed = trimmed ++ Array((end, trimmed.last._2))
+}
+trimmed
+}
+
+
+import scala.collection.mutable.ArrayBuffer
+def fillInHistory(history: Array[(DateTime, Double)],
+start: DateTime, end: DateTime): Array[(DateTime, Double)] = {
+var cur = history
+val filled = new ArrayBuffer[(DateTime, Double)]()
+var curDate = start
+while (curDate < end) {
+if (cur.tail.nonEmpty && cur.tail.head._1 == curDate) {
+cur = cur.tail
+}
+filled += ((curDate, cur.head._2))
+curDate += 1.days
+// Skip weekends
+if (curDate.dayOfWeek().get > 5) curDate += 2.days
+}
+filled.toArray
+}
+
+val stocks = rawStocks.
+map(trimToRegion(_, start, end)).
+map(fillInHistory(_, start, end))
+val factors = (factors1 ++ factors2).
+map(trimToRegion(_, start, end)).
+map(fillInHistory(_, start, end))
+
+
+(stocks ++ factors).forall(_.size == stocks(0).size)
+res17: Boolean = true
+
+
+def twoWeekReturns(history: Array[(LocalDate, Double)])
+: Array[Double] = {
+    history.sliding(10).
+    map { window =>
+    val next = window.last._2
+    val prev = window.head._2
+    (next - prev) / prev
+    }.toArray
+    }
+val stocksReturns = stocks.map(twoWeekReturns).toArray.toSeq
+val factorsReturns = factors.map(twoWeekReturns)
+
+def factorMatrix(histories: Seq[Array[Double]])
+: Array[Array[Double]] = {
+val mat = new Array[Array[Double]](histories.head.length)
+for (i <- histories.head.indices) {
+mat(i) = histories.map(_(i)).toArray
+}
+mat
+}
+val factorMat = factorMatrix(factorsReturns)
+
+
+
+def featurize(factorReturns: Array[Double]): Array[Double] = {
+val squaredReturns = factorReturns.
+map(x => math.signum(x) * x * x)
+val squareRootedReturns = factorReturns.
+map(x => math.signum(x) * math.sqrt(math.abs(x)))
+squaredReturns ++ squareRootedReturns ++ factorReturns
+}
+val factorFeatures = factorMat.map(featurize)
+
+
+import org.apache.commons.math3.stat.regression.OLSMultipleLinearRegression
+def linearModel(instrument: Array[Double],
+factorMatrix: Array[Array[Double]])
+: OLSMultipleLinearRegression = {
+val regression = new OLSMultipleLinearRegression()
+regression.newSampleData(instrument, factorMatrix)
+regression
+}
+val factorWeights = stocksReturns.
+map(linearModel(_, factorFeatures)).
+map(_.estimateRegressionParameters()).
+toArray
+
+import org.apache.spark.mllib.stat.KernelDensity
+import org.apache.spark.util.StatCounter
+import breeze.plot._
+def plotDistribution(samples: Array[Double]): Figure = {
+val min = samples.min
+val max = samples.max
+val stddev = new StatCounter(samples).stdev
+val bandwidth = 1.06 * stddev * math.pow(samples.size, -0.2)
+val domain = Range.Double(min, max, (max - min) / 100).
+toList.toArray
+val kd = new KernelDensity().
+setSample(samples.toSeq.toDS.rdd).
+setBandwidth(bandwidth)
+val densities = kd.estimate(domain)
+val f = Figure()
+val p = f.subplot(0)
+p += plot(domain, densities)
+p.xlabel = "Two Week Return ($)"
+p.ylabel = "Density"
+f
+}
+plotDistribution(factorsReturns(0))
+plotDistribution(factorsReturns(2))
+
+import org.apache.commons.math3.stat.correlation.PearsonsCorrelation
+val factorCor =
+new PearsonsCorrelation(factorMat).getCorrelationMatrix().getData()
+println(factorCor.map(_.mkString("\t")).mkString("\n"))
+1.0 -0.3472 0.4424 0.4633
+-0.3472 1.0 -0.4777 -0.5096
+0.4424 -0.4777 1.0 0.9199
+0.4633 -0.5096 0.9199 1.0
+
+
+import org.apache.commons.math3.stat.correlation.Covariance
+val factorCov = new Covariance(factorMat).getCovarianceMatrix().
+getData()
+val factorMeans = factorsReturns.
+map(factor => factor.sum / factor.size).toArray
+Then we can simply create a distribution parameterized with them:
+import org.apache.commons.math3.distribution.MultivariateNormalDistribution
+val factorsDist = new MultivariateNormalDistribution(factorMeans,
+factorCov)
+To sample a set of market conditions from it:
+factorsDist.sample()
+res1: Array[Double] = Array(-0.05782773255967754, 0.01890770078427768,
+0.029344325473062878, 0.04398266164298203)
+factorsDist.sample()
+res2: Array[Double] = Array(-0.009840154244155741, -0.01573733572551166,
+0.029140934507992572, 0.028227818241305904)
+
+
+val randomSeed = 1496
+val instrumentsDS = ...
+def trialLossesForInstrument(seed: Long, instrument: Array[Double])
+: Array[(Int, Double)] = {
+...
+}
+instrumentsDS.flatMap(trialLossesForInstrument(randomSeed, _)).
+reduceByKey(_ + _)
+
+val parallelism = 1000
+val baseSeed = 1496
+val seeds = (baseSeed until baseSeed + parallelism)
+val seedDS = seeds.toDS().repartition(parallelism)
+
+
+def instrumentTrialReturn(instrument: Array[Double],
+trial: Array[Double]): Double = {
+var instrumentTrialReturn = instrument(0)
+var i = 0
+while (i < trial.length) {
+instrumentTrialReturn += trial(i) * instrument(i+1)
+i += 1
+}
+instrumentTrialReturn
+}
+
+def trialReturn(trial: Array[Double],
+instruments: Seq[Array[Double]]): Double = {
+var totalReturn = 0.0
+for (instrument <- instruments) {
+totalReturn += instrumentTrialReturn(instrument, trial)
+
+}
+totalReturn / instruments.size
+}
+
+
+import org.apache.commons.math3.random.MersenneTwister
+def trialReturns(seed: Long, numTrials: Int,
+instruments: Seq[Array[Double]], factorMeans: Array[Double],
+factorCovariances: Array[Array[Double]]): Seq[Double] = {
+val rand = new MersenneTwister(seed)
+val multivariateNormal = new MultivariateNormalDistribution(
+rand, factorMeans, factorCovariances)
+val trialReturns = new Array[Double](numTrials)
+for (i <- 0 until numTrials) {
+val trialFactorReturns = multivariateNormal.sample()
+val trialFeatures = featurize(trialFactorReturns)
+trialReturns(i) = trialReturn(trialFeatures, instruments)
+}
+trialReturns
+}
+
+val numTrials = 10000000
+val trials = seedDS.flatMap(
+trialReturns(_, numTrials / parallelism,factorWeights, factorMeans, factorCov))
+trials.cache()
+
+
+def fivePercentVaR(trials: Dataset[Double]): Double = {
+val quantiles = trials.stat.approxQuantile("value",
+Array(0.05), 0.0)
+quantiles.head
+}
+val valueAtRisk = fivePercentVaR(trials)
+valueAtRisk: Double = -0.010831826593164014
+
+
+def fivePercentCVaR(trials: Dataset[Double]): Double = {
+val topLosses = trials.orderBy("value").
+limit(math.max(trials.count().toInt / 20, 1))
+topLosses.agg("value" -> "avg").first()(0).asInstanceOf[Double]
+}
+val conditionalValueAtRisk = fivePercentCVaR(trials)
+conditionalValueAtRisk: Double = -0.09002629251426077
+
+
+import org.apache.spark.sql.functions
+def plotDistribution(samples: Dataset[Double]): Figure = {
+val (min, max, count, stddev) = samples.agg(
+functions.min($"value"),
+functions.max($"value"),
+functions.count($"value"),
+functions.stddev_pop($"value")
+).as[(Double, Double, Long, Double)].first()
+val bandwidth = 1.06 * stddev * math.pow(count, -0.2)
+// Using toList before toArray avoids a Scala bug
+val domain = Range.Double(min, max, (max - min) / 100).
+toList.toArray
+val kd = new KernelDensity().
+setSample(samples.rdd).
+setBandwidth(bandwidth)
+
+val densities = kd.estimate(domain)
+val f = Figure()
+val p = f.subplot(0)
+p += plot(domain, densities)
+p.xlabel = "Two Week Return ($)"
+p.ylabel = "Density"
+f
+}
+plotDistribution(trials)
+
+
+def bootstrappedConfidenceInterval(
+trials: Dataset[Double],
+computeStatistic: Dataset[Double] => Double,
+numResamples: Int,
+probability: Double): (Double, Double) = {
+val stats = (0 until numResamples).map { i =>
+val resample = trials.sample(true, 1.0)
+computeStatistic(resample)
+}.sorted
+val lowerIndex = (numResamples * probability / 2 - 1).toInt
+val upperIndex = math.ceil(numResamples * (1 - probability / 2))
+.toInt
+(stats(lowerIndex), stats(upperIndex))
+}
+
+bootstrappedConfidenceInterval(trials, fivePercentVaR, 100, .05)
+bootstrappedConfidenceInterval(trials, fivePercentCVaR, 100, .05)
+
+
+
+var failures = 0
+for (i <- stocksReturns.head.indices) {
+val loss = stocksReturns.map(_(i)).sum / stocksReturns.size
+if (loss < valueAtRisk) {
+failures += 1
+}
+}
+failures
+...
+257
+val total = stocksReturns.size
+val confidenceLevel = 0.05
+val failureRatio = failures.toDouble / total
+val logNumer = ((total - failures) * math.log1p(-confidenceLevel) +
+failures * math.log(confidenceLevel))
+val logDenom = ((total - failures) * math.log1p(-failureRatio) +
+failures * math.log(failureRatio))
+val testStatistic = -2 * (logNumer - logDenom)
+
+
+
+import org.apache.commons.math3.distribution.ChiSquaredDistribution
+1 - new ChiSquaredDistribution(1.0).cumulativeProbability(testStatistic)
+
+
+

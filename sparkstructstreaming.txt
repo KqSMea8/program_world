@@ -1,0 +1,778 @@
+Spark源码系列之spark2.2的StructuredStreaming使用及源码介绍
+一，概述
+
+Structured Streaming是一个可扩展和容错的流处理引擎，并且是构建于sparksql引擎之上。你可以用处理静态数据的方式去处理你的流计算。随着流数据的不断流入，Sparksql引擎会增量的连续不断的处理并且更新结果。可以使用DataSet/DataFrame的API进行 streaming aggregations, event-time windows, stream-to-batch joins等等。计算的执行也是基于优化后的sparksql引擎。通过checkpointing and Write Ahead Logs该系统可以保证点对点，一次处理，容错担保。
+
+可以把输入的数据流当成一张表。数据流新增的每一条数据就像添加到该表的新增行数据。
+
+
+
+二，例子和概念
+
+1，需要导入的依赖为
+
+<dependency>
+  <groupId>org.apache.spark</groupId>
+  <artifactId>spark-sql-kafka-0-10_2.11</artifactId>
+  <version>2.2.0</version>
+</dependency>
+
+2，以kafka为source数据源，console为sink输出的例子为
+
+val spark = SparkSession
+  .builder()
+  .appName("Spark structured streaming Kafka example")
+  .master("local")
+  .getOrCreate()
+val inputstream = spark.readStream
+  .format("kafka")
+  .option("kafka.bootstrap.servers", "localhost:9092")
+  .option("subscribe", "blog")
+  .load()
+val keyValueString = inputstream.selectExpr("CAST(key AS STRING)", "CAST( value AS STRING)").as[(String, String)]
+val wordCounts = keyValueString.map(_._2.split(" ")).groupBy("value").count()
+val query = wordCounts.writeStream.trigger(Trigger.ProcessingTime(1000000))
+  .outputMode("complete")
+  .format("console")
+  .start()
+query.awaitTermination()
+
+3，重点介绍的两个概念：source和sink。
+
+A),source
+
+目前支持的source有三种：
+
+File Sourcec:从给定的目录读取数据，目前支持的格式有text,csv,json,parquet.容错。
+
+Kafka Source:从kafka拉取数据。仅兼容kafka 0.10.0或者更高版本。容错。
+
+Socket Source(for testing):从一个连接中读取UTF8编码的文本数据。不容错。
+
+B),output modes
+
+1),Append mode(default):仅仅从上次触发计算到当前新增的行会被输出到sink。仅仅支持行数据添加入结果表后不进行梗概的query操作。因此，这种方式保证没个流操作仅仅输出一次。例如，带有Select，where，map，flatmap，filter，join等的query操作支持append模式。
+
+2),Complete mode:每次trigger都会讲整个结果表输出到sink。这个是针对聚合操作。
+
+3),Updata mode:仅仅是自上次trigger之后结果表有变更的行会输出到sink。在以后的版本中会有更详细的信息。
+
+不同类型的Streaming query支持不同的输出模式。
+
+Query Type
+
+支持的输出模式
+
+注释
+
+Queries with aggregation
+
+Aggregation on event-time with watermark
+
+Append, Update, Complete
+
+Append mode和Update mode采用高水位watermark去drop掉历史的聚合状态。Completemode不会删除历史聚合状态，由该模式的语义决定。
+
+Other aggregations
+
+Complete, Update
+
+由于没有定义高水位watermark，旧的聚合状态不会drop。Append mode不支持因为聚合操作是违反该模式的语义的。
+
+Queries with mapGroupsWithState
+
+Update
+
+
+Queries with flatMapGroupsWithState
+
+Append operation mode
+
+Append
+
+Aggregations are allowed after flatMapGroupsWithState.
+
+Update operation mode
+
+Update
+
+Aggregations not allowed after flatMapGroupsWithState.
+
+Other queries
+
+Append, Update
+
+Complete mode不支持这种模式的原因是在结果表保留所有的非聚合的数据是不合适的。
+
+
+
+C),sinks
+
+1),FileSink:保存数据到指定的目录
+
+noAggDF
+  .writeStream
+  .format("parquet")
+  .option("checkpointLocation", "path/to/checkpoint/dir")
+  .option("path", "path/to/destination/dir")
+  .start()
+
+
+
+2),Foreach sink:在输出的数据上做任何操作。
+
+writeStream
+  .foreach(...)
+.start()
+
+
+
+3),Console sink(for debugging)：每次trigger都会讲结果输出到console或stdout。
+
+aggDF
+  .writeStream
+  .outputMode("complete")
+  .format("console")
+  .start()
+
+4),memory sink
+
+// Have all the aggregates in an in-memory table
+aggDF
+  .writeStream
+  .queryName("aggregates")    // this query name will be the table name
+  .outputMode("complete")
+  .format("memory")
+  .start()
+spark.sql("select * from aggregates").show()
+
+
+
+5),kafkasink
+
+支持stream和batch数据写入kafka
+
+val ds = df
+  .selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)")
+  .writeStream
+  .format("kafka")
+  .option("kafka.bootstrap.servers", "host1:port1,host2:port2")
+  .option("topic", "topic1")
+  .start()
+
+Sink支持的输出模式
+
+Sink
+
+Outputmode
+
+Options
+
+容错
+
+注释
+
+FileSink
+
+Append
+
+path:输出路径，必须指定
+
+Yes
+
+支持写入分区的tables。按照时间分区或许有用。
+
+ForeachSink
+
+Append，Update，Complete
+
+None
+
+取决于ForeachWriter的实现
+
+细节请看官网
+
+ConsoleSink
+
+Append，Complete，Update
+
+NumRows：每个trigger显示的行数。Truncate：假如太长是否删除，默认是true
+
+No
+
+
+MemorySink
+
+Append,Complete
+
+None
+
+No.但是在Completemode 重新query就会导致重新创建整张表
+
+Table name is the query name.
+
+
+
+以上是全部概念。关于kafka的batch写入，会在后面详细介绍。
+
+三，源码相关介绍
+
+本次源码不会牵涉到具体的数据源
+
+1，重要的类
+
+A),DataSource
+
+负责构造可插入数据源的数据源。除了充当描述数据源的规范参数集之外，这个类也用于解析一个可以在查询计划中使用的具体实现的描述（或批处理或流）或使用外部库写出数据。
+
+B),StreamingQueryManager
+
+管理所有的StreamingQuery行为的类。
+
+C),StreamExecution
+
+使用单独一个线程管理Streaming Spark Sql query的执行。跟标准的查询不一样之处，一个Streaming query，在query plan中存在的source每次有新的数据产生都会重复执行。每当新的输入到达，就会生成一个QueryExecution，然后结果会事务的方式提交到给定的sink。
+
+D),ProcessingTimeExecutor
+
+继承自TriggerExecutor，每个 ‘intervalMs’个毫秒运行一个batch的trigger Executor。
+
+E),DataStreamWriter
+
+将一个Streaming Dataset写入外部存储系统的接口，使用Dataset.writeStream。
+
+F),DataStreamReader
+
+从外部存储系统加载一个Streaming dataset。使用SparkSession.readStream。
+
+2，重要的源码
+
+采用上面的样例源码。
+
+A),构建Streaming Dataset
+
+Load方法中
+
+val dataSource =
+  DataSource(
+    sparkSession,
+    userSpecifiedSchema = userSpecifiedSchema,
+    className = source,
+    options = extraOptions.toMap)
+Dataset.ofRows(sparkSession, StreamingRelation(dataSource))
+
+然后StreamingRelation(dataSource)
+
+object StreamingRelation {
+  def apply(dataSource: DataSource): StreamingRelation = {
+    StreamingRelation(
+      dataSource, dataSource.sourceInfo.name, dataSource.sourceInfo.schema.toAttributes)
+  }
+}
+
+构建Dataset这段源码其实写的还是很简单的，重点阅读的两个点是DataSource的两个lazy的变量。
+
+lazy val providingClass: Class[_] = DataSource.lookupDataSource(className)
+lazy val sourceInfo: SourceInfo = sourceSchema()
+
+ProvidingClass主要是负责构建我们具体的source，比如kafkaSource。
+
+SourceInfo主要是表结构。
+
+Provider class的实现
+
+DataSource.lookupDataSource(className)
+
+重点代码是加载所有DataSourceRegister实现，然后获取shortName，比如kafka相关的实现是KafkaSourceProvider，shortName是kafka，正好跟我们上文format指定的格式kafka匹配，此时就会得到providingClass的实现就是kafkaSourceProvider。
+
+//加载所有DataSourceRegister的实现
+val serviceLoader = ServiceLoader.load(classOf[DataSourceRegister], loader)
+try {
+ serviceLoader.asScala.filter(_.shortName().equalsIgnoreCase(provider1)).toList
+
+表结构的实现
+
+主要是由上步构建的providingClass，得到相应的schema。Kafka的schema信息是很固定的。
+
+providingClass.newInstance() match {
+  case s: StreamSourceProvider =>
+    val (name, schema) = s.sourceSchema(
+      sparkSession.sqlContext, userSpecifiedSchema, className, caseInsensitiveOptions)
+    SourceInfo(name, schema, Nil)
+
+B),输出到sink
+
+入口是start方法，此处我们指定的sink类型是console
+
+val (useTempCheckpointLocation, recoverFromCheckpointLocation) =
+  if (source == "console") {
+    (true, false)
+  } else {
+    (false, true)
+  }
+val dataSource =
+  DataSource(
+    df.sparkSession,
+    className = source,
+    options = extraOptions.toMap,
+    partitionColumns = normalizedParCols.getOrElse(Nil))
+df.sparkSession.sessionState.streamingQueryManager.startQuery(
+  extraOptions.get("queryName"),
+  extraOptions.get("checkpointLocation"),
+  df,
+  dataSource.createSink(outputMode),
+  outputMode,
+  useTempCheckpointLocation = useTempCheckpointLocation,
+  recoverFromCheckpointLocation = recoverFromCheckpointLocation,
+  trigger = trigger)
+
+其中，参数中有一个dataSource.createSink(outputMode)，就会根据我们构建DataSource的时候构建的providingClass(此处ConsoleSinkProvider)，实例之后得到的具体的sink(ConsoleSink)，
+
+providingClass.newInstance() match {
+  case s: StreamSinkProvider =>
+    s.createSink(sparkSession.sqlContext, caseInsensitiveOptions, partitionColumns, outputMode)
+
+在startQuery里，首先构建了Query，然后调用其start方法进行了执行。
+
+val query = createQuery(
+  userSpecifiedName,
+  userSpecifiedCheckpointLocation,
+  df,
+  sink,
+  outputMode,
+  useTempCheckpointLocation,
+  recoverFromCheckpointLocation,
+  trigger,
+  triggerClock)
+
+CreateQuery方法中构建StreamingQueryWrapper和StreamExecution
+
+new StreamingQueryWrapper(new StreamExecution(
+  sparkSession,
+  userSpecifiedName.orNull,
+  checkpointLocation,
+  analyzedPlan,
+  sink,
+  trigger,
+  triggerClock,
+  outputMode,
+  deleteCheckpointOnStop))
+
+调用StreamExecution的start方法，启动执行。
+
+query.streamingQuery.start()
+
+该方法中主要是启动了一个线程进行microBatch的处理。
+
+microBatchThread.setDaemon(true)
+microBatchThread.start()
+
+val microBatchThread =
+  new StreamExecutionThread(s"stream execution thread for $prettyIdString") {
+    override def run(): Unit = {
+      // To fix call site like "run at <unknown>:0", we bridge the call site from the caller
+      // thread to this micro batch thread
+      sparkSession.sparkContext.setCallSite(callSite)
+      runBatches()
+    }
+  }
+
+重点是runBatches()方法。
+
+这里要提到两个一个重要的变量，triggerExecutor，这个会根据我们在样例中trigger(Trigger.ProcessingTime(1000000))设置的时间，类型觉得是构建处理一次的OneTimeExecutor，还是ProcessingTimeExecutor。
+
+该对象在构建StreamExecution时构建和初始化
+
+private val triggerExecutor = trigger match {
+  case t: ProcessingTime => ProcessingTimeExecutor(t, triggerClock)
+  case OneTimeTrigger => OneTimeExecutor()
+  case _ => throw new IllegalStateException(s"Unknown type of trigger: $trigger")
+}
+
+
+
+微批处理的执行
+
+runBatches方法中，在数据可用的情况下会调用runBatch
+
+if (dataAvailable) {
+  currentStatus = currentStatus.copy(isDataAvailable = true)
+  updateStatusMessage("Processing new data")
+  runBatch(sparkSessionToRunBatches)
+}
+
+runBatch，主要分三步走：获取数据，构建执行计划，输出。
+
+A),请求未处理的数据
+
+// Request unprocessed data from all sources.
+newData = reportTimeTaken("getBatch") {
+  availableOffsets.flatMap {
+    case (source, available)
+      if committedOffsets.get(source).map(_ != available).getOrElse(true) =>
+      val current = committedOffsets.get(source)
+      val batch = source.getBatch(current, available)
+      logDebug(s"Retrieving data from $source: $current -> $available")
+      Some(source -> batch)
+    case _ => None
+  }
+}
+
+
+
+B),处理构建具体的执行计划
+
+// Replace sources in the logical plan with data that has arrived since the last batch.
+val withNewSources = logicalPlan transform {
+  case StreamingExecutionRelation(source, output) =>
+    newData.get(source).map { data =>
+      val newPlan = data.logicalPlan
+      assert(output.size == newPlan.output.size,
+        s"Invalid batch: ${Utils.truncatedString(output, ",")} != " +
+        s"${Utils.truncatedString(newPlan.output, ",")}")
+      replacements ++= output.zip(newPlan.output)
+      newPlan
+    }.getOrElse {
+      LocalRelation(output)
+    }
+}
+
+// Rewire the plan to use the new attributes that were returned by the source.
+val replacementMap = AttributeMap(replacements)
+val triggerLogicalPlan = withNewSources transformAllExpressions {
+  case a: Attribute if replacementMap.contains(a) => replacementMap(a)
+  case ct: CurrentTimestamp =>
+    CurrentBatchTimestamp(offsetSeqMetadata.batchTimestampMs,
+      ct.dataType)
+  case cd: CurrentDate =>
+    CurrentBatchTimestamp(offsetSeqMetadata.batchTimestampMs,
+      cd.dataType, cd.timeZoneId)
+}
+
+reportTimeTaken("queryPlanning") {
+  lastExecution = new IncrementalExecution(
+    sparkSessionToRunBatch,
+    triggerLogicalPlan,
+    outputMode,
+    checkpointFile("state"),
+    currentBatchId,
+    offsetSeqMetadata)
+  lastExecution.executedPlan // Force the lazy generation of execution plan
+}
+
+
+
+3),调用sink的addBatch输出
+
+val nextBatch =
+  new Dataset(sparkSessionToRunBatch, lastExecution, RowEncoder(lastExecution.analyzed.schema))
+
+reportTimeTaken("addBatch") {
+  sink.addBatch(currentBatchId, nextBatch)
+}
+
+
+
+对于本文的consoleSink具体实现如下
+
+data.sparkSession.createDataFrame(
+  data.sparkSession.sparkContext.parallelize(data.collect()), data.schema)
+  .show(numRowsToShow, isTruncated)
+
+四，总结
+
+Structured Streaming 提供高效，可升级，容错，点对点 仅一次处理的流处理，用户根本不用关心流。
+
+分三个，概念大家会理解的更清晰。
+
+1，DataSource
+
+2，Sink
+
+3，DataSet/DataFrame的执行计划。
+
+把流当成一张表，新增数据就是新增表的行。这么理解是不是更彻底呢？
+
+
+
+StructuredStreaming与kafka的结合是看点。后面我会出一些文章详细道来。也会对kafka 0.10.0的Consumer和KafkaProducer进行源码解密，因为你会发现，关于kafka 0.10.0与spark的结合已经变了天了。
+
+
+
+
+Spark Structured Streaming高级特性
+原创： 浪尖  Spark学习技巧  2017-09-08
+一，事件时间窗口操作
+
+使用Structured Streaming基于事件时间的滑动窗口的聚合操作是很简单的，很像分组聚合。在一个分组聚合操作中，聚合值被唯一保存在用户指定的列中。在基于窗口的聚合的情况下，对于行的事件时间的每个窗口，维护聚合值。
+
+如前面的例子，我们运行wordcount操作，希望以10min窗口计算，每五分钟滑动一次窗口。也即，12:00 - 12:10, 12:05 - 12:15, 12:10 - 12:20 这些十分钟窗口中进行单词统计。12:00 - 12:10意思是在12:00之后到达12:10之前到达的数据，比如一个单词在12:07收到。这个单词会影响12:00 - 12:10, 12:05 - 12:15两个窗口。
+
+结果表将如下所示。
+
+
+
+
+
+三，处理延迟的数据和高水位
+
+现在考虑假如消息到达应用延迟的情况。例如，假如一个word是在12:04产生，但是在12:11被接收到。应用应该使用的时间是12:04而不是12:11去更新12:00-12:10这个窗口。这在我们基于窗口的分组中自然出现 - 结构化流可以长时间维持部分聚合的中间状态，以便后期数据可以正确更新旧窗口的聚合，如下所示。
+
+
+
+但是，为了运行这个查询几天，系统必须限制其积累的内存中间状态的数量。这意味着系统需要知道何时可以从内存状态中删除旧聚合，因为应用程序不会再为该聚合接收到较晚的数据。为了实现这一点，在Spark 2.1中，我们引入了watermark，这使得引擎可以自动跟踪数据中的当前事件时间，并尝试相应地清除旧状态。您可以通过指定事件时间列来定义查询的watermark ，以及预计数据在事件时间方面的延迟。对于从时间T开始的特定窗口，引擎将保持状态，并允许延迟数据更新状态，直到引擎看到的最大事件时间-(延迟阈值>T)为止。换句话说阈值内的晚到数据将会被聚合，但比阈值晚的数据将会被丢弃。让我们以一个例子来理解这一点
+
+val windowedCounts = words .withWatermark("timestamp", "10 minutes").groupBy(
+  window($"timestamp", windowDuration, slideDuration), $"word"
+).count().orderBy("window")
+
+在这个例子中，我们正在定义“timestamp”列的查询的watermark ，并将“10分钟”定义为允许数据延迟的阈值。如果此查询在Update 输出模式下运行（关于输出模式”请参考<Spark源码系列之spark2.2的StructuredStreaming使用及源码介绍 >），则引擎将不断更新结果表中窗口的计数，直到窗口比watermark 更旧，watermark滞后“timestamp”列中的当前事件时间10分钟。
+
+
+
+如图所示，引擎跟踪的最大事件时间是蓝色虚线，每个触发开始时设置watermark 为（最大事件时间 - '10分钟）是红线。例如，当引擎看到数据(12:14,dog)，他为下次触发设置水印为12:04。Watermark使得引擎保持额外十分钟的状态，以允许迟到的数据能够被统计。
+
+例如，数据(12:09,cat)乱序了，并且迟到了，她落在12:05-12:15和12:10-12:20这两个窗口内。由于，在触发计算时它依然高于Watermark 12:04，引擎仍然将中间计数保持为状态，并正确更新相关窗口的计数。然后，假如watermark被更新为12:11，12:00-12:10窗口的中间状态将会被清除，所有相关的数据(例如，(12:04,donkey))将被视为太迟而被忽略。请注意，按照更新模式规定，每次触发之后，更新的技术将被作为触发输出写入sink。
+
+某些接收器（例如文件）可能不支持更新模式所需的细粒度更新。要与他们一起工作，我们还支持追加模式，只有最后的计数被写入sink。
+
+请注意，在非流数据集上使用watermark是无效的。 由于watermark不应以任何方式影响任何批次查询，我们将直接忽略它。
+
+
+
+类似前面的Update模式，引擎为每个窗口保持中间统计。然而，部分结果不会更新到结果表也不会被写入sink。引擎等待迟到的数据“10分钟”进行计数，然后将窗口<watermark的中间状态丢弃，并将最终计数附加到结果表/sink。例如，只有在将watermark 更新为12:11之后，窗口12:00 - 12:10的最终计数才附加到结果表中。
+
+watermark 清理聚合状态的条件重要的是要注意，为了清除聚合查询中的状态（从Spark 2.1.1开始，将来会更改），必须满足以下条件。
+
+A),输出模式必须是Append或者Update。Complete 模式要求保留所有聚合数据，因此不能使用watermark 来中断状态。
+
+B),聚合必须具有事件时间列或事件时间列上的窗口。
+
+C),必须在与聚合中使用的时间戳列相同的列上调用withWatermark 。例如：df.withWatermark("time", "1 min").groupBy("time2").count() 是在Append模式下是无效的，因为watermark定义的列和聚合的列不一致。
+
+D),必须在聚合之前调用withWatermark 才能使用watermark 细节。例如，在附加输出模式下，df.groupBy(“time”).count().withWatermark(“time”,”1 min”)无效。
+
+
+
+四，join操作
+
+Streaming DataFrames可以与静态的DataFrames进行join，进而产生新的DataFrames。下面是几个例子：
+
+val staticDf = spark.read. ...
+val streamingDf = spark.readStream. ...
+
+streamingDf.join(staticDf, "type")          // inner equi-join with a static DF
+streamingDf.join(staticDf, "type", "right_join")  // right outer join with a static DF
+
+
+
+五，流式去重
+
+您可以使用事件中的唯一标识符对数据流中的记录进行重复数据删除。这与使用唯一标识符列的静态重复数据删除完全相同。该查询将存储先前记录所需的数据量，以便可以过滤重复的记录。与聚合类似，您可以使用带有或不带有watermark 的重复数据删除功能。
+
+A),带watermark：如果重复记录可能到达的时间有上限，则可以在事件时间列上定义watermark ，并使用guid和事件时间列进行重复数据删除。
+
+B),不带watermark：由于重复记录可能到达时间没有界限，所以查询将来自所有过去记录的数据存储为状态。
+
+val streamingDf = spark.readStream. ...  // columns: guid, eventTime, ...
+
+// Without watermark using guid column
+streamingDf.dropDuplicates("guid")
+
+// With watermark using guid and eventTime columns
+streamingDf
+  .withWatermark("eventTime", "10 seconds")
+  .dropDuplicates("guid", "eventTime")
+
+
+
+六，任意有状态的操作
+
+许多用例需要比聚合更高级的状态操作。例如，在许多用例中，您必须跟踪事件数据流中的会话。对于进行此类会话，您将必须将任意类型的数据保存为状态，并在每个触发器中使用数据流事件对状态执行任意操作。从Spark 2.2，这可以通过操作mapGroupsWithState和更强大的操作flatMapGroupsWithState来完成。这两个操作都允许您在分组的数据集上应用用户定义的代码来更新用户定义的状态。
+
+// A mapping function that maintains an integer state for string keys and returns a string.
+// Additionally, it sets a timeout to remove the state if it has not received data for an hour.
+def mappingFunction(key: String, value: Iterator[Int], state: GroupState[Int]): String = {
+
+  if (state.hasTimedOut) {                // If called when timing out, remove the state
+    state.remove()
+
+  } else if (state.exists) {              // If state exists, use it for processing
+  val existingState = state.get         // Get the existing state
+  val shouldRemove = ...                // Decide whether to remove the state
+    if (shouldRemove) {
+      state.remove()                      // Remove the state
+
+    } else {
+      val newState = ...
+      state.update(newState)              // Set the new state
+      state.setTimeoutDuration("1 hour")  // Set the timeout
+    }
+
+  } else {
+    val initialState = ...
+    state.update(initialState)            // Set the initial state
+    state.setTimeoutDuration("1 hour")    // Set the timeout
+  }
+  ...
+  // return something
+}
+
+dataset
+  .groupByKey(...)
+.mapGroupsWithState(GroupStateTimeout.ProcessingTimeTimeout)(mappingFunction)
+
+
+
+七，不支持的操作
+
+Streaming DataFrames / Datasets不支持DataFrame / Dataset操作。 其中一些如下。
+
+A),流Datasets不支持多个流聚合（即流DF上的聚合链）。
+
+B),流数据集不支持Limit 和取前N行。
+
+C),不支持流数据集上的Distinct 操作。
+
+D),只有在聚合和Complete 输出模式下，流数据集才支持排序操作。
+
+E),有条件地支持流和静态数据集之间的外连接。
+
+a) 不支持与流数据集Full outer join
+
+b) 不支持与右侧的流数据集Left outer join
+
+c) 不支持与左侧的流数据集Right outer join
+
+F),两个流数据集之间的任何类型的连接尚不被支持。
+
+此外，还有一些Dataset方法将不适用于流数据集。它们是立即运行查询并返回结果的操作，这在流数据集上没有意义。相反，这些功能可以通过显式启动流式查询来完成。
+
+A),Count()- 无法从流数据集返回单个计数。 而是使用ds.groupBy().count()返回一个包含运行计数的流数据集。
+
+B),foreach() - 使用ds.writeStream.foreach(...) 代替
+
+C),show() -使用console sink 代替
+
+如果您尝试任何这些操作，您将看到一个AnalysisException，如“操作XYZ不支持streaming DataFrames/Datasets”。虽然一些操作在未来的Spark版本中或许会得到支持，但还有一些其它的操作很难在流数据上高效的实现。例如，例如，不支持对输入流进行排序，因为它需要跟踪流中接收到的所有数据。因此，从根本上难以有效执行。
+
+
+
+八，监控流式查询
+
+有两个API用于监视和调试查询 - 以交互方式和异步方式。
+
+1，交互API
+
+您可以使用streamingQuery.lastProgress（）和streamingQuery.status（）直接获取active查询的当前状态和指标。lastProgress（）在Scala和Java中返回一个StreamingQueryProgress对象，并在Python中返回与该字段相同的字典。它具有关于流的上一个触发操作进度的所有信息 - 处理哪些数据，处理速率，延迟等等。还有streamingQuery.recentProgress返回最后几个处理的数组。
+
+此外，streamingQuery.status（）返回Scala和Java中的StreamingQueryStatus对象，以及Python中具有相同字段的字典。它提供有关查询立即执行的信息 - 触发器是活动的，正在处理的数据等。
+
+这里有几个例子。
+
+val query: StreamingQuery = ...
+
+println(query.lastProgress)
+
+/* Will print something like the following.
+
+{
+  "id" : "ce011fdc-8762-4dcb-84eb-a77333e28109",
+  "runId" : "88e2ff94-ede0-45a8-b687-6316fbef529a",
+  "name" : "MyQuery",
+  "timestamp" : "2016-12-14T18:45:24.873Z",
+  "numInputRows" : 10,
+  "inputRowsPerSecond" : 120.0,
+  "processedRowsPerSecond" : 200.0,
+  "durationMs" : {
+    "triggerExecution" : 3,
+    "getOffset" : 2
+  },
+  "eventTime" : {
+    "watermark" : "2016-12-14T18:45:24.873Z"
+  },
+  "stateOperators" : [ ],
+  "sources" : [ {
+    "description" : "KafkaSource[Subscribe[topic-0]]",
+    "startOffset" : {
+      "topic-0" : {
+        "2" : 0,
+        "4" : 1,
+        "1" : 1,
+        "3" : 1,
+        "0" : 1
+      }
+    },
+    "endOffset" : {
+      "topic-0" : {
+        "2" : 0,
+        "4" : 115,
+        "1" : 134,
+        "3" : 21,
+        "0" : 534
+      }
+    },
+    "numInputRows" : 10,
+    "inputRowsPerSecond" : 120.0,
+    "processedRowsPerSecond" : 200.0
+  } ],
+  "sink" : {
+    "description" : "MemorySink"
+  }
+}
+*/
+
+
+println(query.status)
+
+/*  Will print something like the following.
+{
+  "message" : "Waiting for data to arrive",
+  "isDataAvailable" : false,
+  "isTriggerActive" : false
+}
+*/
+
+
+
+2，异步API
+
+您还可以通过附加StreamingQueryListener（Scala / Java文档）异步监视与SparkSession关联的所有查询。一旦您使用sparkSession.streams.attachListener（）附加您的自定义StreamingQueryListener对象，您将在查询启动和停止时以及在活动查询中进行时获得回调。
+
+val spark: SparkSession = ...
+
+spark.streams.addListener(new StreamingQueryListener() {
+  override def onQueryStarted(queryStarted: QueryStartedEvent): Unit = {
+    println("Query started: " + queryStarted.id)
+  }
+  override def onQueryTerminated(queryTerminated: QueryTerminatedEvent): Unit = {
+    println("Query terminated: " + queryTerminated.id)
+  }
+  override def onQueryProgress(queryProgress: QueryProgressEvent): Unit = {
+    println("Query made progress: " + queryProgress.progress)
+  }
+})
+
+
+
+九，使用checkpoint进行故障恢复
+
+如果发生故障或故意关机，您可以恢复之前的查询的进度和状态，并从停止的地方继续执行。这是使用检查点和预写日志完成的。您可以使用检查点位置配置查询，那么查询将将所有进度信息（即，每个触发器中处理的偏移范围）和运行聚合（例如，快速示例中的字计数）保存到检查点位置。此检查点位置必须是HDFS兼容文件系统中的路径，并且可以在启动查询时将其设置为DataStreamWriter中的选项。
+
+aggDF
+  .writeStream
+  .outputMode("complete")
+  .option("checkpointLocation", "path/to/HDFS/dir")
+  .format("memory")
+  .start()
+
+
+
+
+
+十，总结
+
+本文主要介绍Spark Structured Streaming一些高级特性：窗口操作，处理延迟数据及watermark，join操作，流式去重，一些不支持的操作，监控API和故障恢复。希望帮助大家更进一步了解Structured Streaming。
+
+本文应结合<>和flink相关的文章一起看，这样可以更深入的了解Spark Streaming ，flink及Structured Streaming之间的区别。后面会出文章详细对比介绍三者的区别。
+

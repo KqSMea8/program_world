@@ -143,4 +143,675 @@ Cube Segment
 第9章Apache Kyin的企业级功能
 第10章运维管理
 第11章参与开源
-第12章Apache Kyin的未来9
+
+Apache Kylin优化之—Cube的高级设置
+bigdata029  Spark学习技巧  2017-10-18
+本文转载自bigdata029，从apachekylin公众号系列文章整理。
+
+随着维度数目的增加，Cuboid 的数量会爆炸式地增长。为了缓解 Cube 的构建压力，Apache Kylin 引入了一系列的高级设置，帮助用户筛选出真正需要的 Cuboid。这些高级设置包括聚合组（Aggregation Group）、联合维度（Joint Dimension）、层级维度（Hierachy Dimension）和必要维度（Mandatory Dimension）等。”
+
+
+
+众所周知，Apache Kylin 的主要工作就是为源数据构建 N 个维度的 Cube，实现聚合的预计算。理论上而言，构建 N 个维度的 Cube 会生成 2N 个 Cuboid， 如图 1 所示，构建一个 4 个维度（A，B，C, D）的 Cube，需要生成 16 个Cuboid。
+
+
+
+图1
+
+随着维度数目的增加 Cuboid 的数量会爆炸式地增长，不仅占用大量的存储空间还会延长 Cube 的构建时间。为了缓解 Cube 的构建压力，减少生成的 Cuboid 数目，Apache Kylin 引入了一系列的高级设置，帮助用户筛选出真正需要的 Cuboid。这些高级设置包括聚合组（Aggregation Group）、联合维度（Joint Dimension）、层级维度（Hierachy Dimension）和必要维度（Mandatory Dimension）等，本系列将深入讲解这些高级设置的含义及其适用的场景。
+
+
+
+聚合组（Aggregation Group）
+
+
+用户根据自己关注的维度组合，可以划分出自己关注的组合大类，这些大类在 Apache Kylin 里面被称为聚合组。例如图 1 中展示的 Cube，如果用户仅仅关注维度 AB 组合和维度 CD 组合，那么该 Cube 则可以被分化成两个聚合组，分别是聚合组 AB 和聚合组 CD。如图 2 所示，生成的 Cuboid 数目从 16 个缩减成了 8 个。
+
+
+
+图2
+用户关心的聚合组之间可能包含相同的维度，例如聚合组 ABC 和聚合组 BCD 都包含维度 B 和维度 C。这些聚合组之间会衍生出相同的 Cuboid，例如聚合组 ABC 会产生 Cuboid BC，聚合组 BCD 也会产生 Cuboid BC。这些 Cuboid不会被重复生成，一份 Cuboid 为这些聚合组所共有，如图 3 所示。
+
+
+
+有了聚合组用户就可以粗粒度地对 Cuboid 进行筛选，获取自己想要的维度组合。
+
+
+
+聚合组应用实例
+假设创建一个交易数据的 Cube，它包含了以下一些维度：顾客 ID buyer_id 交易日期 cal_dt、付款的方式 pay_type 和买家所在的城市 city。有时候，分析师需要通过分组聚合 city、cal_dt 和 pay_type 来获知不同消费方式在不同城市的应用情况；有时候，分析师需要通过聚合 city 、cal_dt 和 buyer_id，来查看顾客在不同城市的消费行为。在上述的实例中，推荐建立两个聚合组，包含的维度和方式如图 4 ：
+
+
+
+聚合组 1： [cal_dt, city, pay_type]
+
+聚合组 2： [cal_dt, city, buyer_id]
+
+在不考虑其他干扰因素的情况下，这样的聚合组将节省不必要的 3 个 Cuboid: [pay_type, buyer_id]、[city, pay_type, buyer_id] 和 [cal_dt, pay_type, buyer_id] 等，节省了存储资源和构建的执行时间。
+
+Case 1:
+
+SELECT cal_dt, city, pay_type, count(*) FROM table GROUP BY cal_dt, city, pay_type 则将从 Cuboid [cal_dt, city, pay_type] 中获取数据。
+
+Case2:
+
+SELECT cal_dt, city, buy_id, count(*) FROM table GROUP BY cal_dt, city, buyer_id 则将从 Cuboid [cal_dt, city, pay_type] 中获取数据。
+
+Case3 如果有一条不常用的查询:
+
+SELECT pay_type, buyer_id, count(*) FROM table GROUP BY pay_type, buyer_id 则没有现成的完全匹配的 Cuboid。
+
+此时，Apache Kylin 会通过在线计算的方式，从现有的 Cuboid 中计算出最终结果。
+
+
+
+联合维度（Joint Dimension）
+
+
+用户有时并不关心维度之间各种细节的组合方式，例如用户的查询语句中仅仅会出现 group by A, B, C，而不会出现 group by A, B 或者 group by C 等等这些细化的维度组合。这一类问题就是联合维度所解决的问题。例如将维度 A、B 和 C 定义为联合维度，Apache Kylin 就仅仅会构建 Cuboid ABC，而 Cuboid AB、BC、A 等等Cuboid 都不会被生成。最终的 Cube 结果如图5所示，Cuboid 数目从 16 减少到 4。
+
+
+
+联合维度应用实例
+假设创建一个交易数据的Cube，它具有很多普通的维度，像是交易日期 cal_dt，交易的城市 city，顾客性别 sex_id 和支付类型 pay_type 等。分析师常用的分析方法为通过按照交易时间、交易地点和顾客性别来聚合，获取不同城市男女顾客间不同的消费偏好，例如同时聚合交易日期 cal_dt、交易的城市 city 和顾客性别 sex_id来分组。在上述的实例中，推荐在已有的聚合组中建立一组联合维度，包含的维度和组合方式如图6：
+
+
+
+聚合组：[cal_dt, city, sex_id，pay_type]
+
+联合维度： [cal_dt, city, sex_id]
+
+Case 1：
+
+SELECT cal_dt, city, sex_id, count(*) FROM table GROUP BY cal_dt, city, sex_id 则它将从Cuboid [cal_dt, city, sex_id]中获取数据
+
+Case2如果有一条不常用的查询：
+
+SELECT cal_dt, city, count(*) FROM table GROUP BY cal_dt, city 则没有现成的完全匹配的 Cuboid，Apache Kylin 会通过在线计算的方式，从现有的 Cuboid 中计算出最终结果。
+
+
+层级维度（Hierarchy Dimension）
+
+
+用户选择的维度中常常会出现具有层级关系的维度。例如对于国家（country）、省份（province）和城市（city）这三个维度，从上而下来说国家／省份／城市之间分别是一对多的关系。也就是说，用户对于这三个维度的查询可以归类为以下三类:
+
+group by country
+
+group by country, province（等同于group by province）
+
+group by country, province, city（等同于 group by country, city 或者group by city）
+
+以图7所示的 Cube 为例，假设维度 A 代表国家，维度 B 代表省份，维度 C 代表城市，那么ABC 三个维度可以被设置为层级维度，生成的Cube 如图7所示。
+
+
+
+图7
+
+例如，Cuboid [A,C,D]=Cuboid[A, B, C, D]，Cuboid[B, D]=Cuboid[A, B, D]，因而 Cuboid[A, C, D] 和 Cuboid[B, D] 就不必重复存储。
+
+图8展示了 Kylin 按照前文的方法将冗余的Cuboid 剪枝从而形成图 2 的 Cube 结构，Cuboid 数目从 16 减小到 8。
+
+
+
+
+层级维度应用实例
+假设一个交易数据的 Cube，它具有很多普通的维度，像是交易的城市 city，交易的省 province，交易的国家 country， 和支付类型 pay_type等。分析师可以通过按照交易城市、交易省份、交易国家和支付类型来聚合，获取不同层级的地理位置消费者的支付偏好。在上述的实例中，建议在已有的聚合组中建立一组层级维度（国家country／省province／城市city），包含的维度和组合方式如图9：
+
+
+
+图9
+
+聚合组：[country, province, city，pay_type]
+
+层级维度： [country, province, city]
+
+Case 1 当分析师想从城市维度获取消费偏好时：
+
+SELECT city, pay_type, count(*) FROM table GROUP BY city, pay_type 则它将从 Cuboid [country, province, city, pay_type] 中获取数据。
+
+Case 2 当分析师想从省级维度获取消费偏好时：
+
+SELECT province, pay_type, count(*) FROM table GROUP BY province, pay_type 则它将从Cuboid [country, province, pay_type] 中获取数据。
+
+Case 3 当分析师想从国家维度获取消费偏好时：
+
+SELECT country, pay_type, count(*) FROM table GROUP BY country, pay_type 则它将从Cuboid [country, pay_type] 中获取数据。
+
+Case 4 如果分析师想获取不同粒度地理维度的聚合结果时：
+
+无一例外都可以由图 3 中的 cuboid 提供数据 。
+
+例如，SELECT country, city, count(*) FROM table GROUP BY country, city 则它将从 Cuboid [country, province, city] 中获取数据。
+
+
+
+必要维度 （Mandatory Dimension）
+用户有时会对某一个或几个维度特别感兴趣，所有的查询请求中都存在group by这个维度，那么这个维度就被称为必要维度，只有包含此维度的Cuboid会被生成（如图10）。
+
+
+
+以图 1中的Cube为例，假设维度A是必要维度，那么生成的Cube则如图11所示，维度数目从16变为9。
+
+
+
+
+必要维度应用实例
+假设一个交易数据的Cube，它具有很多普通的维度，像是交易时间order_dt，交易的地点location，交易的商品product和支付类型pay_type等。其中，交易时间就是一个被高频作为分组条件（group by）的维度。 如果将交易时间order_dt设置为必要维度，包含的维度和组合方式如图12：
+
+
+
+图12
+
+系列总结
+根据本系列的原理介绍，在Kylin的高级设置中，用户可以根据查询需求对Cube构建预计算的结果进行优化（剪枝），从而减少占用的存储空间。 而优化得当的Cube可以在占用尽量少的存储空间的同时提供极强的查询性能。
+
+
+1， kylin是什么？为什么需要？
+
+
+
+Apache Kylin™是一个开源的分布式分析引擎，提供Hadoop之上的SQL查询接口及多维分析（OLAP）能力以支持超大规模数据，最初由eBay Inc. 开发并贡献至开源社区。它能在亚秒内查询巨大的Hive表。
+
+
+
+两张图概括麒麟
+
+
+
+
+
+
+
+
+
+二， Kylin安装的环境要求
+
+
+
+1，hadoop的最低版本要求
+
+最低的环境版本要求：
+
+Hadoop: 2.7+
+
+Hive: 0.13 - 1.2.1+
+
+HBase: 0.98 - 0.99, 1.1+
+
+JDK: 1.7+
+
+浪尖的安装系列文章，满足，我们采用的hadoop版本是2.7.4，hive是1.2.1,hbase-1.2.0，jdk1.8
+
+本文采用的kylin版本是apache-kylin-2.1.0-bin-hbase1x.tar.gz
+
+
+
+2，/etc/profile
+
+之所以单独强调这一点，是因为kylin安装的时候严格依赖于hadoop，spark，hive，hbase等环境变量配置。具体配置如下：
+
+
+
+export JAVA_HOME=/opt/modules/jdk1.8.0_121
+
+export PATH=$PATH:$JAVA_HOME/bin
+
+export HADOOP_HOME=/opt/modules/hadoop-2.7.4/
+
+export HADOOP_PREFIX=$HADOOP_HOME
+
+export HADOOP_MAPRED_HOME=$HADOOP_HOME
+
+export HADOOP_YARN_HOME=$HADOOP_HOME
+
+export HADOOP_COMMON_HOME=$HADOOP_HOME
+
+export HADOOP_HDFS_HOME=$HADOOP_HOME
+
+export YARN_HOME=$HADOOP_HOME
+
+export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop
+
+export YARN_CONF_DIR=$HADOOP_HOME/etc/hadoop
+
+export PATH=$PATH:$HADOOP_HOME/bin
+
+export PATH=$PATH:$HADOOP_HOME/sbin
+
+
+
+# Hive
+
+export HIVE_HOME=/opt/modules/hive-1.2.1
+
+export HIVE_CONF_DIR=$HIVE_HOME/conf
+
+export PATH=$PATH:$HIVE_HOME/bin
+
+
+
+# HBase
+
+export HBASE_HOME=/opt/modules/hbase-1.2.0
+
+export HBASE_CONF_DIR=$HBASE_HOME/conf
+
+export PATH=$PATH:$HBASE_HOME/bin
+
+
+
+# zookeeper
+
+export ZOOKEEPER_HOME=/opt/modules/zookeeper-3.4.5/
+
+export ZOOKEEPER_CONF_DIR=$ZOOKEEPER_HOME/conf
+
+export PATH=$PATH:$ZOOKEEPER_HOME/bin
+
+
+
+
+
+# spark
+
+export SPARK_HOME=/opt/modules/spark-2.1.2
+
+export SPARK_CONF_DIR=$SPARK_HOME/conf
+
+export PATH=$PATH:$SPARK_HOME/bin
+
+export PATH=$PATH:$SPARK_HOME/sbin
+
+
+
+# kylin
+
+export KYLIN_HOME=/opt/modules/kylin
+
+export PATH=$PATH:$KYLIN_HOME/bin
+
+
+
+3，解压apache-kylin-2.1.0-bin-hbase1x.tar.gz
+
+检测环境，假如仅仅输出如下，说明配置正确
+
+
+
+
+
+4，要启动的hadoop服务
+
+hadoop集群启动命令，单个节点启动的我们的服务。
+
+
+
+启动yarn
+
+yarn-daemon.sh start resourcemanager
+
+yarn-daemon.sh start nodemanager
+
+
+
+启动hadoop
+
+hadoop-daemon.sh start namenode
+
+hadoop-daemon.sh start datanode
+
+
+
+启动Zookeeper
+
+zkServer.sh start
+
+
+
+启动hbase
+
+hbase-daemon.sh start master
+
+hbase-daemon.sh start regionserver
+
+
+
+启动hive的metastore
+
+nohup hive --service metastore   >/dev/null 2>&1 &
+
+
+
+启动jobhistory
+
+mr-jobhistory-daemon.sh start historyserver
+
+
+
+5，hadoop集群的已配置好的软件包
+
+
+
+关注公众号，输入：配置。下载。
+
+3， 安装kylin并启动
+
+Kylin的启动异常简单：
+
+kylin.sh start
+
+
+
+在web浏览器中输入，http://luffy.onepiece.com:7070/kylin ，默认的账号密码是ADMIN/KYLIN，假如呈现如下安装页面，说明安装成功。
+
+
+
+
+
+四， 测试kylin
+
+
+
+测试主要是针对官网提供的demo进行的。
+
+1， 首先生成数据
+
+执行${KYLIN_HOME}/bin/sample.sh。假如配置没有错误，会在结尾得到如下输出
+
+
+
+这个时候为了生效我们可以重启kylin，或者在web UI里面重新加载元数据，如下：
+
+
+
+2， 构建cube
+
+这时候，首先在左上角的choose project框里选择，learn_kylin工程。在web UI的model栏可以看到。
+
+
+
+这时候，在Actions栏里点击build
+
+
+
+在弹出框里做如下选择时间大于开始时间，然后点击submit。
+
+
+
+在监控栏里面，可以看到cube构建的进度信息
+
+
+
+构建结束后
+
+
+
+
+
+3， 执行sql
+
+在构建好cube之后，在learn_kylin被选中的时候，insight栏里，cube信息
+
+
+
+比如，输入如下SQL
+
+select part_dt, sum(price) as total_selled, count(distinct seller_id) as sellers from kylin_sales group by part_dt order by part_dt
+
+返回结果
+
+
+
+4， Web呈现
+
+上步骤返回的结果，实际上可以以图表的形式展示，如下：
+
+
+
+展示实际根据，维度及该维度统计的指标。
+
+
+
+五， 集群部署
+
+
+
+1， kylin Server模式
+
+
+
+kylin的实例是无状态的，运行状态存储在他的metadata store(hbase里面存储，文件kylin.properties配置kylin.metadata.url)。为了负载均衡考虑，我们可能会启动多个kylin实例，共享一份元数据(表结构的状态，job的状态，cube的状态)。
+
+特别要提到，每个kylin的实例，我们都要配置kylin.server.mode(conf/kylin.properties),这个属性有三个值:
+
+A,job，运行job 引擎
+
+B,query 运行查询引擎
+
+C,all运行两者。
+
+值得注意的是，仅仅有一个Server可以运行job引擎，也即(处于all模式或者job模式)，其它实例必须是query模式。
+
+一个典型的kylin结构图如下：
+
+
+
+2， 设置多个kylin REST servers
+
+如果使用kylin的集群模式，这种情况下会有多个REST服务实例，一定要确保每个服务实例在配置文件${KYLIN_HOME}/conf/kylin.properties，有以下配置：
+
+A, kylin.rest.servers
+
+Web服务的地址列表，使能一个web 服务实例跟其他进行数据同步。配置格式如下：
+
+kylin.rest.servers=sandbox1:7070,sandbox2:7070
+
+B, kylin.server.mode
+
+确保，仅仅有一个kylin实例的kylin.server.mode属性被设置为all或者job，其它的为query。
+
+
+
+3， 负载均衡
+
+
+
+使能kylin的高可用服务，需要在这些服务实例前面设置一个负载均衡器，均衡请求。客户端只需要发送请求给负载均衡器，而不是直接和kylin 服务实例交互。如Nginx
+
+
+Kylin及数据仓库的技术概念详解
+原创： 浪尖  Spark学习技巧  2017-11-13
+
+
+
+
+
+
+
+
+
+一   cube
+
+1， Table
+
+cube数据源的hive表的定义，在build cube之前需要进行同步。
+
+
+
+2， Data Model
+
+这描述了一个星型数据模型，定义了flat/lookup表和过滤条件。
+
+
+
+3， Cube Desctiptor
+
+这描述了一个cube实例的定义和配置，定义了采用那个model，拥有哪些维度和测量指标，如何区分区Segment，如果处理自动合并。
+
+
+
+4， Cube instance
+
+cube的实例，根据一个cube descriptor构建，然后由一个或者多个cube Segment组成(根据分区设置)。
+
+
+
+5， Partition
+
+用户可以在一个cube descriptor上定义DATE/String 列作为一个分区列。使用不同的时间周期，将一个cube分割成多个Segment。
+
+
+
+6， Cube Segment
+
+这是立方体数据的实际载体，并映射到HBase中的HTable。一个构建作业会为Cube实例创建一个新的Segment。 一旦数据在指定的数据周期内发生变化，我们可以刷新相关的Segment以避免重建整个Cube。
+
+
+
+7， Aggregation
+
+Group 每个聚合组都是维度的子集，并在里面构建cuboid。 它旨在修剪优化。
+
+
+
+二 DIMENSION & MEASURE
+
+1， Mandotary
+
+此维度类型用于cuboid修剪，如果一个维度被指定为“Mandotary”，那么那些没有维度的组合被修剪。
+
+2，Hierarchy
+
+这个维度类型用于cuboid修剪，如果A，B，C三维形成一个“Hierarchy”关系，那么只剩下A，AB或ABC的组合。
+
+3，Derived
+
+在查找表中，可以从它的PK生成一些维度，所以它们和事实表中的FK有特定的映射关系。 所以这些维度是派生的，不参与长方体生成。
+
+
+
+4，Count Distinct(HyperLogLog)
+
+即时COUNT DISTINCT很难计算，近似算法 - HyperLogLog被引入，并且保持错误率在较低的水平。
+
+5，Count Distinct(Precise)
+
+精确COUNT DISTINCT将根据RoaringBitmap预先计算，目前只支持int或bigint。
+
+6，Top N
+
+例如，用这种度量类型，用户可以很容易地得到指定的最大卖家/买家数量等。
+
+
+
+三 cube actions
+
+1， build
+
+给出一个新的分区列间隔，这个动作会建立一个新的cube Segment
+
+2， REFRESH
+
+此操作将在某个分区期间重建cube Segment，用于源表增加的情况。
+
+3， MERGE
+
+此操作将将多个连续的cube Segment合并为一个。 这可以通过立方体描述符中的自动合并设置进行自动化。
+
+4， PURGE
+
+ 清除多维数据集实例下的分段。 这只会更新元数据，不会从HBase删除多维数据集数据。
+
+
+
+六 JOB STATUS
+
+1， NEW
+
+这表示一个job刚刚被创建
+
+2， PENDING
+
+这表示一个作业被作业调度程序暂停并等待资源。
+
+3， RUNNING
+
+这表示一项job正在进行中。
+
+4， FINISHED
+
+这表示一项job已经成功完成。
+
+5， ERROR
+
+这表示一个job有错误而终止
+
+6， DISCARDED
+
+这表示一个job被用户取消
+
+
+
+五  JOB ACTION
+
+1， RESUME
+
+一旦工作处于ERROR状态，此操作将尝试从最近的成功点恢复它。
+
+2， DISCARD
+
+无论工作状态如何，用户都可以用DISCARD操作结束并释放资源。
+
+
+
+
+
+六 数据仓库的基础概念
+
+以下是我们在ApacheKylin中使用的一些领域术语，可以百度它们以供参考。他们是Apache Kylin的基本知识，这也将有助于理解数据仓库，商业智能等分析方面的这些关注，术语，知识，理论和其他知识。
+
+数据仓库(Data Warehouse)
+
+数据仓库（DW或DWH）也称为企业数据仓库（EDW），是一个用于报告和数据分析的系统
+
+商业智能(Business Intelligence)
+
+商业智能（BI）是将原始数据转化为有意义且有用的信息以用于业务分析的一套技术和工具。
+
+OLAP
+
+OLAP是联机分析处理的首字母缩写
+
+OLAP Cube
+
+OLAP Cube是根据其0维或更多维理解的数据数组。
+
+星型模式(Star Schema)
+
+星形模式（Star Schema）包含一个或多个事实表、一组维表，其中维表的primary key与事实表的foreign key相对应。这种模式很像星光四射，维表显示在围绕事实表的射线上。下图是我根据某数据源所建立的星形模式：
+
+
+
+
+事实表(Fact Table)
+
+事实表包含业务流程的度量，指标或事实。
+
+LookupTable
+
+Lookup Table包含对事实表的某些列进行扩充说明的字段。在Kylin的quick start中给出sample cube（kylin_sales_cube）——其Fact Table为购买记录，lookup table有两个：用于对购买日期PART_DT、商品的LEAF_CATEG_ID与LSTG_SITE_ID字段进行扩展说明。
+
+
+
+维度(Dimension)
+
+维表（Dimension Table）是由fact table与lookup table逻辑抽象出来的表，包含了多个相关的列（即dimension），以提供对数据的多维观察；其中dimension的值的数目称为cardinatily。在kylin_sales_cube的事实表的LSTG_FORMAT_NAME被单独抽出来做一个dimension，可与其他维度组合分析数据。
+
+度量(Measure)
+
+度量是可以进行计算（例如，总和，计数，平均值，最小值，最大值）的属性。
+
+Cube
+
+cube是所有的dimensions组合，任一dimensions的组合称为cuboid。因此，包含nn个dimensions的cube有2n2n个cuboid，如下图所示：
+

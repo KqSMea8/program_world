@@ -1663,6 +1663,10 @@ C概率分布409
 索引419
 
 
+
+
+
+
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.pingan.spark2</groupId>
@@ -2054,5 +2058,1235 @@ spark.sql.parquet.mergeSchema 默认是false。当设置为true的时候，parqu
 
 spark.sql.parquet.writeLegacyFormat 默认是false。如果设置为true 数据会以spark 1.4和更早的版本的格式写入。比如，decimal类型的值会被以apache parquet的fixed-length byte array格式写出，该格式是其他系统例如hive，impala等使用的。如果是false，会使用parquet的新版格式。例如，decimals会以int-based格式写出。如果spark sql要以parquet输出并且结果会被不支持新格式的其他系统使用的话，需要设置为true。
 
-推荐阅读
+
+-----------------
+Spark调优系列之硬件要求
+原创： 浪尖  Spark学习技巧  2017-07-25
+估计所有的spark开发者都很关心spark的硬件要求。恰当的硬件配置需要具体情况具体分析，浪尖在这里给出以下建议。
+
+一，存储系统
+
+因为因为大多数Spark工作可能需要从外部存储系统（例如Hadoop文件系统或HBase）中读取输入数据，所以将其尽可能靠近该系统很重要。所以，有如下建议：
+
+1，如果可能，在与HDFS相同的节点上运行Spark。最简单的方式是将spark 的Standalone集群和hadoop集群安装在相同的节点，同时配置好Spark和hadoop的内存使用，避免相互干扰(对于hadoop，每个task的内存配置参数是mapred.child.java.opts； mapreduce.tasktracker.map.tasks.maximum 和mapreduce.tasktracker.reduce.tasks.maximum 决定了task的数目)。也可以将hadoop和spark运行在共同的集群管理器上，如mesos和 yarn。
+
+2，如果不可能，请在与HDFS相同的局域网中的不同节点上运行Spark。
+
+3，对于低延迟数据存储（如HBase），可能优先在与存储系统不同的节点上运行计算任务以避免干扰。
+
+二，本地磁盘
+
+虽然Spark可以在内存中执行大量的计算，但它仍然使用本地磁盘来存储不适合RAM的数据，以及在stage之间，也即shuffle的中间结果。我们建议每个节点至少有4-8块磁盘，并且不需要RAID，仅仅是独立的磁盘挂在节点。在Linux中，使用noatime选项安装磁盘，以减少不必要的写入。在spark任务中，spark.local.dir配置可以十多个磁盘目录，以逗号分开。如果你运行在hdfs上，与hdfs保持一致就很好。
+
+使用noatime选项安装磁盘，要求当挂载文件系统时，可以指定标准Linux安装选项（noatime），这将禁用该文件系统上的atime更新。磁盘挂在命令：
+
+mount -t gfs BlockDevice MountPoint -o noatime
+
+BlockDevice 指定GFS文件系统驻留的块设备。
+
+MountPoint 指定GFS文件系统应安装的目录。
+
+例子：
+
+mount -t gfs /dev/vg01/lvol0 /gfs1 -o noatime
+
+三，内存
+
+单台机器内存从8GB到数百GB，spark都能运行良好。在所有情况下，我们建议仅为Spark分配最多75％的内存;留下其余的操作系统和缓冲区缓存。
+
+需要多少内存取决于你的应用程序。要确定你的应用的特定数据集需要多大内存，请加载部分数据集到内存，然后在Spark UI的Storage界面去看它的内存占用量。
+
+请注意，内存使用受到存储级别和序列化格式的极大影响 - 有关如何减少内存使用的技巧，请参阅另一篇调优的文章。
+
+最后，请注意，对于超过200GB的内存的机器JAVA VM运行状态并不一直表现良好。如果你买的机器内存超过了200GB，那么可以在一个节点上运行多个worker。Spark Standalone模式下，你可以在配置文件 conf/spark-env.sh中设置SPARK_WORKER_INSTANCES的值来设置单节点worker的数目。也可以设置SPARK_WORKER_CORES参数来设置每个Worker的cpu数目。
+
+四，网络
+
+根据以往的经验，假如数据是在内存中，那么spark的应用的瓶颈往往就在网络。用10 Gigabit或者更高的网络，是使spark应用跑的最更快的最佳方式。特别是针对“distributed reduce”应用，如group-bys,reduce-bys和sql joins，就表现的更加明显。在任何给定的应用程序中，你可以通过spark ui查看spark shuffle过程夸网络传输了多少数据。
+
+五，cpu
+
+即使每台机器几十个cpu，spark也可以很好的扩展，因为他在线程之间执行最小的共享cpu。你应该每台机器至少配置8-16个内核。根据cpu负载，可能需要更多的cpu：一旦数据在内存中，大多数应用程序的瓶颈就在CPU和内存。
+
+-----------
+Spark2.4.0屏障调度器
+原创： 浪尖  Spark学习技巧  2018-11-14
+前几天，浪尖发了一篇文章，讲了Spark 2.4发布更新情况：
+
+Spark2.4.0发布了！
+
+其中，就有一项说到Spark 为了支持深度学习而引入的屏障调度器。本文就详细讲讲。
+
+基于消息传递结构的计算模型和Spark计算模型是有很大区别。在Spark 内部，每个Stage的某一个一个task不会依赖于相同Stage任何其他的task，因此，Spark的task 可以被独立进行调度执行。为了在Spark中嵌入MPI功能，需要引入一个新的调度模型，暂时命名为“屏障调度”（浪尖直译自barrier scheduling），该调度模型会同时启动任务，并为用户提供足够的信息和工具，将分布式DL训练嵌入到Spark Pipeline中。 Spark还为MPI任务引入了一种新的容错机制。当任何MPI任务在中间失败时，Spark将中止所有任务并重新启动该stage。
+
+1. 要求
+
+概述
+
+每个job中单个barrier stage。
+
+每个job中多个barrier stage。
+
+多job且每个job都带有barrier stage。
+
+Barrier stage 请求的slot比可用的slot多(无动态资源申请)。
+
+Barrier stage请求的slot比可用的slot多(有动态资源申请)。(Spark 2.4就不要想了)
+
+目标
+
+支持barrier调度：对于同一个barrierstage同时启动所有task，并且提供给用户足够的信息和工具，以便用户可以嵌入分布式DL训练模型。
+
+正确的处理失败的场景。
+
+Barrier执行模式支持运行与Standalone模式
+
+使用yarn/mesos/k8s的用户可以再有BarrierStage的时候设置MPI。
+
+安全
+
+用户使用外部线程启动MPI任务的时候，存在外部进行不被杀死而导致内存泄漏的风险。Barrier tasks会使用远程客户端相互交流，但是不会影响Spark当前的安全模型。
+
+API变化
+
+class RDD[T] {
+ /** Indicates that Spark must launch the tasks together for the current stage. */
+ def barrier(): RDDBarrier[T] = ???
+}
+/** A [[TaskContext]] with extra info and tooling for a barrier stage. */
+class BarrierTaskContext extends TaskContext {
+ /** Sets a global barrier and waits until all tasks in this stage hit this
+barrier. */
+ def barrier(): Unit = ???
+ /** Returns the all task infos in this stage. */
+ def getTaskInfos(): Array[BarrierTaskInfo]
+}
+/** Represents an RDD barrier, which forces Spark to launch tasks of this stage
+together. */
+class RDDBarrier[T] {
+ /** Maps partitions together with a provided [[BarrierTaskContext]]. */
+ def mapPartitions[S](f: Iterator[T] => Iterator[S]): RDD[S] = ???
+ /** TODO extra conf(e.g. timeout) */
+}
+使用案例
+
+rdd.barrier().mapPartitions { iter =>
+   // Write iter to disk.
+   ???
+   // Fetch TaskContext
+   val context = BarrierTaskContext.get()
+   // Wait until all tasks finished writing.
+   context.barrier()
+   // The 0-th task launches an MPI job.
+   if (context.partitionId() == 0) {
+     val hosts = context.getTaskInfos().map(_.address)
+        // Set up MPI machine file using host infos.
+     ???
+     // Launch the MPI job by calling mpirun.
+??? }
+   // Wait until the MPI job finished.
+   context.barrier()
+   // Collect output and return.
+??? }
+3. 架构
+
+设计提议
+
+为了使spark支持屏障调度(barrier scheduling)，在Spark内部增加了RDDBarrier和BarrierTaskContext。
+
+BarrierStage
+
+如果没有充足的slot资源，barrier stage不会被拉起(也即是空闲的core 必须能够拉起该barrier所有tasks)，这样设计使为了满足一次拉起所有task的目标。
+
+同时当任意的task执行失败的时候，总是重启整个barrier stage。
+
+判断一个stage是否是Barrier stage的一种方式是跟踪Stage所包含的RDD，如果该stage包含RDDBarrier 或者至少一个父RDD是RDDBarrier，那么该stage是一个barrier stage，当然要以shuffleDependency为界限。
+
+调度Barrier Tasks
+
+目前，TaskScheduler会尽可能的在可用的slot上调度task，所以通常不会同时启动同一个stage的所有task。因此需要在barrier stage 的task在调度之前加上资源可用性判断。由于任务的局部性问题，仍然可能仅启动整个barrier stage的部分tasks，因此必须在启动任务之前在此检查确认同一个barrier stage的所有task同时被启动。
+
+Barrier tasks预计比常规tasks具有更长的生命周期，因此barriertasks可能会在相对长的时间范围内占用集群资源，后续提交的任务估计会延迟运行或者仅使用更少的slot运行。建议使用Fair调度策略进行调度，而不是默认的FIFO调度策略，并将barrier任务独立运行，这样至少可以保证普通任务可以在配置给定最少的集群资源上运行。
+
+另一个问题是barrier stage可以提交，但是集群当前没有足够的slot来同时启动所有barrier tasks。如果启用了动态资源分配，则在等待一段时间后，可能会或可能不会满足要求（取决于允许的最大节点）。对于Spark 2.4，提出了一个简单的解决方案，它只检查当前运行的slot的总数，如果数量不足以同时启动同一个stage的所有屏障任务，则取消该job。目标是在3.0的时候可以更好地与动态资源分配集成。对于Spark 2.4，在启用动态资源分配时，job会立即失败，或者job无法连续提交，因为它试图提交一个barrier stage，该stage需要比集群中当前可用的slot更多的slot。
+
+Task Barrier
+
+Barrier tasks应允许用户在task执行过程中插入同步操作，这可以通过在BarrierTaskContext中引入全局barrier操作来实现，这使得当前任务等待直到同一stage中的所有task都达到此barrier。将为BarrierTaskContext.barrier（）提交单独的设计文档。
+
+关注公众号，bigdatatip，回复barrier 即可获得该文档。
+
+失败容错
+
+为确保正确性，当任何task失败时，barrier stage始终会重试整个stage。因此，将要求杀死失败stage的所有正在运行的任务，并且还保证每个单个stage最多只能运行一个taskset (没有zombie task)，这是非常简单的。理想情况下，除了在zombie taskset中杀死正在运行的任务需要一段时间，每个单一stage只应运行一个taskset，必须将失败的taskset标记为zombie 并正确处理TaskKilled消息。
+
+推测任务(Speculativetask)
+
+在barrier 执行模式中，要求每个barrier task必须仅有一个唯一的task ID，目的是其他的tasks 可以直接使用该ID和它交互。这也就意味着每个task只能尝试启动一次，因此必须禁止推测执行。
+
+此外，3.0的时候可能会将Spark任务推测执行设置为单个stage的配置而不是全局配置。
+
+SparkContext.runJob()/PartitionPruningRDD
+
+SparkContext.runJob()执行的时候可以仅是所有分区的子集，其中一个用例是RDD.first()，不会执行所有分区。这种是与barrer执行模式冲突的，可能无法启动某些barrier tasks。在barrier stage检测到这种用法，会由于不支持该操作而抛出异常。
+
+ParititionPruningRDD的情况类似，它只在满足`partitionFilterFunc`的分区上启动任务。我们将在barrierstage 检测PartitionPruningRDD并抛出显式异常。
+
+以上问题都与父RDD与生成的RDD具有不同分区数的问题有关（例如union()/ coalesce()/ first()/ take()/ PartitionPruningRDD），因此可以检测RDD的血统链条，然后在job 提交的时候立即停止。
+
+如果RDD依赖于多个barrier RDD（例如，barrierRdd1.zip（barrierRdd2）），也将立即停止，如果发生这种情况，则无法确保`barrier()`调用的正确行为。
+
+针对Spark 3.0，可以进一步调查上述用例并提出支持它们的方法。
+
+----------
+扩展RDD API三部曲之第二部自定义操作算子
+原创： 浪尖  Spark学习技巧  2018-12-12
+
+
+扩展RDD API三部曲，主要是帮助大家掌握如下三个内容：
+
+1). 回顾一下RDD的基础
+
+2). 扩展Action，也即是自定义RDD算子
+
+3). 扩展 transform及自定义RDD
+
+本文主要是将自定义Spark RDD算子中的Action 类型操作。
+
+1. 准备阶段
+
+讲到自定义RDD的action操作，大家首先应该想到的就是那些RDD到key-value算子的隐式转换，具体一点也就是PairRDDFunctions这个类里包含的算子，比如reducebykey等操作算子。
+
+具体实现肯定是要比较了解scala的隐式转换操作，这个浪尖也发过文章了，可以点击下文阅读：
+
+Scala语法基础之隐式转换
+
+首先，我们要进行准备操作，首先定义一个case class
+
+class SalesRecord(val transactionId: String,
+                 val customerId: String,
+                 val itemId: String,
+                 val itemValue: Double) extends Comparable[SalesRecord]
+ with Serializable {
+
+ override def compareTo(o: SalesRecord): Int = {
+   return this.transactionId.compareTo(o.transactionId)
+ }
+
+ override def toString: String = {
+   transactionId+","+customerId+","+itemId+","+itemValue
+ }
+}
+
+然后，定义我们的主要函数：
+
+val sparkConf = new SparkConf().setAppName(this.getClass.getName).setMaster("local[*]")
+     .set("yarn.resourcemanager.hostname", "mt-mdh.local")
+     .set("spark.executor.instances","2")
+     .set("spark.default.parallelism","4")
+     .set("spark.sql.shuffle.partitions","4")
+     .setJars(List("/opt/sparkjar/bigdata.jar"
+       ,"/opt/jars/spark-streaming-kafka-0-10_2.11-2.3.1.jar"
+       ,"/opt/jars/kafka-clients-0.10.2.2.jar"
+       ,"/opt/jars/kafka_2.11-0.10.2.2.jar"))
+   val sc = new SparkContext(sparkConf)
+   val dataRDD = sc.textFile("file:///opt/bigdata/src/main/data/sales.csv")
+   val salesRecordRDD = dataRDD.map(row => {
+     val colValues = row.split(",")
+     new SalesRecord(colValues(0),colValues(1),colValues(2),colValues(3).toDouble)
+   })
+
+这个时候加入我们需要对itemValue字段求和，常见的做法是
+
+salesRecordRDD.map(_.itemValue).sum
+
+其实，sum就是DoubleRDDFunctions内部的算子，也是通过隐式转换实现的。
+
+2. 自定义算子实现
+
+然后就是要定义RDD的操作算子本身，也即是一个工具类，我们叫他为CustomFunctions，内部包含求和函数如下：
+
+import org.apache.spark.rdd.RDD
+
+class CustomFunctions(rdd:RDD[SalesRecord]) {
+
+ def totalSales = rdd.map(_.itemValue).sum
+
+ def discount(discountPercentage:Double) = new DiscountRDD(rdd,discountPercentage)
+
+}
+
+这个仔细读一下上面已有的隐式转换算子，可以发现还不行，需要为自定义RDD的操作算子，自定义一个隐士转换的算子工具，内容如下：
+
+object CustomFunctions {
+
+  implicit def addCustomFunctions(rdd: RDD[SalesRecord]) = new CustomFunctions(rdd)
+}
+
+3. 使用算子
+
+调用我们的转换方法：
+
+println("Spark RDD API : "+salesRecordRDD.map(_.itemValue).sum)
+
+import CustomFunctions._
+println("Cunstom RDD API : "+salesRecordRDD.totalSales)
+输出结果：
+
+
+
+这就是自定义RDD的action操作。
+
+下篇文章为自定义RDD和转换操作，这个就只会在星球里分享了欢迎加入浪尖的知识星球，与近420好友一起学习进步。
+
+
+
+|spark的重分区及排序
+原创： 浪尖  Spark学习技巧  2018-08-14
+
+前几天，有人在星球里，问了一个有趣的算子，也即是RepartitionAndSortWithinPartitions。当时浪尖也在星球里讲了一下，整个关于分区排序的内容。今天，在这里给大家分享一下。
+
+
+
+更多大数据小技巧及调优，spark的源码文章，原理文章及源码视频请加入知识星球。扫描，底部二维码，或者点击阅读原文。
+
+
+
+
+昨天说了，mapPartitions 的使用技巧。大家应该都知道mapPartitions值针对整个分区执行map操作。而且对于PairRDD的分区默认是基于hdfs的物理块，当然不可分割的话就是hdfs的文件个数。但是我们也可以给partitionBy 算子传入HashPartitioner，来给RDD进行重新分区，而且会使得key的hashcode相同的数据落到同一个分区。
+
+spark 1.2之后引入了一个高质量的算子repartitionAndSortWithinPartitions 。该算子为spark的Shuffle增加了sort。假如，后面再跟mapPartitions算子的话，其算子就是针对已经按照key排序的分区，这就有点像mr的意思了。与groupbykey不同的是，数据不会一次装入内存，而是使用迭代器一次一条记录从磁盘加载。这种方式最小化了内存压力。
+
+repartitionAndSortWithinPartitions 也可以用于二次排序。
+
+下面举个简单的例子。
+
+import org.apache.spark.Partitioner
+ class KeyBasePartitioner(partitions: Int) extends Partitioner {
+
+   override def numPartitions: Int = partitions
+
+   override def getPartition(key: Any): Int = {
+     val k = key.asInstanceOf[Int]
+     Math.abs(k.hashCode() % numPartitions)
+   }
+ }
+
+ import org.apache.spark.SparkContext._
+     sc.textFile("file:///opt/hadoop/spark-2.3.1/README.md").flatMap(_.split("\\s+")).map((_,1)).reduceByKey(_+_).map(each=>(each._2,each._1))
+     implicit val caseInsensitiveOrdering = new Ordering[Int] {
+      override def compare(a: Int, b: Int) = b.compareTo(a)
+     }
+     // Sort by key, using
+ res7.repartitionAndSortWithinPartitions(new KeyBasePartitioner(3)).saveAsTextFile("file:///opt/output/")
+
+
+结果,可以看到每个分区都是有效的。
+
+mdhdeMacBook-Pro-3:output mdh$ pwd
+/opt/output
+mdhdeMacBook-Pro-3:output mdh$ ls
+_SUCCESS        part-00000      part-00001      part-00002
+mdhdeMacBook-Pro-3:output mdh$ head -n 10 part-00000
+(24,the)
+(12,for)
+(9,##)
+(9,and)
+(6,is)
+(6,in)
+(3,general)
+(3,documentation)
+(3,example)
+(3,how)
+mdhdeMacBook-Pro-3:output mdh$ head -n 10 part-00001
+(16,Spark)
+(7,can)
+(7,run)
+(7,on)
+(4,build)
+(4,Please)
+(4,with)
+(4,also)
+(4,if)
+(4,including)
+mdhdeMacBook-Pro-3:output mdh$ head -n 10 part-00002
+(47,)
+(17,to)
+(8,a)
+(5,using)
+(5,of)
+(2,Python)
+(2,locally)
+(2,This)
+(2,Hive)
+(2,SparkPi)
+mdhdeMacBook-Pro-3:output mdh$
+
+
+上面只是一个简单的使用，关于二次排序及高效结合mapPartitions的例子，浪尖会在这两天更新到星球里。
+
+
+spark源码系列之内部通讯的三种机制
+原创： 浪尖  Spark学习技巧  2017-07-09
+本文是以spark1.6.0的源码为例讲解。
+
+Spark为协调各个组件完成任务及内部任务处理采用了多种方式进行了各个组件之间的通讯。总共三个部分牵涉的功能是：
+
+1，DAG相关的DAGSchedulerEventProcessLoop。
+
+2，sparkUI相关的SparkListener
+
+3，RPC相关netty RPC流程。本文只讲流程，后面会详细介绍。
+
+一，单个部件自己消息处理方式
+
+DAGSchedulerEventProcessLoop该类继承自EventLoop。是一个典型的生产消费模型。
+
+A),生产者
+
+通过调用
+
+DAGSchedulerEventProcessLoop.post(event: E)
+
+来将消息进行发布。
+
+B),消费者
+
+Eventloop内部维护了一个线程，循环的消费消息eventQueue.take()，调用onReceive(event)进行处理。DAGSchedulerEventProcessLoop内部实现了doOnReceive，对事件进行模式匹配然后交给具体的消息处理函数。
+
+private def doOnReceive(event: DAGSchedulerEvent): Unit = event match {
+  case JobSubmitted(jobId, rdd, func, partitions, callSite, listener, properties) =>
+    dagScheduler.handleJobSubmitted(jobId, rdd, func, partitions, callSite, listener, properties)
+
+  case MapStageSubmitted(jobId, dependency, callSite, listener, properties) =>
+    dagScheduler.handleMapStageSubmitted(jobId, dependency, callSite, listener, properties)
+
+  case StageCancelled(stageId) =>
+    dagScheduler.handleStageCancellation(stageId)
+
+  case JobCancelled(jobId) =>
+    dagScheduler.handleJobCancellation(jobId)
+
+  case JobGroupCancelled(groupId) =>
+    dagScheduler.handleJobGroupCancelled(groupId)
+
+  case AllJobsCancelled =>
+    dagScheduler.doCancelAllJobs()
+
+  case ExecutorAdded(execId, host) =>
+    dagScheduler.handleExecutorAdded(execId, host)
+
+  case ExecutorLost(execId) =>
+    dagScheduler.handleExecutorLost(execId, fetchFailed = false)
+
+  case BeginEvent(task, taskInfo) =>
+    dagScheduler.handleBeginEvent(task, taskInfo)
+
+  case GettingResultEvent(taskInfo) =>
+    dagScheduler.handleGetTaskResult(taskInfo)
+
+  case completion @ CompletionEvent(task, reason, _, _, taskInfo, taskMetrics) =>
+    dagScheduler.handleTaskCompletion(completion)
+
+  case TaskSetFailed(taskSet, reason, exception) =>
+    dagScheduler.handleTaskSetFailed(taskSet, reason, exception)
+
+  case ResubmitFailedStages =>
+    dagScheduler.resubmitFailedStages()
+}
+
+C),消息缓存
+
+消息最终是存储于EventLoop的new LinkedBlockingDeque[E]()里。
+
+二，SparkListeners和ListenerBus
+
+SparkUI的各个监控指标都是，由ListenerBus最为生产者将消息，推送到消息缓存出默认支持1万，然后推送给各个Listener进行处理，然后我们的Spark的webUIPage去获取各个Listener的数据，进行展示。
+
+A)，生产者
+
+LiveListenerBus/StreamingListenerBus调用其父类AsynchronousListenerBus的post方法将消息加入 new LinkedBlockingQueue[E](EVENT_QUEUE_CAPACITY)，容量1万。
+
+val eventAdded = eventQueue.offer(event)
+
+B),消费者
+
+AsynchronousListenerBus内部维护了一个消费者线程，线程内部有while(true)进行消息处理。
+
+val event = eventQueue.poll
+
+postToAll(event)
+
+C),消息的具体处理
+
+ListenerBus的postToAll方法，会遍历所有注册了的Listener。
+
+final def postToAll(event: E): Unit = {
+
+  val iter = listeners.iterator
+  while (iter.hasNext) {
+    val listener = iter.next()
+    try {
+ onPostEvent(listener, event)
+    } catch {
+      case NonFatal(e) =>
+        logError(s"Listener ${Utils.getFormattedClassName(listener)} threw an exception", e)
+    }
+  }
+}
+
+最终在onPostEvent方法中将消息进行了处理。onPostEvent在源码中的两个重要现:
+
+SparkListenerBus和StreamingListenerBus内部的onPostEvent。
+
+private[spark] trait SparkListenerBus extends ListenerBus[SparkListener, SparkListenerEvent] {
+
+  override def onPostEvent(listener: SparkListener, event: SparkListenerEvent): Unit = {
+    event match {
+      case stageSubmitted: SparkListenerStageSubmitted =>
+        listener.onStageSubmitted(stageSubmitted)
+      case stageCompleted: SparkListenerStageCompleted =>
+        listener.onStageCompleted(stageCompleted)
+      case jobStart: SparkListenerJobStart =>
+        listener.onJobStart(jobStart)
+      case jobEnd: SparkListenerJobEnd =>
+        listener.onJobEnd(jobEnd)
+      case taskStart: SparkListenerTaskStart =>
+        listener.onTaskStart(taskStart)
+      case taskGettingResult: SparkListenerTaskGettingResult =>
+        listener.onTaskGettingResult(taskGettingResult)
+      case taskEnd: SparkListenerTaskEnd =>
+        listener.onTaskEnd(taskEnd)
+      case environmentUpdate: SparkListenerEnvironmentUpdate =>
+        listener.onEnvironmentUpdate(environmentUpdate)
+      case blockManagerAdded: SparkListenerBlockManagerAdded =>
+        listener.onBlockManagerAdded(blockManagerAdded)
+      case blockManagerRemoved: SparkListenerBlockManagerRemoved =>
+        listener.onBlockManagerRemoved(blockManagerRemoved)
+      case unpersistRDD: SparkListenerUnpersistRDD =>
+        listener.onUnpersistRDD(unpersistRDD)
+      case applicationStart: SparkListenerApplicationStart =>
+        listener.onApplicationStart(applicationStart)
+      case applicationEnd: SparkListenerApplicationEnd =>
+        listener.onApplicationEnd(applicationEnd)
+      case metricsUpdate: SparkListenerExecutorMetricsUpdate =>
+        listener.onExecutorMetricsUpdate(metricsUpdate)
+      case executorAdded: SparkListenerExecutorAdded =>
+        listener.onExecutorAdded(executorAdded)
+      case executorRemoved: SparkListenerExecutorRemoved =>
+        listener.onExecutorRemoved(executorRemoved)
+      case blockUpdated: SparkListenerBlockUpdated =>
+        listener.onBlockUpdated(blockUpdated)
+      case logStart: SparkListenerLogStart => // ignore event log metadata
+    }
+  }
+
+}
+
+
+
+private[spark] class StreamingListenerBus
+  extends AsynchronousListenerBus[StreamingListener, StreamingListenerEvent]("StreamingListenerBus")
+  with Logging {
+
+  private val logDroppedEvent = new AtomicBoolean(false)
+
+  override def onPostEvent(listener: StreamingListener, event: StreamingListenerEvent): Unit = {
+    event match {
+      case receiverStarted: StreamingListenerReceiverStarted =>
+        listener.onReceiverStarted(receiverStarted)
+      case receiverError: StreamingListenerReceiverError =>
+        listener.onReceiverError(receiverError)
+      case receiverStopped: StreamingListenerReceiverStopped =>
+        listener.onReceiverStopped(receiverStopped)
+      case batchSubmitted: StreamingListenerBatchSubmitted =>
+        listener.onBatchSubmitted(batchSubmitted)
+      case batchStarted: StreamingListenerBatchStarted =>
+        listener.onBatchStarted(batchStarted)
+      case batchCompleted: StreamingListenerBatchCompleted =>
+        listener.onBatchCompleted(batchCompleted)
+      case outputOperationStarted: StreamingListenerOutputOperationStarted =>
+        listener.onOutputOperationStarted(outputOperationStarted)
+      case outputOperationCompleted: StreamingListenerOutputOperationCompleted =>
+        listener.onOutputOperationCompleted(outputOperationCompleted)
+      case _ =>
+    }
+  }
+
+  override def onDropEvent(event: StreamingListenerEvent): Unit = {
+    if (logDroppedEvent.compareAndSet(false, true)) {
+      // Only log the following message once to avoid duplicated annoying logs.
+      logError("Dropping StreamingListenerEvent because no remaining room in event queue. " +
+        "This likely means one of the StreamingListeners is too slow and cannot keep up with the " +
+        "rate at which events are being started by the scheduler.")
+    }
+  }
+}
+
+
+
+D),消息的缓存
+
+消息是缓存在AsynchronousListenerBus
+
+val eventQueue = new LinkedBlockingQueue[E](EVENT_QUEUE_CAPACITY)
+
+EVENT_QUEUE_CAPACITY=10000
+
+三，Spark多进程之间的通讯RPC
+
+Spark的内部rpc老版本是用akka实现的，spark1.6以后虽然保留akka，但是默认实现已经是netty。
+
+其实，rpc采用netty之前，rpc是通过akka，而文件传输是通过netty。现在相当于全部采用了netty的实现的。
+
+
+
+四，总结
+
+本篇文章主要是将内部spark的内部事件通知的机制。希望通过这篇文章，大家对spark内部事件通知流程有所了解。
+
+这三种模型是我们现在编程最常见的三种模型，希望能对大家编写自己的代码提供一些有益的思路。
+
+=======================
+
+生产常用Spark累加器剖析之一
+原创： 若泽数据-阿春  若泽大数据  4月19日
+
+
+由于最近在项目中需要用到Spark的累加器，同时需要自己去自定义实现Spark的累加器，从而满足生产上的需求。对此，对Spark的累加器实现机制进行了追踪学习。
+本系列文章，将从以下几个方面入手，对Spark累加器进行剖析：
+
+1、Spark累加器的基本概念
+2、累加器的重点类构成
+3、累加器的源码解析
+4、累加器的执行过程
+5、累加器使用中的坑
+6、自定义累加器的实现
+
+Spark累加器基本概念
+Spark提供的Accumulator，主要用于多个节点对一个变量进行共享性的操作。Accumulator只提供了累加的功能，只能累加，不能减少累加器只能在Driver端构建，并只能从Driver端读取结果，在Task端只能进行累加
+至于这里为什么只能在Task累加呢？下面的内容将会进行详细的介绍，先简单介绍下：
+在Task节点，准确的就是说在executor上；每个Task都会有一个累加器的变量，被序列化传输到executor端运行之后再返回过来都是独立运行的；如果在Task端去获取值的话，只能获取到当前Task的，Task与Task之间不会有影响
+
+累加器不会改变Spark lazy计算的特点，只会在Job触发的时候进行相关的累加操作
+
+现有累加器类型:
+
+
+
+累加器的重点类介绍
+class Accumulator extends Accumulable
+源码（源码中已经对这个类的作用做了十分详细的解释）：
+
+/**
+ * A simpler value of [[Accumulable]] where the result type being accumulated is the same
+ * as the types of elements being merged, i.e. variables that are only "added" to through an
+ * associative operation and can therefore be efficiently supported in parallel. They can be used
+ * to implement counters (as in MapReduce) or sums. Spark natively supports accumulators of numeric
+ * value types, and programmers can add support for new types.
+ *
+ * An accumulator is created from an initial value `v` by calling [[SparkContext#accumulator]].
+ * Tasks running on the cluster can then add to it using the [[Accumulable#+=]] operator.
+ * However, they cannot read its value. Only the driver program can read the accumulator's value,
+ * using its value method.
+ *
+ * @param initialValue initial value of accumulator
+ * @param param helper object defining how to add elements of type `T`
+ * @tparam T result type
+ */
+class Accumulator[T] private[spark] (
+    @transient private[spark] val initialValue: T,
+    param: AccumulatorParam[T],
+    name: Option[String],
+    internal: Boolean)
+  extends Accumulable[T, T](initialValue, param, name, internal) {
+  def this(initialValue: T, param: AccumulatorParam[T], name: Option[String]) = {
+    this(initialValue, param, name, false)
+  }
+  def this(initialValue: T, param: AccumulatorParam[T]) = {
+    this(initialValue, param, None, false)
+  }
+}
+主要实现了累加器的初始化及封装了相关的累加器操作方法
+同时在类对象构建的时候向Accumulators注册累加器
+累加器的add操作的返回值类型和传入进去的值类型可以不一样
+所以一定要定义好两步操作（即add方法）：累加操作/合并操作
+
+object Accumulators
+该方法在Driver端管理着累加器，也包含了累加器的聚合操作
+
+trait AccumulatorParam[T] extends AccumulableParam[T, T]
+源码：
+
+/**
+ * A simpler version of [[org.apache.spark.AccumulableParam]] where the only data type you can add
+ * in is the same type as the accumulated value. An implicit AccumulatorParam object needs to be
+ * available when you create Accumulators of a specific type.
+ *
+ * @tparam T type of value to accumulate
+ */
+trait AccumulatorParam[T] extends AccumulableParam[T, T] {
+  def addAccumulator(t1: T, t2: T): T = {
+    addInPlace(t1, t2)
+  }
+}
+AccumulatorParam的addAccumulator操作的泛型封装
+具体的实现还是需要在具体实现类里面实现addInPlace方法
+自定义实现累加器的关键
+
+object AccumulatorParam
+源码：
+
+object AccumulatorParam {
+  // The following implicit objects were in SparkContext before 1.2 and users had to
+  // `import SparkContext._` to enable them. Now we move them here to make the compiler find
+  // them automatically. However, as there are duplicate codes in SparkContext for backward
+  // compatibility, please update them accordingly if you modify the following implicit objects.
+  implicit object DoubleAccumulatorParam extends AccumulatorParam[Double] {
+    def addInPlace(t1: Double, t2: Double): Double = t1 + t2
+    def zero(initialValue: Double): Double = 0.0
+  }
+  implicit object IntAccumulatorParam extends AccumulatorParam[Int] {
+    def addInPlace(t1: Int, t2: Int): Int = t1 + t2
+    def zero(initialValue: Int): Int = 0
+  }
+  implicit object LongAccumulatorParam extends AccumulatorParam[Long] {
+    def addInPlace(t1: Long, t2: Long): Long = t1 + t2
+    def zero(initialValue: Long): Long = 0L
+  }
+  implicit object FloatAccumulatorParam extends AccumulatorParam[Float] {
+    def addInPlace(t1: Float, t2: Float): Float = t1 + t2
+    def zero(initialValue: Float): Float = 0f
+  }
+  // TODO: Add AccumulatorParams for other types, e.g. lists and strings
+}
+从源码中大量的implicit关键词，可以发现该类主要进行隐式类型转换的操作
+
+TaskContextImpl
+在Executor端管理着我们的累加器，累加器是通过该类进行返回的
+
+累加器的源码解析
+Driver端
+accumulator方法
+以下列这段代码中的accumulator方法为入口点，进入到相应的源码中去：
+
+val acc = new Accumulator(initialValue, param, Some(name))
+源码：
+
+class Accumulator[T] private[spark] (
+    @transient private[spark] val initialValue: T,
+    param: AccumulatorParam[T],
+    name: Option[String],
+    internal: Boolean)
+  extends Accumulable[T, T](initialValue, param, name, internal) {
+  def this(initialValue: T, param: AccumulatorParam[T], name: Option[String]) = {
+    this(initialValue, param, name, false)
+  }
+  def this(initialValue: T, param: AccumulatorParam[T]) = {
+    this(initialValue, param, None, false)
+  }
+}
+继承的Accumulable[T, T]
+源码：
+
+class Accumulable[R, T] private[spark] (
+    initialValue: R,
+    param: AccumulableParam[R, T],
+    val name: Option[String],
+    internal: Boolean)
+  extends Serializable {
+…
+// 这里的_value并不支持序列化
+// 注：有@transient的都不会被序列化
+@volatile @transient private var value_ : R = initialValue // Current value on master
+  …
+  // 注册了当前的累加器
+  Accumulators.register(this)
+  …,
+  }
+Accumulators.register()
+源码：
+
+// 传入参数，注册累加器
+def register(a: Accumulable[_, _]): Unit = synchronized {
+// 构造成WeakReference
+originals(a.id) = new WeakReference[Accumulable[_, _]](a)
+}
+至此，Driver端的初始化已经完成
+Executor端
+Executor端的反序列化是一个得到我们的对象的过程
+初始化是在反序列化的时候就完成的，同时反序列化的时候还完成了Accumulator向TaskContextImpl的注册
+
+TaskRunner中的run方法
+// 在计算的过程中，会将RDD和function经过序列化之后传给Executor端
+private[spark] class Executor(
+    executorId: String,
+    executorHostname: String,
+    env: SparkEnv,
+    userClassPath: Seq[URL] = Nil,
+    isLocal: Boolean = false)
+  extends Logging {
+...
+  class TaskRunner(
+      execBackend: ExecutorBackend,
+      val taskId: Long,
+      val attemptNumber: Int,
+      taskName: String,
+      serializedTask: ByteBuffer)
+    extends Runnable {
+…
+override def run(): Unit = {
+    …
+val (value, accumUpdates) = try {
+         // 调用TaskRunner中的task.run方法，触发task的运行
+         val res = task.run(
+           taskAttemptId = taskId,
+           attemptNumber = attemptNumber,
+           metricsSystem = env.metricsSystem)
+         threwException = false
+         res
+       } finally {
+        …
+       }
+…
+}
+Task中的collectAccumulators()方法
+private[spark] abstract class Task[T](
+final def run(
+    taskAttemptId: Long,
+    attemptNumber: Int,
+    metricsSystem: MetricsSystem)
+  : (T, AccumulatorUpdates) = {
+  …
+    try {
+      // 返回累加器，并运行task
+      // 调用TaskContextImpl的collectAccumulators，返回值的类型为一个Map
+      (runTask(context), context.collectAccumulators())
+    } finally {
+  …
+ }
+ …
+ }
+)
+ResultTask中的runTask方法
+  override def runTask(context: TaskContext): U = {
+    // Deserialize the RDD and the func using the broadcast variables.
+    val deserializeStartTime = System.currentTimeMillis()
+    val ser = SparkEnv.get.closureSerializer.newInstance()
+    // 反序列化是在调用ResultTask的runTask方法的时候做的
+    // 会反序列化出来RDD和自己定义的function
+    val (rdd, func) = ser.deserialize[(RDD[T], (TaskContext, Iterator[T]) => U)](
+      ByteBuffer.wrap(taskBinary.value), Thread.currentThread.getContextClassLoader)
+    _executorDeserializeTime = System.currentTimeMillis() - deserializeStartTime
+    metrics = Some(context.taskMetrics)
+    func(context, rdd.iterator(partition, context))
+  }
+Accumulable中的readObject方法
+  // 在反序列化的过程中会调用Accumulable.readObject方法
+  // Called by Java when deserializing an object
+  private def readObject(in: ObjectInputStream): Unit = Utils.tryOrIOException {
+    in.defaultReadObject()
+    // value的初始值为zero；该值是会被序列化的
+    value_ = zero
+    deserialized = true
+    // Automatically register the accumulator when it is deserialized with the task closure.
+    //
+    // Note internal accumulators sent with task are deserialized before the TaskContext is created
+    // and are registered in the TaskContext constructor. Other internal accumulators, such SQL
+    // metrics, still need to register here.
+    val taskContext = TaskContext.get()
+    if (taskContext != null) {
+      // 当前反序列化所得到的对象会被注册到TaskContext中
+      // 这样TaskContext就可以获取到累加器
+      // 任务运行结束之后，就可以通过context.collectAccumulators()返回给executor
+      taskContext.registerAccumulator(this)
+    }
+  }
+Executor.scala
+// 在executor端拿到accumuUpdates值之后，会去构造一个DirectTaskResult
+val directResult = new DirectTaskResult(valueBytes, accumUpdates, task.metrics.orNull)
+val serializedDirectResult = ser.serialize(directResult)
+val resultSize = serializedDirectResult.limit
+…
+// 最终由ExecutorBackend的statusUpdate方法发送至Driver端
+// ExecutorBackend为一个Trait，有多种实现
+execBackend.statusUpdate(taskId, TaskState.FINISHED, serializedResult)
+CoarseGrainedExecutorBackend中的statusUpdate方法
+// 通过ExecutorBackend的一个实现类：CoarseGrainedExecutorBackend 中的statusUpdate方法
+// 将数据发送至Driver端
+override def statusUpdate(taskId: Long, state: TaskState, data: ByteBuffer) {
+    val msg = StatusUpdate(executorId, taskId, state, data)
+    driver match {
+      case Some(driverRef) => driverRef.send(msg)
+      case None => logWarning(s"Drop $msg because has not yet connected to driver")
+    }
+  }
+CoarseGrainedSchedulerBackend中的receive方法
+// Driver端在接收到消息之后，会调用CoarseGrainedSchedulerBackend中的receive方法
+override def receive: PartialFunction[Any, Unit] = {
+      case StatusUpdate(executorId, taskId, state, data) =>
+        // 会在DAGScheduler的handleTaskCompletion方法中将结果返回
+        scheduler.statusUpdate(taskId, state, data.value)
+    …
+}
+TaskSchedulerImpl的statusUpdate方法
+  def statusUpdate(tid: Long, state: TaskState, serializedData: ByteBuffer) {
+  …
+            if (state == TaskState.FINISHED) {
+              taskSet.removeRunningTask(tid)
+              // 将成功的Task入队
+              taskResultGetter.enqueueSuccessfulTask(taskSet, tid, serializedData)
+            } else if (Set(TaskState.FAILED, TaskState.KILLED, TaskState.LOST).contains(state)) {
+              taskSet.removeRunningTask(tid)
+              taskResultGetter.enqueueFailedTask(taskSet, tid, state, serializedData)
+            }
+  …
+}
+TaskResultGetter的enqueueSuccessfulTask方法
+  def enqueueSuccessfulTask(taskSetManager: TaskSetManager, tid: Long, serializedData: ByteBuffer) {
+…
+          result.metrics.setResultSize(size)
+          scheduler.handleSuccessfulTask(taskSetManager, tid, result)
+…
+TaskSchedulerImpl的handleSuccessfulTask方法
+  def handleSuccessfulTask(
+      taskSetManager: TaskSetManager,
+      tid: Long,
+      taskResult: DirectTaskResult[_]): Unit = synchronized {
+    taskSetManager.handleSuccessfulTask(tid, taskResult)
+  }
+DAGScheduler的taskEnded方法
+  def taskEnded(
+      task: Task[_],
+      reason: TaskEndReason,
+      result: Any,
+      accumUpdates: Map[Long, Any],
+      taskInfo: TaskInfo,
+      taskMetrics: TaskMetrics): Unit = {
+  eventProcessLoop.post(
+      // 给自身的消息循环体发了个CompletionEvent
+      // 这个CompletionEvent会被handleTaskCompletion方法所接收到
+      CompletionEvent(task, reason, result, accumUpdates, taskInfo, taskMetrics))
+  }
+DAGScheduler的handleTaskCompletion方法
+// 与上述CoarseGrainedSchedulerBackend中的receive方法章节对应
+// 在handleTaskCompletion方法中，接收CompletionEvent
+// 不论是ResultTask还是ShuffleMapTask都会去调用updateAccumulators方法，更新累加器的值
+private[scheduler] def handleTaskCompletion(event: CompletionEvent) {
+    …
+    event.reason match {
+      case Success =>
+        listenerBus.post(SparkListenerTaskEnd(stageId, stage.latestInfo.attemptId, taskType,
+          event.reason, event.taskInfo, event.taskMetrics))
+        stage.pendingPartitions -= task.partitionId
+        task match {
+          case rt: ResultTask[_, _] =>
+            // Cast to ResultStage here because it's part of the ResultTask
+            // TODO Refactor this out to a function that accepts a ResultStage
+            val resultStage = stage.asInstanceOf[ResultStage]
+            resultStage.activeJob match {
+              case Some(job) =>
+                if (!job.finished(rt.outputId)) {
+                  updateAccumulators(event)
+          case smt: ShuffleMapTask =>
+            val shuffleStage = stage.asInstanceOf[ShuffleMapStage]
+            updateAccumulators(event)
+}
+…
+}
+DAGScheduler的updateAccumulators方法
+  private def updateAccumulators(event: CompletionEvent): Unit = {
+    val task = event.task
+    val stage = stageIdToStage(task.stageId)
+    if (event.accumUpdates != null) {
+      try {
+        // 调用了累加器的add方法
+        Accumulators.add(event.accumUpdates)
+Accumulators的add方法
+  def add(values: Map[Long, Any]): Unit = synchronized {
+    // 遍历传进来的值
+    for ((id, value) <- values) {
+      if (originals.contains(id)) {
+        // Since we are now storing weak references, we must check whether the underlying data
+        // is valid.
+        // 根据id从注册的Map中取出对应的累加器
+        originals(id).get match {
+          // 将值给累加起来，最终将结果加到value里面
+          // ++=是被重载了
+          case Some(accum) => accum.asInstanceOf[Accumulable[Any, Any]] ++= value
+          case None =>
+            throw new IllegalAccessError("Attempted to access garbage collected Accumulator.")
+        }
+      } else {
+        logWarning(s"Ignoring accumulator update for unknown accumulator id $id")
+      }
+    }
+  }
+Accumulators的++=方法
+def ++= (term: R) { value_ = param.addInPlace(value_, term)}
+Accumulators的value方法
+  def value: R = {
+    if (!deserialized) {
+      value_
+    } else {
+      throw new UnsupportedOperationException("Can't read accumulator value in task")
+    }
+  }
+此时我们的应用程序就可以通过 .value 的方式去获取计数器的值了
+作者：若泽数据——呼呼呼
+原文：https://blog.csdn.net/lemonZhaoTao/article/details/81256413
+
+
+
+回归原创文章:
+
+若泽数据-高级班&线下班报名
+
+捷报:线下班学员年薪35W的offer及面试题
+
+高级班学员高薪offer32w，你比他高吗？
+
+捷报: 高级班学员月薪22K及上周3家offer的面试题
+
+刚出炉的3家大数据面试题(含高级)，你会吗？
+
+捷报:刚出炉年薪30w的offer和面试题
+
+捷报:高级班学员年薪37.4W的offer及3家面试题
+
+加我，进大数据V群
+
+生产常用Spark累加器剖析之二
+原创： 若泽数据-阿春  若泽大数据  4月26日
+
+
+生产常用Spark累加器剖析之一
+
+
+
+综述
+Driver端
+1、Driver端初始化构建Accumulator并初始化，同时完成了Accumulator注册，Accumulators.register(this)时Accumulator会在序列化后发送到Executor端
+
+
+2、Driver接收到ResultTask完成的状态更新后，会去更新Value的值 然后在Action操作执行后就可以获取到Accumulator的值了
+
+Executor端
+1、Executor端接收到Task之后会进行反序列化操作，反序列化得到RDD和function。同时在反序列化的同时也去反序列化Accumulator(在readObject方法中完成)，同时也会向TaskContext完成注册
+
+
+2、完成任务计算之后，随着Task结果一起返回给Driver
+
+结合源码分析
+Driver端初始化
+Driver端主要经过以下步骤，完成初始化操作：
+
+val accum = sparkContext.accumulator(0, “AccumulatorTest”)
+val acc = new Accumulator(initialValue, param, Some(name))
+Accumulators.register(this)
+Executor端反序列化得到Accumulator
+反序列化是在调用ResultTask的runTask方式时候做的操作：
+
+// 会反序列化出来RDD和自己定义的function
+val (rdd, func) = ser.deserialize[(RDD[T], (TaskContext, Iterator[T]) => U)](
+   ByteBuffer.wrap(taskBinary.value), Thread.currentThread.getContextClassLoader)
+在反序列化的过程中，会调用Accumulable中的readObject方法：
+
+  private def readObject(in: ObjectInputStream): Unit = Utils.tryOrIOException {
+    in.defaultReadObject()
+    // value的初始值为zero；该值是会被序列化的
+    value_ = zero
+    deserialized = true
+    // Automatically register the accumulator when it is deserialized with the task closure.
+    //
+    // Note internal accumulators sent with task are deserialized before the TaskContext is created
+    // and are registered in the TaskContext constructor. Other internal accumulators, such SQL
+    // metrics, still need to register here.
+    val taskContext = TaskContext.get()
+    if (taskContext != null) {
+      // 当前反序列化所得到的对象会被注册到TaskContext中
+      // 这样TaskContext就可以获取到累加器
+      // 任务运行结束之后，就可以通过context.collectAccumulators()返回给executor
+      taskContext.registerAccumulator(this)
+    }
+  }
+注意
+Accumulable.scala中的value_，是不会被序列化的，@transient关键词修饰了
+
+@volatile @transient private var value_ : R = initialValue // Current value on master
+累加器在各个节点的累加操作
+针对传入function中不同的操作，对应有不同的调用方法，以下列举几种（在Accumulator.scala中）：
+
+def += (term: T) { value_ = param.addAccumulator(value_, term) }
+def add(term: T) { value_ = param.addAccumulator(value_, term) }
+def ++= (term: R) { value_ = param.addInPlace(value_, term)}
+根据不同的累加器参数，有不同实现的AccumulableParam（在Accumulator.scala中）：
+
+trait AccumulableParam[R, T] extends Serializable {
+  /**
+  def addAccumulator(r: R, t: T): R
+  def addInPlace(r1: R, r2: R): R
+  def zero(initialValue: R): R
+}
+不同的实现如下图所示：
+
+
+以IntAccumulatorParam为例：
+
+  implicit object IntAccumulatorParam extends AccumulatorParam[Int] {
+    def addInPlace(t1: Int, t2: Int): Int = t1 + t2
+    def zero(initialValue: Int): Int = 0
+  }
+我们发现IntAccumulatorParam实现的是trait AccumulatorParam[T]：
+
+trait AccumulatorParam[T] extends AccumulableParam[T, T] {
+  def addAccumulator(t1: T, t2: T): T = {
+    addInPlace(t1, t2)
+  }
+}
+在各个节点上的累加操作完成之后，就会紧跟着返回更新之后的Accumulators的value_值
+
+聚合操作
+在Task.scala中的run方法，会执行如下：
+
+// 返回累加器，并运行task
+// 调用TaskContextImpl的collectAccumulators，返回值的类型为一个Map
+(runTask(context), context.collectAccumulators())
+在Executor端已经完成了一系列操作，需要将它们的值返回到Driver端进行聚合汇总，整个顺序如图累加器执行流程：
+
+
+根据执行流程，我们可以发现，在执行完collectAccumulators方法之后，最终会在DAGScheduler中调用updateAccumulators(event)，而在该方法中会调用Accumulators的add方法，从而完成聚合操作：
+
+  def add(values: Map[Long, Any]): Unit = synchronized {
+    // 遍历传进来的值
+    for ((id, value) <- values) {
+      if (originals.contains(id)) {
+        // Since we are now storing weak references, we must check whether the underlying data
+        // is valid.
+        // 根据id从注册的Map中取出对应的累加器
+        originals(id).get match {
+          // 将值给累加起来，最终将结果加到value里面
+         // ++=是被重载了
+          case Some(accum) => accum.asInstanceOf[Accumulable[Any, Any]] ++= value
+          case None =>
+            throw new IllegalAccessError("Attempted to access garbage collected Accumulator.")
+        }
+      } else {
+        logWarning(s"Ignoring accumulator update for unknown accumulator id $id")
+      }
+    }
+  }
+获取累加器的值
+通过accum.value方法可以获取到累加器的值
+
+至此，累加器执行完毕。
+
+作者：若泽数据——呼呼呼
+原文：https://blog.csdn.net/lemonZhaoTao/article/details/81273243
+
+回归原创文章:
+
+若泽数据-高级班&线下班报名
+
+捷报:线下班学员年薪35W的offer及面试题
+
+高级班学员高薪offer32w，你比他高吗？
+
+捷报: 高级班学员月薪22K及上周3家offer的面试题
+
+刚出炉的3家大数据面试题(含高级)，你会吗？
+
+捷报:刚出炉年薪30w的offer和面试题
+
+捷报:高级班学员年薪37.4W的offer及3家面试题
+
+加我，进大数据V群
+
+
+生产常用Spark累加器剖析之三(自定义累加器)
+原创： 若泽数据-阿春  若泽大数据  5天前
+
+
+前面文章
+
+生产常用Spark累加器剖析之一
+
+生产常用Spark累加器剖析之二
+
+
+
+思路 & 需求
+参考IntAccumulatorParam的实现思路（上述文章中有讲）：
+
+trait AccumulatorParam[T] extends AccumulableParam[T, T] {
+  def addAccumulator(t1: T, t2: T): T = {
+    // addInPlace有很多具体的实现类
+    // 如果想要实现自定义的话，就得实现这个方法
+    addInPlace(t1, t2)
+  }
+}
+自定义也可以通过这个方法去实现，从而兼容我们自定义的累加器
+
+需求：这里实现一个简单的案例，用分布式的方法去实现随机数
+/**
+  * 自定义的AccumulatorParam
+  *
+  * Created by lemon on 2018/7/28.
+  */
+object UniqueKeyAccumulator extends AccumulatorParam[Map[Int, Int]] {
+  override def addInPlace(r1: Map[Int, Int], r2: Map[Int, Int]): Map[Int, Int] = {
+      // ++用于两个集合相加
+      r1++r2
+    }
+    override def zero(initialValue: Map[Int, Int]): Map[Int, Int] = {
+      var data: Map[Int, Int] = Map()
+      data
+    }
+}
+/**
+  * 使用自定义的累加器，实现随机数
+  *
+  * Created by lemon on 2018/7/28.
+  */
+object CustomAccumulator {
+  def main(args: Array[String]): Unit = {
+    val sparkConf = new SparkConf().setAppName("CustomAccumulator").setMaster("local[2]")
+    val sc = new SparkContext(sparkConf)
+    val uniqueKeyAccumulator = sc.accumulable(Map[Int, Int]())(UniqueKeyAccumulator)
+    val distData = sc.parallelize(1 to 10)
+    val mapCount = distData.map(x => {
+      val randomNum = new Random().nextInt(20)
+      // 构造一个k-v对
+      val map: Map[Int, Int] = Map[Int, Int](randomNum -> randomNum)
+      uniqueKeyAccumulator += map
+    })
+    println(mapCount.count())
+    // 获取到累加器的值 中的key值，并进行打印
+    uniqueKeyAccumulator.value.keys.foreach(println)
+    sc.stop()
+  }
+}
+运行结果如下图：
+
+
+
+作者：若泽数据——呼呼呼
+原文：https://blog.csdn.net/lemonZhaoTao/article/details/81407782
+
+原创文章，更多关注公众号获取:
+
+Spark内存管理之一 静态内存管理
+
+Spark内存管理之二 统一内存管理及设计理念
+
+Spark内存管理之三 UnifiedMemoryManager分析
+
+人人都应该会的-生产Spark2.4.0如何Debug源代码
+
+生产常用Spark累加器剖析之一
+
+最佳实践之Spark写入Hfile经典案例
+
+实时数仓之Maxwell读取MySQL binlog日志到Kafka
+
 

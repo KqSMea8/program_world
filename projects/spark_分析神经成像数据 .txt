@@ -1,0 +1,134 @@
+export PYSPARK_DRIVER_PYTHON=ipython # PySpark can use the IPython shell
+export PYSPARK_PYTHON=path/to/desired/python # For the worker nodes
+pyspark --master ... --num-executors ...
+
+raw_data = sc.textFile('path/to/csv/data') # RDD[string]
+# filter, split on comma, parse floats to get a RDD[list[float]]
+data = (raw_data
+.filter(lambda x: x.startswith("#"))
+.map(lambda x: map(float, x.split(','))))
+data.take(5)
+
+
+export PYSPARK_DRIVER_PYTHON=ipython # recommended as usual
+$ pyspark --master ... --num-executors ...
+
+import thunder as td
+data = td.images.fromtif('/user/ds/neuro/fish', engine=sc)
+print data
+print type(data.values)
+print data.values._rdd
+...
+Images
+mode: spark
+dtype: uint8
+shape: (20, 2, 76, 87)
+<class 'bolt.spark.array.BoltArraySpark'>
+PythonRDD[2] at RDD at PythonRDD.scala:48
+
+
+print data.values._rdd.first()
+...
+((0,), array([[[26, 26, 26, ..., 26, 26, 26],
+
+print data.shape
+
+import matplotlib.pyplot as plt
+img = data.first()
+plt.imshow(img[:, :, 0], interpolation='nearest', aspect='equal',
+cmap='gray')
+
+subsampled = data.subsample((1, 5, 5))
+plt.imshow(subsampled.first()[:, :, 0], interpolation='nearest',
+aspect='equal', cmap='gray')
+print subsampled.shape
+...
+(20, 2, 16, 18)
+
+
+series = data.toseries()
+print series.values._rdd.takeSample(False, 1)[0]
+
+print series.max().values
+
+stddev = series.map(lambda s: s.std())
+print stddev.values._rdd.take(3)
+print stddev.shape
+...
+[((0, 0, 0), array([ 0.4])), ((0, 0, 1), array([ 0.35707142]))]
+(2, 76, 87, 20)
+
+epacked = stddev.toarray()
+plt.imshow(repacked[:,:,0], interpolation='nearest', cmap='gray',
+aspect='equal')
+print type(repacked)
+print repacked.shape
+...
+<type 'numpy.ndarray'>
+(2, 76, 87)
+
+plt.plot(series.center().sample(50).toarray().T)
+
+series.map(lambda x: x.argmin())
+
+this data set is available in the aas repo
+images = td.images.frombinary(
+'/user/ds/neuro/fish-long', order='F', engine=sc)
+series = images.toseries()
+print series.shape
+...
+(76, 87, 2, 240)
+[ 0 1 2 3 4 5 6 ... 234 235 236 237 238 239]
+
+normalized = series.normalize(method='mean')
+
+stddevs = (normalized
+.map(lambda s: s.std())
+.sample(1000))
+plt.hist(stddevs.values, bins=20)
+
+plt.plot(
+normalized
+.filter(lambda s: s.std() >= 0.1)
+.sample(50)
+.values.T)
+
+from pyspark.mllib.clustering import KMeans
+ks = [5, 10, 15, 20, 30, 50, 100, 200]
+models = []
+for k in ks:
+models.append(KMeans.train(normalized.values._rdd.values(), k))
+
+
+def model_error_1(model):
+def series_error(series):
+cluster_id = model.predict(series)
+center = model.centers[cluster_id]
+diff = center - series
+return diff.dot(diff) ** 0.5
+return (normalized
+.map(series_error)
+.toarray()
+.sum())
+def model_error_2(model):
+return model.computeCost(normalized.values._rdd.values())
+
+
+
+import numpy as np
+errors_1 = np.asarray(map(model_error_1, models))
+errors_2 = np.asarray(map(model_error_2, models))
+plt.plot(
+ks, errors_1 / errors_1.sum(), 'k-o',
+ks, errors_2 / errors_2.sum(), 'b:v')
+
+
+model20 = models[3]
+plt.plot(np.asarray(model20.centers).T)
+
+import seaborn as sns
+from matplotlib.colors import ListedColormap
+cmap_cat = ListedColormap(sns.color_palette("hls", 10), name='from_list')
+by_cluster = normalized.map(lambda s: model20.predict(s)).toarray()
+plt.imshow(by_cluster[:, :, 0], interpolation='nearest',
+aspect='equal', cmap='gray')

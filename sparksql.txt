@@ -649,6 +649,1609 @@ Summary
 
 =============
 
+第1章 Spark SQL 概述
+1.1 什么是 Spark SQL
+1.2 RDD vs DataFrames vs DataSet
+第2章 执行 Spark SQL 查询
+2.1 命令行查询流程
+2.2 IDEA 创建 Spark SQL 程序
+第3章 Spark SQL 解析
+3.1 新的起始点 SparkSession
+3.2 创建 DataFrames
+3.3 DataFrame 常用操作
+3.4 创建 DataSet
+3.5 DataFrame 和 RDD 互操作
+3.6 类型之间的转换总结
+3.7 用户自定义函数
+第4章 Spark SQL 数据源
+4.1 通用加载/保存方法
+4.2 Parquet 文件
+4.3 Hive 数据库
+4.4 JSON 数据集
+4.5 JDBC
+第5章 JDBC/ODBC 服务器
+第6章 运行 Spark SQL CLI
+第7章 Spark SQL 实战
+7.1 数据说明
+7.2 加载数据
+7.3 计算所有订单中每年的销售单数、销售总额
+7.4 计算所有订单每年最大金额订单的销售额
+7.5 计算所有订单中每年最畅销货品
+
+
+第1章 Spark SQL 概述
+1.1 什么是 Spark SQL
+1.2 RDD vs DataFrames vs DataSet
+1.2.1 RDD
+1.2.2 DataFrame
+1.2.3 DataSet
+1.2.4 三者的共性
+1.2.5 三者的区别
+第2章 执行 Spark SQL 查询
+2.1 命令行查询流程
+2.2 IDEA 创建 Spark SQL 程序
+第3章 Spark SQL 解析
+3.1 新的起始点 SparkSession
+3.2 创建 DataFrames
+3.3 DataFrame 常用操作
+3.3.1 DSL 风格语法
+3.3.2 SQL 风格语法
+3.4 创建 DataSet
+3.5 DataFrame 和 RDD 互操作
+3.5.1 通过反射的方式获取 Scheam
+3.5.2 通过编程的方式设置 Schema(StructType)
+3.6 类型之间的转换总结
+3.7 用户自定义函数
+3.7.1 用户自定义 UDF 函数
+3.7.2 用户自定义 UDAF 函数(即聚合函数)
+第4章 Spark SQL 数据源
+4.1 通用加载/保存方法
+4.1.1 手动指定选项
+4.1.2 文件保存选项
+4.2 Parquet 文件
+4.2.1 Parquet 读写
+4.2.2 解析分区信息
+4.2.3 Schema 合并
+4.3 Hive 数据库
+4.3.1 内嵌 Hive 应用
+4.3.2 外部 Hive 应用
+4.4 JSON 数据集
+4.5 JDBC
+第5章 JDBC/ODBC 服务器
+第6章 运行 Spark SQL CLI
+第7章 Spark SQL 实战
+7.1 数据说明
+7.2 加载数据
+7.3 计算所有订单中每年的销售单数、销售总额
+7.4 计算所有订单每年最大金额订单的销售额
+7.5 计算所有订单中每年最畅销货品
+
+回到顶部
+第1章 Spark SQL 概述
+1.1 什么是 Spark SQL
+Spark SQL：http://spark.apache.org/sql/
+
+
+Spark SQL 是 Spark 用来处理结构化数据的一个模块，它提供了一个编程抽象叫做 DataFrame，并且作为分布式 SQL 查询引擎的作用。
+我们已经学习了 Hive，它是将 Hive SQL 转换成 MapReduce 然后提交到集群上执行，大大简化了编写 MapReduce 的程序的复杂性，由于 MapReduce 这种计算模型执行效率比较慢。所以 Spark SQL 的应运而生，它是将 Spark SQL 转换成 RDD，然后提交到集群执行，执行效率非常快！
+
+Spark SQL 的特点：
+  1、易整合(易集成)
+  2、统一的数据访问方式
+  3、兼容 Hive
+  4、标准的数据连接
+
+
+Spark SQL我们要学什么？SparkSQL 可以看做是一个转换层，向下对接各种不同的结构化数据源，向上提供不同的数据访问方式。
+
+
+1.2 RDD vs DataFrames vs DataSet
+Spark SQL 的数据抽象
+
+
+在 SparkSQL 中 Spark 为我们提供了两个新的抽象，分别是 DataFrame 和 DataSet。他们和 RDD 有什么区别呢？首先从版本的产生上来看：RDD(Spark1.0) —> DataFrame(Spark1.3) —> DataSet(Spark1.6)
+如果同样的数据都给到这三个数据结构，他们分别计算之后，都会给出相同的结果。不同是的他们的执行效率和执行方式。
+在后期的 Spark 版本中，DataSet 会逐步取代 RDD 和 DataFrame 成为唯一的 API 接口。
+
+1.2.1 RDD
+RDD 弹性分布式数据集，Spark 计算的基石，为用户屏蔽了底层对数据的复杂抽象和处理，为用户提供了一组方便的数据转换与求值方法。
+RDD 是一个懒执行的不可变的可以支持 Lambda 表达式的并行数据集合。
+RDD 的最大好处就是简单，API 的人性化程度很高。
+RDD 的劣势是性能限制，它是一个 JVM 驻内存对象，这也就决定了存在 GC 的限制和数据增加时 Java 序列化成本的升高。
+RDD 例子如下：
+
+
+1.2.2 DataFrame
+  与 RDD 类似，DataFrame 也是一个分布式数据容器。然而 DataFrame 更像传统数据库的二维表格，除了数据以外，还记录数据的结构信息，即 schema。同时，与 Hive 类似，DataFrame 也支持嵌套数据类型（struct、array 和 map）。从 API 易用性的角度上看，DataFrame API 提供的是一套高层的关系操作，比函数式的 RDD API 要更加友好，门槛更低。由于与 R 和 Pandas 的 DataFrame 类似，Spark DataFrame 很好地继承了传统单机数据分析的开发体验。
+
+
+  上图直观地体现了 DataFrame 和 RDD 的区别。左侧的 RDD[Person] 虽然以 Person 为类型参数，但 Spark 框架本身不了解 Person 类的内部结构。而右侧的 DataFrame 却提供了详细的结构信息，使得 Spark SQL 可以清楚地知道该数据集中包含哪些列，每列的名称和类型各是什么。DataFrame 多了数据的结构信息，即 schema。RDD 是分布式的 Java对象 的集合。DataFrame 是分布式的 Row对象 的集合。DataFrame 除了提供了比 RDD 更丰富的算子以外，更重要的特点是提升执行效率、减少数据读取以及执行计划的优化，比如 filter 下推、裁剪等。
+
+
+DataFrame 是为数据提供了 Schema 的视图。可以把它当做数据库中的一张表来对待。
+DataFrame 也是懒执行的。
+性能上比 RDD 要高，主要有两方面原因：
+（1）定制化内存管理：数据以二进制的方式存在于非堆内存，节省了大量空间之外，还摆脱了 GC 的限制。
+
+
+（2）优化的执行计划：查询计划通过 Spark catalyst optimiser 进行优化。
+
+比如下面一个例子：
+
+人口数据分析的示例：
+
+  为了说明查询优化，我们来看上图展示的人口数据分析的示例。图中构造了两个 DataFrame，将它们 join 之后又做了一次 filter 操作。如果原封不动地执行这个执行计划，最终的执行效率是不高的。因为 join 是一个代价较大的操作，也可能会产生一个较大的数据集。如果我们能将 filter 下推到 join 下方，先对 DataFrame 进行过滤，再 join 过滤后的较小的结果集，便可以有效缩短执行时间。而 Spark SQL 的查询优化器正是这样做的。简而言之，逻辑查询计划优化就是一个利用基于关系代数的等价变换，将高成本的操作替换为低成本操作的过程。
+  得到的优化执行计划在转换成物理执行计划的过程中，还可以根据具体的数据源的特性将过滤条件下推至数据源内。最右侧的物理执行计划中 filter 之所以消失不见，就是因为溶入了用于执行最终的读取操作的表扫描节点内。
+  对于普通开发者而言，查询优化器的意义在于，即便是经验并不丰富的程序员写出的次优的查询，也可以被尽量转换为高效的形式予以执行。
+  Dataframe 的劣势在于在编译期缺少类型安全检查，导致运行时出错。
+
+
+1.2.3 DataSet
+1）是 DataFrame API 的一个扩展，是 Spark 最新的数据抽象。
+2）用户友好的 API 风格，既具有类型安全检查也具有 DataFrame 的查询优化特性。
+3）DataSet 支持编解码器，当需要访问非堆上的数据时可以避免反序列化整个对象，提高了效率。
+4）样例类被用来在 DataSet 中定义数据的结构信息，样例类中每个属性的名称直接映射到 DataSet 中的字段名称。
+5）DataFrame 是 DataSet 的特列，type DataFrame = Dataset[Row] ，所以可以通过 as 方法将 DataFrame 转换为 DataSet。Row 是一个类型，跟 Car、Person 这些的类型一样，所有的表结构信息都用 Row 来表示。
+6）DataSet 是强类型的。比如可以有 Dataset[Car]，Dataset[Person]，DataFrame 只是知道字段，但是不知道字段的类型，所以在执行这些操作的时候是没办法在编译的时候检查是否类型失败的，比如你可以对一个 String 进行减法操作，在执行的时候才报错，而 DataSet 不仅仅知道字段，而且知道字段类型，所以有更严格的错误检查。就跟 JSON 对象和类对象之间的类比。
+
+
+RDD 让我们能够决定怎么做，而 DataFrame 和 DataSet 让我们决定做什么，控制的粒度不一样。
+
+
+1.2.4 三者的共性
+1、RDD、DataFrame、DataSet 全都是 spark 平台下的分布式弹性数据集，为处理超大型数据提供便利。
+2、三者都有惰性机制，在进行创建、转换，如 map 方法时，不会立即执行，只有在遇到 action，如 foreach 时，三者才会开始遍历运算，极端情况下，如果代码里面有创建、转换，但是后面没有在 action 中使用对应的结果，在执行时会被直接跳过。
+
+val sparkconf = new SparkConf().setMaster("local").setAppName("test").set("spark.port.maxRetries","1000")
+val spark = SparkSession.builder().config(sparkconf).getOrCreate()
+val rdd=spark.sparkContext.parallelize(Seq(("a", 1), ("b", 1), ("a", 1)))
+// map 不运行
+rdd.map { line =>
+  println("运行")
+  line._1
+}
+3、三者都会根据 spark 的内存情况自动缓存运算，这样即使数据量很大，也不用担心会内存溢出。
+4、三者都有 partition 的概念。
+5、三者有许多共同的函数，如 filter，排序等。
+6、在对 DataFrame 和 DataSet 进行许多操作都需要这个包进行支持
+
+import spark.implicits._
+7、DataFrame 和 DataSet 均可使用模式匹配获取各个字段的值和类型
+DataFrame：
+
+testDF.map {
+      case Row(col1: String, col2: Int) =>
+        println(col1)
+        println(col2)
+        col1
+      case _=>
+        ""
+    }
+DataSet：
+
+case class Coltest(col1: String, col2: Int)extends Serializable // 定义字段名和类型
+    testDS.map {
+      case Coltest(col1: String, col2: Int) =>
+        println(col1)
+        println(col2)
+        col1
+      case _=>
+        ""
+    }
+1.2.5 三者的区别
+RDD：
+1、RDD 一般和 spark mlib 同时使用
+2、RDD 不支持 sparksql 操作
+
+DataFrame：
+1、与 RDD 和 DataSet 不同，DataFrame 每一行的类型固定为 Row，只有通过解析才能获取各个字段的值，如
+
+testDF.foreach{
+  line =>
+    val col1=line.getAs[String]("col1")
+    val col2=line.getAs[String]("col2")
+}
+每一列的值没法直接访问
+2、DataFrame 与 DataSet 一般与 spark ml 同时使用
+3、DataFrame 与 DataSet 均支持 sparksql 的操作，比如 select，groupby 之类，还能注册临时表/视窗，进行 sql 语句操作，如
+
+dataDF.createOrReplaceTempView("tmp")
+spark.sql("select ROW, DATE from tmp where DATE is not null order by DATE").show(100, false)
+4、DataFrame 与 DataSet 支持一些特别方便的保存方式，比如 保存成 csv，可以带上表头，这样每一列的字段名一目了然
+
+// 保存
+val saveoptions = Map("header" -> "true", "delimiter" -> "\t", "path" -> "hdfs://hadoop102:9000/test")
+datawDF.write.format("com.atguigu.spark.csv").mode(SaveMode.Overwrite).options(saveoptions).save()
+
+// 读取
+val options = Map("header" -> "true", "delimiter" -> "\t", "path" -> "hdfs://hadoop102:9000/test")
+val datarDF= spark.read.options(options).format("com.atguigu.spark.csv").load()
+利用这样的保存方式，可以方便的获得字段名和列的对应，而且分隔符（delimiter）可以自由指定。
+
+DataSet：
+DataSet 和 DataFrame 拥有完全相同的成员函数，区别只是每一行的数据类型不同。
+DataFrame 也可以叫 Dataset[Row]，即每一行的类型是 Row，不解析，每一行究竟有哪些字段，各个字段又是什么类型都无从得知，只能用上面提到的 getAS 方法或者共性中的第七条提到的模式匹配拿出特定字段。
+而 DataSet 中，每一行是什么类型是不一定的，在自定义了 case class 之后可以很自由的获得每一行的信息。
+
+case class Coltest(col1: String, col2: Int) extends Serializable // 定义字段名和类型
+/**
+ rdd
+ ("a", 1)
+ ("b", 1)
+ ("a", 1)
+**/
+val test: Dataset[Coltest] = rdd.map { line =>
+      Coltest(line._1, line._2)
+    }.toDS
+    test.map{
+      line =>
+        println(line.col1)
+        println(line.col2)
+    }
+可以看出，DataSet 在需要访问列中的某个字段时是非常方便的，然而，如果要写一些适配性很强的函数时，如果使用 DataSet，行的类型又不确定，可能是各种 case class，无法实现适配，这时候用 DataFrame，即 Dataset[Row] 就能比较好的解决问题。
+
+回到顶部
+第2章 执行 Spark SQL 查询
+2.1 命令行查询流程
+打开 spark-shell
+例子：查询大于 30 岁的用户
+创建如下 JSON 文件，注意 JSON 的格式：
+
+{"name":"Michael", "age":30}
+{"name":"Andy", "age":30}
+{"name":"Justin", "age":19}
+操作步骤如下：
+
+
+2.2 IDEA 创建 Spark SQL 程序
+Spark SQL 在 IDEA 中程序的打包和运行方式都和 Spark Core 类似，Maven 依赖中需要添加新的依赖项：
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql_2.11</artifactId>
+            <version>${spark.version}</version>
+            <!-- provided 表示编译期可用，运行期不可用 -->
+            <!--<scope>provided</scope>-->
+        </dependency>
+程序如下：
+
+package com.atguigu.sparksql
+
+import org.apache.spark.sql.SparkSession
+import org.slf4j.LoggerFactory
+
+object HelloWorld {
+
+  val logger = LoggerFactory.getLogger(HelloWorld.getClass)
+
+  def main(args: Array[String]) {
+    // 创建 SparkSession 并设置 App 名称
+    val spark = SparkSession
+      .builder()
+      .appName("Spark SQL basic example")
+      .config("spark.some.config.option", "some-value")
+      .getOrCreate()
+
+    // 通过隐式转换将 RDD 操作添加到 DataFrame 上
+    import spark.implicits._
+
+    // 通过 spark.read 操作读取 JSON 数据
+    val df = spark.read.json("examples/src/main/resources/people.json")
+
+    // show 操作类似于 Action，将 DataFrame 直接打印到 Console 上
+    df.show()
+
+    // DSL 风格的使用方式：属性的获取方法 $
+    df.filter($"age" > 21).show()
+
+    //将 DataFrame 注册为表
+    df.createOrReplaceTempView("persons")
+
+    // 执行 Spark SQL 查询操作
+    spark.sql("select * from perosns where age > 21").show()
+
+    // 关闭资源
+    spark.stop()
+  }
+}
+回到顶部
+第3章 Spark SQL 解析
+3.1 新的起始点 SparkSession
+在老的版本中，SparkSQL 提供两种 SQL 查询起始点，一个叫 SQLContext，用于 Spark 自己提供的 SQL 查询，一个叫 HiveContext，用于连接 Hive 的查询，SparkSession 是 Spar k最新的 SQL 查询起始点，实质上是 SQLContext 和 HiveContext 的组合，所以在 SQLContext 和HiveContext 上可用的 API 在 SparkSession 上同样是可以使用的。SparkSession 内部封装了 SparkContext，所以计算实际上是由 SparkContext 完成的。
+
+    import org.apache.spark.sql.SparkSession
+
+    // 创建 SparkSession 并设置 App 名称
+    val spark = SparkSession
+      .builder()
+      .appName("Spark SQL basic example")
+      .config("spark.some.config.option", "some-value")
+      .getOrCreate()
+
+    // 通过隐式转换将 RDD 操作添加到 DataFrame 上
+    import spark.implicits._
+SparkSession.builder 用于创建一个 SparkSession。
+import spark.implicits._ 的引入是用于将 DataFrames 隐式转换成 RDD，使 df 能够使用 RDD 中的方法。
+如果需要 Hive 支持，则需要以下创建语句：
+
+    import org.apache.spark.sql.SparkSession
+
+    val spark = SparkSession
+      .builder()
+      .appName("Spark SQL basic example")
+      .config("spark.some.config.option", "some-value")
+      .enableHiveSupport()
+      .getOrCreate()
+
+    // For implicit conversions like converting RDDs to DataFrames
+    import spark.implicits._
+3.2 创建 DataFrames
+在 Spark SQL 中 SparkSession 是创建 DataFrames 和执行 SQL 的入口，创建 DataFrames 有三种方式，一种是可以从一个存在的 RDD 进行转换，还可以从 Hive Table 进行查询返回，或者通过 Spark 的数据源进行创建。
+
+1、从 Spark 数据源进行创建：
+
+val df = spark.read.json("examples/src/main/resources/people.json")
+// Displays the content of the DataFrame to stdout
+df.show()
+
++---+-------+
+|age|   name|
++---+-------+
+| 30|Michael|
+| 30|   Andy|
+| 19| Justin|
++---+-------+
+2、从 RDD 进行转换：
+
+/**
+Michael, 29
+Andy, 30
+Justin, 19
+**/
+scala> val personRdd = sc.textFile("examples/src/main/resources/people.txt")
+personRdd: org.apache.spark.rdd.RDD[String] = examples/src/main/resources/people.txt MapPartitionsRDD[18] at textFile at <console>:24
+
+// 把每一行的数据用 "," 隔开，然后通过第二个 map 转换成一个 Array 再通过 toDF 映射给 name 和 age
+scala> val personDF3 = personRdd.map(_.split(",")).map(paras => (paras(0).trim(), paras(1).trim().toInt)).toDF("name", "age")
+personDF3: org.apache.spark.sql.DataFrame = [name: string, age: int]
+
+scala> personDF3.collect
+res0: Array[org.apache.spark.sql.Row] = Array([Michael,29], [Andy,30], [Justin,19])
+
+scala> personDF.show()
+
++-------+---+
+|   name|age|
++-------+---+
+|Michael| 29|
+|   Andy| 30|
+| Justin| 19|
++-------+---+
+3、从 Hive Table 进行查询返回，我们在数据源章节介绍。
+
+3.3 DataFrame 常用操作
+3.3.1 DSL 风格语法
+// This import is needed to use the $-notation
+import spark.implicits._
+
+// Print the schema in a tree format
+df.printSchema()
+
+root
+ |-- age: long (nullable = true)
+ |-- name: string (nullable = true)
+
+// Select only the "name" column
+df.select("name").show()
+
++-------+
+|   name|
++-------+
+|Michael|
+|   Andy|
+| Justin|
++-------+
+
+// Select everybody, but increment the age by 1
+df.select($"name", $"age" + 1).show()
+
++-------+---------+
+|   name|(age + 1)|
++-------+---------+
+|Michael|       31|
+|   Andy|       31|
+| Justin|       20|
++-------+---------+
+
+// Select person older than 21
+df.filter($"age" > 21).show()
+
++---+-------+
+|age|   name|
++---+-------+
+| 30|Michael|
+| 30|   Andy|
++---+-------+
+
+// Count person by age
+df.groupBy("age").count().show()
+
++---+-----+
+|age|count|
++---+-----+
+| 19|    1|
+| 30|    2|
++---+-----+
+3.3.2 SQL 风格语法
+// Register the DataFrame as a SQL temporary view
+df.createOrReplaceTempView("persons")
+
+val sqlDF = spark.sql("SELECT * FROM persons")
+sqlDF.show()
+
++---+-------+
+|age|   name|
++---+-------+
+| 30|Michael|
+| 30|   Andy|
+| 19| Justin|
++---+-------+
+
+// Register the DataFrame as a global temporary view
+df.createGlobalTempView("persons")
+
+// Global temporary view is tied to a system preserved database `global_temp`
+spark.sql("SELECT * FROM global_temp.persons").show()
+
++---+-------+
+|age|   name|
++---+-------+
+| 30|Michael|
+| 30|   Andy|
+| 19| Justin|
++---+-------+
+
+// Global temporary view is cross-session
+spark.newSession().sql("SELECT * FROM global_temp.persons").show()
+
++---+-------+
+|age|   name|
++---+-------+
+| 30|Michael|
+| 30|   Andy|
+| 19| Justin|
++---+-------+
+临时表是 Session 范围内的，Session 退出后，表就失效了。如果想应用范围内有效，可以使用全局表。
+注意：使用全局表时需要全路径访问，如：global_temp.persons
+
+3.4 创建 DataSet
+DataSet 是具有强类型的数据集合，需要提供对应的类型信息。
+
+scala> case class Person(name: String, age: Long)
+defined class Person
+
+scala> val caseClassDS = Seq(Person("Andy", 32)).toDS()
+caseClassDS: org.apache.spark.sql.Dataset[Person] = [name: string, age: bigint]
+
+scala> caseClassDS.show()
+
++----+---+
+|name|age|
++----+---+
+|Andy| 32|
++----+---+
+
+scala> val primitiveDS = Seq(1, 2, 3).toDS()
+primitiveDS: org.apache.spark.sql.Dataset[Int] = [value: int]
+
+scala> primitiveDS.map(_ + 1).collect()
+res1: Array[Int] = Array(2, 3, 4)
+
+scala> val path = "examples/src/main/resources/people.json"
+path: String = examples/src/main/resources/people.json
+
+scala> val peopleDS = spark.read.json(path).as[Person]
+peopleDS: org.apache.spark.sql.Dataset[Person] = [age: bigint, name: string]
+
+scala> peopleDS.show()
+
++---+-------+
+|age|   name|
++---+-------+
+| 30|Michael|
+| 30|   Andy|
+| 19| Justin|
++---+-------+
+3.5 DataFrame 和 RDD 互操作
+Spark SQL 支持通过两种方式将存在的 RDD 转换为 DataSet，转换的过程中需要让 DataSet 获取 RDD 中的 Schema 信息。
+主要有两种方式：
+  第一种：是通过反射来获取 RDD 中的 Schema 信息，这种方式适合于列名已知的情况下。
+  第二种：是通过编程接口的方式将 Schema 信息应用于 RDD，这种方式可以处理那种在运行时才能知道列的情况下。
+
+3.5.1 通过反射的方式获取 Scheam
+Spark SQL 能够自动将包含有 case 类的 RDD 转换成 DataFrame，case 类定义了 table 的结构，case 类属性通过反射变成了表的列名。case 类可以包含诸如 Seqs 或者 Array 等复杂的结构。
+
+// For implicit conversions from RDDs to DataFrames
+import spark.implicits._
+
+// Create an RDD of Person objects from a text file, convert it to a Dataframe
+val peopleDF = spark.sparkContext
+  .textFile("examples/src/main/resources/people.txt")
+  .map(_.split(","))
+  .map(attributes => Person(attributes(0).trim(), attributes(1).trim().toInt))
+  .toDF()
+
+peopleDF.show
+
++-------+---+
+|   name|age|
++-------+---+
+|Michael| 29|
+|   Andy| 30|
+| Justin| 19|
++-------+---+
+
+// Register the DataFrame as a temporary view
+peopleDF.createOrReplaceTempView("people")
+
+// SQL statements can be run by using the sql methods provided by Spark
+val teenagersDF = spark.sql("SELECT name, age FROM people WHERE age BETWEEN 13 AND 25")
+
+// The columns of a row in the result can be accessed by field index
+teenagersDF.map(teenager => "Name: " + teenager(0)).show() // 通过 row 对象的索引进行访问
+
++------------+
+|       value|
++------------+
+|Name: Justin|
++------------+
+
+// or by field name 通过 row 对象的 getAs 方法访问
+teenagersDF.map(teenager => "Name: " + teenager.getAs[Int](0)).show() //  以索引访问
+teenagersDF.map(teenager => "Name: " + teenager.getAs[String]("name")).show() // 以列名访问
+
+// +------------+
+// |       value|
+// +------------+
+// |Name: Justin|
+// +------------+
+
+// No pre-defined encoders for Dataset[Map[K,V]], define explicitly (没有为数据集 [Map [K，V]] 预定义的编码器明确定义)
+implicit val mapEncoder = org.apache.spark.sql.Encoders.kryo[Map[String, Any]]
+
+// Primitive types and case classes can be also defined as (原始类型和样例类也可以定义为)
+// implicit val stringIntMapEncoder: Encoder[Map[String, Any]] = ExpressionEncoder()
+
+// row.getValuesMap[T] retrieves multiple columns at once into a Map[String, T] (row.getValuesMap [T] 一次检索多个列到 Map [String，T])
+teenagersDF.map(teenager => teenager.getValuesMap[Any](List("name", "age"))).collect()
+// Array[Map[String,Any]] = Array(Map(name -> Justin, age -> 19))
+3.5.2 通过编程的方式设置 Schema(StructType)
+如果 case 类不能够提前定义，可以通过下面三个步骤定义一个 DataFrame，步骤如下：
+  1、创建一个多行结构的 RDD。
+  2、创建用 StructType 来表示的行结构信息。
+  3、通过 SparkSession 提供的 createDataFrame 方法来应用 Schema。
+
+import org.apache.spark.sql.types._
+
+// Create an RDD
+val peopleRDD = spark.sparkContext.textFile("examples/src/main/resources/people.txt")
+
+// The schema is encoded in a string (schema 以字符串形式编码)
+val schemaString = "name age" // 实际开发中 schemaString 是动态生成的
+
+// Generate the schema based on the string of schema (根据 schema 字符串生成 schema)
+// 把 name 和 age 都设置成 StringType 类型
+val fields = schemaString.split(" ").map(fieldName => StructField(fieldName, StringType, nullable = true)) // Array[org.apache.spark.sql.types.StructField]
+val schema = StructType(fields)
+
+// 把 name 设置成 StringType 类型，把 age 设置成 IntegerType 类型
+// val fields = schemaString.split(" ").map(fieldName => fieldName match {
+//  case "name" => StructField(fieldName, StringType, nullable = true);
+//  case "age" => StructField(fieldName, IntegerType, nullable = true)
+//  }) // Array[org.apache.spark.sql.types.StructField]
+
+// Convert records of the RDD (people) to Rows (将 RDD (people) 的记录转换为很多行)
+import org.apache.spark.sql._
+val rowRDD = peopleRDD.map(_.split(",")).map(attributes => Row(attributes(0).trim, attributes(1).trim)) // org.apache.spark.rdd.RDD[org.apache.spark.sql.Row]
+
+// Apply the schema to the RDD
+val peopleDF = spark.createDataFrame(rowRDD, schema)
+peopleDF: org.apache.spark.sql.DataFrame = [name: string, age: string]  注意：此时的 name 和 age 都是 StringType 类型
+
+// Creates a temporary view using the DataFrame
+peopleDF.createOrReplaceTempView("people")
+
+// SQL can be run over a temporary view created using DataFrames
+val results = spark.sql("SELECT name FROM people")
+
+// The results of SQL queries are DataFrames and support all the normal RDD operations
+// The columns of a row in the result can be accessed by field index or by field name (可以通过字段索引或字段名称访问结果中行的列)
+results.map(attributes => "Name: " + attributes(0)).show()
+
++-------------+
+|        value|
++-------------+
+|Name: Michael|
+|   Name: Andy|
+| Name: Justin|
++-------------+
+
+results.show
+
++-------+
+|   name|
++-------+
+|Michael|
+|   Andy|
+| Justin|
++-------+
+3.6 类型之间的转换总结
+RDD、DataFrame、Dataset 三者有许多共性，有各自适用的场景常常需要在三者之间转换。
+  1、RDD -> DataFrame ： rdd.map(para => (para(0).trim(), para(1).trim().toInt)).toDF("name", "age")
+  2、DataFrame -> RDD ： df.rdd
+  注意输出类型：res2: Array[org.apache.spark.sql.Row] = Array([Michael,29], [Andy,30], [Justin,19])
+  1、RDD -> DataSet ： rdd.map(para => Person(para(0).trim(), para(1).trim().toInt)).toDS
+  2、DataSet -> RDD ： ds.rdd
+  注意输出类型：res5: Array[Person] = Array(Person(Michael,29), Person(Andy,30), Person(Justin,19))
+  1、DataFrame -> DataSet ： df.as[Person]
+  2、DataSet -> DataFrame ： ds.toDF
+
+小结：
+DataFrame/Dataset 转 RDD：
+
+val rdd1 = testDF.rdd
+val rdd2 = testDS.rdd
+RDD 转 DataFrame：
+
+import spark.implicits._
+val testDF = rdd.map { line =>
+      (line._1, line._2)
+    }.toDF("col1", "col2")
+一般用元组把一行的数据写在一起，然后在 toDF 中指定字段名。
+
+RDD 转 DataSet：
+
+import spark.implicits._
+case class Coltest(col1:String, col2:Int) extends Serializable // 定义字段名和类型
+val testDS = rdd.map { line =>
+      Coltest(line._1, line._2)
+    }.toDS
+可以注意到，定义每一行的类型 case class 时，已经给出了字段名和类型，后面只要往 case class 里面添加值即可。
+
+Dataset 转 DataFrame：
+这个也很简单，因为只是把 case class 封装成 Row。
+
+import spark.implicits._
+val testDF = testDS.toDF
+DataFrame 转 DataSet：
+
+import spark.implicits._
+case class Coltest(col1:String, col2:Int) extends Serializable // 定义字段名和类型
+val testDS = testDF.as[Coltest]
+这种方法就是在给出每一列的类型后，使用 as 方法，转成 DataSet，这在数据类型是 DataFrame 又需要针对各个字段处理时极为方便。
+在使用一些特殊的操作时，一定要加上 import spark.implicits._ 不然 toDF、toDS 无法使用。
+
+3.7 用户自定义函数
+通过 spark.udf 功能用户可以自定义函数。
+
+3.7.1 用户自定义 UDF 函数
+scala> val df = spark.read.json("examples/src/main/resources/people.json")
+df: org.apache.spark.sql.DataFrame = [age: bigint, name: string]
+
+scala> df.show()
++---+-------+
+|age|   name|
++---+-------+
+| 30|Michael|
+| 30|   Andy|
+| 19| Justin|
++---+-------+
+
+scala> spark.udf.register("addName", (x: String) => "Name:" + x)
+res5: org.apache.spark.sql.expressions.UserDefinedFunction = UserDefinedFunction(<function1>,StringType,Some(List(StringType)))
+
+scala> df.createOrReplaceTempView("people")
+
+scala> spark.sql("select addName(name), age from people").show()
++-----------------+---+
+|UDF:addName(name)|age|
++-----------------+---+
+|     Name:Michael| 30|
+|        Name:Andy| 30|
+|      Name:Justin| 19|
++-----------------+---+
+
+scala> spark.sql("select addName(name) as newName, age from people").show()
++------------+---+
+|     newName|age|
++------------+---+
+|Name:Michael| 30|
+|   Name:Andy| 30|
+| Name:Justin| 19|
++------------+---+
+3.7.2 用户自定义 UDAF 函数(即聚合函数)
+强类型的 Dataset 和弱类型的 DataFrame 都提供了相关的聚合函数，如 count()，countDistinct()，avg()，max()，min()。除此之外，用户可以设定自己的自定义聚合函数。
+
+弱类型用户自定义聚合函数
+通过继承 UserDefinedAggregateFunction 来实现用户自定义聚合函数。下面展示一个求平均工资的自定义聚合函数：
+
+package com.atguigu.spark
+
+import org.apache.spark.sql.{Row, SparkSession}
+import org.apache.spark.sql.expressions.{MutableAggregationBuffer, UserDefinedAggregateFunction}
+import org.apache.spark.sql.types._
+
+object MyAverage extends UserDefinedAggregateFunction {
+
+  // 聚合函数输入参数的数据类型
+  def inputSchema: StructType = StructType(StructField("inputColumn", LongType) :: Nil) // :: 用于的是向队列的头部追加数据，产生新的列表
+
+  // 聚合缓冲区中值的数据类型
+  def bufferSchema: StructType = {
+    StructType(StructField("sum", LongType) :: StructField("count", LongType) :: Nil) // Nil 是一个空的 List，定义为 List[Nothing]
+  }
+
+  // 返回值的数据类型
+  def dataType: DataType = DoubleType
+
+  // 对于相同的输入是否一直返回相同的输出
+  def deterministic: Boolean = true
+
+  // 初始化
+  def initialize(buffer: MutableAggregationBuffer): Unit = {
+    // 存工资的总额
+    buffer(0) = 0L
+    // 存工资的个数
+    buffer(1) = 0L
+  }
+
+  // 相同 Execute 间的数据合并（同一分区）
+  def update(buffer: MutableAggregationBuffer, input: Row): Unit = {
+    if (!input.isNullAt(0)) {
+      buffer(0) = buffer.getLong(0) + input.getLong(0)
+      buffer(1) = buffer.getLong(1) + 1
+    }
+  }
+
+  // 不同 Execute 间的数据合并（不同分区）
+  def merge(buffer1: MutableAggregationBuffer, buffer2: Row): Unit = {
+    buffer1(0) = buffer1.getLong(0) + buffer2.getLong(0)
+    buffer1(1) = buffer1.getLong(1) + buffer2.getLong(1)
+  }
+
+  // 计算最终结果
+  def evaluate(buffer: Row): Double = buffer.getLong(0).toDouble / buffer.getLong(1)
+
+  def main(args: Array[String]) {
+    // 创建 SparkSession 并设置 App 名称
+    val spark = SparkSession
+      .builder()
+      .appName("Spark SQL basic example")
+      // .config("spark.some.config.option", "some-value")
+        .master("local[*]") // 本地测试
+      .getOrCreate()
+
+    // For implicit conversions like converting RDDs to DataFrames
+    spark.udf.register("myAverage", MyAverage)
+
+    // val df = spark.read.json("examples/src/main/resources/employees.json")
+    val df = spark.read.json("D:\\learn\\JetBrains\\workspace_idea\\spark\\doc\\employees.json")
+    df.createOrReplaceTempView("employees")
+    df.show()
+    // +-------+------+
+    // |   name|salary|
+    // +-------+------+
+    // |Michael|  3000|
+    // |   Andy|  4500|
+    // | Justin|  3500|
+    // |  Berta|  4000|
+    // +-------+------+
+
+    val result = spark.sql("SELECT myAverage(salary) as average_salary FROM employees")
+    result.show()
+    // +--------------+
+    // |average_salary|
+    // +--------------+
+    // |        3750.0|
+    // +--------------+
+
+    spark.stop()
+  }
+}
+强类型用户自定义聚合函数
+通过继承 Aggregator 来实现强类型自定义聚合函数，同样是求平均工资：
+
+package com.atguigu.spark
+
+import org.apache.spark.sql.expressions.Aggregator
+import org.apache.spark.sql.{Encoder, Encoders, SparkSession}
+
+// 既然是强类型，可能有 case 类
+case class Employee(name: String, salary: Long)
+
+case class Average(var sum: Long, var count: Long)
+
+// 其中 Employee 是在应用聚合函数的时候传入的对象，Average 是聚合函数在运行的时候内部需要的数据结构，Double 是聚合函数最终需要输出的类型
+object MyAverage extends Aggregator[Employee, Average, Double] {
+
+  // 定义一个数据结构，保存工资总数和工资总个数，初始都为0
+  def zero: Average = Average(0L, 0L)
+
+  // 相同 Execute 间的数据合并（同一分区）
+  def reduce(buffer: Average, employee: Employee): Average = {
+    buffer.sum += employee.salary
+    buffer.count += 1
+    buffer
+  }
+
+  // 聚合不同 Execute 的结果
+  def merge(b1: Average, b2: Average): Average = {
+    b1.sum += b2.sum
+    b1.count += b2.count
+    b1
+  }
+
+  // 计算最终结果
+  def finish(reduction: Average): Double = reduction.sum.toDouble / reduction.count
+
+  // 设定之间值类型的编码器，要转换成 case 类
+  // Encoders.product 是进行 scala 元组和 case 类转换的编码器
+  def bufferEncoder: Encoder[Average] = Encoders.product
+
+  // 设定最终输出值的编码器
+  def outputEncoder: Encoder[Double] = Encoders.scalaDouble
+
+  def main(args: Array[String]) {
+    // 创建 SparkSession 并设置 App 名称
+    val spark = SparkSession
+      .builder()
+      .appName("Spark SQL basic example")
+      // .config("spark.some.config.option", "some-value")
+      .master("local[*]") // 本地测试
+      .getOrCreate()
+
+    import spark.implicits._
+    // For implicit conversions like converting RDDs to DataFrames
+    // val ds = spark.read.json("examples/src/main/resources/employees.json").as[Employee]
+    val ds = spark.read.json("D:\\learn\\JetBrains\\workspace_idea\\spark\\doc\\employees.json").as[Employee]
+    ds.show()
+    // +-------+------+
+    // |   name|salary|
+    // +-------+------+
+    // |Michael|  3000|
+    // |   Andy|  4500|
+    // | Justin|  3500|
+    // |  Berta|  4000|
+    // +-------+------+
+
+    val averageSalary = MyAverage.toColumn.name("average_salary")
+    val result = ds.select(averageSalary)
+    result.show()
+    // +--------------+
+    // |average_salary|
+    // +--------------+
+    // |        3750.0|
+    // +--------------+
+
+    spark.stop()
+  }
+}
+回到顶部
+第4章 Spark SQL 数据源
+4.1 通用加载/保存方法
+4.1.1 手动指定选项
+  Spark SQL 的 DataFrame 接口支持多种数据源的操作。一个 DataFrame 可以进行 RDDs 方式的操作，也可以被注册为临时表。把 DataFrame 注册为临时表之后，就可以对该 DataFrame 执行 SQL 查询。
+  Spark SQL 的默认数据源为 Parquet 格式。数据源为 Parquet 文件时，Spark SQL 可以方便的执行所有的操作。修改配置项 spark.sql.sources.default，可修改默认数据源格式。示例代码如下：
+
+val df = sqlContext.read.load("examples/src/main/resources/users.parquet")
+df.select("name", "favorite_color").write.save("namesAndFavColors.parquet")
+  当数据源格式不是 parquet 格式文件时，需要手动指定数据源的格式。数据源格式需要指定全名（例如：org.apache.spark.sql.parquet），如果数据源格式为内置格式，则只需要指定简称定 json, parquet, jdbc, orc, libsvm, csv, text 来指定数据的格式。
+  可以通过 SparkSession 提供的 read.load 方法用于通用加载数据，使用 write 和 save 保存数据。 示例代码如下：
+
+val peopleDF = spark.read.format("json").load("examples/src/main/resources/people.json")
+peopleDF.write.format("parquet").save("hdfs://hadoop102:9000/namesAndAges.parquet")
+  除此之外，还可以直接运行 SQL 在文件上。示例代码如下：
+
+val sqlDF = spark.sql("SELECT * FROM parquet.`hdfs://hadoop102:9000/namesAndAges.parquet`")
+sqlDF.show()
+spark-shell 下的演示代码：
+
+scala> val peopleDF = spark.read.format("json").load("examples/src/main/resources/people.json") // Spark SQL 的通用输入模式
+peopleDF: org.apache.spark.sql.DataFrame = [age: bigint, name: string]
+
+scala> peopleDF.write.format("parquet").save("hdfs://hadoop102:9000/namesAndAges.parquet")  // Spark SQL 的通用输出模式
+
+scala> peopleDF.show()
++---+-------+
+|age|   name|
++---+-------+
+| 30|Michael|
+| 30|   Andy|
+| 19| Justin|
++---+-------+
+
+scala> val peopleDF = spark.read.json("examples/src/main/resources/people.json") // Spark SQL 的专业输入模式
+peopleDF: org.apache.spark.sql.DataFrame = [age: bigint, name: string]
+
+scala> peopleDF.write.parquet("hdfs://hadoop102:9000/namesAndAges.parquet") // Spark SQL 的专业输出模式
+
+scala> peopleDF.show()
++---+-------+
+|age|   name|
++---+-------+
+| 30|Michael|
+| 30|   Andy|
+| 19| Justin|
++---+-------+
+
+scala> val sqlDF = spark.sql("SELECT * FROM parquet.`hdfs://hadoop102:9000/namesAndAges.parquet`")
+19/04/27 21:32:55 WARN ObjectStore: Failed to get database parquet, returning NoSuchObjectException
+sqlDF: org.apache.spark.sql.DataFrame = [age: bigint, name: string]
+
+scala> sqlDF.show()
++---+-------+
+|age|   name|
++---+-------+
+| 30|Michael|
+| 30|   Andy|
+| 19| Justin|
++---+-------+
+4.1.2 文件保存选项
+  可以采用 SaveMode 执行存储操作，SaveMode 定义了对数据的处理模式。需要注意的是，这些保存模式不使用任何锁定，不是原子操作。此外，当使用 Overwrite 方式执行时，在输出新数据之前原数据就已经被删除。
+  SaveMode 详细介绍如下表：
+
+
+4.2 Parquet 文件
+  Parquet 是一种流行的列式存储格式，可以高效地存储具有嵌套字段的记录。
+
+
+4.2.1 Parquet 读写
+  Parquet 格式经常在 Hadoop 生态圈中被使用，它也支持 Spark SQL 的全部数据类型。Spark SQL 提供了直接读取和存储 Parquet 格式文件的方法。示例代码如下：
+
+// Encoders for most common types are automatically provided by importing spark.implicits._
+import spark.implicits._
+
+val peopleDF = spark.read.json("examples/src/main/resources/people.json")
+
+// DataFrames can be saved as Parquet files, maintaining the schema information
+peopleDF.write.parquet("hdfs://hadoop102:9000/people.parquet")
+
+// Read in the parquet file created above
+// Parquet files are self-describing so the schema is preserved
+// The result of loading a Parquet file is also a DataFrame
+val parquetFileDF = spark.read.parquet("hdfs://hadoop102:9000/people.parquet")
+
+// Parquet files can also be used to create a temporary view and then used in SQL statements
+parquetFileDF.createOrReplaceTempView("parquetFile")
+val namesDF = spark.sql("SELECT name FROM parquetFile WHERE age BETWEEN 13 AND 25")
+namesDF.map(attributes => "Name: " + attributes(0)).show()
+// +------------+
+// |       value|
+// +------------+
+// |Name: Justin|
+// +------------+
+4.2.2 解析分区信息
+  对表进行分区是对数据进行优化的方式之一。在分区的表内，数据通过分区列将数据存储在不同的目录下。Parquet 数据源现在能够自动发现并解析分区信息。例如，对人口数据进行分区存储，分区列为 gender 和 country，使用下面的目录结构：
+
+path
+└── to
+    └── table
+        ├── gender=male
+        │   ├── ...
+        │   │
+        │   ├── country=US
+        │   │   └── data.parquet
+        │   ├── country=CN
+        │   │   └── data.parquet
+        │   └── ...
+        └── gender=female
+            ├── ...
+            │
+            ├── country=US
+            │   └── data.parquet
+            ├── country=CN
+            │   └── data.parquet
+            └── ...
+  通过传递 path/to/table 给 SQLContext.read.parquet 或 SQLContext.read.load，Spark SQL 将自动解析分区信息。返回的 DataFrame 的 Schema 如下：
+
+root
+|-- name: string (nullable = true)
+|-- age: long (nullable = true)
+|-- gender: string (nullable = true)
+|-- country: string (nullable = true)
+  需要注意的是，数据的分区列的数据类型是自动解析的。当前，支持数值类型和字符串类型。自动解析分区类型的参数为：spark.sql.sources.partitionColumnTypeInference.enabled，默认值为 true。如果想关闭该功能，直接将该参数设置为 disabled。此时，分区列数据格式将被默认设置为 String 类型，不再进行类型解析。
+
+4.2.3 Schema 合并
+  像 ProtocolBuffer、Avro 和 Thrift 那样，Parquet 也支持 Schema evolution（Schema 演变）。用户可以先定义一个简单的 Schema，然后逐渐的向 Schema 中增加列描述。通过这种方式，用户可以获取多个有不同 Schema 但相互兼容的 Parquet 文件。现在 Parquet 数据源能自动检测这种情况，并合并这些文件的 schemas。
+  因为 Schema 合并是一个高消耗的操作，在大多数情况下并不需要，所以 Spark SQL 从 1.5.0 开始默认关闭了该功能。可以通过下面两种方式开启该功能：
+  当数据源为 Parquet 文件时，将数据源选项 mergeSchema 设置为 true。
+  设置全局 SQL 选项 spark.sql.parquet.mergeSchema 为 true。
+
+示例代码如下：
+
+// sqlContext from the previous example is used in this example.
+// This is used to implicitly convert an RDD to a DataFrame.
+import sqlContext.implicits._
+
+// Create a simple DataFrame, stored into a partition directory
+val df1 = sc.makeRDD(1 to 5).map(i => (i, i * 2)).toDF("single", "double")
+df1.write.parquet("hdfs://hadoop102:9000/data/test_table/key=1")
+
+// Create another DataFrame in a new partition directory,
+// adding a new column and dropping an existing column
+val df2 = sc.makeRDD(6 to 10).map(i => (i, i * 3)).toDF("single", "triple")
+df2.write.parquet("hdfs://hadoop102:9000/data/test_table/key=2")
+
+// Read the partitioned table
+val df3 = sqlContext.read.option("mergeSchema", "true").parquet("hdfs://hadoop102:9000/data/test_table")
+df3.printSchema()
+
+// The final schema consists of all 3 columns in the Parquet files together
+// with the partitioning column appeared in the partition directory paths.
+// root
+// |-- single: int (nullable = true)
+// |-- double: int (nullable = true)
+// |-- triple: int (nullable = true)
+// |-- key : int (nullable = true)
+4.3 Hive 数据库
+  Apache Hive 是 Hadoop 上的 SQL 引擎，Spark SQL 编译时可以包含 Hive 支持，也可以不包含。包含 Hive 支持的 Spark SQL 可以支持 Hive 表访问、UDF(用户自定义函数) 以及 Hive 查询语言 (HiveQL/HQL) 等。需要强调的一点是，如果要在 Spark SQL 中包含 Hive 的库，并不需要事先安装 Hive。一般来说，最好还是在编译 Spark SQL 时引入 Hive 支持，这样就可以使用这些特性了。如果你下载的是二进制版本的 Spark，它应该已经在编译时添加了对 Hive 支持。
+  若要把 Spark SQL 连接到一个部署好的 Hive 上，你必须把 hive-site.xml 复制到 Spark 的配置文件目录中($SPARK_HOME/conf)。即使没有部署好 Hive，Spark SQL 也可以运行。需要注意的是，如果你没有部署好 Hive，Spark SQL 会在当前的工作目录中创建出自己的 Hive 元数据仓库，叫作 metastore_db。此外，如果你尝试使用 HiveQL 中的 CREATE TABLE (并非 CREATE EXTERNAL TABLE) 语句来创建表，这些表会被放在你默认的文件系统中的 /user/hive/warehouse 目录中 (如果你的 classpath 中有配好的 hdfs-site.xml，默认的文件系统就是 HDFS，否则就是本地文件系统)。示例代码如下：
+
+import java.io.File
+
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
+
+case class Record(key: Int, value: String)
+
+// warehouseLocation points to the default location for managed databases and tables
+val warehouseLocation = new File("spark-warehouse").getAbsolutePath
+
+val spark = SparkSession
+  .builder()
+  .appName("Spark Hive Example")
+  .config("spark.sql.warehouse.dir", warehouseLocation)
+  .enableHiveSupport()
+  .getOrCreate()
+
+import spark.implicits._
+import spark.sql
+
+sql("CREATE TABLE IF NOT EXISTS src (key INT, value STRING)")
+sql("LOAD DATA LOCAL INPATH 'examples/src/main/resources/kv1.txt' INTO TABLE src")
+
+// Queries are expressed in HiveQL
+sql("SELECT * FROM src").show()
+// +---+-------+
+// |key|  value|
+// +---+-------+
+// |238|val_238|
+// | 86| val_86|
+// |311|val_311|
+// ......
+
+// Aggregation queries are also supported.
+sql("SELECT COUNT(*) FROM src").show()
+// +--------+
+// |count(1)|
+// +--------+
+// |    500 |
+// +--------+
+
+// The results of SQL queries are themselves DataFrames and support all normal functions.
+val sqlDF = sql("SELECT key, value FROM src WHERE key < 10 ORDER BY key")
+
+// The items in DataFrames are of type Row, which allows you to access each column by ordinal.
+val stringsDS = sqlDF.map {
+  case Row(key: Int, value: String) => s"Key: $key, Value: $value"
+}
+stringsDS.show()
+// +--------------------+
+// |               value|
+// +--------------------+
+// |Key: 0, Value: val_0|
+// |Key: 0, Value: val_0|
+// |Key: 0, Value: val_0|
+// ......
+
+// You can also use DataFrames to create temporary views within a SparkSession.
+val recordsDF = spark.createDataFrame((1 to 100).map(i => Record(i, s"val_$i")))
+recordsDF.createOrReplaceTempView("records")
+
+// Queries can then join DataFrame data with data stored in Hive.
+sql("SELECT * FROM records r JOIN src s ON r.key = s.key").show()
+// +---+------+---+------+
+// |key| value|key| value|
+// +---+------+---+------+
+// |  2| val_2|  2| val_2|
+// |  4| val_4|  4| val_4|
+// |  5| val_5|  5| val_5|
+// ......
+4.3.1 内嵌 Hive 应用
+先做两个准备工作：
+（1）为了方便以后的操作，我们先将 /opt/module/hive/conf 目录下的 hive-site.xml 和 /opt/module/hadoop-2.7.2/etc/hadoop 目录下的 core-site.xml、hdfs-site.xml 拷贝至 /opt/module/spark-2.1.1-bin-hadoop2.7 目录下，然后分发至其他机器节点。以后我们就操作 /opt/module/spark-2.1.1-bin-hadoop2.7 目录下的文件就好了！
+（2）由于我们使用 /opt/module/spark-2.1.1-bin-hadoop2.7/bin/spark-sql 和 /opt/module/spark-2.1.1-bin-hadoop2.7/bin/spark-shell 时打出的日志很多，影响观看，所以我们修改下日志的输出级别 INFO 为 WARN，然后分发至其他机器节点。
+
+[atguigu@hadoop102 conf]$ pwd
+/opt/module/spark-2.1.1-bin-hadoop2.7/conf
+[atguigu@hadoop102 conf]$ cp log4j.properties.template log4j.properties
+[atguigu@hadoop102 conf]$ vim log4j.properties
+[atguigu@hadoop102 conf]$ xsync log4j.properties
+
+将 log4j.rootCategory=INFO, console 修改为 log4j.rootCategory=WARN, console
+1、Spark 内置有 Hive，Spark 2.1.1 内置的 Hive 是 1.2.1。
+2、如果要使用内嵌的 Hive，什么都不用做，直接用就可以了。但是呢，此时的我们只能创建表，且表放在本地的 spark-warehouse 目录中，如果查询表的话会报错，原因是：本地有 spark-warehouse 目录，而其他机器节点没有 spark-warehouse 目录，自然无法访问表了。
+解决办法如下：需要将 core-site.xml 和 hdfs-site.xml 拷贝到 spark 的 conf 目录下，然后分发至其他机器节点。如果 spark 路径下发现有 metastore_db 和 spark-warehouse，删除掉。然后重启集群。
+3、在你第一次启动创建 metastore 的时候，你需要指定 spark.sql.warehouse.dir 这个参数（Spark 2.x 版本的新内容）：
+比如：bin/spark-shell --conf spark.sql.warehouse.dir=hdfs://hadoop102:9000/spark_warehouse，之后我们再使用 bin/spark-sql 就可以了。此时我们创建的表放在 HDFS 集群上，那么就可以查询表了。
+4、注意：如果在 load 数据的时候，需要将数据放到 HDFS 上。
+
+4.3.2 外部 Hive 应用
+如果想连接外部已经部署好的 Hive，需要通过以下几个步骤：
+  1) 将 Hive 中的 hive-site.xml 拷贝或者软连接到 Spark 安装目录下的 conf 目录下。
+  2) 打开 spark-shell，注意带上访问 Hive 元数据库的 JDBC 客户端 或者 如果 hive 的 metestore 使用的是 mysql 数据库，那么需要将 mysql 的 jdbc 驱动包放到 spark 的 jars 目录下。
+
+$ bin/spark-shell --master spark://hadoop102:7077 --jars mysql-connector-java-5.1.27-bin.jar
+4.4 JSON 数据集
+  Spark SQL 能够自动推测 JSON 数据集的结构，并将它加载为一个 Dataset[Row]. 可以通过 SparkSession.read.json() 去加载一个 Dataset[String] 或者一个 JSON 文件。
+  注意：这个 JSON 文件不是一个传统的 JSON 文件，每一行都得是一个 JSON 串。
+
+示例 JSON 文件如下：
+
+{"name":"Michael", "age":30}
+{"name":"Andy", "age":30}
+{"name":"Justin", "age":19}
+示例代码如下：
+
+// Primitive types (Int, String, etc) and Product types (case classes) encoders are
+// supported by importing this when creating a Dataset.
+import spark.implicits._
+
+// A JSON dataset is pointed to by path.
+// The path can be either a single text file or a directory storing text files
+val path = "examples/src/main/resources/people.json"
+val peopleDF = spark.read.json(path)
+
+// The inferred schema can be visualized using the printSchema() method
+peopleDF.printSchema()
+// root
+//  |-- age: long (nullable = true)
+//  |-- name: string (nullable = true)
+
+// Creates a temporary view using the DataFrame
+peopleDF.createOrReplaceTempView("people")
+
+// SQL statements can be run by using the sql methods provided by spark
+val teenagerNamesDF = spark.sql("SELECT name FROM people WHERE age BETWEEN 13 AND 19")
+teenagerNamesDF.show()
+// +------+
+// |  name|
+// +------+
+// |Justin|
+// +------+
+
+// Alternatively, a DataFrame can be created for a JSON dataset represented by
+// a Dataset[String] storing one JSON object per string
+val otherPeopleDataset = spark.createDataset(
+"""{"name":"Yin","address":{"city":"Columbus","state":"Ohio"}}""" :: Nil)
+val otherPeople = spark.read.json(otherPeopleDataset)
+otherPeople.show()
+// +---------------+----+
+// |        address|name|
+// +---------------+----+
+// |[Columbus,Ohio]| Yin|
+// +---------------+----+
+4.5 JDBC
+  Spark SQL 可以通过 JDBC 从关系型数据库中读取数据的方式创建 DataFrame，通过对 DataFrame 一系列的计算后，还可以将数据再写回关系型数据库中。
+  注意：需要将相关的数据库驱动放到 spark 的类路径下。
+
+$ bin/spark-shell --master spark://hadoop102:7077 --jars mysql-connector-java-5.1.27-bin.jar
+示例代码：
+
+// Note: JDBC loading and saving can be achieved via either the load/save or jdbc methods
+// Loading data from a JDBC source
+val jdbcDF = spark.read.format("jdbc").option("url", "jdbc:mysql://hadoop102:3306/mysql").option("dbtable", "db").option("user", "root").option("password", "123456").load()
+
+val connectionProperties = new Properties()
+connectionProperties.put("user", "root")
+connectionProperties.put("password", "hive")
+val jdbcDF2 = spark.read.jdbc("jdbc:mysql://hadoop102:3306/mysql", "db", connectionProperties)
+
+// Saving data to a JDBC source
+jdbcDF.write
+  .format("jdbc")
+  .option("url", "jdbc:mysql://hadoop102:3306/mysql")
+  .option("dbtable", "db")
+  .option("user", "root")
+  .option("password", "123456")
+  .save()
+
+jdbcDF2.write.jdbc("jdbc:mysql://hadoop102:3306/mysql", "db", connectionProperties)
+
+// Specifying create table column data types on write
+jdbcDF.write
+  .option("createTableColumnTypes", "name CHAR(64), comments VARCHAR(1024)")
+  .jdbc("jdbc:mysql://hadoop102:3306/mysql", "db", connectionProperties)
+回到顶部
+第5章 JDBC/ODBC 服务器
+  Spark SQL 也提供 JDBC 连接支持，这对于让商业智能(BI)工具连接到 Spark 集群上以及在多用户间共享一个集群的场景都非常有用。JDBC 服务器作为一个独立的 Spark 驱动器程序运行，可以在多用户之间共享。任意一个客户端都可以在内存中缓存数据表，对表进行查询。集群的资源以及缓存数据都在所有用户之间共享。
+  Spark SQL 的 JDBC 服务器与 Hive 中的 HiveServer2 相一致。由于使用了 Thrift 通信协议，它也被称为 “Thrift server”。
+  服务器可以通过 Spark 目录中的 sbin/start-thriftserver.sh 启动。这个 脚本接受的参数选项大多与 spark-submit 相同。默认情况下，服务器会在 localhost:10000 上进行监听，我们可以通过环境变量(HIVE_SERVER2_THRIFT_PORT 和 HIVE_SERVER2_THRIFT_BIND_HOST)修改这些设置，也可以通过 Hive 配置选项( hive.server2.thrift.port 和 hive.server2.thrift.bind.host )来修改。你也可以通过命令行参数 --hiveconf property=value 来设置 Hive 选项。
+
+./sbin/start-thriftserver.sh \
+--hiveconf hive.server2.thrift.port=<listening-port> \
+--hiveconf hive.server2.thrift.bind.host=<listening-host> \
+--master <master-uri>
+......
+./bin/beeline
+beeline> !connect jdbc:hive2://hadoop102:10000
+  在 Beeline 客户端中，你可以使用标准的 HiveQL 命令来创建、列举以及查询数据表。参考文档链接：https://www.cnblogs.com/chenmingjun/p/10428809.html#_label1_5
+
+Hive 的 JDBC 访问：
+
+[atguigu@hadoop102 spark-2.1.1-bin-hadoop2.7]$ pwd
+/opt/module/spark-2.1.1-bin-hadoop2.7
+[atguigu@hadoop102 spark-2.1.1-bin-hadoop2.7]$ ./sbin/start-thriftserver.sh
+starting org.apache.spark.sql.hive.thriftserver.HiveThriftServer2, logging to /opt/module/spark-2.1.1-bin-hadoop2.7/logs/spark-atguigu-org.apache.spark.sql.hive.thriftserver.HiveThriftServer2-1-hadoop102.out
+[atguigu@hadoop102 spark-2.1.1-bin-hadoop2.7]$ ./bin/beeline
+Beeline version 1.2.1.spark2 by Apache Hive
+beeline> !connect jdbc:hive2://hadoop102:10000
+Connecting to jdbc:hive2://hadoop102:10000（回车）
+Enter username for jdbc:hive2://hadoop102:10000: atguigu（回车）
+Enter password for jdbc:hive2://hadoop102:10000: （直接回车）
+Connected to: Spark SQL (version 2.1.1)
+Driver: Hive JDBC (version 1.2.1.spark2)
+Transaction isolation: TRANSACTION_REPEATABLE_READ
+0: jdbc:hive2://hadoop102:10000> show tables;
++-----------+---------------------+--------------+--+
+| database  |      tableName      | isTemporary  |
++-----------+---------------------+--------------+--+
+| default   | event_logs20151220  | false        |
+| default   | student22           | false        |
++-----------+---------------------+--------------+--+
+2 rows selected (0.519 seconds)
+0: jdbc:hive2://hadoop102:10000>
+回到顶部
+第6章 运行 Spark SQL CLI
+  Spark SQL CLI 可以很方便的在本地运行 Hive 元数据服务以及从命令行执行查询任务。需要注意的是，Spark SQL CLI 不能与 Thrift JDBC 服务交互。
+  在 Spark 目录下执行如下命令启动 Spark SQL CLI：
+
+[atguigu@hadoop102 spark-2.1.1-bin-hadoop2.7]$ pwd
+/opt/module/spark-2.1.1-bin-hadoop2.7
+[atguigu@hadoop102 spark-2.1.1-bin-hadoop2.7]$ ./bin/spark-sql
+如下图所示：
+
+
+配置外部 Hive 需要替换 conf/ 下的 hive-site.xml 。
+第7章 Spark SQL 实战
+7.1 数据说明
+数据集是货品交易数据集。
+
+
+每个订单可能包含多个货品，每个订单可以产生多次交易，不同的货品有不同的单价。
+7.2 加载数据
+tbStock：
+
+scala> case class tbStock(ordernumber: String, locationid: String, dateid: String) extends Serializable
+defined class tbStock
+
+scala> val tbStockRdd = spark.sparkContext.textFile("tbStock.txt")
+tbStockRdd: org.apache.spark.rdd.RDD[String] = tbStock.txt MapPartitionsRDD[1] at textFile at <console>:23
+
+scala> val tbStockDS = tbStockRdd.map(_.split(",")).map(attr => tbStock(attr(0), attr(1), attr(2))).toDS
+tbStockDS: org.apache.spark.sql.Dataset[tbStock] = [ordernumber: string, locationid: string ... 1 more field]
+
+scala> tbStockDS.show()
++------------+----------+---------+
+| ordernumber|locationid|   dataid|
++------------+----------+---------+
+|BYSL00000893|      ZHAO|2007-8-23|
+|BYSL00000897|      ZHAO|2007-8-24|
+|BYSL00000898|      ZHAO|2007-8-25|
+|BYSL00000899|      ZHAO|2007-8-26|
+|BYSL00000900|      ZHAO|2007-8-26|
+|BYSL00000901|      ZHAO|2007-8-27|
+|BYSL00000902|      ZHAO|2007-8-27|
+|BYSL00000904|      ZHAO|2007-8-28|
+|BYSL00000905|      ZHAO|2007-8-28|
+|BYSL00000906|      ZHAO|2007-8-28|
+|BYSL00000907|      ZHAO|2007-8-29|
+|BYSL00000908|      ZHAO|2007-8-30|
+|BYSL00000909|      ZHAO| 2007-9-1|
+|BYSL00000910|      ZHAO| 2007-9-1|
+|BYSL00000911|      ZHAO|2007-8-31|
+|BYSL00000912|      ZHAO| 2007-9-2|
+|BYSL00000913|      ZHAO| 2007-9-3|
+|BYSL00000914|      ZHAO| 2007-9-3|
+|BYSL00000915|      ZHAO| 2007-9-4|
+|BYSL00000916|      ZHAO| 2007-9-4|
++------------+----------+---------+
+only showing top 20 rows
+tbStockDetail:
+
+scala> case class tbStockDetail(ordernumber: String, rownum: Int, itemid: String, number: Int, price: Double, amount: Double) extends Serializable
+defined class tbStockDetail
+
+scala> val tbStockDetailRdd = spark.sparkContext.textFile("tbStockDetail.txt")
+tbStockDetailRdd: org.apache.spark.rdd.RDD[String] = tbStockDetail.txt MapPartitionsRDD[13] at textFile at <console>:23
+
+scala> val tbStockDetailDS = tbStockDetailRdd.map(_.split(",")).map(attr => tbStockDetail(attr(0), attr(1).trim().toInt, attr(2), attr(3).trim().toInt, attr(4).trim().toDouble, attr(5).trim().toDouble)).toDS
+tbStockDetailDS: org.apache.spark.sql.Dataset[tbStockDetail] = [ordernumber: string, rownum: int ... 4 more fields]
+
+scala> tbStockDetailDS.show()
++------------+------+--------------+------+-----+------+
+| ordernumber|rownum|        itemid|number|price|amount|
++------------+------+--------------+------+-----+------+
+|BYSL00000893|     0|FS527258160501|    -1|268.0|-268.0|
+|BYSL00000893|     1|FS527258169701|     1|268.0| 268.0|
+|BYSL00000893|     2|FS527230163001|     1|198.0| 198.0|
+|BYSL00000893|     3|24627209125406|     1|298.0| 298.0|
+|BYSL00000893|     4|K9527220210202|     1|120.0| 120.0|
+|BYSL00000893|     5|01527291670102|     1|268.0| 268.0|
+|BYSL00000893|     6|QY527271800242|     1|158.0| 158.0|
+|BYSL00000893|     7|ST040000010000|     8|  0.0|   0.0|
+|BYSL00000897|     0|04527200711305|     1|198.0| 198.0|
+|BYSL00000897|     1|MY627234650201|     1|120.0| 120.0|
+|BYSL00000897|     2|01227111791001|     1|249.0| 249.0|
+|BYSL00000897|     3|MY627234610402|     1|120.0| 120.0|
+|BYSL00000897|     4|01527282681202|     1|268.0| 268.0|
+|BYSL00000897|     5|84126182820102|     1|158.0| 158.0|
+|BYSL00000897|     6|K9127105010402|     1|239.0| 239.0|
+|BYSL00000897|     7|QY127175210405|     1|199.0| 199.0|
+|BYSL00000897|     8|24127151630206|     1|299.0| 299.0|
+|BYSL00000897|     9|G1126101350002|     1|158.0| 158.0|
+|BYSL00000897|    10|FS527258160501|     1|198.0| 198.0|
+|BYSL00000897|    11|ST040000010000|    13|  0.0|   0.0|
++------------+------+--------------+------+-----+------+
+only showing top 20 rows
+tbDate:
+
+scala> case class tbDate(dateid: String, years: Int, theyear: Int, month: Int, day: Int, weekday: Int, week: Int, quarter: Int, period: Int, halfmonth: Int) extends Serializable
+defined class tbDate
+
+scala> val tbDateRdd = spark.sparkContext.textFile("tbDate.txt")
+tbDateRdd: org.apache.spark.rdd.RDD[String] = tbDate.txt MapPartitionsRDD[20] at textFile at <console>:23
+
+scala> val tbDateDS = tbDateRdd.map(_.split(",")).map(attr => tbDate(attr(0), attr(1).trim().toInt, attr(2).trim().toInt, attr(3).trim().toInt, attr(4).trim().toInt, attr(5).trim().toInt, attr(6).trim().toInt, attr(7).trim().toInt, attr(8).trim().toInt, attr(9).trim().toInt)).toDS
+tbDateDS: org.apache.spark.sql.Dataset[tbDate] = [dateid: string, years: int ... 8 more fields]
+
+scala> tbDateDS.show()
++---------+------+-------+-----+---+-------+----+-------+------+---------+
+|   dateid| years|theyear|month|day|weekday|week|quarter|period|halfmonth|
++---------+------+-------+-----+---+-------+----+-------+------+---------+
+| 2003-1-1|200301|   2003|    1|  1|      3|   1|      1|     1|        1|
+| 2003-1-2|200301|   2003|    1|  2|      4|   1|      1|     1|        1|
+| 2003-1-3|200301|   2003|    1|  3|      5|   1|      1|     1|        1|
+| 2003-1-4|200301|   2003|    1|  4|      6|   1|      1|     1|        1|
+| 2003-1-5|200301|   2003|    1|  5|      7|   1|      1|     1|        1|
+| 2003-1-6|200301|   2003|    1|  6|      1|   2|      1|     1|        1|
+| 2003-1-7|200301|   2003|    1|  7|      2|   2|      1|     1|        1|
+| 2003-1-8|200301|   2003|    1|  8|      3|   2|      1|     1|        1|
+| 2003-1-9|200301|   2003|    1|  9|      4|   2|      1|     1|        1|
+|2003-1-10|200301|   2003|    1| 10|      5|   2|      1|     1|        1|
+|2003-1-11|200301|   2003|    1| 11|      6|   2|      1|     2|        1|
+|2003-1-12|200301|   2003|    1| 12|      7|   2|      1|     2|        1|
+|2003-1-13|200301|   2003|    1| 13|      1|   3|      1|     2|        1|
+|2003-1-14|200301|   2003|    1| 14|      2|   3|      1|     2|        1|
+|2003-1-15|200301|   2003|    1| 15|      3|   3|      1|     2|        1|
+|2003-1-16|200301|   2003|    1| 16|      4|   3|      1|     2|        2|
+|2003-1-17|200301|   2003|    1| 17|      5|   3|      1|     2|        2|
+|2003-1-18|200301|   2003|    1| 18|      6|   3|      1|     2|        2|
+|2003-1-19|200301|   2003|    1| 19|      7|   3|      1|     2|        2|
+|2003-1-20|200301|   2003|    1| 20|      1|   4|      1|     2|        2|
++---------+------+-------+-----+---+-------+----+-------+------+---------+
+only showing top 20 rows
+注册为临时表：
+
+scala> tbStockDS.createOrReplaceTempView("tbStock")
+
+scala> tbDateDS.createOrReplaceTempView("tbDate")
+
+scala> tbStockDetailDS.createOrReplaceTempView("tbStockDetail")
+7.3 计算所有订单中每年的销售单数、销售总额
+统计所有订单中每年的销售单数、销售总额
+三个表连接后以 count(distinct a.ordernumber) 计销售单数，以 sum(b.amount) 计销售总额
+
+示例代码：
+
+SELECT c.theyear, COUNT(DISTINCT a.ordernumber), SUM(b.amount)
+FROM tbStock a
+    JOIN tbStockDetail b ON a.ordernumber = b.ordernumber
+    JOIN tbDate c ON a.dateid = c.dateid
+GROUP BY c.theyear
+ORDER BY c.theyear
+
+spark.sql("SELECT c.theyear, COUNT(DISTINCT a.ordernumber), SUM(b.amount) FROM tbStock a JOIN tbStockDetail b ON a.ordernumber = b.ordernumber JOIN tbDate c ON a.dateid = c.dateid GROUP BY c.theyear ORDER BY c.theyear").show
+输出结果如下：
+
++-------+---------------------------+--------------------+
+|theyear|count(DISTINCT ordernumber)|         sum(amount)|
++-------+---------------------------+--------------------+
+|   2004|                       1094|   3268115.499199999|
+|   2005|                       3828|1.3257564149999991E7|
+|   2006|                       3772|1.3680982900000006E7|
+|   2007|                       4885|1.6719354559999993E7|
+|   2008|                       4861| 1.467429530000001E7|
+|   2009|                       2619|   6323697.189999999|
+|   2010|                         94|  210949.65999999997|
++-------+---------------------------+--------------------+
+7.4 计算所有订单每年最大金额订单的销售额
+目标：统计每年最大金额订单的销售额。
+第一步、统计每年，每个订单一共有多少销售额
+示例代码：
+
+SELECT a.dateid, a.ordernumber, SUM(b.amount) AS SumOfAmount
+FROM tbStock a
+    JOIN tbStockDetail b ON a.ordernumber = b.ordernumber
+GROUP BY a.dateid, a.ordernumber
+
+spark.sql("SELECT a.dateid, a.ordernumber, SUM(b.amount) AS SumOfAmount FROM tbStock a JOIN tbStockDetail b ON a.ordernumber = b.ordernumber GROUP BY a.dateid, a.ordernumber").show
+输出结果如下：
+
++----------+------------+------------------+
+|    dateid| ordernumber|       SumOfAmount|
++----------+------------+------------------+
+|  2008-4-9|BYSL00001175|             350.0|
+| 2008-5-12|BYSL00001214|             592.0|
+| 2008-7-29|BYSL00011545|            2064.0|
+|  2008-9-5|DGSL00012056|            1782.0|
+| 2008-12-1|DGSL00013189|             318.0|
+|2008-12-18|DGSL00013374|             963.0|
+|  2009-8-9|DGSL00015223|            4655.0|
+| 2009-10-5|DGSL00015585|            3445.0|
+| 2010-1-14|DGSL00016374|            2934.0|
+| 2006-9-24|GCSL00000673|3556.1000000000004|
+| 2007-1-26|GCSL00000826| 9375.199999999999|
+| 2007-5-24|GCSL00001020| 6171.300000000002|
+|  2008-1-8|GCSL00001217|            7601.6|
+| 2008-9-16|GCSL00012204|            2018.0|
+| 2006-7-27|GHSL00000603|            2835.6|
+|2006-11-15|GHSL00000741|           3951.94|
+|  2007-6-6|GHSL00001149|               0.0|
+| 2008-4-18|GHSL00001631|              12.0|
+| 2008-7-15|GHSL00011367|             578.0|
+|  2009-5-8|GHSL00014637|            1797.6|
++----------+------------+------------------+
+第二步、以上一步查询结果为基础表，和表 tbDate 使用 dateid join，求出每年最大金额订单的销售额
+示例代码：
+
+SELECT theyear, MAX(c.SumOfAmount) AS SumOfAmount
+FROM (SELECT a.dateid, a.ordernumber, SUM(b.amount) AS SumOfAmount
+    FROM tbStock a
+        JOIN tbStockDetail b ON a.ordernumber = b.ordernumber
+    GROUP BY a.dateid, a.ordernumber
+    ) c
+    JOIN tbDate d ON c.dateid = d.dateid
+GROUP BY theyear
+ORDER BY theyear DESC
+
+spark.sql("SELECT theyear, MAX(c.SumOfAmount) AS SumOfAmount FROM (SELECT a.dateid, a.ordernumber, SUM(b.amount) AS SumOfAmount FROM tbStock a JOIN tbStockDetail b ON a.ordernumber = b.ordernumber GROUP BY a.dateid, a.ordernumber ) c JOIN tbDate d ON c.dateid = d.dateid GROUP BY theyear ORDER BY theyear DESC").show
+输出结果如下：
+
++-------+------------------+
+|theyear|       SumOfAmount|
++-------+------------------+
+|   2010|13065.280000000002|
+|   2009|25813.200000000008|
+|   2008|           55828.0|
+|   2007|          159126.0|
+|   2006|           36124.0|
+|   2005|38186.399999999994|
+|   2004| 23656.79999999997|
++-------+------------------+
+7.5 计算所有订单中每年最畅销货品
+目标：统计每年最畅销货品（哪个货品销售额 amount 在当年最高，哪个就是最畅销货品）。
+第一步、求出每年每个货品的销售额
+示例代码：
+
+SELECT c.theyear, b.itemid, SUM(b.amount) AS SumOfAmount
+FROM tbStock a
+    JOIN tbStockDetail b ON a.ordernumber = b.ordernumber
+    JOIN tbDate c ON a.dateid = c.dateid
+GROUP BY c.theyear, b.itemid
+
+spark.sql("SELECT c.theyear, b.itemid, SUM(b.amount) AS SumOfAmount FROM tbStock a JOIN tbStockDetail b ON a.ordernumber = b.ordernumber JOIN tbDate c ON a.dateid = c.dateid GROUP BY c.theyear, b.itemid").show
+输出结果如下：
+
++-------+--------------+------------------+
+|theyear|        itemid|       SumOfAmount|
++-------+--------------+------------------+
+|   2004|43824480810202|           4474.72|
+|   2006|YA214325360101|             556.0|
+|   2006|BT624202120102|             360.0|
+|   2007|AK215371910101|24603.639999999992|
+|   2008|AK216169120201|29144.199999999997|
+|   2008|YL526228310106|16073.099999999999|
+|   2009|KM529221590106| 5124.800000000001|
+|   2004|HT224181030201|2898.6000000000004|
+|   2004|SG224308320206|           7307.06|
+|   2007|04426485470201|14468.800000000001|
+|   2007|84326389100102|           9134.11|
+|   2007|B4426438020201|           19884.2|
+|   2008|YL427437320101|12331.799999999997|
+|   2008|MH215303070101|            8827.0|
+|   2009|YL629228280106|           12698.4|
+|   2009|BL529298020602|            2415.8|
+|   2009|F5127363019006|             614.0|
+|   2005|24425428180101|          34890.74|
+|   2007|YA214127270101|             240.0|
+|   2007|MY127134830105|          11099.92|
++-------+--------------+------------------+
+第二步、在第一步的基础上，统计每年单个货品中的最大金额
+示例代码：
+
+SELECT d.theyear, MAX(d.SumOfAmount) AS MaxOfAmount
+FROM (SELECT c.theyear, b.itemid, SUM(b.amount) AS SumOfAmount
+    FROM tbStock a
+        JOIN tbStockDetail b ON a.ordernumber = b.ordernumber
+        JOIN tbDate c ON a.dateid = c.dateid
+    GROUP BY c.theyear, b.itemid
+    ) d
+GROUP BY d.theyear
+
+spark.sql("SELECT d.theyear, MAX(d.SumOfAmount) AS MaxOfAmount FROM (SELECT c.theyear, b.itemid, SUM(b.amount) AS SumOfAmount FROM tbStock a JOIN tbStockDetail b ON a.ordernumber = b.ordernumber JOIN tbDate c ON a.dateid = c.dateid GROUP BY c.theyear, b.itemid ) d GROUP BY d.theyear").show
+输出结果如下：
+
++-------+------------------+
+|theyear|       MaxOfAmount|
++-------+------------------+
+|   2007|           70225.1|
+|   2006|          113720.6|
+|   2004|53401.759999999995|
+|   2009|           30029.2|
+|   2005|56627.329999999994|
+|   2010|            4494.0|
+|   2008| 98003.60000000003|
++-------+------------------+
+第三步、用最大销售额和统计好的每个货品的销售额 join，以及用年 join，得到最畅销货品那一行信息
+示例代码：
+
+SELECT DISTINCT e.theyear, e.itemid, f.MaxOfAmount
+FROM (SELECT c.theyear, b.itemid, SUM(b.amount) AS SumOfAmount
+    FROM tbStock a
+        JOIN tbStockDetail b ON a.ordernumber = b.ordernumber
+        JOIN tbDate c ON a.dateid = c.dateid
+    GROUP BY c.theyear, b.itemid
+    ) e
+    JOIN (SELECT d.theyear, MAX(d.SumOfAmount) AS MaxOfAmount
+        FROM (SELECT c.theyear, b.itemid, SUM(b.amount) AS SumOfAmount
+            FROM tbStock a
+                JOIN tbStockDetail b ON a.ordernumber = b.ordernumber
+                JOIN tbDate c ON a.dateid = c.dateid
+            GROUP BY c.theyear, b.itemid
+            ) d
+        GROUP BY d.theyear
+        ) f ON e.theyear = f.theyear
+        AND e.SumOfAmount = f.MaxOfAmount
+ORDER BY e.theyear
+
+spark.sql("SELECT DISTINCT e.theyear, e.itemid, f.maxofamount FROM (SELECT c.theyear, b.itemid, SUM(b.amount) AS sumofamount FROM tbStock a JOIN tbStockDetail b ON a.ordernumber = b.ordernumber JOIN tbDate c ON a.dateid = c.dateid GROUP BY c.theyear, b.itemid ) e JOIN (SELECT d.theyear, MAX(d.sumofamount) AS maxofamount FROM (SELECT c.theyear, b.itemid, SUM(b.amount) AS sumofamount FROM tbStock a JOIN tbStockDetail b ON a.ordernumber = b.ordernumber JOIN tbDate c ON a.dateid = c.dateid GROUP BY c.theyear, b.itemid ) d GROUP BY d.theyear ) f ON e.theyear = f.theyear AND e.sumofamount = f.maxofamount ORDER BY e.theyear").show
+输出结果如下：
+
++-------+--------------+------------------+
+|theyear|        itemid|       maxofamount|
++-------+--------------+------------------+
+|   2004|JY424420810101|53401.759999999995|
+|   2005|24124118880102|56627.329999999994|
+|   2006|JY425468460101|          113720.6|
+|   2007|JY425468460101|           70225.1|
+|   2008|E2628204040101| 98003.60000000003|
+|   2009|YL327439080102|           30029.2|
+|   2010|SQ429425090101|            4494.0|
++-------+--------------+------------------+
+
+
+
+
+
+
+
+
+
+
+
+=============
+
 
 导读：本文所述内容均基于 2018 年 9 月 17 日 Spark 最新 Spark Release 2.3.1 版本，以及截止到 2018 年 10 月 21 日 Adaptive Execution 最新开发代码。自动设置 Shuffle Partition 个数已进入 Spark Release 2.3.1 版本，动态调整执行计划与处理数据倾斜尚未进入 Spark Release 2.3.1
 1 背  景
@@ -886,6 +2489,245 @@ spark.sql.adaptive.skewedPartitionRowCountThreshold设置了一个 Partition 被
 spark.sql.adaptive.skewedPartitionSizeThreshold设置了一个 Partition 被视为倾斜 Partition 的大小下限，也即大小小于该值的 Partition 不会被视作倾斜 Partition。其默认值为 64 * 1024 * 1024 也即 64MB；
 
 spark.sql.adaptive.skewedPartitionFactor该参数设置了倾斜因子。如果一个 Partition 的大小大于spark.sql.adaptive.skewedPartitionSizeThreshold的同时大于各 Partition 大小中位数与该因子的乘积，或者行数大于spark.sql.adaptive.skewedPartitionRowCountThreshold的同时大于各 Partition 行数中位数与该因子的乘积，则它会被视为倾斜的 Partition。
+=============
+
+========== Spark SQL ==========
+1、Spark SQL 是 Spark 的一个模块，可以和 RDD 进行混合编程、支持标准的数据源、可以集成和替代 Hive、可以提供 JDBC、ODBC 服务器功能。
+
+2、Spark SQL 的特点：
+  （1）和 Spark Core 的无缝集成，可以在写整个 RDD 应用的时候，配合 Spark SQL 来实现逻辑。
+  （2）统一的数据访问方式，Spark SQL 提供标准化的 SQL 查询。
+  （3）Hive 的集成，Spark SQL 通过内嵌的 Hive 或者连接外部已经部署好的 Hive 实例，实现了对 Hive 语法的集成和操作。
+  （4）标准化的连接方式，Spark SQL 可以通过启动 thrift Server 来支持 JDBC、ODBC 的访问，即将自己作为一个 BI Server 来使用。
+
+3、Spark SQL 可以执行 SQL 语句，也可以执行 HQL 语句，将运行的结果作为 Dataset 和 DataFrame（将查询出来的结果转换成 RDD，类似于 hive 将 sql 语句转换成 mapreduce）。
+
+4、Spark SQL 的计算速度(Spark sql 比 Hive 快了至少一个数量级，尤其是在 Tungsten 成熟以后会更加无可匹敌)，Spark SQL 推出的 DataFrame 可以让数据仓库直接使用机器学习、图计算等复杂的算法库来对数据仓库进行复杂深度数据价值的挖掘。
+
+5、老版本中使用 hivecontext，现在使用 sparkSession。
+
+========== Spark SQL 的数据抽象 ==========
+0、RDD（Spark1.0）-> DataFrame（Spark1.3）-> DataSet（Spark1.6）
+1、Spark SQL 提供了 DataFrame 和 DataSet 数据抽象。
+2、DataFrame 就是 RDD + Schema，可以认为是一张二维表格。DataFrame 也是懒执行的、不可变的。DataFrame 性能上比 RDD 要高。
+3、DataFrame 是一个弱类型的数据对象，DataFrame 的劣势是在编译期不进行表格中的字段的类型检查。在运行期进行检查。类似于 java.sql.ResultSet 类，只能通过 getString 这种方式来获取具体数据。
+4、DataSet 是 Spark 最新的数据抽象，Spark 的发展会逐步将 DataSet 作为主要的数据抽象，弱化 RDD 和 DataFrame。DataSet 包含了 DataFrame 所有的优化机制。除此之外提供了以样例类为 Schema 模型的强类型。
+5、type DataFrame = Dataset[Row]
+6、DataFrame 和 DataSet 都有可控的内存管理机制，所有数据都保存在非堆内存上，节省了大量空间之外，还摆脱了GC的限制。都使用了 catalyst 进行 SQL 的优化。可以使得不太会使用 RDD 的工程师写出相对高效的代码。
+7、RDD 和 DataFrame 和 DataSet 之间可以进行数据转换。
+
+========== Spark SQL 的初探 -- 客户端查询 ==========
+1、你可以通过 spark-shell 或者 spark-sql 来操作 Spark SQL，注意：spark 作为 SparkSession 的变量名，sc 作为 SparkContext 的变量名。
+2、你可以通过 Spark 提供的方法读取 JSON 文件，将 JSON 文件转换成 DataFrame。
+3、你可以通过 DataFrame 提供的 API 来操作 DataFrame 里面的数据。
+4、你可以通过将 DataFrame 注册成为一个临时表的方式，来通过 Spark.sql 方法运行标准的 SQL 语句来查询。
+
+小细节：
+  show() --> 表格
+  collect() --> RDD 打印
+
+========== IDEA 创建 Spark SQL 程序 ==========
+1、Spark SQL 读取 json 需要 json 文件中一行是一个 json 对象。
+2、通过创建 SparkSession 来使用 SparkSQL：
+示例代码如下：
+
+package com.atguigu.sparksql
+
+import org.apache.spark.sql.SparkSession
+import org.slf4j.LoggerFactory
+
+object HelloWorld {
+
+  val logger = LoggerFactory.getLogger(HelloWorld.getClass)
+
+  def main(args: Array[String]) {
+    // 创建 SparkSession 并设置 App 名称
+    val spark = SparkSession
+      .builder()
+      .appName("Spark SQL basic example")
+      .config("spark.some.config.option", "some-value")
+      .getOrCreate()
+
+    // 通过隐式转换将 RDD 操作添加到 DataFrame 上（将 RDD 转成 DataFrame）
+    import spark.implicits._
+
+    // 通过 spark.read 操作读取 JSON 数据
+    val df = spark.read.json("examples/src/main/resources/people.json")
+
+    // show 操作类似于 Action，将 DataFrame 直接打印到 Console 上
+    df.show()
+
+    // DSL 风格的使用方式：属性的获取方法 $
+    df.filter($"age" > 21).show()
+
+    //将 DataFrame 注册为表
+    df.createOrReplaceTempView("persons")
+
+    // 执行 Spark SQL 查询操作
+    spark.sql("select * from perosns where age > 21").show()
+
+    // 关闭资源
+    spark.stop()
+  }
+}
+========== DataFrame 查询方式 ==========
+1、DataFrame 支持两种查询方式：一种是 DSL 风格，另外一种是 SQL 风格。
+DSL 风格：
+  （1）你需要引入 import spark.implicit._ 这个隐式转换，可以将 DataFrame 隐式转换成 RDD。
+示例：
+  df.select("name").show()
+  df.filter($"age" > 25).show()
+
+SQL 风格：
+  （1）你需要将 DataFrame 注册成一张表格，如果你通过 createOrReplaceTempView 这种方式来创建，那么该表当前 Session 有效，如果你通过 createGlobalTempView 来创建，那么该表跨 Session 有效，但是 SQL 语句访问该表的时候需要加上前缀 global_temp.xxx。
+  （2）你需要通过 sparkSession.sql 方法来运行你的 SQL 语句。
+示例：
+  一个 SparkContext 可以多次创建 SparkSession。
+  // Session 内可访问，一个 SparkSession 结束后，表自动删除。
+  df.createOrReplaceTempView("persons") // 使用表名不需要任何前缀
+  // 应用级别内可访问，一个 SparkContext 结束后，表自动删除。
+  df.createGlobalTempView("persons") // 使用表名需要加上“global_temp.” 前缀，比如：global_temp.persons
+
+========== DataSet 创建方式 ==========
+1、定义一个 DataSet，首先你需要先定义一个 case 类。
+
+========== RDD、DataFrame、DataSet 之间的转换总结 ==========
+1、RDD -> DataFrame ： rdd.map(para => (para(0).trim(), para(1).trim().toInt)).toDF("name", "age") // RDD -> 元组 -> toDF()（注意：这是第一种方式）
+2、DataFrame -> RDD ： df.rdd
+注意输出类型：res2: Array[org.apache.spark.sql.Row] = Array([Michael,29], [Andy,30], [Justin,19])
+
+1、 RDD -> DataSet ： rdd.map(para => Person(para(0).trim(), para(1).trim().toInt)).toDS() // 需要先定义样例类 -> toDS()
+2、 DataSet -> RDD ： ds.rdd
+注意输出类型：res5: Array[Person] = Array(Person(Michael,29), Person(Andy,30), Person(Justin,19))
+
+1、 DataFrame -> DataSet ： df.as[Person] // 传入类型
+2、 DataSet -> DataFrame ： ds.toDF()
+
+========== DataFrame 的 Schema 的获取方式 ==========
+RDD -> DataFram 的三种方式：
+
+// 将没有包含 case 类的 RDD 转换成 DataFrame
+rdd.map(para => (para(0).trim(), para(1).trim().toInt)).toDF("name", "age") // RDD -> 元组 -> toDF()（注意：这是第一种方式）
+
+// 将包含有 case 类的 RDD 转换成 DataFrame，注意：需要我们先定义 case 类
+// 通过反射的方式来设置 Schema 信息，适合于编译期能确定列的情况
+rdd.map(attributes => Person(attributes(0), attributes(1).trim().toInt)).toDF() // 样例类-> RDD -> toDF()（注意：这是第二种方式）
+
+// 通过编程的方式来设置 Schema 信息，适合于编译期不能确定列的情况（注意：这是第三种方式）
+val schemaString = "name age" // 实际开发中 schemaString 是动态生成的
+val fields = schemaString.map(fieldName => StructField(fieldName, StringType, nullable = true))
+val schema = StructType(fields)
+val rdd[Row] = rdd.map(attributes => Row(attributes(0.trim), attributes(1).trim))
+val peopeDF = spark.createDataFrame(rdd[Row], schema)
+========== 对于 DataFrame Row 对象的访问方式 ==========
+1、由 DataFrame = Dataset[Row] 可知， DataFrame 里面每一行都是 Row 对象。
+2、如果需要访问 Row 对象中的每一个元素，可以通过索引 row(0)；也可以通过列名 row.getAsString 或者索引 row.getAsInt。
+
+========== 应用 UDF 函数（用户自定义函数） ==========
+1、通过 spark.udf.register(funcName, func) 来注册一个 UDF 函数，name 是 UDF 调用时的标识符，即函数名，fun 是一个函数，用于处理字段。
+2、你需要将一个 DF 或者 DS 注册为一个临时表。
+3、通过 spark.sql 去运行一个 SQL 语句，在 SQL 语句中可以通过 funcName(列名) 方式来应用 UDF 函数。
+示例代码如下：
+
+scala> val df = spark.read.json("examples/src/main/resources/people.json")
+df: org.apache.spark.sql.DataFrame = [age: bigint, name: string]
+
+scala> df.show()
+
+scala> spark.udf.register("addName", (x: String) => "Name:" + x)
+res5: org.apache.spark.sql.expressions.UserDefinedFunction = UserDefinedFunction(<function1>,StringType,Some(List(StringType)))
+
+scala> df.createOrReplaceTempView("people")
+
+scala> spark.sql("select addName(name), age from people").show()
+
+scala> spark.sql("select addName(name) as newName, age from people").show()
+========== 应用 UDAF 函数（用户自定义聚合函数） ==========
+1、弱类型用户自定义聚合函数
+步骤如下：
+（1）新建一个 Class 继承UserDefinedAggregateFunction，然后复写方法：
+
+    // 聚合函数需要输入参数的数据类型
+    override def inputSchema: StructType = ???
+
+    // 聚合缓冲区中值的数据类型
+    override def bufferSchema: StructType = ???
+
+    // 返回值的数据类型
+    override def dataType: DataType = ???
+
+    // 对于相同的输入一直有相同的输出
+    override def deterministic: Boolean = true
+
+    // 用于初始化你的数据结构
+    override def initialize(buffer: MutableAggregationBuffer): Unit = ???
+
+    // 相同 Execute 间的数据合并（同一分区）
+    override def update(buffer: MutableAggregationBuffer, input: Row): Unit = ???
+
+    // 不同 Execute 间的数据合并（不同分区）
+    override def merge(buffer1: MutableAggregationBuffer, buffer2: Row): Unit = ???
+
+    // 计算最终结果
+    override def evaluate(buffer: Row): Any = ???
+（2）你需要通过 spark.udf.resigter 去注册你的 UDAF 函数。
+（3）需要通过 spark.sql 去运行你的 SQL 语句，可以通过 select UDAF(列名) 来应用你的用户自定义聚合函数。
+
+2、强类型的用户自定义聚合函数
+步骤如下：
+（1）新建一个class，继承Aggregator[Employee, Average, Double]
+其中 Employee 是在应用聚合函数的时候传入的对象，Average 是聚合函数在运行的时候内部需要的数据结构，Double 是聚合函数最终需要输出的类型。这些可以根据自己的业务需求去调整。
+复写相对应的方法：
+
+    // 用于定义一个聚合函数内部需要的数据结构
+    override def zero: Average = ???
+
+    // 针对每个分区内部每一个输入来更新你的数据结构
+    override def reduce(b: Average, a: Employee): Average = ???
+
+    // 用于对于不同分区的结构进行聚合
+    override def merge(b1: Average, b2: Average): Average = ???
+
+    // 计算输出
+    override def finish(reduction: Average): Double = ???
+
+    // 设定之间值类型的编码器，要转换成 case 类
+    // Encoders.product 是进行 scala 元组和 case 类转换的编码器
+    override def bufferEncoder: Encoder[Average] = ???
+
+    // 设定最终输出值的编码器
+    override def outputEncoder: Encoder[Double] = ???
+2、新建一个 UDAF 实例，通过 DF 或者 DS 的 DSL 风格语法去应用。
+
+========== Spark SQL 的输入和输出 ==========
+1、对于 Spark SQL 的输入需要使用 sparkSession.read 方法
+
+（1）通用模式 sparkSession.read.format("json").load("path")     支持的类型有：parquet、json、text、csv、orc、jdbc、......
+（2）专业模式 sparkSession.read.json("path") 或 csv 或 ...      即直接指定类型
+2、对于 Spark SQL 的输出需要使用 sparkSession.write 方法
+
+（1）通用模式 dataFrame.write.format("json").save("path")       支持的类型有：parquet、json、text、csv、orc、jdbc、......
+（2）专业模式 dataFrame.write.csv("path") 或 json 或 ...   　　　即直接指定类型
+3、如果使用通用模式，则 spark 默认的 parquet 是默认格式，那么 sparkSession.read.load 它加载的默认是 parquet 格式；dataFrame.write.save 也是默认保存成 parquet 格式。
+4、注意：如果需要保存成一个 text 文件，那么需要 dataFrame 里面只有一列数据。
+
+========== Spark SQL 与 Hive 的集成 ==========
+内置 Hive
+1、Spark 内置有 Hive，Spark 2.1.1 内置的 Hive 是 1.2.1。
+2、如果要使用内嵌的 Hive，什么都不用做，直接用就可以了。但是呢，此时的我们只能创建表，如果查询表的话会报错，原因是：本地有 spark-warehouse 目录，而其他机器节点没有 spark-warehouse 目录。解决办法如下：
+3、需要将 core-site.xml 和 hdfs-site.xml 拷贝到 spark 的 conf 目录下，然后分发至其他机器节点。如果 spark 路径下发现有 metastore_db 和 spark-warehouse，删除掉。然后重启集群。
+4、在第一次启动创建 metastore 的时候，需要指定 spark.sql.warehouse.dir 这个参数，
+比如：bin/spark-shell --conf spark.sql.warehouse.dir=hdfs://hadoop102:9000/spark_warehouse
+5、注意：如果在 load 数据的时候，需要先将数据放到 HDFS 上。
+
+外部 Hive
+1、需要将 hive-site.xml 拷贝到 spark 的 conf 目录下，然后分发至其他机器节点。
+2、如果 hive 的 metestore 使用的是 mysql 数据库，那么需要将 mysql 的 jdbc 驱动包放到 spark 的 jars 目录下。
+3、可以通过 spark-sql 或者 spark-shell 来进行 sql 的查询，完成和 hive 的连接。
+
+hive、spark、hdfs 关系:
+  spark 文件中有两个文件夹：spark-warehouse、metastore_db，当我们拷贝 hive-site.xml 文件到 spark 的 conf 目录后，会读取 Hive 中的 warehouse 文件，获取到 hive 中的表格数据。
+
 
 ==============
 sparksql执行流程分析
@@ -1982,4 +3824,922 @@ private def createNonBucketedReadRDD(
  }
 
 
+
+=======
+Spark SQL从入门到精通
+原创： 浪尖  Spark学习技巧  2018-09-26
+本文主要是帮助大家从入门到精通掌握spark sql。篇幅较长，内容较丰富建议大家收藏，仔细阅读。
+
+更多大数据，spark教程，请点击 阅读原文 加入浪尖知识星球获取。
+
+微信群可以加浪尖微信 158570986 。
+
+发家史
+
+熟悉spark sql的都知道，spark sql是从shark发展而来。Shark为了实现Hive兼容，在HQL方面重用了Hive中HQL的解析、逻辑执行计划翻译、执行计划优化等逻辑，可以近似认为仅将物理执行计划从MR作业替换成了Spark作业（辅以内存列式存储等各种和Hive关系不大的优化）；
+
+同时还依赖Hive Metastore和Hive SerDe（用于兼容现有的各种Hive存储格式）。
+Spark SQL在Hive兼容层面仅依赖HQL parser、Hive Metastore和Hive SerDe。也就是说，从HQL被解析成抽象语法树（AST）起，就全部由Spark SQL接管了。执行计划生成和优化都由Catalyst负责。借助Scala的模式匹配等函数式语言特性，利用Catalyst开发执行计划优化策略比Hive要简洁得多。
+
+Spark SQL
+
+
+
+spark sql提供了多种接口：
+
+1. 纯Sql 文本
+
+2. dataset/dataframe api
+
+当然，相应的，也会有各种客户端：
+
+sql文本，可以用thriftserver/spark-sql
+
+编码，Dataframe/dataset/sql
+
+
+
+ Dataframe/Dataset API简介
+
+
+
+Dataframe/Dataset也是分布式数据集，但与RDD不同的是其带有schema信息，类似一张表。
+
+可以用下面一张图详细对比Dataset/dataframe和rdd的区别：
+
+
+
+Dataset是在spark1.6引入的，目的是提供像RDD一样的强类型、使用强大的lambda函数，同时使用spark sql的优化执行引擎。到spark2.0以后，DataFrame变成类型为Row的Dataset，即为：
+
+type DataFrame = Dataset[Row]
+
+
+
+
+所以，很多移植spark1.6及之前的代码到spark2+的都会报错误，找不到dataframe类。
+
+基本操作
+
+
+val df = spark.read.json(“file:///opt/meitu/bigdata/src/main/data/people.json”)
+df.show()
+import spark.implicits._
+df.printSchema()
+df.select("name").show()
+df.select($"name", $"age" + 1).show()
+df.filter($"age" > 21).show()
+df.groupBy("age").count().show()
+spark.stop()
+分区分桶 排序
+
+
+分桶排序保存hive表
+df.write.bucketBy(42,“name”).sortBy(“age”).saveAsTable(“people_bucketed”)
+分区以parquet输出到指定目录
+df.write.partitionBy("favorite_color").format("parquet").save("namesPartByColor.parquet")
+分区分桶保存到hive表
+df.write .partitionBy("favorite_color").bucketBy(42,"name").saveAsTable("users_partitioned_bucketed")
+cube rullup pivot
+
+
+
+cube
+sales.cube("city", "year”).agg(sum("amount")as "amount”) .show()
+rull up
+sales.rollup("city", "year”).agg(sum("amount")as "amount”).show()
+pivot 只能跟在groupby之后
+sales.groupBy("year").pivot("city",Seq("Warsaw","Boston","Toronto")).agg(sum("amount")as "amount”).show()
+
+
+SQL编程
+
+
+
+Spark SQL允许用户提交SQL文本，支持一下三种手段编写sql文本：
+
+1. spark 代码
+
+2. spark-sql的shell
+
+3. thriftserver
+
+支持Spark SQL自身的语法，同时也兼容HSQL。
+
+1. 编码
+
+要先声明构建SQLContext或者SparkSession，这个是SparkSQL的编码入口。早起的版本使用的是SQLContext或者HiveContext，spark2以后，建议使用的是SparkSession。
+
+1. SQLContext
+new SQLContext(SparkContext)
+
+2. HiveContext
+new HiveContext(spark.sparkContext)
+
+3. SparkSession
+不使用hive元数据：
+val spark = SparkSession.builder()
+ .config(sparkConf) .getOrCreate()
+使用hive元数据
+val spark = SparkSession.builder()
+ .config(sparkConf) .enableHiveSupport().getOrCreate()
+使用
+
+val df =spark.read.json("examples/src/main/resources/people.json")
+df.createOrReplaceTempView("people")
+spark.sql("SELECT * FROM people").show()
+2. spark-sql脚本
+
+spark-sql 启动的时候类似于spark-submit 可以设置部署模式资源等，可以使用
+
+bin/spark-sql –help 查看配置参数。
+
+需要将hive-site.xml放到${SPARK_HOME}/conf/目录下，然后就可以测试
+
+show tables;
+
+select count(*) from student;
+3. thriftserver
+
+thriftserver jdbc/odbc的实现类似于hive1.2.1的hiveserver2，可以使用spark的beeline命令来测试jdbc server。
+
+安装部署
+1). 开启hive的metastore
+bin/hive --service metastore
+2). 将配置文件复制到spark/conf/目录下
+3). thriftserver
+sbin/start-thriftserver.sh --masteryarn  --deploy-mode client
+对于yarn只支持client模式
+4). 启动bin/beeline
+5). 连接到thriftserver
+!connect jdbc:hive2://localhost:10001
+用户自定义函数
+
+1. UDF
+
+定义一个udf很简单，例如我们自定义一个求字符串长度的udf。
+
+val len = udf{(str:String) => str.length}
+spark.udf.register("len",len)
+val ds =spark.read.json("file:///opt/meitu/bigdata/src/main/data/employees.json")
+ds.createOrReplaceTempView("employees")
+ds.show()
+spark.sql("select len(name) from employees").show()
+2. UserDefinedAggregateFunction
+
+定义一个UDAF
+
+import org.apache.spark.sql.{Row, SparkSession}
+import org.apache.spark.sql.expressions.MutableAggregationBuffer
+import org.apache.spark.sql.expressions.UserDefinedAggregateFunction
+import org.apache.spark.sql.types._
+
+object MyAverageUDAF extends UserDefinedAggregateFunction {
+ //Data types of input arguments of this aggregate function
+ definputSchema:StructType = StructType(StructField("inputColumn", LongType) :: Nil)
+ //Data types of values in the aggregation buffer
+ defbufferSchema:StructType = {
+   StructType(StructField("sum", LongType):: StructField("count", LongType) :: Nil)
+ }
+ //The data type of the returned value
+ defdataType:DataType = DoubleType
+ //Whether this function always returns the same output on the identical input
+ defdeterministic: Boolean = true
+ //Initializes the given aggregation buffer. The buffer itself is a `Row` that inaddition to
+ // standard methods like retrieving avalue at an index (e.g., get(), getBoolean()), provides
+ // the opportunity to update itsvalues. Note that arrays and maps inside the buffer are still
+ // immutable.
+ definitialize(buffer:MutableAggregationBuffer): Unit = {
+   buffer(0) = 0L
+   buffer(1) = 0L
+ }
+ //Updates the given aggregation buffer `buffer` with new input data from `input`
+ defupdate(buffer:MutableAggregationBuffer, input: Row): Unit ={
+   if(!input.isNullAt(0)) {
+     buffer(0) = buffer.getLong(0)+ input.getLong(0)
+     buffer(1) = buffer.getLong(1)+ 1
+   }
+ }
+ // Mergestwo aggregation buffers and stores the updated buffer values back to `buffer1`
+ defmerge(buffer1:MutableAggregationBuffer, buffer2: Row): Unit ={
+   buffer1(0) = buffer1.getLong(0)+ buffer2.getLong(0)
+   buffer1(1) = buffer1.getLong(1)+ buffer2.getLong(1)
+ }
+ //Calculates the final result
+ defevaluate(buffer:Row): Double =buffer.getLong(0).toDouble /buffer.getLong(1)
+}
+使用UDAF
+
+val ds = spark.read.json("file:///opt/meitu/bigdata/src/main/data/employees.json")
+ds.createOrReplaceTempView("employees")
+ds.show()
+spark.udf.register("myAverage", MyAverageUDAF)
+val result = spark.sql("SELECT myAverage(salary) as average_salary FROM employees")
+result.show()
+3. Aggregator
+
+定义一个Aggregator
+
+import org.apache.spark.sql.{Encoder, Encoders, SparkSession}
+import org.apache.spark.sql.expressions.Aggregator
+case class Employee(name: String, salary: Long)
+case class Average(var sum: Long, var count: Long)
+
+object MyAverageAggregator extends Aggregator[Employee, Average, Double] {
+
+ // A zero value for this aggregation. Should satisfy the property that any b + zero = b
+ def zero: Average = Average(0L, 0L)
+ // Combine two values to produce a new value. For performance, the function may modify `buffer`
+ // and return it instead of constructing a new object
+ def reduce(buffer: Average, employee: Employee): Average = {
+   buffer.sum += employee.salary
+   buffer.count += 1
+   buffer
+ }
+ // Merge two intermediate values
+ def merge(b1: Average, b2: Average): Average = {
+   b1.sum += b2.sum
+   b1.count += b2.count
+   b1
+ }
+ // Transform the output of the reduction
+ def finish(reduction: Average): Double = reduction.sum.toDouble / reduction.count
+ // Specifies the Encoder for the intermediate value type
+ def bufferEncoder: Encoder[Average] = Encoders.product
+ // Specifies the Encoder for the final output value type
+ def outputEncoder: Encoder[Double] = Encoders.scalaDouble
+}
+使用
+
+spark.udf.register("myAverage2", MyAverageAggregator)
+import spark.implicits._
+val ds = spark.read.json("file:///opt/meitu/bigdata/src/main/data/employees.json").as[Employee]
+ds.show()
+val averageSalary = MyAverageAggregator.toColumn.name("average_salary")
+val result = ds.select(averageSalary)
+result.show()
+
+数据源
+
+1. 通用的laod/save函数
+可支持多种数据格式：json, parquet, jdbc, orc, libsvm, csv, text
+val peopleDF = spark.read.format("json").load("examples/src/main/resources/people.json")
+peopleDF.select("name", "age").write.format("parquet").save("namesAndAges.parquet")
+
+默认的是parquet，可以通过spark.sql.sources.default，修改默认配置。
+2. Parquet 文件
+
+val parquetFileDF =spark.read.parquet("people.parquet")
+peopleDF.write.parquet("people.parquet")
+3. ORC 文件
+
+val ds = spark.read.json("file:///opt/meitu/bigdata/src/main/data/employees.json")
+ds.write.mode("append").orc("/opt/outputorc/")
+spark.read.orc("/opt/outputorc/*").show(1)
+
+4. JSON
+
+ds.write.mode("overwrite").json("/opt/outputjson/")
+spark.read.json("/opt/outputjson/*").show()
+
+5. Hive 表
+
+spark 1.6及以前的版本使用hive表需要hivecontext。
+
+Spark2开始只需要创建sparksession增加enableHiveSupport()即可。
+
+val spark = SparkSession
+.builder()
+.config(sparkConf)
+.enableHiveSupport()
+.getOrCreate()
+
+spark.sql("select count(*) from student").show()
+6. JDBC
+
+写入mysql
+
+wcdf.repartition(1).write.mode("append").option("user", "root")
+ .option("password", "mdh2018@#").jdbc("jdbc:mysql://localhost:3306/test","alluxio",new Properties())
+
+从mysql里读
+
+val fromMysql = spark.read.option("user", "root")
+ .option("password", "mdh2018@#").jdbc("jdbc:mysql://localhost:3306/test","alluxio",new Properties())
+
+7. 自定义数据源
+
+自定义source比较简单，首先我们要看看source加载的方式
+
+指定的目录下，定义一个DefaultSource类，在类里面实现自定义source。就可以实现我们的目标。
+
+import org.apache.spark.sql.sources.v2.{DataSourceOptions, DataSourceV2, ReadSupport}
+
+class DefaultSource  extends DataSourceV2 with ReadSupport {
+
+ def createReader(options: DataSourceOptions) = new SimpleDataSourceReader()
+}
+
+
+
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.sources.v2.reader.{DataReaderFactory, DataSourceReader}
+import org.apache.spark.sql.types.{StringType, StructField, StructType}
+
+class SimpleDataSourceReader extends DataSourceReader {
+
+ def readSchema() = StructType(Array(StructField("value", StringType)))
+
+ def createDataReaderFactories = {
+   val factoryList = new java.util.ArrayList[DataReaderFactory[Row]]
+   factoryList.add(new SimpleDataSourceReaderFactory())
+   factoryList
+ }
+}
+
+
+
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.sources.v2.reader.{DataReader, DataReaderFactory}
+
+class SimpleDataSourceReaderFactory extends
+ DataReaderFactory[Row] with DataReader[Row] {
+ def createDataReader = new SimpleDataSourceReaderFactory()
+ val values = Array("1", "2", "3", "4", "5")
+
+ var index = 0
+
+ def next = index < values.length
+
+ def get = {
+   val row = Row(values(index))
+   index = index + 1
+   row
+ }
+
+ def close() = Unit
+}
+
+使用
+
+val simpleDf = spark.read
+ .format("bigdata.spark.SparkSQL.DataSources")
+ .load()
+
+simpleDf.show()
+
+优化器及执行计划
+1. 流程简介
+
+整体流程如下:
+
+
+
+总体执行流程如下：从提供的输入API（SQL，Dataset， dataframe）开始，依次经过unresolved逻辑计划，解析的逻辑计划，优化的逻辑计划，物理计划，然后根据cost based优化，选取一条物理计划进行执行.
+
+简单化成四个部分：
+
+1). analysis
+
+Spark 2.0 以后语法树生成使用的是antlr4，之前是scalaparse。
+
+2). logical optimization
+
+常量合并，谓词下推，列裁剪，boolean表达式简化，和其它的规则
+
+3). physical planning
+
+eg:SortExec
+
+4). Codegen
+
+codegen技术是用scala的字符串插值特性生成源码，然后使用Janino，编译成java字节码。Eg： SortExec
+2. 自定义优化器
+
+1). 实现
+
+继承Rule[LogicalPlan]
+
+2). 注册
+
+spark.experimental.extraOptimizations= Seq(MultiplyOptimizationRule)
+3). 使用
+
+selectExpr("amountPaid* 1")
+3. 自定义执行计划
+
+主要是实现重载count函数的功能
+
+1).  物理计划：
+
+继承SparkLan实现doExecute方法
+
+2). 逻辑计划
+
+继承SparkStrategy实现apply
+
+3). 注册到Spark执行策略：
+
+spark.experimental.extraStrategies =Seq(countStrategy)
+4). 使用
+
+spark.sql("select count(*) fromtest")
+
+
+Spark SQL在100TB上的自适应执行实践
+
+
+Spark SQL是Apache Spark最广泛使用的一个组件，它提供了非常友好的接口来分布式处理结构化数据，在很多应用领域都有成功的生产实践，但是在超大规模集群和数据集上，Spark SQL仍然遇到不少易用性和可扩展性的挑战。为了应对这些挑战，英特尔大数据技术团队和百度大数据基础架构部工程师在Spark 社区版本的基础上，改进并实现了自适应执行引擎。本文首先讨论Spark SQL在大规模数据集上遇到的挑战，然后介绍自适应执行的背景和基本架构，以及自适应执行如何应对Spark SQL这些问题，最后我们将比较自适应执行和现有的社区版本Spark SQL在100 TB 规模TPC-DS基准测试碰到的挑战和性能差异，以及自适应执行在Baidu Big SQL平台的使用情况。
+
+
+
+挑战1：关于shuffle partition数
+
+
+
+在Spark SQL中， shufflepartition数可以通过参数spark.sql.shuffle.partition来设置，默认值是200。这个参数决定了SQL作业每个reduce阶段任务数量，对整个查询性能有很大影响。假设一个查询运行前申请了E个Executor，每个Executor包含C个core（并发执行线程数），那么该作业在运行时可以并行执行的任务数就等于E x C个，或者说该作业的并发数是E x C。假设shuffle partition个数为P，除了map stage的任务数和原始数据的文件数量以及大小相关，后续的每个reduce stage的任务数都是P。由于Spark作业调度是抢占式的，E x C个并发任务执行单元会抢占执行P个任务，“能者多劳”，直至所有任务完成，则进入到下一个Stage。但这个过程中，如果有任务因为处理数据量过大（例如：数据倾斜导致大量数据被划分到同一个reducer partition）或者其它原因造成该任务执行时间过长，一方面会导致整个stage执行时间变长，另一方面E x C个并发执行单元大部分可能都处于空闲等待状态，集群资源整体利用率急剧下降。
+
+
+
+那么spark.sql.shuffle.partition参数究竟是多少比较合适？如果设置过小，分配给每一个reduce任务处理的数据量就越多，在内存大小有限的情况下，不得不溢写（spill）到计算节点本地磁盘上。Spill会导致额外的磁盘读写，影响整个SQL查询的性能，更差的情况还可能导致严重的GC问题甚至是OOM。相反，如果shuffle partition设置过大。第一，每一个reduce任务处理的数据量很小并且很快结束，进而导致Spark任务调度负担变大。第二，每一个mapper任务必须把自己的shuffle输出数据分成P个hash bucket，即确定数据属于哪一个reduce partition，当shuffle partition数量太多时，hash bucket里数据量会很小，在作业并发数很大时，reduce任务shuffle拉取数据会造成一定程度的随机小数据读操作，当使用机械硬盘作为shuffle数据临时存取的时候性能下降会更加明显。最后，当最后一个stage保存数据时会写出P个文件，也可能会造成HDFS文件系统中大量的小文件。
+
+
+
+从上，shuffle partition的设置既不能太小也不能太大。为了达到最佳的性能，往往需要经多次试验才能确定某个SQL查询最佳的shuffle partition值。然而在生产环境中，往往SQL以定时作业的方式处理不同时间段的数据，数据量大小可能变化很大，我们也无法为每一个SQL查询去做耗时的人工调优，这也意味这些SQL作业很难以最佳的性能方式运行。
+
+
+
+Shuffle partition的另外一个问题是，同一个shuffle partition数设置将应用到所有的stage。Spark在执行一个SQL作业时，会划分成多个stage。通常情况下，每个stage的数据分布和大小可能都不太一样，全局的shuffle partition设置最多只能对某个或者某些stage最优，没有办法做到全局所有的stage设置最优。
+
+
+
+这一系列关于shufflepartition的性能和易用性挑战，促使我们思考新的方法：我们能否根据运行时获取的shuffle数据量信息，例如数据块大小，记录行数等等，自动为每一个stage设置合适的shuffle partition值？
+
+
+
+挑战2：Spark SQL最佳执行计划
+
+
+
+Spark SQL在执行SQL之前，会将SQL或者Dataset程序解析成逻辑计划，然后经历一系列的优化，最后确定一个可执行的物理计划。最终选择的物理计划的不同对性能有很大的影响。如何选择最佳的执行计划，这便是Spark SQL的Catalyst优化器的核心工作。Catalyst早期主要是基于规则的优化器（RBO），在Spark 2.2中又加入了基于代价的优化（CBO）。目前执行计划的确定是在计划阶段，一旦确认以后便不再改变。然而在运行期间，当我们获取到更多运行时信息时，我们将有可能得到一个更佳的执行计划。
+
+
+
+以join操作为例，在Spark中最常见的策略是BroadcastHashJoin和SortMergeJoin。BroadcastHashJoin属于map side join，其原理是当其中一张表存储空间大小小于broadcast阈值时，Spark选择将这张小表广播到每一个Executor上，然后在map阶段，每一个mapper读取大表的一个分片，并且和整张小表进行join，整个过程中避免了把大表的数据在集群中进行shuffle。而SortMergeJoin在map阶段2张数据表都按相同的分区方式进行shuffle写，reduce阶段每个reducer将两张表属于对应partition的数据拉取到同一个任务中做join。RBO根据数据的大小，尽可能把join操作优化成BroadcastHashJoin。Spark中使用参数spark.sql.autoBroadcastJoinThreshold来控制选择BroadcastHashJoin的阈值，默认是10MB。然而对于复杂的SQL查询，它可能使用中间结果来作为join的输入，在计划阶段，Spark并不能精确地知道join中两表的大小或者会错误地估计它们的大小，以致于错失了使用BroadcastHashJoin策略来优化join执行的机会。但是在运行时，通过从shuffle写得到的信息，我们可以动态地选用BroadcastHashJoin。以下是一个例子，join一边的输入大小只有600K，但Spark仍然规划成SortMergeJoin。
+
+
+
+
+
+图1
+
+
+
+这促使我们思考第二个问题：我们能否通过运行时收集到的信息，来动态地调整执行计划？
+
+
+
+挑战3：数据倾斜
+
+
+
+数据倾斜是常见的导致Spark SQL性能变差的问题。数据倾斜是指某一个partition的数据量远远大于其它partition的数据，导致个别任务的运行时间远远大于其它任务，因此拖累了整个SQL的运行时间。在实际SQL作业中，数据倾斜很常见，join key对应的hash bucket总是会出现记录数不太平均的情况，在极端情况下，相同join key对应的记录数特别多，大量的数据必然被分到同一个partition因而造成数据严重倾斜。如图2，可以看到大部分任务3秒左右就完成了，而最慢的任务却花了4分钟，它处理的数据量却是其它任务的若干倍。
+
+
+
+
+
+图2
+
+
+
+目前，处理join时数据倾斜的一些常见手段有： (1)增加shuffle partition数量，期望原本分在同一个partition中的数据可以被分散到多个partition中，但是对于同key的数据没有作用。(2)调大BroadcastHashJoin的阈值，在某些场景下可以把SortMergeJoin转化成BroadcastHashJoin而避免shuffle产生的数据倾斜。(3)手动过滤倾斜的key，并且对这些数据加入随机的前缀，在另一张表中这些key对应的数据也相应的膨胀处理，然后再做join。综上，这些手段都有各自的局限性并且涉及很多的人为处理。基于此，我们思考了第三个问题：Spark能否在运行时自动地处理join中的数据倾斜？
+
+
+
+自适应执行背景和简介
+
+
+
+早在2015年，Spark社区就提出了自适应执行的基本想法，在Spark的DAGScheduler中增加了提交单个map stage的接口，并且在实现运行时调整shuffle partition数量上做了尝试。但目前该实现有一定的局限性，在某些场景下会引入更多的shuffle，即更多的stage，对于三表在同一个stage中做join等情况也无法很好的处理。所以该功能一直处于实验阶段，配置参数也没有在官方文档中提及。
+
+
+
+基于这些社区的工作，英特尔大数据技术团队对自适应执行做了重新的设计，实现了一个更为灵活的自适性执行框架。在这个框架下面，我们可以添加额外的规则，来实现更多的功能。目前，已实现的特性包括：自动设置shuffle partition数，动态调整执行计划，动态处理数据倾斜等等。
+
+
+
+自适应执行架构
+
+
+
+在Spark SQL中，当Spark确定最后的物理执行计划后，根据每一个operator对RDD的转换定义，它会生成一个RDD的DAG图。之后Spark基于DAG图静态划分stage并且提交执行，所以一旦执行计划确定后，在运行阶段无法再更新。自适应执行的基本思路是在执行计划中事先划分好stage，然后按stage提交执行，在运行时收集当前stage的shuffle统计信息，以此来优化下一个stage的执行计划，然后再提交执行后续的stage。
+
+
+
+
+
+图3
+
+
+
+从图3中我们可以看出自适应执行的工作方法，首先以Exchange节点作为分界将执行计划这棵树划分成多个QueryStage（Exchange节点在Spark SQL中代表shuffle）。每一个QueryStage都是一棵独立的子树，也是一个独立的执行单元。在加入QueryStage的同时，我们也加入一个QueryStageInput的叶子节点，作为父亲QueryStage的输入。例如对于图中两表join的执行计划来说我们会创建3个QueryStage。最后一个QueryStage中的执行计划是join本身，它有2个QueryStageInput代表它的输入，分别指向2个孩子的QueryStage。在执行QueryStage时，我们首先提交它的孩子stage，并且收集这些stage运行时的信息。当这些孩子stage运行完毕后，我们可以知道它们的大小等信息，以此来判断QueryStage中的计划是否可以优化更新。例如当我们获知某一张表的大小是5M，它小于broadcast的阈值时，我们可以将SortMergeJoin转化成BroadcastHashJoin来优化当前的执行计划。我们也可以根据孩子stage产生的shuffle数据量，来动态地调整该stage的reducer个数。在完成一系列的优化处理后，最终我们为该QueryStage生成RDD的DAG图，并且提交给DAG Scheduler来执行。
+
+
+
+自动设置reducer个数
+
+
+
+假设我们设置的shufflepartition个数为5，在map stage结束之后，我们知道每一个partition的大小分别是70MB，30MB，20MB，10MB和50MB。假设我们设置每一个reducer处理的目标数据量是64MB，那么在运行时，我们可以实际使用3个reducer。第一个reducer处理partition 0 (70MB)，第二个reducer处理连续的partition 1 到3，共60MB，第三个reducer处理partition 4 (50MB)，如图4所示。
+
+
+
+
+
+图4
+
+
+
+在自适应执行的框架中，因为每个QueryStage都知道自己所有的孩子stage，因此在调整reducer个数时，可以考虑到所有的stage输入。另外，我们也可以将记录条数作为一个reducer处理的目标值。因为shuffle的数据往往都是经过压缩的，有时partition的数据量并不大，但解压后记录条数确远远大于其它partition，造成数据不均。所以同时考虑数据大小和记录条数可以更好地决定reducer的个数。
+
+
+
+动态调整执行计划
+
+
+
+目前我们支持在运行时动态调整join的策略，在满足条件的情况下，即一张表小于Broadcast阈值，可以将SortMergeJoin转化成BroadcastHashJoin。由于SortMergeJoin和BroadcastHashJoin输出的partition情况并不相同，随意转换可能在下一个stage引入额外的shuffle操作。因此我们在动态调整join策略时，遵循一个规则，即在不引入额外shuffle的前提下才进行转换。
+
+
+
+将SortMergeJoin转化成BroadcastHashJoin有哪些好处呢？因为数据已经shuffle写到磁盘上，我们仍然需要shuffle读取这些数据。我们可以看看图5的例子，假设A表和B表join，map阶段2张表各有2个map任务，并且shuffle partition个数为5。如果做SortMergeJoin，在reduce阶段需要启动5个reducer，每个reducer通过网络shuffle读取属于自己的数据。然而，当我们在运行时发现B表可以broadcast，并且将其转换成BroadcastHashJoin之后，我们只需要启动2个reducer，每一个reducer读取一个mapper的整个shuffle output文件。当我们调度这2个reducer任务时，可以优先将其调度在运行mapper的Executor上，因此整个shuffle读变成了本地读取，没有数据通过网络传输。并且读取一个文件这样的顺序读，相比原先shuffle时随机的小文件读，效率也更胜一筹。另外，SortMergeJoin过程中往往会出现不同程度的数据倾斜问题，拖慢整体的运行时间。而转换成BroadcastHashJoin后，数据量一般比较均匀，也就避免了倾斜，我们可以在下文实验结果中看到更具体的信息。
+
+
+
+
+
+图5
+
+
+
+动态处理数据倾斜
+
+
+
+在自适应执行的框架下，我们可以在运行时很容易地检测出有数据倾斜的partition。当执行某个stage时，我们收集该stage每个mapper 的shuffle数据大小和记录条数。如果某一个partition的数据量或者记录条数超过中位数的N倍，并且大于某个预先配置的阈值，我们就认为这是一个数据倾斜的partition，需要进行特殊的处理。
+
+
+
+
+
+图6
+
+
+
+假设我们A表和B表做inner join，并且A表中第0个partition是一个倾斜的partition。一般情况下，A表和B表中partition 0的数据都会shuffle到同一个reducer中进行处理，由于这个reducer需要通过网络拉取大量的数据并且进行处理，它会成为一个最慢的任务拖慢整体的性能。在自适应执行框架下，一旦我们发现A表的partition 0发生倾斜，我们随后使用N个任务去处理该partition。每个任务只读取若干个mapper的shuffle 输出文件，然后读取B表partition 0的数据做join。最后，我们将N个任务join的结果通过Union操作合并起来。为了实现这样的处理，我们对shuffle read的接口也做了改变，允许它只读取部分mapper中某一个partition的数据。在这样的处理中，B表的partition 0会被读取N次，虽然这增加了一定的额外代价，但是通过N个任务处理倾斜数据带来的收益仍然大于这样的代价。如果B表中partition 0也发生倾斜，对于inner join来说我们也可以将B表的partition 0分成若干块，分别与A表的partition 0进行join，最终union起来。但对于其它的join类型例如Left Semi Join我们暂时不支持将B表的partition 0拆分。
+
+
+
+自适应执行和Spark SQL在100TB上的性能比较
+
+
+
+我们使用99台机器搭建了一个集群，使用Spark2.2在TPC-DS 100TB的数据集进行了实验，比较原版Spark和自适应执行的性能。以下是集群的详细信息：
+
+
+
+
+
+
+
+
+
+图7
+
+
+
+实验结果显示，在自适应执行模式下，103条SQL中有92条都得到了明显的性能提升，其中47条SQL的性能提升超过10%，最大的性能提升达到了3.8倍，并且没有出现性能下降的情况。另外在原版Spark中，有5条SQL因为OOM等原因无法顺利运行，在自适应模式下我们也对这些问题做了优化，使得103条SQL在TPC-DS 100TB数据集上全部成功运行。以下是具体的性能提升比例和性能提升最明显的几条SQL。
+
+
+
+
+
+图8
+
+
+
+图9
+
+
+
+通过仔细分析了这些性能提升的SQL，我们可以看到自适应执行带来的好处。首先是自动设置reducer个数，原版Spark使用10976作为shuffle partition数，在自适应执行时，以下SQL的reducer个数自动调整为1064和1079，可以明显看到执行时间上也提升了很多。这正是因为减少了调度的负担和任务启动的时间，以及减少了磁盘IO请求。
+
+
+
+原版Spark：
+
+
+
+
+
+图10
+
+
+
+自适应执行：
+
+
+
+
+
+图11
+
+
+
+在运行时动态调整执行计划，将SortMergeJoin转化成BroadcastHashJoin在某些SQL中也带来了很大的提升。例如在以下的例子中，原本使用SortMergeJoin因为数据倾斜等问题花费了2.5分钟。在自适应执行时，因为其中一张表的大小只有2.5k所以在运行时转化成了BroadcastHashJoin，执行时间缩短为10秒。
+
+
+原版Spark：
+
+
+
+
+
+
+图12
+
+自适应执行：
+
+
+
+
+
+
+图13
+
+
+
+100 TB的挑战及优化
+
+
+
+成功运行TPC-DS 100 TB数据集中的所有SQL，对于Apache Spark来说也是一大挑战。虽然SparkSQL官方表示支持TPC-DS所有的SQL，但这是基于小数据集。在100TB这个量级上，Spark暴露出了一些问题导致有些SQL执行效率不高，甚至无法顺利执行。在做实验的过程中，我们在自适应执行框架的基础上，对Spark也做了其它的优化改进，来确保所有SQL在100TB数据集上可以成功运行。以下是一些典型的问题。
+
+
+
+统计map端输出数据时driver单点瓶颈的优化（SPARK-22537）
+
+
+
+在每个map任务结束后，会有一个表示每个partition大小的数据结构（即下面提到的CompressedMapStatus或HighlyCompressedMapStatus）返回给driver。而在自适应执行中，当一次shuffle的map stage结束后，driver会聚合每个mapper给出的partition大小信息，得到在各个partition上所有mapper输出的数据总大小。该统计由单线程完成，如果mapper的数量是M，shuffle partition的数量为S，那么统计的时间复杂度在O(M x S) ~ O (M x S x log(M x S)) 之间，当CompressedMapStatus被使用时，复杂度为这个区间的下限，当HighlyCompressedMapStatus被使用时，空间有所节省，时间会更长，在几乎所有的partition数据都为空时，复杂度会接近该区间的上限。
+
+
+
+在M x S增大时，我们会遇到driver上的单点瓶颈，一个明显的表现是UI上map stage和reduce stage之间的停顿。为了解决这个单点瓶颈，我们将任务尽量均匀地划分给多个线程，线程之间不相交地为scala Array中的不同元素赋聚合值。
+
+在这项优化中，新的spark.shuffle.mapOutput.parallelAggregationThreshold（简称threshold）被引入，用于配置使用多线程聚合的阈值，聚合的并行度由JVM中可用core数和M * S / threshold + 1中的小值决定。
+
+
+
+Shuffle读取连续partition时的优化 （SPARK-9853）
+
+
+
+在自适应执行的模式下，一个reducer可能会从一个mapoutput文件中读取诺干个连续的数据块。目前的实现中，它需要拆分成许多独立的getBlockData调用，每次调用分别从硬盘读取一小块数据，这样就需要很多的磁盘IO。我们对这样的场景做了优化，使得Spark可以一次性地把这些连续数据块都读上来，这样就大大减少了磁盘的IO。在小的基准测试程序中，我们发现shuffle read的性能可以提升3倍。
+
+
+
+BroadcastHashJoin中避免不必要的partition读的优化
+
+
+
+自适应执行可以为现有的operator提供更多优化的可能。在SortMergeJoin中有一个基本的设计：每个reducetask会先读取左表中的记录，如果左表的 partition为空，则右表中的数据我们无需关注（对于非anti join的情况），这样的设计在左表有一些partition为空时可以节省不必要的右表读取，在SortMergeJoin中这样的实现很自然。
+
+
+
+BroadcastHashJoin中不存在按照join key分区的过程，所以缺失了这项优化。然而在自适应执行的一些情况中，利用stage间的精确统计信息，我们可以找回这项优化：如果SortMergeJoin在运行时被转换成了BroadcastHashJoin，且我们能得到各个partition key对应partition的精确大小，则新转换成的BroadcastHashJoin将被告知：无需去读那些小表中为空的partition，因为不会join出任何结果。
+
+
+
+Baidu真实产品线试用情况
+
+
+
+我们将自适应执行优化应用在Baidu内部基于Spark SQL的即席查询服务BaiduBig SQL之上，做了进一步的落地验证，通过选取单日全天真实用户查询，按照原有执行顺序回放重跑和分析，得到如下几点结论：
+
+
+
+对于秒级的简单查询，自适应版本的性能提升并不明显，这主要是因为它们的瓶颈和主要耗时集中在了IO上面，而这不是自适应执行的优化点。
+
+按照查询复杂度维度考量测试结果发现：查询中迭代次数越多，多表join场景越复杂的情况下自适应执行效果越好。我们简单按照group by, sort, join, 子查询等操作个数来将查询分类，如上关键词大于3的查询有明显的性能提升，优化比从50%~200%不等，主要优化点来源于shuffle的动态并发数调整及join优化。
+
+从业务使用角度来分析，前文所述SortMergeJoin转BroadcastHashJoin的优化在Big SQL场景中命中了多种典型的业务SQL模板，试考虑如下计算需求：用户期望从两张不同维度的计费信息中捞取感兴趣的user列表在两个维度的整体计费。收入信息原表大小在百T级别，用户列表只包含对应用户的元信息，大小在10M以内。两张计费信息表字段基本一致，所以我们将两张表与用户列表做inner join后union做进一步分析，SQL表达如下：
+
+
+
+select t.c1, t.id, t.c2, t.c3, t.c4,  sum(t.num1), sum(t.num2), sum(t.num3) from
+
+(
+
+select  c1, t1.id as id, c2, c3, c4, sum(num1s) as num1, sum(num2) as num2, sum(num3)  as num3 from basedata.shitu_a t1 INNER JOIN basedata.user_82_1512023432000 t2  ON (t1.id = t2.id)  where  (event_day=20171107)  and flag !=  'true'  group by c1, t1.id, c2, c3, c4
+
+union  all
+
+select  c1, t1.id as id, c2, c3, c4, sum(num1s) as num1, sum(num2) as num2, sum(num3)  as num3 from basedata.shitu_b t1 INNER JOIN basedata.user_82_1512023432000 t2  ON (t1.id = t2.id)  where  (event_day=20171107)  and flag !=  'true'  group by c1, t1.id, c2, c3, c4
+
+) t group by t.c1, t.id, t.c2, t.c3, c4
+
+
+
+
+
+对应的原版Spark执行计划如下：
+
+
+
+
+
+图14
+
+
+
+针对于此类用户场景，可以全部命中自适应执行的join优化逻辑，执行过程中多次SortMergeJoin转为BroadcastHashJoin，减少了中间内存消耗及多轮sort，得到了近200%的性能提升。
+
+
+
+结合上述3点，下一步自适应执行在Baidu内部的优化落地工作将进一步集中在大数据量、复杂查询的例行批量作业之上，并考虑与用户查询复杂度关联进行动态的开关控制。对于数千台的大规模集群上运行的复杂查询，自适应执行可以动态调整计算过程中的并行度，可以帮助大幅提升集群的资源利用率。另外，自适应执行可以获取到多轮stage之间更完整的统计信息，下一步我们也考虑将对应数据及Strategy接口开放给Baidu Spark平台上层用户，针对特殊作业进行进一步的定制化Strategy策略编写。
+
+
+
+总结
+
+
+
+随着Spark SQL广泛的使用以及业务规模的不断增长，在大规模数据集上遇到的易用性和性能方面的挑战将日益明显。本文讨论了三个典型的问题，包括调整shuffle partition数量，选择最佳执行计划和数据倾斜。这些问题在现有的框架下并不容易解决，而自适应执行可以很好地应对这些问题。我们介绍了自适应执行的基本架构以及解决这些问题的具体方法。最后我们在TPC-DS 100TB数据集上验证了自适应执行的优势，相比较原版Spark SQL，103个SQL查询中，90%的查询都得到了明显的性能提升，最大的提升达到3.8倍，并且原先失败的5个查询在自适应执行下也顺利完成。我们在百度的Big SQL平台也做了进一步的验证，对于复杂的真实查询可以达到2倍的性能提升。总之，自适应执行解决了Spark SQL在大数据规模上遇到的很多挑战，并且很大程度上改善了Spark SQL的易用性和性能，提高了超大集群中多租户多并发作业情况下集群的资源利用率。将来，我们考虑在自适应执行的框架之下，提供更多运行时可以优化的策略，并且将我们的工作贡献回馈给社区，也希望有更多的朋友可以参与进来，将其进一步完善。
+
+
+==========
+
+Spark高级操作之json复杂和嵌套数据结构的操作一
+原创： 浪尖  Spark学习技巧  2017-08-05
+一，基本介绍
+
+本文主要讲spark2.0版本以后存在的Sparksql的一些实用的函数，帮助解决复杂嵌套的json数据格式，比如，map和嵌套结构。Spark2.1在spark 的Structured Streaming也可以使用这些功能函数。
+
+下面几个是本文重点要讲的方法。
+
+A),get_json_object()
+
+B),from_json()
+
+C),to_json()
+
+D),explode()
+
+E),selectExpr()
+
+二，准备阶段
+
+首先，创建一个没有任何嵌套的JSon Schema
+
+import org.apache.spark.sql.types._
+import org.apache.spark.sql.functions._
+val jsonSchema = new StructType().add("battery_level", LongType).add("c02_level", LongType).add("cca3",StringType).add("cn", StringType).add("device_id", LongType).add("device_type", StringType).add("signal", LongType).add("ip", StringType).add("temp", LongType).add("timestamp", TimestampType)
+
+使用上面的schema，我在这里创建一个Dataframe，使用的是scala 的case class，同时会产生一些json格式的数据。当然，生产中这些数据也可以来自于kafka。这个case class总共有两个字段：整型(作为device id)和一个字符串(json的数据结构，代表设备的事件)
+
+// define a case class
+case class DeviceData (id: Int, device: String)
+// create some sample data
+val eventsDS = Seq (
+  (0, """{"device_id": 0, "device_type": "sensor-ipad", "ip": "68.161.225.1", "cca3": "USA", "cn": "United States", "temp": 25, "signal": 23, "battery_level": 8, "c02_level": 917, "timestamp" :1475600496 }"""),
+  (1, """{"device_id": 1, "device_type": "sensor-igauge", "ip": "213.161.254.1", "cca3": "NOR", "cn": "Norway", "temp": 30, "signal": 18, "battery_level": 6, "c02_level": 1413, "timestamp" :1475600498 }"""),
+  (2, """{"device_id": 2, "device_type": "sensor-ipad", "ip": "88.36.5.1", "cca3": "ITA", "cn": "Italy", "temp": 18, "signal": 25, "battery_level": 5, "c02_level": 1372, "timestamp" :1475600500 }"""),
+  (3, """{"device_id": 3, "device_type": "sensor-inest", "ip": "66.39.173.154", "cca3": "USA", "cn": "United States", "temp": 47, "signal": 12, "battery_level": 1, "c02_level": 1447, "timestamp" :1475600502 }"""),
+  (4, """{"device_id": 4, "device_type": "sensor-ipad", "ip": "203.82.41.9", "cca3": "PHL", "cn": "Philippines", "temp": 29, "signal": 11, "battery_level": 0, "c02_level": 983, "timestamp" :1475600504 }"""),
+  (5, """{"device_id": 5, "device_type": "sensor-istick", "ip": "204.116.105.67", "cca3": "USA", "cn": "United States", "temp": 50, "signal": 16, "battery_level": 8, "c02_level": 1574, "timestamp" :1475600506 }"""),
+  (6, """{"device_id": 6, "device_type": "sensor-ipad", "ip": "220.173.179.1", "cca3": "CHN", "cn": "China", "temp": 21, "signal": 18, "battery_level": 9, "c02_level": 1249, "timestamp" :1475600508 }"""),
+  (7, """{"device_id": 7, "device_type": "sensor-ipad", "ip": "118.23.68.227", "cca3": "JPN", "cn": "Japan", "temp": 27, "signal": 15, "battery_level": 0, "c02_level": 1531, "timestamp" :1475600512 }"""),
+  (8 ,""" {"device_id": 8, "device_type": "sensor-inest", "ip": "208.109.163.218", "cca3": "USA", "cn": "United States", "temp": 40, "signal": 16, "battery_level": 9, "c02_level": 1208, "timestamp" :1475600514 }"""),
+  (9,"""{"device_id": 9, "device_type": "sensor-ipad", "ip": "88.213.191.34", "cca3": "ITA", "cn": "Italy", "temp": 19, "signal": 11, "battery_level": 0, "c02_level": 1171, "timestamp" :1475600516 }"""),
+  (10,"""{"device_id": 10, "device_type": "sensor-igauge", "ip": "68.28.91.22", "cca3": "USA", "cn": "United States", "temp": 32, "signal": 26, "battery_level": 7, "c02_level": 886, "timestamp" :1475600518 }"""),
+  (11,"""{"device_id": 11, "device_type": "sensor-ipad", "ip": "59.144.114.250", "cca3": "IND", "cn": "India", "temp": 46, "signal": 25, "battery_level": 4, "c02_level": 863, "timestamp" :1475600520 }"""),
+  (12, """{"device_id": 12, "device_type": "sensor-igauge", "ip": "193.156.90.200", "cca3": "NOR", "cn": "Norway", "temp": 18, "signal": 26, "battery_level": 8, "c02_level": 1220, "timestamp" :1475600522 }"""),
+  (13, """{"device_id": 13, "device_type": "sensor-ipad", "ip": "67.185.72.1", "cca3": "USA", "cn": "United States", "temp": 34, "signal": 20, "battery_level": 8, "c02_level": 1504, "timestamp" :1475600524 }"""),
+  (14, """{"device_id": 14, "device_type": "sensor-inest", "ip": "68.85.85.106", "cca3": "USA", "cn": "United States", "temp": 39, "signal": 17, "battery_level": 8, "c02_level": 831, "timestamp" :1475600526 }"""),
+  (15, """{"device_id": 15, "device_type": "sensor-ipad", "ip": "161.188.212.254", "cca3": "USA", "cn": "United States", "temp": 27, "signal": 26, "battery_level": 5, "c02_level": 1378, "timestamp" :1475600528 }"""),
+  (16, """{"device_id": 16, "device_type": "sensor-igauge", "ip": "221.3.128.242", "cca3": "CHN", "cn": "China", "temp": 10, "signal": 24, "battery_level": 6, "c02_level": 1423, "timestamp" :1475600530 }"""),
+  (17, """{"device_id": 17, "device_type": "sensor-ipad", "ip": "64.124.180.215", "cca3": "USA", "cn": "United States", "temp": 38, "signal": 17, "battery_level": 9, "c02_level": 1304, "timestamp" :1475600532 }"""),
+  (18, """{"device_id": 18, "device_type": "sensor-igauge", "ip": "66.153.162.66", "cca3": "USA", "cn": "United States", "temp": 26, "signal": 10, "battery_level": 0, "c02_level": 902, "timestamp" :1475600534 }"""),
+  (19, """{"device_id": 19, "device_type": "sensor-ipad", "ip": "193.200.142.254", "cca3": "AUT", "cn": "Austria", "temp": 32, "signal": 27, "battery_level": 5, "c02_level": 1282, "timestamp" :1475600536 }""")).toDF("id", "device").as[DeviceData]
+
+
+
+三，如何使用get_json_object()
+
+该方法从spark1.6开始就有了，从一个json 字符串中根据指定的json 路径抽取一个json 对象。从上面的dataset中取出部分数据，然后抽取部分字段组装成新的json 对象。比如，我们仅仅抽取：id，devicetype，ip，CCA3 code.
+
+val eventsFromJSONDF = Seq (
+  (0, """{"device_id": 0, "device_type": "sensor-ipad", "ip": "68.161.225.1", "cca3": "USA", "cn": "United States", "temp": 25, "signal": 23, "battery_level": 8, "c02_level": 917, "timestamp" :1475600496 }"""),
+  (1, """{"device_id": 1, "device_type": "sensor-igauge", "ip": "213.161.254.1", "cca3": "NOR", "cn": "Norway", "temp": 30, "signal": 18, "battery_level": 6, "c02_level": 1413, "timestamp" :1475600498 }"""),
+  (2, """{"device_id": 2, "device_type": "sensor-ipad", "ip": "88.36.5.1", "cca3": "ITA", "cn": "Italy", "temp": 18, "signal": 25, "battery_level": 5, "c02_level": 1372, "timestamp" :1475600500 }"""),
+  (3, """{"device_id": 3, "device_type": "sensor-inest", "ip": "66.39.173.154", "cca3": "USA", "cn": "United States", "temp": 47, "signal": 12, "battery_level": 1, "c02_level": 1447, "timestamp" :1475600502 }"""),
+  (4, """{"device_id": 4, "device_type": "sensor-ipad", "ip": "203.82.41.9", "cca3": "PHL", "cn": "Philippines", "temp": 29, "signal": 11, "battery_level": 0, "c02_level": 983, "timestamp" :1475600504 }"""),
+  (5, """{"device_id": 5, "device_type": "sensor-istick", "ip": "204.116.105.67", "cca3": "USA", "cn": "United States", "temp": 50, "signal": 16, "battery_level": 8, "c02_level": 1574, "timestamp" :1475600506 }"""),
+  (6, """{"device_id": 6, "device_type": "sensor-ipad", "ip": "220.173.179.1", "cca3": "CHN", "cn": "China", "temp": 21, "signal": 18, "battery_level": 9, "c02_level": 1249, "timestamp" :1475600508 }"""),
+  (7, """{"device_id": 7, "device_type": "sensor-ipad", "ip": "118.23.68.227", "cca3": "JPN", "cn": "Japan", "temp": 27, "signal": 15, "battery_level": 0, "c02_level": 1531, "timestamp" :1475600512 }"""),
+  (8 ,""" {"device_id": 8, "device_type": "sensor-inest", "ip": "208.109.163.218", "cca3": "USA", "cn": "United States", "temp": 40, "signal": 16, "battery_level": 9, "c02_level": 1208, "timestamp" :1475600514 }"""),
+  (9,"""{"device_id": 9, "device_type": "sensor-ipad", "ip": "88.213.191.34", "cca3": "ITA", "cn": "Italy", "temp": 19, "signal": 11, "battery_level": 0, "c02_level": 1171, "timestamp" :1475600516 }""")).toDF("id", "json")
+
+测试及输出
+
+val jsDF = eventsFromJSONDF.select($"id", get_json_object($"json", "$.device_type").alias("device_type"),get_json_object($"json", "$.ip").alias("ip"),get_json_object($"json", "$.cca3").alias("cca3"))
+jsDF.printSchema
+
+jsDF.show
+
+
+
+
+四，如何使用from_json()
+
+与get_json_object不同的是该方法，使用schema去抽取单独列。在dataset的api select中使用from_json()方法，我可以从一个json 字符串中按照指定的schema格式抽取出来作为DataFrame的列。还有，我们也可以将所有在json中的属性和值当做一个devices的实体。我们不仅可以使用device.arrtibute去获取特定值，也可以使用*通配符。
+
+下面的例子，主要实现如下功能：
+
+A),使用上述schema从json字符串中抽取属性和值，并将它们视为devices的独立列。
+
+B),select所有列
+
+C),使用.,获取部分列。
+
+val devicesDF = eventsDS.select(from_json($"device", jsonSchema) as "devices").select($"devices.*").filter($"devices.temp" > 10 and $"devices.signal" > 15)
+
+
+
+
+
+
+五，如何使用to_json()
+
+下面使用to_json()将获取的数据转化为json格式。将结果重新写入kafka或者保存partquet文件。
+
+val stringJsonDF = eventsDS.select(to_json(struct($"*"))).toDF("devices")
+
+stringJsonDF.show
+
+
+
+
+
+
+保存数据到kafka
+
+stringJsonDF.write.format("kafka").option("kafka.bootstrap.servers", "localhost:9092").option("topic", "iot-devices").save()
+
+注意依赖
+
+groupId = org.apache.spark
+artifactId = spark-sql-kafka-0-10_2.11
+version = 2.1.0
+
+六，如何使用selectExpr()
+
+将列转化为一个JSON对象的另一种方式是使用selectExpr()功能函数。例如我们可以将device列转化为一个JSON对象。
+
+val stringsDF = eventsDS.selectExpr("CAST(id AS INT)", "CAST(device AS STRING)")
+
+stringsDF.show
+
+
+
+SelectExpr()方法的另一个用法，就是使用表达式作为参数，将它们转化为指定的列。如下：
+
+devicesDF.selectExpr("c02_level", "round(c02_level/temp) as ratio_c02_temperature").orderBy($"ratio_c02_temperature" desc).show
+
+使用Sparksql的slq语句是很好写的
+
+首先注册成临时表，然后写sql
+
+devicesDF.createOrReplaceTempView("devicesDFT")
+spark.sql("select c02_level,round(c02_level/temp) as ratio_c02_temperature from devicesDFT order by ratio_c02_temperature desc").show
+
+七，验证
+
+为了验证我们的DataFrame转化为json String是成功的我们将结果写入本地磁盘。
+
+stringJsonDF.write.mode("overwrite").format("parquet").save("file:///opt/jules")
+
+
+读入
+
+val parquetDF = spark.read.parquet("file:///opt/jules")
+
+
+
+
+
+八，总结
+
+    本文主要讲 get_json_object(), from_json(), to_json(), selectExpr(), and explode()基本介绍使用，下次文章讲解更加复杂的嵌套格式的使用，欢迎关注浪尖公众号。
 

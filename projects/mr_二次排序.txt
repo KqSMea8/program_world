@@ -1,0 +1,48 @@
+
+public class DateTemperaturePairimplements Writable,WritableComparable<DateTemperaturePair>{
+    private Text yearMonth = new Text();
+    private Text day = new Text();
+    private IntWritable temperature = new IntWritable();
+
+    @Override
+    public int compareTo(DateTemperaturePair piar){
+
+    }
+
+}
+
+
+示例 1 -1: DateTemperaturePair类
+1	import org.apache.hadoop•io•Writable;
+2	import org.apache.hadoop.io.WritableComparable;
+4	public class DateTemperaturePair
+5	implements Writable, WritableComparable<DateTemperaturePair> {
+6
+7	private Text yearMonth = new Text(); // 自然键
+8	private Text day = new Text();
+9	private IntWritable temperature = new IntWritable(); // 次键
+0
+2
+3	@Override
+4	/**
+5	*这个比较器将控制键的排序顺序
+6	*/
+7	public int compareTo(DateTemperaturePair pair)	{
+
+
+}
+
+public int compareTo(DateTemperaturePair pair) {
+18	int compareValue = this.yearMonth.compareTo(pair.getYearMonth());
+19	if (compareValue == 0) {
+20	compareValue = temperature.compareTo(pair.getTemperature());
+21	}
+22	//return compareValue; // 升序排序
+23	return -l*compareValue; // 降序排序
+24	}
+25	...
+26	}
+
+
+
+

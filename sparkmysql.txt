@@ -1,0 +1,29 @@
+Spark读取关系型数据库，官方有API接口，如下：
+    ①、SparkSession.read.jdbc(url, table, properties)
+    ②、SparkSession.read.jdbc(url, table, columnName, lowerBound, upperBound, numPartitions, connectionProperties)
+    ③、SparkSession.read.jdbc(url, table, predicates, connectionProperties)
+
+对于①②，网上有很多例子，也很好理解。但是不能满足我的业务场景，必须要用③来实现。说说我的业务场景
+
+1.用户传连接信息来，可能是mysql，oracle，db2，postgresql中的一种
+
+2.这些表可能数据量最多接近千万，而且没有分库分表也没用于分区的字段，甚至没有id，(我知道这不敢想，但是历史数据，10来年的沉淀确实存在)
+
+难点1.Spark读取关系型数据库，数据都会放一个partation中，至少目前版本是这样，那么千万级别的数据，driver会OOM。
+
+2.因为是用户传来连接信息，事先不知道要连接哪个表，表里有哪些字段
+
+所以研究了下③中参数predicates ，是Array[String]数组，设想能不能用分页，还真成了。以mysql为例，分页用limit
+
+示例
+
+
+    //按limit分页
+    val partitons= new Array[String](3);
+    partitons(0)="1=1 limit 0,10000";
+    partitons(1)="1=1 limit 10000,10000";
+    partitons(2)="1=1 limit 20000,10000";
+
+session.read.jdbc(prop.getProperty("url"), prop.getProperty("dbtable"), partitons,prop)
+多个分区抽取关系型数据库，driver不会再OOM了。但是有些情况这些库会扛不住Spark这么读取数据，所以注意数组的长度和数据库的设置，这篇文章就不再写了。
+---------------------

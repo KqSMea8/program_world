@@ -1,0 +1,323 @@
+SparkStreaming与kafka010整合
+
+读本文之前，请先阅读之前文章：
+
+必读：再讲Spark与kafka 0.8.2.1+整合
+
+Spark Streaming与kafka 0.10的整合，和0.8版本的direct Stream方式很像。Kafka的分区和spark的分区是一一对应的，可以获取offsets和元数据。API使用起来没有显著的区别。这个整合版本标记为experimental，所以API有可能改变。
+
+工程依赖
+
+首先，添加依赖。
+
+groupId = org.apache.spark
+
+artifactId = spark-streaming-kafka-0-10_2.11
+
+version = 2.2.1
+
+不要手动添加org.apache.kafka相关的依赖，如kafka-clients。spark-streaming-kafka-0-10已经包含相关的依赖了，不同的版本会有不同程度的不兼容。
+
+代码案例
+
+首先导入包正确的包org.apache.spark.streaming.kafka010
+
+import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.common.serialization.StringDeserializer
+import org.apache.spark.streaming.kafka010._
+import org.apache.spark.streaming.kafka010.LocationStrategies.PreferConsistent
+import org.apache.spark.streaming.kafka010.ConsumerStrategies.Subscribe
+ssc = new StreamingContext(sparkConf, Milliseconds(1000))
+val preferredHosts = LocationStrategies.PreferConsistent
+val kafkaParams = Map[String, Object](
+ "bootstrap.servers" -> "localhost:9092,anotherhost:9092",
+ "key.deserializer" -> classOf[StringDeserializer],
+ "value.deserializer" -> classOf[StringDeserializer],
+ "group.id" -> "use_a_separate_group_id_for_each_stream",
+ "auto.offset.reset" -> "latest",
+ "enable.auto.commit" -> (false: java.lang.Boolean)
+)
+
+val topics = Array("topicA", "topicB")
+val stream = KafkaUtils.createDirectStream[String, String](
+ ssc,
+ preferredHosts,
+ Subscribe[String, String](topics, kafkaParams)
+)
+
+stream.map(record => (record.key, record.value))
+
+
+
+kafka的参数，请参考kafka官网。如果，你的spark批次时间超过了kafka的心跳时间(30s)，需要增加heartbeat.interval.ms和session.timeout.ms。例如，批处理时间是5min，那么就需要调整group.max.session.timeout.ms。注意，例子中是将enable.auto.commit设置为了false。
+
+LocationStrategies(本地策略)
+
+新版本的消费者API会预取消息入buffer。因此，为了提升性能，在Executor端缓存消费者(而不是每个批次重新创建)是非常有必要的，优先调度那些分区到已经有了合适消费者主机上。
+
+在很多情况下，你需要像上文一样使用LocationStrategies.PreferConsistent，这个参数会将分区尽量均匀地分配到所有的可以Executor上去。如果，你的Executor和kafka broker在同一台机器上，可以用PreferBrokers，这将优先将分区调度到kafka分区leader所在的主机上。最后，分区间负荷有明显的倾斜，可以用PreferFixed。这个允许你指定一个明确的分区到主机的映射（没有指定的分区将会使用连续的地址）。
+
+消费者缓存的数目默认最大值是64。如果你希望处理超过（64*excutor数目）kafka分区，spark.streaming.kafka.consumer.cache.maxCapacity这个参数可以帮助你修改这个值。
+
+如果你想禁止kafka消费者缓存，可以将spark.streaming.kafka.consumer.cache.enabled修改为false。禁止缓存缓存可能需要解决SPARK-19185描述的问题。一旦这个bug解决，这个属性将会在后期的spark版本中移除。
+
+Cache是按照topicpartition和groupid进行分组的，所以每次调用creaDirectStream的时候要单独设置group.id。
+
+ConsumerStrategies(消费策略)
+
+新的kafka消费者api有多个不同的方法去指定消费者，其中有些方法需要考虑post-object-instantiation设置。ConsumerStrategies提供了一个抽象，它允许spark能够获得正确配置的消费者，即使从Checkpoint重启之后。
+
+ConsumerStrategies.Subscribe，如上面展示的一样，允许你订阅一组固定的集合的主题。SubscribePattern允许你使用正则来指定自己感兴趣的主题。注意，跟0.8整合不同的是，使用subscribe或者subscribepattern在运行stream期间应对应到添加分区。其实，Assign运行你指定固定分区的集合。这三种策略都有重载构造函数，允许您指定特定分区的起始偏移量。
+
+ConsumerStrategy是一个public类，允许你进行自定义策略。
+
+创建kafkaRDD
+
+类似于spark streaming的批处理，现在你可以通过指定自定义偏移范围自己创建kafkaRDD。
+
+def getKafkaParams(extra: (String, Object)*): JHashMap[String, Object] = {
+ val kp = new JHashMap[String, Object]()
+ kp.put("bootstrap.servers", kafkaTestUtils.brokerAddress)
+ kp.put("key.deserializer", classOf[StringDeserializer])
+ kp.put("value.deserializer", classOf[StringDeserializer])
+ kp.put("group.id", s"test-consumer-${Random.nextInt}-${System.currentTimeMillis}")
+ extra.foreach(e => kp.put(e._1, e._2))
+ kp
+}
+
+val kafkaParams = getKafkaParams("auto.offset.reset" -> "earliest")
+// Import dependencies and create kafka params as in Create Direct Stream above
+
+val offsetRanges = Array(
+ // topic, partition, inclusive starting offset, exclusive ending offset
+ OffsetRange("test", 0, 0, 100),
+ OffsetRange("test", 1, 0, 100)
+)
+
+val rdd = KafkaUtils.createRDD[String, String](sparkContext, kafkaParams, offsetRanges, PreferConsistent)
+
+
+
+注意，在这里是不能使用PreferBrokers的，因为不是流处理的话就没有driver端的消费者帮助你寻找元数据。必须使用PreferFixed,然后自己指定元数据
+
+大家可以进入createRDD里面，看其源码，其实就是根据你的参数封装成了RDD，跟流式批处理是一致的。
+
+def createRDD[K, V](
+   sc: SparkContext,
+   kafkaParams: ju.Map[String, Object],
+   offsetRanges: Array[OffsetRange],
+   locationStrategy: LocationStrategy
+ ): RDD[ConsumerRecord[K, V]] = {
+ val preferredHosts = locationStrategy match {
+   case PreferBrokers =>
+     throw new AssertionError(
+       "If you want to prefer brokers, you must provide a mapping using PreferFixed " +
+       "A single KafkaRDD does not have a driver consumer and cannot look up brokers for you.")
+   case PreferConsistent => ju.Collections.emptyMap[TopicPartition, String]()
+   case PreferFixed(hostMap) => hostMap
+ }
+ val kp = new ju.HashMap[String, Object](kafkaParams)
+ fixKafkaParams(kp)
+ val osr = offsetRanges.clone()
+
+ new KafkaRDD[K, V](sc, kp, osr, preferredHosts, true)
+}
+
+获取偏移
+
+Spark Streaming与kafka整合是运行你获取其消费的偏移的，具体方法如下：
+
+stream.foreachRDD { rdd =>
+ val offsetRanges = rdd.asInstanceOf[HasOffsetRanges].offsetRanges
+ rdd.foreachPartition { iter =>
+   val o: OffsetRange = offsetRanges(TaskContext.get.partitionId)
+   println(s"${o.topic} ${o.partition} ${o.fromOffset} ${o.untilOffset}")
+ }
+}
+
+注意，HashOffsetRanges仅仅在spark计算链条的开始才能类型转换成功。要知道kafka分区和spark分区的一一对应关系在Shuffle后就会丧失，比如reduceByKey()或者window()。
+
+存储偏移
+
+Kafka在有可能存在任务失败的情况下的从消息传输语义（至少一次，最多一次，恰好一次）是取决于何时存储offset。Spark输出操作是至少一次传输语义。所以，如果你想实现仅仅一次的消费语义，你必须要么在密等输出后存储offset，要么就是offset的存储和结果输出是一次事务。
+
+现在kafka有了3种方式，来提高可靠性（以及代码复杂性），用于存储偏移量。
+
+1， Checkpoint
+
+如果使能了Checkpoint，offset被存储到Checkpoint。这个虽然很容易做到，但是也有一些缺点。由于会多次输出结果，所以结果输出必须是满足幂等性。同时事务性不可选。另外，如果代码变更，你是不可以从Checkpoint恢复的。针对代码升级更新操作，你可以同时运行你的新任务和旧任务（因为你的输出结果是幂等性）。对于以外的故障，并且同时代码变更了，肯定会丢失数据的，除非另有方式来识别启动消费的偏移。
+
+2， Kafka自身
+
+Kafka提供的有api，可以将offset提交到指定的kafkatopic。默认情况下，新的消费者会周期性的自动提交offset到kafka。但是有些情况下，这也会有些问题，因为消息可能已经被消费者从kafka拉去出来，但是spark还没处理，这种情况下会导致一些错误。这也是为什么例子中stream将enable.auto.commit设置为了false。然而在已经提交spark输出结果之后，你可以手动提交偏移到kafka。相对于Checkpoint，offset存储到kafka的好处是：kafka既是一个容错的存储系统，也是可以避免代码变更带来的麻烦。提交offset到kafka和结果输出也不是一次事务，所以也要求你的输出结果是满足幂等性。
+
+stream.foreachRDD { rdd =>
+ val offsetRanges = rdd.asInstanceOf[HasOffsetRanges].offsetRanges
+
+ // some time later, after outputs have completed
+ stream.asInstanceOf[CanCommitOffsets].commitAsync(offsetRanges)
+}
+
+由于带有HasOffsetRanges，到CanCommitOffsets的转换将会在刚执行createDirectStream之后成功，而不是经过各种操作算子后。commitAsync是线程安全的，必须在结果提交后进行执行。
+
+3， 自定义存储位置
+
+对于输出解雇支持事务的情况，可以将offset和输出结果在同一个事务内部提交，这样即使在失败的情况下也可以保证两者同步。如果您关心检测重复或跳过的偏移范围，回滚事务可以防止重复或丢失的消息。这相当于一次语义。也可以使用这种策略，甚至是聚合所产生的输出，聚合产生的输出通常是很难生成幂等的。代码示例
+
+// The details depend on your data store, but the general idea looks like this
+
+// begin from the the offsets committed to the database
+val fromOffsets = selectOffsetsFromYourDatabase.map { resultSet =>
+ new TopicPartition(resultSet.string("topic"), resultSet.int("partition")) -> resultSet.long("offset")
+}.toMap
+
+val stream = KafkaUtils.createDirectStream[String, String](
+ streamingContext,
+ PreferConsistent,
+ Assign[String, String](fromOffsets.keys.toList, kafkaParams, fromOffsets)
+)
+
+stream.foreachRDD { rdd =>
+ val offsetRanges = rdd.asInstanceOf[HasOffsetRanges].offsetRanges
+
+ val results = yourCalculation(rdd)
+
+ // begin your transaction
+
+ // update results
+ // update offsets where the end of existing offsets matches the beginning of this batch of offsets
+ // assert that offsets were updated correctly
+
+ // end your transaction
+}
+
+SSL/TLS配置使用
+
+新的kafka消费者支持SSL。只需要在执行createDirectStream / createRDD之前设置kafkaParams。注意，这仅仅应用与Spark和kafkabroker之间的通讯；仍然负责分别确保节点间通信的安全。
+
+val kafkaParams = Map[String, Object](
+ // the usual params, make sure to change the port in bootstrap.servers if 9092 is not TLS
+ "security.protocol" -> "SSL",
+ "ssl.truststore.location" -> "/some-directory/kafka.client.truststore.jks",
+ "ssl.truststore.password" -> "test1234",
+ "ssl.keystore.location" -> "/some-directory/kafka.client.keystore.jks",
+ "ssl.keystore.password" -> "test1234",
+ "ssl.key.password" -> "test1234"
+)
+
+必读：再讲Spark与kafka 0.8.2.1+整合
+原创： 浪尖  Spark学习技巧  2018-03-17
+Kafka在0.8和0.10版本引入了新的消费者API，所以spark Streaming与kafka的整合提供了两个包。  请根据你的集群选用正确的包。注意， 0.8和后期的版本0.9及0.10是兼容的，但是0.10整合是不兼容之前的版本的。
+
+
+包与版本特性之间的对应关系如下：
+
+
+
+本文主要讲述spark Streaming与kafka 0.8.2.1+版本整合，要求kafka集群的版本是0.8.2.1或者更高版本。
+
+基于Receiver的方式
+
+这种方式使用一个Receiver来接受数据。Receiver是使用kafka的高级消费者API来实现的。所有的Receiver从kafka里面接受数据，然后存储于Executors，spark Streaming再生成任务来处理数据。
+
+然而，默认配置的情况，这种方式在失败的情况下有可能丢失数据，为了确保零数据丢失，可以配置预写日志(WAL，从spark1.2引入)。这会将Receiver接收到的数据写入分布式文件系统，如hdfs，所以所有的数据可以在从失败恢复运行的时候加载到。
+
+导包(MVN或者sbt)：
+
+groupId = org.apache.spark
+
+artifactId = spark-streaming-kafka-0-8_2.11
+
+version = 2.2.1
+
+测试代码如下：
+
+val sparkConf = new SparkConf().setAppName("KafkaWordCount")
+val ssc = new StreamingContext(sparkConf, Seconds(2))
+ssc.checkpoint("checkpoint")
+val topics = "topic1,topic2 1"
+val topicMap = topics.split(",").map((_, numThreads.toInt)).toMap
+val lines = KafkaUtils.createStream(ssc, zkQuorum, group, topicMap).map(_._2)
+val words = lines.flatMap(_.split(" "))
+val wordCounts = words.map(x => (x, 1L))
+ .reduceByKeyAndWindow(_ + _, _ - _, Minutes(10), Seconds(2), 2)
+wordCounts.print()
+
+ssc.start()
+ssc.awaitTermination()
+
+注意事项：
+
+1，打包的时候    spark-streaming-kafka-0-8对应的jar包一定要带上。
+
+2，消费的kafka分区和生成的RDD分区并不是一一对应的。所以，增加KafkaUtils.createStream()命令中topic指定的分区，也即map里面topic名字对应的value，只会增加消费该命令创建的Receiver的内部消费者线程数目，不会增加spark处理数据的并行度，恰当线程数会增加Receiver的接收数据的速度。
+
+3，KafkaUtils.createStream()命令执行只会创建一个Receiver，我们可以结合消费的topic分区和group名称来多创建几个Receiver，来增加接收数据的并行度。
+
+4，如果你启动了预写日志，日志存储系统时hdfs，日志已经会被存储副本。所以，可以设置存储等级为StorageLevel.MEMORY_AND_DISK_SER.
+
+5，要配置该机制，首先要调用 StreamingContext 的 checkpoint ( ) 方法设置一个 checkpoint 目录，然后需要将 spark.streaming.receiver.writeAheadLog.enable 参数设置为 true。
+
+Direct Approach
+
+在spark 1.3以后引入了一种新的spark Streaming api，新的api回自己在driver内部维护一个偏移，然后自动计算指定的topic+partition该批次需要拉去数据的范围，然后从kafka拉去数据来计算。不同于基于Receiver的方式，direct模式不会将偏移记录到Zookeeper，以保证故障恢复从上次偏移处消费消息。Direct模式你可以通过Checkpoint或者自己编写工具来实现偏移的维护，保证数据消费不丢失。
+
+这种方式相比于基于Receiver的方式有以下优势：
+
+1， 简化并行度：不需要创建多个kafka stream，然后union他们。使用directStream，spark streaming 生成的RDD分区和kafka的分区是一一对应的，这种方式理解起来更简单而且便于调优。
+
+2， 高效：基于Receiver的方式要保证数据不丢失，必须启用预写日志。这个行为实际上是非常抵消的，数据会被复制两次，一次是kafka集群，一次是预写日志。Direct方式解决了这个问题，由于没有Receiver，故而也不需要预写日志。只要你kafka里面存有数据，那么消息就可以从kafka里面恢复。
+
+3， 仅一次消费语义：基于Receiver的会把偏移提交到Zookeeper。这种方式结合预写日志能保证数据不丢失，也即是最少一次消费语义，但是有几率导致消费者在存在失败的情况下消费消息两次。比如，消息处理并经过存储之后，但是偏移并没有提交到Zookeeper，这个时候发生故障了，那么恢复之后，就会按照Zookeeper上的偏移再一次消费数据并处理，导致消息重复处理。但是direct 方式偏移不会提交到Zookeeper，是spark streaming在driver使用内存变量加Checkpoint进行追踪的，所以尽管会存在任务失败，但是仍然能保证消费的一次处理。
+
+注意，由于direct方式不会提交偏移到Zookeeper，所以，基于Zookeeper的kafka监控工具就不能监控到spark streaming的消费情况。然而，你可以自己讲偏移提交道Zookeeper，来满足你的需求。
+
+导包(MVN或者sbt)：
+
+groupId = org.apache.spark
+
+artifactId = spark-streaming-kafka-0-8_2.11
+
+version = 2.2.1
+
+测试代码如下：
+
+val Array(brokers, topics) = args
+
+// Create context with 2 second batch interval
+val sparkConf = new SparkConf().setAppName("DirectKafkaWordCount")
+val ssc = new StreamingContext(sparkConf, Seconds(2))
+
+// Create direct kafka stream with brokers and topics
+val topicsSet = topics.split(",").toSet
+val kafkaParams = Map[String, String]("metadata.broker.list" -> brokers)
+val messages = KafkaUtils.createDirectStream[String, String, StringDecoder, StringDecoder](
+ ssc, kafkaParams, topicsSet)
+
+// Get the lines, split them into words, count the words and print
+val lines = messages.map(_._2)
+val words = lines.flatMap(_.split(" "))
+val wordCounts = words.map(x => (x, 1L)).reduceByKey(_ + _)
+wordCounts.print()
+
+// Start the computation
+ssc.start()
+ssc.awaitTermination()
+
+关于自己编代码提交到Zookeeper，限于篇幅的原因，不在这里啰嗦。
+
+调优限速
+
+现实系统中会有流量尖峰，比如淘宝的双十一，那一秒钟的流量，大的吓人，假如有spark streaming处理的话，会有可能导致消息不能及时处理，甚至出现故障，应对这种流量尖峰，spark streaming内部实现了一个控制器，基于PID，具体PID的概念是啥，请自行百度。
+
+这里只是想介绍两个主要的参数：
+
+基于Receiver的要配置的参数是spark.streaming.receiver.maxRate
+
+
+
+基于direct的要配置的参数是spark.streaming.kafka.maxRatePerPartition
+
+
+
+通过我们压测我们的spark streaming任务每秒钟最大消费处理的消息数，然后使用这两个参数限消费消息的速率，来避免高峰期一批次消费过量消息导致应用不正常执行。

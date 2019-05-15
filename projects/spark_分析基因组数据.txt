@@ -1,0 +1,393 @@
+enum Strand {
+Forward,
+Reverse,
+Independent
+}
+record SequenceFeature {
+string featureId;
+string featureType;
+string chromosome;
+long startCoord;
+long endCoord;
+Strand strand;
+double value;
+map<string> attributes;
+}
+
+
+git clone https://github.com/bigdatagenomics/adam.git && cd adam
+export "MAVEN_OPTS=-Xmx512m -XX:MaxPermSize=128m"
+mvn clean package -DskipTests
+
+export ADAM_HOME=path/to/adam
+alias adam-submit="$ADAM_HOME/bin/adam-submit"
+
+# Note: this file is 16 GB
+curl -O ftp://ftp.ncbi.nih.gov/1000genomes/ftp/phase3/data\
+/HG00103/alignment/HG00103.mapped.ILLUMINA.bwa.GBR\
+.low_coverage.20120522.bam
+# or using Aspera instead (which is *much* faster)
+ascp -i path/to/asperaweb_id_dsa.openssh -QTr -l 10G \
+anonftp@ftp.ncbi.nlm.nih.gov:/1000genomes/ftp/phase3/data\
+/HG00103/alignment/HG00103.mapped.ILLUMINA.bwa.GBR\
+.low_coverage.20120522.bam .
+hadoop fs -put HG00103.mapped.ILLUMINA.bwa.GBR\
+.low_coverage.20120522.bam /user/ds/genomics
+
+adam-submit \
+--master yarn \
+--deploy-mode client \
+--driver-memory 8G \
+--num-executors 6 \
+--executor-cores 4 \
+--executor-memory 12G \
+-- \
+transform \
+/user/ds/genomics/HG00103.mapped.ILLUMINA.bwa.GBR\
+.low_coverage.20120522.bam \
+/user/ds/genomics/reads/HG00103
+
+
+$ hadoop fs -du -h "/user/ds/genomics/HG00103.*.bam"
+15.9 G /user/ds/genomics/HG00103. [...] .bam
+$ hadoop fs -du -h -s /user/ds/genomics/reads/HG00103
+12.8 G /user/ds/genomics/reads/HG00103
+
+
+export SPARK_HOME=/path/to/spark
+$ADAM_HOME/bin/adam-shell
+
+import org.bdgenomics.adam.rdd.ADAMContext._
+val readsRDD = sc.loadAlignments("/user/ds/genomics/reads/HG00103")
+readsRDD.rdd.first()
+
+
+
+res3: org.bdgenomics.formats.avro.AlignmentRecord = {
+"readInFragment": 0, "contigName": "1", "start": 9992,
+"oldPosition": null, "end": 10091, "mapq": 25,
+"readName": "SRR062643.12466352",
+"sequence": "CTCTTCCGATCTCCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAA
+CCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCT",
+"qual": "##@@BA:36<FBGCBBD>AHHB@4DD@B;0DEF6A9EDC6>9CCC@9@IIH@I8IIC4
+@GH=HGHCIHHHGAGABEGAGG@EGAFHGFFEEE?DEFDDA.",
+"cigar": "1S99M", "oldCigar": null, "basesTrimmedFromStart": 0,
+"basesTrimmedFromEnd": 0, "readPaired": true, "properPair": false,
+"readMapped": true, "mateMapped": false,
+"failedVendorQualityChecks": false, "duplicateRead": false,
+"readNegativeStrand": true, "mateNegativeStrand": true,
+"primaryAlignment": true, "secondaryAlignment": false,
+"supplementaryAlignment": false, "mis...
+
+
+
+readsRDD.rdd.count()
+
+
+val uniq_chr = (readsRDD.rdd
+.map(_.getContigName)
+.distinct()
+.collect())
+uniq_chr.sorted.foreach(println)
+
+
+val uniq_chr = (readsRDD
+.rdd
+.map(_.getContigName)
+.distinct()
+.collect())
+
+val cftr_reads = (readsRDD.rdd
+.filter(_.getContigName == "7")
+.filter(_.getStart <= 117149189)
+.filter(_.getEnd > 117149189)
+.collect())
+cftr_reads.length // cftr_reads is a local Array[AlignmentRecord]
+
+
+
+import org.apache.parquet.filter2.dsl.Dsl._
+val chr = BinaryColumn("contigName")
+val start = LongColumn("start")
+val end = LongColumn("end")
+val cftrLocusPredicate = (
+chr === "7" && start <= 117149189 && end >= 117149189)
+
+
+val readsRDD = sc.loadParquetAlignments(
+"/user/ds/genomics/reads/HG00103",
+Some(cftrLocusPredicate))
+
+hadoop fs -mkdir /user/ds/genomics/dnase
+curl -s -L <...DNase URL...> \
+| gunzip \
+| hadoop fs -put - /user/ds/genomics/dnase/sample.DNase.narrowPeak
+[...]
+
+
+hadoop fs -mkdir /user/ds/genomics/chip-seq
+curl -s -L <...ChIP-seq URL...> \
+| gunzip \
+| hadoop fs -put - /user/ds/genomics/chip-seq/samp.CTCF.narrowPeak
+[...]
+
+# the hg19 human genome reference sequence
+curl -s -L -O \
+"http://hgdownload.cse.ucsc.edu/goldenPath/hg19/bigZips/hg19.2bit"
+
+hadoop fs -mkdir /user/ds/genomics/phylop
+for i in $(seq 1 22); do
+curl -s -L <...phyloP.chr$i URL...> \
+| gunzip \
+| wig2bed -d \
+| hadoop fs -put - "/user/ds/genomics/phylop/chr$i.phyloP.bed"
+done
+[...]
+
+
+import org.bdgenomics.adam.rdd.ADAMContext._
+(sc
+.loadBed("/user/ds/genomics/phylop_text")
+.saveAsParquet("/user/ds/genomics/phylop"))
+
+
+
+val cellLines = Vector(
+"GM12878", "K562", "BJ", "HEK293", "H54", "HepG2")
+val dataByCellLine = cellLines.map(cellLine => { // For each cell line…
+// …generate an RDD suitable for conversion
+// to RDD[LabeledPoint]
+})
+// Concatenate the RDDs and carry through into MLlib, for example
+
+
+
+
+val hdfsPrefix = "/user/ds/genomics"
+val localPrefix = "/user/ds/genomics"
+// Set up broadcast variables for computing features along with some
+// utility functions
+// Load the human genome reference sequence
+val bHg19Data = sc.broadcast(
+new TwoBitFile(
+new LocalFileByteAccess(
+new File(Paths.get(localPrefix, "hg19.2bit").toString))))
+// fn for finding closest transcription start site
+// naive; exercise for reader: make this faster
+def distanceToClosest(loci: Vector[Long], query: Long): Long = {
+loci.map(x => math.abs(x - query)).min
+}
+// CTCF PWM from https://dx.doi.org/10.1016/j.cell.2012.12.009
+// generated with genomics/src/main/python/pwm.py
+val bPwmData = sc.broadcast(Vector(
+Map('A'->0.4553,'C'->0.0459,'G'->0.1455,'T'->0.3533),
+Map('A'->0.1737,'C'->0.0248,'G'->0.7592,'T'->0.0423),
+Map('A'->0.0001,'C'->0.9407,'G'->0.0001,'T'->0.0591),
+Map('A'->0.0051,'C'->0.0001,'G'->0.9879,'T'->0.0069),
+Map('A'->0.0624,'C'->0.9322,'G'->0.0009,'T'->0.0046),
+Map('A'->0.0046,'C'->0.9952,'G'->0.0001,'T'->0.0001),
+Map('A'->0.5075,'C'->0.4533,'G'->0.0181,'T'->0.0211),
+Map('A'->0.0079,'C'->0.6407,'G'->0.0001,'T'->0.3513),
+Map('A'->0.0001,'C'->0.9995,'G'->0.0002,'T'->0.0001),
+Map('A'->0.0027,'C'->0.0035,'G'->0.0017,'T'->0.9921),
+Map('A'->0.7635,'C'->0.0210,'G'->0.1175,'T'->0.0980),
+Map('A'->0.0074,'C'->0.1314,'G'->0.7990,'T'->0.0622),
+Map('A'->0.0138,'C'->0.3879,'G'->0.0001,'T'->0.5981),
+Map('A'->0.0003,'C'->0.0001,'G'->0.9853,'T'->0.0142),
+Map('A'->0.0399,'C'->0.0113,'G'->0.7312,'T'->0.2177),
+Map('A'->0.1520,'C'->0.2820,'G'->0.0082,'T'->0.5578),
+Map('A'->0.3644,'C'->0.3105,'G'->0.2125,'T'->0.1127)))
+
+
+// compute a motif score based on the TF PWM
+def scorePWM(ref: String): Double = {
+val score1 = (ref.sliding(bPwmData.value.length)
+.map(s => {
+s.zipWithIndex.map(p => bPwmData.value(p._2)(p._1)).product})
+.max)
+val rc = Alphabet.dna.reverseComplementExact(ref)
+val score2 = (rc.sliding(bPwmData.value.length)
+.map(s => {
+s.zipWithIndex.map(p => bPwmData.value(p._2)(p._1)).product})
+.max)
+math.max(score1, score2)
+}
+// build in-memory structure for computing distance to TSS
+// we are essentially manually implementing a broadcast join here
+val tssRDD = (
+sc.loadFeatures(
+Paths.get(hdfsPrefix, "gencode.v18.annotation.gtf").toString).rdd
+.filter(_.getFeatureType == "transcript")
+.map(f => (f.getContigName, f.getStart))).rdd
+.filter(_.getFeatureType == "transcript")
+.map(f => (f.getContigName, f.getStart)))
+// this broadcast variable will hold the broadcast side of the "join"
+val bTssData = sc.broadcast(tssRDD
+// group by contig name
+.groupBy(_._1)
+// create Vector of TSS sites for each chromosome
+.map(p => (p._1, p._2.map(_._2.toLong).toVector))
+// collect into local in-memory structure for broadcasting
+.collect().toMap)
+// load conservation data; independent of cell line
+val phylopRDD = (
+sc.loadParquetFeatures(Paths.get(hdfsPrefix, "phylop").toString).rdd
+// clean up a few irregularities in the phylop data
+.filter(f => f.getStart <= f.getEnd)
+.map(f => (ReferenceRegion.unstranded(f), f))).rdd
+// clean up a few irregularities in the phylop data
+.filter(f => f.getStart <= f.getEnd)
+.map(f => (ReferenceRegion.unstranded(f), f)))
+
+
+
+
+val dnasePath = (
+Paths.get(hdfsPrefix, s"dnase/$cellLine.DNase.narrowPeak")
+.toString)
+
+
+val dnaseRDD = (sc.loadFeatures(dnasePath).rdd
+.map(f => ReferenceRegion.unstranded(f))
+.map(r => (r, r)))
+val chipseqPath = (
+Paths.get(hdfsPrefix, s"chip-seq/$cellLine.ChIP-seq.CTCF.narrowPeak")
+.toString)
+val chipseqRDD = (sc.loadFeatures(chipseqPath).rdd
+.map(f => ReferenceRegion.unstranded(f))
+.map(r => (r, r)))
+
+
+
+
+val dnaseWithLabelRDD = (
+LeftOuterShuffleRegionJoin(bHg19Data.value.sequences, 1000000, sc)
+.partitionAndJoin(dnaseRDD, chipseqRDD)
+.map(p => (p._1, p._2.size))
+.reduceByKey(_ + _)
+.map(p => (p._1, p._2 > 0))
+.map(p => (p._1, p)))
+
+// given phylop values on a site, compute some stats
+def aggPhylop(values: Vector[Double]) = {
+val avg = values.sum / values.length
+val m = values.min
+val M = values.max
+(avg, m, M)
+}
+val dnaseWithPhylopRDD = (
+LeftOuterShuffleRegionJoin(bHg19Data.value.sequences, 1000000, sc)
+.partitionAndJoin(dnaseRDD, phylopRDD)
+.filter(!_._2.isEmpty)
+.map(p => (p._1, p._2.get.getScore.doubleValue))
+.groupByKey()
+.map(p => (p._1, aggPhylop(p._2.toVector))))
+
+val examplesRDD = (
+InnerShuffleRegionJoin(bHg19Data.value.sequences, 1000000, sc)
+.partitionAndJoin(dnaseWithLabelRDD, dnaseWithPhylopRDD)
+.map(tup => {
+val seq = bHg19Data.value.extract(tup._1._1)
+(tup._1, tup._2, seq)})
+.filter(!_._3.contains("N"))
+.map(tup => {
+val region = tup._1._1
+val label = tup._1._2
+val contig = region.referenceName
+val start = region.start
+val end = region.end
+val phylopAvg = tup._2._1
+val phylopMin = tup._2._2
+val phylopMax = tup._2._3
+val seq = tup._3
+val pwmScore = scorePWM(seq)
+val closestTss = math.min(
+distanceToClosest(bTssData.value(contig), start),
+distanceToClosest(bTssData.value(contig), end))
+val tf = "CTCF"
+(contig, start, end, pwmScore, phylopAvg, phylopMin, phylopMax,
+closestTss, tf, cellLine, label)}))
+
+val preTrainingData = dataByCellLine.reduce(_ ++ _)
+preTrainingData.cache()
+preTrainingData.count() // 802059
+preTrainingData.filter(_._12 == true).count() // 220344
+
+从1000个基因组项目中查询基因型
+curl -s -L ftp://.../1000genomes/.../chr1.vcf.gz \
+| gunzip \
+| hadoop fs -put - /user/ds/genomics/1kg/vcf/chr1.vcf
+adam/bin/adam-submit --master yarn --deploy-mode client \
+--driver-memory 8G --num-executors 192 --executor-cores 4 \
+--executor-memory 16G \
+-- \
+vcf2adam /user/ds/genomics/1kg/vcf /user/ds/genomics/1kg/parquet
+
+import org.bdgenomics.adam.rdd.ADAMContext._
+val genotypesRDD = sc.loadGenotypes("/user/ds/genomics/1kg/parquet")
+val gt = genotypesRDD.rdd.first()
+
+
+import org.bdgenomics.adam.models.ReferenceRegion
+import org.bdgenomics.adam.rdd.InnerTreeRegionJoin
+val ctcfRDD = (sc.loadFeatures(
+"/user/ds/genomics/chip-seq/GM12878.ChIP-seq.CTCF.narrowPeak").rdd
+.map(f => {
+f.setContigName(f.getContigName.stripPrefix("chr"))
+f
+})
+.map(f => (ReferenceRegion.unstranded(f), f)))
+val keyedGenotypesRDD = genotypesRDD.rdd.map(f => (ReferenceRegion(f), f))
+val filteredGenotypesRDD = (
+InnerTreeRegionJoin().partitionAndJoin(ctcfRDD, keyedGenotypesRDD)
+.map(_._2))
+filteredGenotypesRDD.cache()
+filteredGenotypesRDD.count() // 408107700
+
+
+
+
+
+import scala.collection.JavaConverters._
+import org.bdgenomics.formats.avro.{Genotype, Variant, GenotypeAllele}
+def genotypeToAlleleCounts(gt: Genotype): (Variant, (Int, Int)) = {
+val counts = gt.getAlleles.asScala.map(allele => { allele match {
+case GenotypeAllele.REF => (1, 0)
+case GenotypeAllele.ALT => (0, 1)
+case _ => (0, 0)
+}}).reduce((x, y) => (x._1 + y._1, x._2 + y._2))
+(gt.getVariant, (counts._1, counts._2)) (counts._1, counts._2))
+}
+
+val counts = filteredGenotypesRDD.map(gt => {
+val counts = gt.getAlleles.asScala.map(allele => { allele match {
+case GenotypeAllele.REF => (1, 0)
+case GenotypeAllele.ALT => (0, 1)
+case _ => (0, 0)
+}}).reduce((x, y) => (x._1 + y._1, x._2 + y._2))
+(gt.getVariant, (counts._1, counts._2))
+})
+val countsByVariant = counts.reduceByKey(
+(x, y) => (x._1 + y._1, x._2 + y._2))
+val mafByVariant = countsByVariant.map(tup => {
+val (v, (r, a)) = tup
+val n = r + a
+(v, math.min(r, a).toDouble / n)
+})
+
+scala> countsByVariant.first._2
+res21: (Int, Int) = (1655,4)
+scala> val mafExample = mafByVariant.first
+mafExample: (org.bdgenomics.formats.avro.Variant, Double) = [...]
+scala> mafExample._1.getContigName -> mafExample._1.getStart
+res17: (String, Long) = (X,149849811)
+scala> mafExample._2
+res18: Double = 0.0024110910186859553
+
+
+
+
+
+
+
+
