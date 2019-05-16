@@ -1,0 +1,442 @@
+示例3-1:
+1	import scala.Tuple2;
+2	import java.util.List;
+3	import java.util.TreeMap;
+4	import java.util.SortedMap;
+5	import <your-package>.T;
+// 类，实现SortedMap
+//接口，维护有序映射
+II期望类型T
+7	static SortedMap<Integer, T> topN(List<Tuple2<T, Integer〉〉 L, int N) {
+8	if ( (L == null) || (L.isEmptyO) ) {
+9	return null;
+注丨：这是一个映射，它会提供映射键的一个全序。这个映射根据键的自然顺序排序，或者根据
+一个比较器排序，比较器通常在创建有序映射时指定（资料来源：Java SE 7文档
+bit.ly/sortedmap))。
+
+注1:
+这是一个映射，它会提供映射键的一个全序。这个映射根据键的自然顺序排序，或者根据
+一个比较器排序，比较器通常在创建有序映射时指定（资料来源：Java SE 7文档Uutp:"
+bit.ly/sortedmap))。
+
+SortedMap<Integer, T> topN = new TreeMap<Integer, T>();
+for (Tuple2<T,Integer〉 element : L) {
+II element._l 类型为T
+II element._2 是频度，类型为Integer
+topN.put(element.一2, element.一1);
+//只f呆留top N
+if (topN.size() > N) {
+II删除频度最小的元素
+topN.remove(topN. first Key ());
+示例3-2:查找topiV猫列表的映射器类结构
+1	// imports ...
+2	public class TopN_Mapper {
+3	//定义本地top_10所需的数据结构
+4	private SortedMap<Double, Text> toplOcats	= new TreeMap<Double, Text>();
+5	private int N = 10; // 默认为top 10
+6
+注2:	org.apache.hadoop.conf.configuration
+//对应每个映射器执行一次setupO函数
+setup(Context context) {
+map(key, value) {
+…process (key, value) pair
+}
+//对应每个映射器执行一次cleanup()函数
+cleanup(Context context) {
+
+}
+
+
+
+
+示例3-3 ： top /V列表的setupO
+1	public class TopN一Mapper {
+2	...
+3	private SortedMap<Double, Text〉 toplOcats	=	new TreeMap<Double, Text>();
+4	private int N = 10; // 默认为top 10
+5
+6	/**
+7	*对应每个映射器执行一次setup()函数
+8	*这里建立"top N猫列表"（toplOcats)
+9	*/
+10	setup(Context context) {
+11	II "top.n"由作业的驱动器设置
+12	Configuration conf = context. getConfiguration();
+13	N : conf.get("top.n");
+14	}
+
+
+示例3-4： top N列表的map()
+i /**
+2	* @param key由MapReduce框架生成，在这里忽略
+3	* @param value是一个String，有以下格式：
+4	* <cat_weight><,><cat_id><;><cat_name>
+5	*/
+6	map(key, value) {
+7	String[] tokens = value.split(",");
+8	// catweight = tokens[0];
+9	II <cat_idx;xcat_name> = tokens[l]
+10	Double weight = Double.parseDouble(tokens[o]);
+11	toplOcats.put(weight, value);
+12
+13	II只保留top N
+14	if (toplOcats.size() > N) {
+15	II删除频度最小的元素
+16	toplOcats.remove(toplOcats.firstKey());
+
+}}
+
+
+
+示例 3-5 ： top W列表的cleanupO
+i /**
+2	*在各个映射器的最后执行一次cleanupO函数
+3	*在这里建立"top N猫列表"(toplOcats)
+4	*/
+5	cleanup(Context context) {
+6	//现在从这个映射器发出top N元素
+7	for (String catAttributes : toplOcats.values() ) {
+8	context.write(NullWritable.get(), catAttributes);
+
+
+示例 3-6 ： top W列表的reduce()
+i /**
+2 * @param key为null(单个归约器）
+B * gparam values是一个String列義，列表中的每个元素
+4 * 肴以下格式：<cat_weight>,<cat_id>;<cat—name>
+5	*/
+6	reduce(key, values) {
+7	SortedMap<Double, Text〉finaltoplO = new TreeMap< Double
+8
+9	II聚集所有本地top 10列表
+10	for (Text catRecord : values)	{
+11	String[] tokens = catRecord.split(">")；
+12	Double weight = Double.parseDouble(tokens[0]);
+13	finaltoplO. put (weight, value);
+14
+15	if (finaltoplO.size() > N) {
+16	//删除频度最小的元素
+17	finaltoplO . remove(finaltoplO . firstKey ());
+18	}
+19	}
+20
+21	II发出最终的top 10列表
+22	for (Text text : finaltoplO. values ()) {
+23	context.write(NullWritable.get(), text);
+
+#	cat run.sh
+#/bin/bash
+export DAVA_H0ME=/usr/java/jdk6
+export HAD00P_H0ME=/usr/local/hadoop-1.0.3
+export HADOOP~HOME_WARN_SUPPRESS=true
+export BOOK_HOME=/mp/data-algorithms-book
+export APP_〕AR=$BOOK_HOME/dist/data_algorithms_book.jar
+export PATH=$PATH:$DAVA_HOME/bin:$HAD00P_H0ME/bin
+#
+INPUT=,7topl0list/input"
+OUTPUT=,7toplOlist/output"
+HAD00P_H0ME/bin/hadoop fs -rmr SOUTPUT
+HAD00P_H0ME/bin/hadoop jar $APP_]AR TopN—Driver $INPUT SOUTPUT
+
+$ INPUT="/toplOlist/input"
+$ OUTPUT ="/toplOlist/output"
+$ $HADOOP_HOME/bin/hadoop jar $APP_〕AR TopN_Driver $INPUT SOUTPUT 5
+$ hadoop fs -cat /toplOlist/output/*
+100•o loo,catioo,catioo
+200.0	200,cat200,cat200
+300.0	B00,cat300,cat300
+1000.0	1000,catiooo,catiooo
+2000.0	2000,cat2000,cat2000
+
+要査找末尾丨0项（bottom 10)而不是前10项（top 10)，只需要修改一行代码。
+将下面的代码：
+II 査找top 10
+if (toplOcats.size() > N) {
+// _除频度最小的元素
+toplOcats.remove(toplOcats.firstKey());
+替换为：
+// 查找bottom 10
+if (toplOcats.size() > N) {
+//删除频度最大的元素
+toplOcats.remove(topl0cats.lastKey());
+
+示例3-7 ： Spark中的top 10程序
+1	II步骤1:导入必要的类
+2	public class ToplO {
+3	public static void main(String[] args) throws
+4	//	步骤2:	确保有正确的输入参数
+5	//	步骤3:	创建与Spark master的连接
+6	//	步骤4:	从HDFS读取输入文件并创建第一个RDD
+7	//	步骤5:	创建一组Tuple2<Integer, String〉
+8	//	步骤6:	为各个输入分区创建一个未地top 10
+9	//	步骤7:	收集所有本地top io并创建最终的top
+10	//	步骤8:	输出最终的top 10列表
+11	System.exit(o);
+12	}
+13	}
+
+示例3-8:步踩丨：导入必要的类
+1	//步骤1:导人必要的类
+2	import scala.Tuple2;
+3	import org.apache.spark.api.java.DavaRDD;
+4	import org.apache.spark.api.java.DavaPairRDD;
+5	import org.apache.spark.api.java.DavaSparkContext;
+6	import org.apache.spark.api.java.function.FlatMapFunction;
+7	import org.apache.spark.api.java.function.Function2;
+8	import org.apache.spark.api.java.function.PairFunction;
+java.util.Arrays;
+java.util.List;
+java.util.Map;
+java.util•TreeMap;
+java.util.SortedMap;
+java.util.Iterator;
+java.util.Collections;
+
+if (args.length < 1) {
+System.err•println("Usage: ToplO <hdfs-file>");
+System.exit(l);
+}
+String inputPath : args[0];
+System.out.println(HinputPath: <hdfs-file>="+inputPath)
+
+示例3-12:步骤5:创建一组Tuple2
+1	//	步骤5:创建一组Tuple2<String, Integer〉
+2	//	PairFunction<T, K, V>
+3	//	T => Tuple2<K, V>
+4	DavaPairRDD<String,Integer>	pairs	=
+5	lines.mapToPair(new PairFunction<
+6	String, //
+7	String, //
+8	Integer //
+9	>(){
+10	public Tuple2<String,Integer〉 call(String s) {
+11	String[] tokens = s.split(",M); II cat24,l23
+12	return new Tuple2<String,Integer>(tokens[0], Integer•parselnt(tokens[l]));
+
+//步骤6:为各个输人分区创建一个本地top 10列表
+3avaRDD<SortedMap<Integer, String〉〉 partitions = pairs.mapPartitions(
+new FlatMapFunction<
+Iterator<Tuple2<String,Integer»,
+SortedMap<Integer, String>
+>0 {
+^Override
+public Iterable<SortedMap<Integer, String>>
+call(Iterator<Tuple2<String,Integer>> iter) {
+SortedMap<Integer, String> toplO = new TreeMap<Integer, String>();
+while (iter.hasNext()) {
+Tuple2<String,Integer〉 tuple = iter.next();
+II tuple .JL :唯一键，如cat_id
+// tuple._2 :项的颊度(cat^weight)
+toplO.put(tuple.tuple._l);
+//只保留top N ~
+if (toplO•size() > io) {
+II删除颊度最小的元素
+toplO • remove (toplO • firstKey ());
+return Collections.singletonList(toplO);
+})；
+
+
+T reduce(Function2<T,T,T> f)
+//使用指定的二元操作符（具冇交换性和结合性）
+//归约这个RDD的元素
+示例3-15:步骤7:使用reduce()创建最终的top 10列表
+1	//步骤7:收集所有本地top 10并创达最终的top 10列表
+2	SortedMap<Integer, String〉 finaltoplO = partitions.reduce(
+3	new Function2<
+4	SortedMap<Integer,	String〉，// ml (作为输入）
+5	SortedMap<Integer,	String〉，// m2 (作为输入j
+6	SortedMap<Integer,	String〉// 输出：合并ml和m2
+7	>() {
+8	^Override
+9	public SortedMap<Integer,	String> call(SortedMap<Integer, String〉 ml,
+10	SortedMap<Integer, String〉 m2) {
+11	It将ml和m2合并到一个top 10列表
+12	SortedMap<Integer, String〉 toplO = new TreeMap<Integer, String>();
+13
+14	//处理ml
+15	for (Map.Entry<Integer, String〉 entry : ml.entrySet()) {
+16	toplO.put(entry.getKey(),	entry.getValue());
+17	if (topl0.size() > 10) {
+18	//只保留top 10,刪除颊度最小的元紊
+19	toplO•remove(toplO•firstKey());
+20	}
+21	}
+22
+23	//处理m2
+24	for (Map.Entry<Integer, String〉 entry : m2.entrySet()) {
+25	toplO.put(entry.getKey(),	entry.getValue());
+26	if	(topl0.size() > 10) {
+27	//只保留top 10,刪除颊度最小的元素
+28	toplO•remove(topl0•firstKey());
+29	}
+30	}
+return toplO；
+}};
+
+
+
+示例3-16:步朦8:发出最终的top 10列表
+1	//步骤8:输出最终的top 10列表
+2	Syste«.out.println("«*« top-10 list *■■");
+3	for (Map.Entry<Integer, String〉 entry : finaltoplO.entrySet())	{
+4	System.out.println(entry.getKey() +	+ entry.getValue());
+# cat runtoplO.sh
+70 |第3章
+export DAVA_H0ME=/usr/java/jdk7
+export SPARK_HOME=/usr/local/spark-l.l.O
+export SPARK_MASTER=spark://myserverlOO:7077
+BOOK_HOME=/mp/data-algorithms-book
+APP_3AR=$B00K_H0ME/data_algorithms_book.jar
+INPUT«/toplO/toplOdata.txt
+prog=org•dataalgorithms.chap03•spark.ToplO
+#在Spark浊立集群上运行
+$SPARK_HOHE/bin/spark-submit \
+--class Sprog \
+--master $SPARK_MASTER \
+--executor-memory 2G \
+--total-executor-cores 20 \
+SAPPJAR $INPUT
+
+
+1	import org.apache.spark.broadcast.Broadcast;
+2	import org.apache.spark.api.j ava.DavaSparkContext;
+4	int topN = <any-integer-number-greater-than-zero>;
+5	...
+6	DavaSparkContext context = new 3avaSparkContext();
+7	...
+8	// broadcastTopN可以从任何览祥节点访问
+9	final Broadcast<Integer> broadcastTopN ■ context.broadcast(topN);
+0
+1	RDD.mapO {
+2	...
+3	final	int	topN = broadcastTopN.value();
+4	// 使用topN
+5	...
+8	RDD.groupBy() {
+9	...
+0	final int topN » broadcastTopN.value();
+1	"使用topN
+2	...
+
+1	import org.apache.spark.broadcast.Broadcast;
+2	import org.apache.spark.api.java.DavaSparkContext;
+3	...
+4	final int N » <any-integer-number-greater-than-zero>;
+5	...
+6	DavaSparkContext context = <create-a-context-object>;
+7	...
+8	String direction = "top*1; // 或"bottom"
+9	...
+10	final Broadcast<Integer> broadcastN * context.broadcast(N);
+11	final Broadcast<String> broadcastDirection = context.broadcast(direction);
+现在，根据broadcastDirection的值，我们要删除第一项（如果direction等于"top")
+或者最后一项（如果direction等干"bottom"〉。所有代码中的做法必须一致：
+1	final int N = broadcastN.value();
+2	final String direction = broadcastDirection.value();
+3	SortedMap<Integer, String〉 finalN = new TreeMap<Integer, String>();
+4	...
+5	if (finalN.size() > N) {
+6	if (direction.equals("top")) {
+7	//刪除颊度最小的元素
+8	finalN. remove(finalN .firstKey ());
+9	}
+10	else {
+11	// direction.equals("bottom")
+12	//刪除颊度最大的元素
+13	finalN. remove(finalN.lastKeyO);
+示例3-17:对应非喷一键的Spark Top 10程序
+1	package org.dataalgorithms.chap03；
+2	//步骤l:导人必要的类和掊n
+3	/•*
+4	*假设：对于所有输人（K, V) , K是不唯一的。
+5	♦这个类实现TTop N设I十模式（N > 0)。
+6	*主要假设为对于所柝输入U, V)对，K
+7	*祁唯•，这说明，我们可能会看找到类似
+8	* (A, 2), •••, (A, 5),...的项.如果发埂重复的K,則
+9	*累加它们对应的值，然后创達一个唯一的K。
+如果有（A, 2)和（A, 5),則创達的唯一项为
+(A, 7) •这里(7-2+5) •
+这个类也可以用来找出bottom N
+(只需要保留集合中最小的N个元素）。
+Top 10设计模式：Top 10结构
+1.映射（输人）=>	(K, V)
+2.归约（K,	List<Vl, V2, •••, Vn>) => (K, V),
+其中V = Vl+V2+...+Vn;现在所有K都是唯一的。
+3.将(K,V)对划分到P个分区。
+4.找出各个分区的top N (我们称为一个本地top N)
+5.从所有本地top	N找出最终的top N
+^author Mahmoud Parsian
+8	public class ToplONonUnique {
+9	public static void main(String[] args) throws Exception {
+0	//步骤2:处理输入参数
+1	//步骤3:创建一个]ava Spark上下文对象
+2	//步骤4:将topN广播到所有集群节点
+3	//步骤5:从输人创建一个RDD
+4	//步骤6:	RD0分区
+5	//步骡7:输人（T)映射到（K,V>对
+//步骤8:归约重复的K
+II步骤9:创建本地top N
+//步骤10:査找锒终top N
+//步骤11:发出圾终top N
+System.exit(o);
+}
+}
+
+示例3-18:步驟1:导入必要的类和接口
+1	//步骒1:导入必要的类和接口
+2	import org.dataalgorithms.util.SparkUtil;
+3
+4	import scala.Tuple2;
+Top 10列表
+5	import org.apache.spark.api.java.JavaRDD;
+6	import org.apache.spark.api.java.3avaPairRDD;
+7	import org.apache.spark.api.java.DavaSparkContext;
+8	import org.apache.spark.api.java.function.FlatMapFunction;
+9	import org.apache.spark.api.java.function.PairFunction;
+10	import org.apache.spark.api.java.function.Function2;
+11	import org.apache.spark.broadcast.Broadcast;
+12
+13	import java.util.List;
+14	import java.util.Map;
+15	import java.util.TreeMap;
+16	import java.util.SortedMap;
+17	import java.util.Iterator;
+18	import java.util.Collections;
+示例3-19:步骤2:处理输入参数
+1	//步骤2:处理输人参数
+2	if (args.length < 2) {
+3	System.err.printing"Usage: ToplONonUnique <input-path> <topN>");
+4	System.exit(l);
+5	}
+6	System.out.println(Margs[0]: <input-path>="+args[o]);
+7	System.out.println("args[l]: <topN>=H+args[l]);
+8	final String inputPath - args[0]j
+9	final int N = Integer.parselnt(args[l]);
+
+
+步骤3:创建一个Java Spark上下文对象
+这一步如示例3-20所示，我们要创建一个Java Spark t下文对象。
+示例3-20:步腺3:创建一个Java Spark上下文对象
+1	//步膝3:创建一个]ava Spark上下文对象
+2	DavaSparkContext ctx = SparkUtil.create3avaSparkContext("ToplONonUnique");
+步骤4:将topN广播到所有集群节点
+要在所有集群点M广播或共享对象和数据结构，吋以使用Spark的Broadcast类（参见
+示例3-21)。
+示例3-21:步骤4:将topN广播到所有集群节点
+1	II步骤4:将topN广播到所有集群节点
+2	final Broadcast<Integer〉topN = ctx.broadcast(N);
+3	II现在可以从所有集群W点读取topN
+步骤5:从输入创建一个RDD
+在示例3-22中，将从HDFS读取输人数据，并创达第一个RDD。
+78 I第3章
+步骤5:从输入创建一个RDD
+在示例3-22中，将从HDFS读取输人数据，汴创达笫一个RDD。
+78 I第3章
+示例3-22:步骤5:从榆入创建一个RDD
+1 //步骤5:从输人创建一个RDD
+2 //	输入记录格式：
+3	//	<string-keyx,xinteger-value-count>
+4	]avaRDD<String〉 lines = ctx.textFile(inputPath, l);
+5	lines.saveAsTextFile("/output/lM);
+为了调试第5步，下面打印出这个RDD:
+# hadoop fs -cat /output/l/part*

@@ -1192,3 +1192,383 @@ Pesrsion相关系数，互信息，距离相关度
 
 在电商用LR做CTR/CVR预估， 在 3-5 亿维的系数特征上用 L1 正则化的 LR 模型 。 剩余 2-3 千万的 feature，意味着其他的 feature 重要度不够 。
 
+特征工程&归一化
+原创： echoy189  Spark推荐系统  4月26日
+135无圈.png
+
+  Spark推荐系统，干货，心得
+  点击上方蓝字关注～
+
+归一化：将每个要素的重新映射到特定范围（通常为[0，1]）
+
+spark中使用MinMaxScaler（最大-最小规范化）
+
+他需要的参数：
+
+min：默认为0.0，转换后的下限
+
+max：默认为1.0，转换后的上限
+
+MinMaxScaler计算数据集的统计信息，并生成MinMaxScalerModel，然后，模型可以单独转换每个要素，使其在给定的范围内。
+
+特征E的重新缩放值被计算为：
+
+
+
+对于情况Emax==Emin,Rescaled(ei)= 0.5(max+min)
+
+请注意，由于零值可能会转换为非零值，即使对于稀疏输入，变压器的输出也将为DenseVector（稠密矩阵）
+
+
+
+那么为什么进行特征归一化？
+
+为了消除数据特征之间的量纲影响，我们需要对特征进行归一化处理，使得
+
+不同指标之间具有可比性。例如，分析一个人的身高和体重对健康的影响，如果
+
+使用米（m）和千克（kg）作为单位，那么身高特征会在1.6～1.8m的数值范围
+
+内，体重特征会在50～100kg的范围内，分析出来的结果显然会倾向于数值差别比
+
+较大的体重特征。想要得到更为准确的结果，就需要进行特征归一化处理，使各指标处于同一数值量级，以便进行分析。
+
+借助随机梯度下降的实例来
+
+说明归一化的重要性。假设有两种数值型特征，x 1 的取值范围为 [0, 10]，x2 的取值
+
+范围为[0, 3]，于是可以构造一个目标函数符合图1.1（a）中的等值图。
+
+在学习速率相同的情况下，x1 的更新速度会大于x 2 ，需要较多的迭代才能找到
+
+最优解。如果将x 1 和x 2 归一化到相同的数值区间后，优化目标的等值图会变成图
+
+1.1（b）中的圆形，x 1 和x 2 的更新速度变得更为一致，容易更快地通过梯度下降找
+
+到最优解。
+
+
+
+当然，数据归一化并不是万能的。在实际应用中，通过梯度下降法求解的模
+
+型通常是需要归一化的，包括线性回归、逻辑回归、支持向量机、神经网络等模
+
+型。但对于决策树模型则并不适用，以C4.5为例，决策树在进行节点分裂时主要
+
+依据数据集D关于特征x的信息增益比，而信息增益比跟特征是否经过归一化是无关的，
+
+因为归一化并不会改变样本在特征x上的信息增益。
+
+
+
+
+
+object MinMaxScalerExample {
+  def main(args: Array[String]): Unit = {
+    val spark = CreateSparkSession.creteLocalSparkSession(this.getClass.getName)
+    val dataFrame = spark.createDataFrame(Seq(
+      (0, Vectors.dense(1.0, 0.5, -1.0)),
+      (1, Vectors.dense(2.0, 1.0, 1.0)),
+      (2, Vectors.dense(4.0, 10.0, 2.0))
+    )).toDF("id", "features")
+    val scaler = new MinMaxScaler()
+      .setInputCol("features")
+      .setOutputCol("scaledFeatures")
+    // Compute summary statistics and generate MinMaxScalerModel
+    val scalerModel = scaler.fit(dataFrame)
+    // rescale each feature to range [min, max].
+    val scaledData = scalerModel.transform(dataFrame)
+    println(s"Features scaled to range: [${scaler.getMin}, ${scaler.getMax}]")
+    scaledData.select("features", "scaledFeatures").show(false)
+
+  }
+}
+
+
+运行结果：
+
+
+
+
+
+
+
+推荐阅读：
+
+决策树之特征选择
+
+Spark特征工程
+
+Spark梯度下降法
+
+ChiSqSelector卡方选择器
+
+
+特征的选择：ChiSqSelector卡方选择器
+原创： echoy189  Spark推荐系统  3月7日
+
+
+135无圈.png
+
+  Spark推荐系统，干货，心得
+  点击上方蓝字关注～
+
+在之前文章中有写决策树特征选择，这里在介绍另一种方法，ChiSqSelector卡方选择器。
+
+先要了解几个概念：
+
+自变量：研究者主动操纵，而引起因变量发生变化的因素或条件，因此自变量被看作是因变量的原因。
+
+应变量：在函数关系式中，某个量会随一个（或几个）变动的量的变动而变动。
+
+自由度：自由度是指当以样本的统计量来估计总体的参数时，样本中独立或能自由变化的数据的个数，称为该统计量的自由度。一般来说，自由度等于独立变量减掉其衍生量数。举例来说，变异数的定义是样本减平均值(一个由样本决定的衍生量)，因此对N个随机样本而言，其自由度为N-1
+
+卡方检验适用与类别变量，如果要对连续型变量做检验，可以将连续型变量分成多个区间，变成类别的形式。
+
+如上所述，卡方检验可以判断两个变量之间是否有显著的相关性（也可以说成是否有显著的独立性）我们通过一个小例子来说明如何做卡方独立性检验。
+
+一个班里面的总人数87人，男53，女34。他们中打游戏与不打游戏的数量如下表：
+
+
+男
+
+女
+
+总数
+
+打游戏
+
+34
+
+10
+
+44
+
+不打游戏
+
+19
+
+24
+
+43
+
+总数
+
+53
+
+34
+
+87
+
+假设打不打游戏与性别为男或女是独立无关的。且可以得到一个班级随机男生的概率为
+
+53/87 =0.609
+
+理论值四格表
+
+因为前面假设打不打游戏与性别为男或女是独立无关的，所以得到
+
+
+总数
+
+男
+
+女
+
+打游戏
+
+44
+
+44*0.609=26.8
+
+44*(1-0.609)=17.2
+
+不打游戏
+
+43
+
+43*0.609=26.2
+
+43*(1-0.609)=16.8
+
+卡方检验公式
+
+卡方检验的公式如下，其中A为实际值，也就是第一个四格表中的四个数据。T为理论值，也就是理论四格表中的四格数据
+
+
+
+X2值用于衡量实际值与理论值得差异程度，包含了以下两个信息：
+
+l 实际值与理论值偏差的绝对大小（由于平方的存在，差异被放大了）
+
+l 差异值与理论值得相对大小。
+
+   上述场景的CHI = 10.10
+
+卡方分布的临界值
+
+   当通过上述的公式计算得到CHI的值以后，该如何判断我们的原假设是否成立呢？可以通过查询卡方分布的临界值表（这个表是固定的，百科可查）来查看我们的原假设是否成立。
+
+自由度F = （性别类别数-1）* (打不打游戏类别数 -1) =（2-1）* (2 -1 )=1
+
+
+
+由于自由度F = 1，所以只需要看分布表的第一行。可以看到，随着CHI的增大，原假设成立的概率就越小。因为CHI = 10.10，所有原假设发生的概率约等于0.1%，反之，也就是说，原假设不成立（即两个分类变量不是独立无关）的概率大于99.9%，所以打游戏与性别有关
+
+如何应用于特征选择
+
+CHI值越大，说明两个变量越不可能是独立无关的，也就是说X2越大，两个变量的相关程序也就越高。对于特征变量x1,x2,...,xn，以及分类变量y。只需要计算CHI(x1, y)、CHI(x2,y)、...、CHI(xn, y)，并按照CHI的值从大到小将特征排序，然后选择阈值，大于阈值的特征留下，小于阈值的特征删除。这样就筛选出一组特征子集了，接着使用这组特征子集去训练分类器，然后评估分类器的性能。
+
+
+SparkML代码
+
+Spark中的ChiSqSelector 就是使用了卡方独立性检验来决定哪些特征优秀应该被选择。它提供了3中方法：
+
+（1）numTopFeatures，设置固定的提取特征的数量，程序会根据卡方值的高低返回前n个卡方值最高的特征。（预测能力最强的前n个特征）
+
+（2）percentile，与上类似，设置的是一个比例。
+
+（3）fpr，预先设定一个显著性水平α，所有p值低于α的特征将会被选择出来。
+
+在默认情况下，使用numTopFeatures方法，并且默认选择前50个特征。
+
+Examples
+
+假设我们有如下一个dataframe,feature(自变量)是4个特征，clicked是标签（应变量）
+
+ id |features              | clicked
+---|-----------------------|---------
+ 7 | [0.0, 0.0, 18.0, 1.0] | 1.0
+ 8 | [0.0, 1.0, 12.0, 0.0] | 0.0
+ 9 | [1.0, 0.0, 15.0, 0.1] | 0.0
+
+
+如果我们使用ChiSqSelector并设置numTopFeatures=1，根据我们所有的特征，其中最后一列标签clicked是认为最有用的特征：
+
+  id |features              | clicked | selectedFeatures
+---|----------------------------------|------------------
+ 7 | [0.0, 0.0, 18.0, 1.0] | 1.0      | [1.0]
+ 8 | [0.0, 1.0, 12.0, 0.0] | 0.0      | [0.0]
+ 9 | [1.0, 0.0, 15.0, 0.1] | 0.0      | [0.1]
+
+
+scala代码
+
+
+
+/**
+  * create by liuye10 on 2019/3/7
+  */
+import com.badou.common.CreateSparkSession
+import org.apache.spark.ml.feature.ChiSqSelector
+import org.apache.spark.ml.linalg.Vectors
+object ChiSqSelectorSelectFea {
+
+  def main(args: Array[String]): Unit = {
+    val spark = CreateSparkSession.creteLocalSparkSession(this.getClass.getName)
+    val data = Seq(
+      (7, Vectors.dense(0.0, 0.0, 18.0, 1.0), 1.0),
+      (8, Vectors.dense(0.0, 1.0, 12.0, 0.0), 0.0),
+      (9, Vectors.dense(1.0, 0.0, 15.0, 0.1), 0.0)
+    )
+
+    val df = spark.createDataset(data).toDF("id", "features", "clicked")
+
+    val selector = new ChiSqSelector()
+      .setNumTopFeatures(1)
+      .setFeaturesCol("features")
+      .setLabelCol("clicked")
+      .setOutputCol("selectedFeatures")
+
+    val result = selector.fit(df).transform(df)
+
+    println(s"ChiSqSelector output with top ${selector.getNumTopFeatures} features selected")
+    result.show()
+  }
+
+
+}
+
+
+推荐阅读：
+
+spark协同过滤
+决策树之特征选择
+
+Spark特征工程
+
+Spark推荐系统
+
+机器学习中一些基础的数学
+
+spark-streaming 连接kafka
+
+Docker上搭建Spark集群
+
+idea本地调试spark，hive，kafka
+
+
+决策树之特征选择
+原创： echoy189  Spark推荐系统  3月5日
+实际工作中，做好训练集/测试集，用训练集跑完一个模型之后，需要不断对该模型进行优化并提高auc，故需要调整模型参数或新增一些维度特征，这样每次都要重新制作训练集数据，工作量庞大。
+
+这里介绍使用spark决策树C4.5提前进行特征选择，减少模型迭代工作量。
+
+下图是原始操作流程，因为每次都会新挖掘出一些特征，需要重复将新挖掘特征与原始特征做成新的训练集，训练出新的模型并与原始model进行auc比对，开发周期性长，工作量大
+
+
+
+
+
+
+
+决策树进行特征选择
+
+使用spark决策树进行特征选择，可以找出原始model阈值特征
+
+(这步需要不断尝试跟经验积累)
+
+
+
+
+
+特征选择(降维)
+
+
+
+1、将阈值特征与每次新挖掘的新特征(n维)组合成n+1维新特征组合
+
+2、使用C4.5(决策树)计算出特征重要性，新增特征与阈值特征重要性进行比对
+
+3、新挖掘特征大于阈值特征的保留(对模型有提高作用)，小于的特征丢弃
+
+
+
+spark代码
+
+
+
+
+
+测试数据
+
+链接：https://pan.baidu.com/s/1aKQdLOr2JO6hUaG1_HtJhg
+
+提取码：ohjk
+
+推荐阅读：
+
+Spark特征工程
+
+Spark推荐系统
+
+机器学习中一些基础的数学
+
+flume 1.8+Hadoop2.0
+
+spark-streaming 连接kafka
+
+Docker上搭建Spark集群
+
+idea本地调试spark，hive，kafka
+

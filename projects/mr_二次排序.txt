@@ -43,6 +43,581 @@ public int compareTo(DateTemperaturePair pair) {
 25	...
 26	}
 
+示例 1 -2 ： DateTemperaturePartitioner类
+1	import org.apache.hadoop•io.Text;
+2	import org.apache.hadoop.mapreduce.Partitioner;
+3
+4	public class DateTemperaturePartitioner
+5	extends Partitioner<DateTemperaturePair, Text> {
+6
+7	^Override
+8	public int getPartition(DateTemperaturePair pair,
+9	Text text,
+10	int numberOfPartitions) {
+11	//确保分区数非负
+12	return Math.abs(pair.getYearMonth().hashCode() % numberOfPartitions);
+13	}
+14	}
+Hadoop提供了一个插件体系结构，允许在框架中注入定制分区器代码。我们在驱动器类
+中完成这个工作（驱动器将把MapReduce作业提交给Hadoop)，如下所示：
+import org.apache.hadoop.mapreduce.Dob;
+Job job =…；
+job.setPartitionerClass(TemperaturePartitioner.class);
+
+
+
+示例 1 -3 ： DateTemperatureGroupingComparator类
+1	import org.apache.hadoop•io.WritableComparable;
+2	import org.apache.hadoop.io.WritableComparator;
+4	public class DateTemperatureGroupingComparator
+5	extends WritableComparator {
+6
+7	public DateTemperatureGroupingComparator() {
+8	super(DateTemperaturePair.class, true);
+9	}
+0
+1	^Override
+2	/**
+3	*这个比较器控制哪些键要
+4	*分组到一个reduce()方法调用
+5	*/
+6	public int compare(WritableComparable wcl, WritableComparable wc2) {
+7	DateTemperaturePair pair = (DateTemperaturePair) wcl;
+8	DateTemperaturePair pair2 = (DateTemperaturePair) wc2;
+9	return pair•getYearMonth()•compareTo(pair2•getYearMonth());
+Hadoop提供了一个插件体系结构，允许在框架中注入定制比较器。我们在驱动器类中完
+成这个工作（驱动器将把MapReduce作业提交给Hadoop)，如下所示：
+job.setGroupingComparatorClass(YearMonthGroupingComparator•class);
+
+
+
+示例 1 -3 ： DateTemperatureGroupingComparator类
+1	import org.apache.hadoop•io.WritableComparable;
+2	import org.apache.hadoop.io.WritableComparator;
+4	public class DateTemperatureGroupingComparator
+5	extends WritableComparator {
+6
+7	public DateTemperatureGroupingComparator() {
+8	super(DateTemperaturePair.class, true);
+9	}
+0
+1	^Override
+2	/**
+3	*这个比较器控制哪些键要
+4	*分组到一个reduce()方法调用
+5	*/
+6	public int compare(WritableComparable wcl, WritableComparable wc2) {
+    7	DateTemperaturePair pair = (DateTemperaturePair) wcl;
+    8	DateTemperaturePair pair2 = (DateTemperaturePair) wc2;
+    9	return pair•getYearMonth()•compareTo(pair2•getYearMonth());
+    Hadoop提供了一个插件体系结构，允许在框架中注入定制比较器。我们在驱动器类中完
+    成这个工作（驱动器将把MapReduce作业提交给Hadoop)，如下所示：
+job.setGroupingComparatorClass(YearMonthGroupingComparator•class);
+
+
+2	* gparam key由Hadoop生成（在这里忽略>
+3	* 郎aram value有以卡格式：WYYYY,MM,DD,temperature"
+4	*/
+5	map(key# value) {
+6	String[]tokens = value.splitC,");
+7	// YYYY = tokens[0]
+8	// MM = tokens[l]
+二次排序：简介I 25
+9	// DD = tokens[2]
+0	// temperature = tokens[3]
+1	String yearMonth = tokens[o] +	tokensfl];
+2	String day = tokens[2];
+3	int temperature = Integer•parselnt(tokens[3]);
+4	//准备归约器键
+5	DateTemperaturePair reducerKey	=	new	DateTemperaturePair();
+6	reducerKey.setYearMonth(yearMonth);
+7	reducerKey•setDay(day);
+8	reducerKey.setTemperature(temperature); // 将值注入到键
+9	//发送到归约器
+0	emit(reducerKey, temperature);
+
+
+reduce()函数
+归约器的主函数将值连接在一起（已经利用二次排序设计模式对这些值完成了排序），
+然后作为输出发出。reduce()函数如示例1-5所示。
+示例1-5: 二次排序：reduce()
+1 /**
+2	*	@param key是‘个DateTemperaturePair对象
+3	*	gparam value是一个温度列表
+4	*/
+5	reduce(key, value) {
+6	StringBuilder sortedTemperatureList	=	new StringBuilder();
+7	for (Integer temperature : value) {
+8	sortedTemperatureList.append(temperature);
+9	sortedTemperatureList.append(•、"）；
+10	}
+11	emit(key, sortedTemperatureList);
+12	}
+Hadoop实现类
+我们使用表i-i所示的类来解决这个问题。
+表1-1: MapReduce/Hadoop解决方案中使用的类
+
+Hadoop实现类
+我们使用表i-i所示的类来解决这个问题。
+表1-1: MapReduce/Hadoop解决方案中使用的类
+■类名	类描述 	I
+SecondarySortDriver	驱动器类，定义输入/输出.并注册插件类
+SecondarySortMapper	定义map()函数
+SecondarySortReducer	定义reduce()函数
+DateTemperatureGroupingComparator	定义如何对键分组
+DateTemperaturePair	将曰期和温度对定义为Java对象
+DateTemperaturePartitioner	定义定制分区器
+26丨第1章
+如何将值注入到键中？第一个比较器（DateTemperaturePair.compareTo()方法）会控制
+键的排序顺序，第二个比较器（DateTemperatureGroupingComparator.compare()方法）
+会控制哪些键要分组到一个reduce()方法调用。通过结合这两个比较器，建立作业时就
+好像为值定义了顺序一样。
+Secondary Sort Dr iver是驱动器类，它会向MapReduce/Hadoop框架注册定制插件类
+(DateTemperaturePartitioner和DateTemperatureGroupingComparator)。这个驱动器
+类如示例1-6所示。
+
+示例 1 -6 ： SecondarySortDriver类
+1 public class SecondarySortDriver extends Configured implements Tool {
+public int run(String[] args) throws Exception {
+Configuration conf = getConf();
+Dob job = new Dob(conf);
+job.setDarByClass(SecondarySortDriver.class);
+job•set]obName("SecondarySortDriver");
+Path inputPath = new Path(args[0]);
+Path outputPath = new Path(args[l]);
+FilelnputFormat.setInputPaths(job, inputPath);
+FileOutputFormat•setOutputPath(job, outputPath);
+job.setOutputKeyClass(TemperaturePair.class);
+job.setOutputValueClass(NullWritable.class);
+job.setMapperClass(SecondarySortingTemperatureMapper.class);
+job.setReducerClass(SecondarySortingTemperatureReducer.class);
+job.setPartitionerClass(TemperaturePartitioner.class);
+job.setGroupingComparatorClass(YearMonthGroupingComparator.class);
+boolean status = job.waitForCompletion(true);
+theLogger.info("run(): status="+status);
+return status ? 0 : 1：
+/**
+* 二次排序MapReduce程序的主驱动器。
+*调用这个方法提交MapReduce作业。
+*隹throws Exception，如果与作业跟踪器
+*存在通信问题，会抛出异常。
+*/
+public static void main(String[] args) throws Exception {
+//确保有2个参数
+if (args.length != 2) {
+throw new IllegalArgumentException("Usage: SecondarySortDriver" +
+"<input-path> <output-path>");
+//String inputPath = args[0];
+//String outputPath = args[l];
+int returnStatus = ToolRunner.run(new SecondarySortDriver(), args);
+二次排序：简介丨27
+System.exit(returnStatus);
+56789012345678901
+22222333333333344 }
+2 3 4 5
+4 4 4 4
+
+# cat sample_input.txt
+2000,12	04	10
+2000,11	01	20
+2000,12	02	-20
+2000,11	07	30
+2000,11	24	-40
+2012,12	21	30
+2012,12	22	-20
+2012,12	23	60
+2012,12	24	70
+2012,12	25	10
+2013,01	22	80
+2013,01	23	90
+2013,01	24	70
+2013,01	20	-10
+HDFS输入
+#	hadoop fs -mkdir /secondary_sort
+#	hadoop fs -mkdir /secondarysort/input
+#	hadoop fs -mkdir /secondary_sort/output
+#	hadoop fs -put sample_input.txt /secondary_sort/input/
+U hadoop fs -Is /secondary_sort/input/
+Found 1 items
+-rw-r--r-- 1 ... 128 …/secondary_sort/input/sample_input.txt
+脚本
+#	cat run.sh
+export DAVA_H0ME=/usr/java/jdk7
+export BOOK_HOME=/home/mp/data-algorithms-book
+export APP_5AR=$B00K_H0ME/dist/data_algorithms_book.jar
+INPUT=/secondary_sort/input
+OUTPUT=/secondary_sort/output
+$HADOOP_HOME/bin/hadoop fs -rmr SOUTPUT
+PROG=org.dataalgorithms.chapoi.mapreduce.SecondarySortDriver
+$HADOOP_HOME/bin/hadoop jar $APP_]AR $PR0G $INPUT SOUTPUT
+
+如何按升序或降序排序
+通过使用DateTemperaturePair.compareTo()方法可以很容易地控制值的排序顺序（升序
+或降序），如下所示：
+1	public int compareTo(DateTemperaturePair pair) {
+2	int compareValue = this.yearMonth.compareTo(pair.getYearMonth());
+3	if (compareValue == 0) {
+4	compareValue « temperature.compareTo(pair.getTemperature());
+5	}
+6	//return compareValue; // 升序排序
+7	return -l*compareValue; // 降序排序
+
+示例1 -7 ： Secondary Sort类总结构
+1	//步朦1:导入必要的〕ava/Spark类
+2	public class SecondarySort {
+3	public static void main(String[] args) throws Exception {
+4	II	步骤2:	读取输人参数并验证
+5	II	步骤3:	通过创建一个]avaSparkContext对象(ct>
+6	II	连接到Spark master
+6	//	步骤4:	使用 ctx 创述]avaRDD<String>
+7	//	步嫌5:由〕avaRDD<String>创让蚀-fll对，K:中
+8	//	键是{name},值是（time, value)对
+9	//	步骤6:	验证步骤5，收集〕avaPairRDDo的所有值
+0	//	并打印
+1	//	步骤7:	按键({name})对]avaPairRDD<>元未分组
+2	//	步糠8:	验证步骤7,收诳〕avaPairRDDo的所冇值
+3	//	并打印
+4	//	步驟9:	对归约器值排序，将得到最终输出
+5	//	步骤10	验证步骤9，收集〕avaPairRDDo的所有值
+6	//	并打印
+7 8	//	完成
+9	ctx.close();
+0	System.exit(O);
+1	}
+2 }
+
+示例1-8:步骤丨：导入必要的类
+1	II步骤1:导人必要的]ava/Spark类
+2	import scala.Tuple2；
+org.apache.spark.api.java.DavaRDD;
+org.apache.spark.api.java.DavaPairRDD;
+org•apache•spark•api.java•DavaSparkContext;
+org.apache.spark.api.java.function.Function;
+org.apache.spark.api.java.function.Function2；
+org.apache.spark.api.java.function.PairFunction;
+3	import
+4	import
+5	import
+6	import
+7	import
+8	import
+9
+0	import
+1	import
+2	import
+import
+import
+java
+java
+java
+java
+java
+.util.List;
+•util.ArrayList;
+.util.Map;
+.util.Collections;
+.util.Comparator;
+
+
+
+示例1-9:步骤2:读取输入参数
+1	//步骤2:读取输人参数并验证
+2	if (args.length < l) {
+3	System.err.println("Usage: SecondarySort <file>");
+4	System.exit(l);
+5	}
+6	String inputPath = args[o];
+7	System.out.println(Margs[o]: <file>*"+args[o]);
+
+
+示例1-9:步骤2:读取输入参数
+1	//步骤2:读取输人参数并验证
+2	if (args.length < l) {
+3	System.err.println("Usage: SecondarySort <file>");
+4	System.exit(l);
+5	}
+6	String inputPath = args[o];
+7	System.out.println(Margs[o]: <file>*"+args[o]);
+
+
+示例1-13:步骤6:验证步驟5
+1	//步骤6:验证步骤5-收槊]avaPairRDDo的所有值
+2	//并打印
+B	List<Tuple2<String, Tuple2<Integer,	Integer〉〉〉 output * pairs.collect();
+4	for (Tuple2 t : output) {
+5	Tuple2<Integer, Integer〉 timevalue = (Tuple2<Integer, Integer〉) t._2;
+6	System.out.println(t._l +	+	timevalue._l +	+	timevalue._l);
+
+
+示例1-15:步骤8:验证步驟7
+1	//步骤8:验证步骤7,收集]avaPairRDDo的所有值
+2	//并打印
+2	System.out.println(w*==DEBUGl===");
+3	List<Tuple2<String,	Iterable<Tuple2<Integer,	Integer>>>> output2 =
+4	groups.collect();
+5	for (Tuple2<String, Iterable<Tuple2<Integer, Integer〉〉〉 t : output2) {
+6	Iterable<Tuple2<Integer, Integer〉〉 list « t._2；
+7	System.out.println(t._l);
+8	for (Tuple2<Integer, Integer〉 t2 : list) {
+9	System.out.println(t2,_1 +	+	t2._2);
+10	}
+11	System.out.println("=====");
+12	}
+下面给出这一步的输出。可以看到，归约器值还没有排序:
+
+示例1-16:步骤9:在内存中对归约器值排序
+1	//步骤9:将归约器值排序！将得到最终输出。
+2	II方案1:可行
+3	II	mapValues[U](f: (V) *> U): 〕avaPairRDD[K,	U]
+4	//通过一个映射函数将各个值传入键-值对RDD,
+5	//而不改变键；
+6	//还会保留原来的RDD分区.
+7	〕avaPairRDD<String, Iterable<Tuple2<Integer,	Integer〉〉〉 sorted =
+8	groups.mapValues(
+9	new Function<Iterable<Tuple2<Integer, Integer〉》,// 输入
+10	Iterable<Tuple2<Integer, Integer〉〉// 输出
+11	>0	{
+12	public Iterable<Tuple2<Integer, Integer〉〉 call(Iterable<Tuple2<Integer,
+13	Integer” s) {
+14	List<Tuple2<Integer,	Integer〉〉	newList = new ArrayList<Tuple2<Integer,
+15	Integer>>(s);
+16	Collections.sort(newList, new TupleComparator());
+17	return newList;
+
+示例1-17:步驟10:输出最终结果
+1	//步骤10:验证步骒9，收集〕avaPairRDDo的所有值
+2	//并打印
+3	System.out.println("=-*DEBUG2=_);
+4	List<Tuple2<String, Iterable<Tuple2<Integer, Integer>»>	output3 «
+5	sorted.collect();
+6	for (Tuple2<String, Iterable<Tuple2<Integer, Integer〉〉〉 t : output3) {
+7	Iterable<Tuple2<Integer, Integer〉〉 list = t._2;
+8	System.out.println(t._l);
+9	for (Tuple2<Integer, Integer〉 t2 : list) {
+10	System.out.println(t2._1 +	+	t2•一2);
+11	}
+12	System.out.println(■=====■);
+13	}
+
+
+# cat runsecondarysorting.sh
+#I/bin/bash
+export DAVA_H0ME=/usr/java/jdk7
+export SPARK_HOME=/home/hadoop/spark-l.l.O
+export SPARK_MASTER=spark://myserverlOO:7077
+BOOK_HOME=/home/mp/data-algorithms-book
+APP_DAR»SBOOK_HOME/dist/data_algorithms_book.jar
+INPUT»/home/hadoop/testspark/timeseries.txt
+#在Spark独立集群卜.运行
+prog=org.dataalgorithms•chapoi•spark•SparkSecondarySort
+$SPARK_HOME/bin/spark-submit \
+--class Sprog \
+--master $SPARK_MASTER \
+--executor-memory 2G \
+--total-executor-cores 20 \
+$APP_DAR \
+SINPUT
+
+#	hadoop fs -Is /mp/output/
+Found 2 items
+-rw-r--r-- 3 hadoop root,hadoop 0 2014-06-04 10:49 /mp/output/_SUCCESS
+-rw-r--r-- 3 hadoop root,hadoop 125 2014-06-04 10:49 /mp/output/part-00000
+#	hadoop fs -cat /mp/output/part-00000
+(z,[(l,4), (2,8), (3,7), (4,0)])
+(p,[(l,9), (2,6), (4,7), (6,0), (7,3)])
+(x,[(l,3), (2,9), (3,6)])
+(y,[(l.7), (2,5), (3,1)])
+
+
+# cat run_secondarysorting_yarn.sh
+#1/bin/bash
+export 3AVA_HOME=/usr/java/jdk7
+export HADOOP_HOMEs/usr/local/hadoop-2.5.0
+export HADOOPlcONF_DIR=$HADOOP_HOME/etc/hadoop
+export YARN_CONF_DiR=$HADOOP_HOME/etc/hadoop
+export SPARK_HOME=/home/hadoop/spark-l.l.O
+BOOK_HOME=/home/mp/data-algorithms-book
+APP_3AR=$B00K_H0ME/dist/data_algorithms_book•jar
+INPUT»/mp/timeseries.txt
+prog=org•dataalgorithms•chapOl•spark•SparkSecondarySort
+$SPARK_HOME/bin/spark-submit \
+--class Sprog \
+--master yarn-cluster \
+--executor-memory 2G \
+--num-executors 10 \
+$APP_〕AR \
+SINPUT
+
+
+示例2-1:插入比较器类
+1	import org.apache.hadoop.mapred.DobConf;
+B DobConf conf = new DobConf(getConf(), <your-mapreduce-driver-class>.class);
+4	...
+5	// map()创逑键-值对
+6	// (CompositeKey, NaturalValue)
+7	conf.setMapOutputKeyClass(CompositeKey.class);
+8	conf.setMapOutputValueClass(NaturalValue.class);
+9	...
+10	//比较器插件类：
+11	// CompositeKey对象如何排序
+12	conf.setOutputKeyComparatorClass(CompositeKeyCo<nparator.class);
+CompositeKeyComparator类告诉MapReduce框架如何对组合键排序。示例2-2中的实现会
+完成两个WritableComparable对象（表示CompositeKey对象）的比较。
+示例2-2 ：比较器类：CompositeKeyComparator
+1	import org.apache.hadoop.io.WritableComparable;
+2	import org.apache.hadoop.io.WritableComparator;
+B
+4	public class CompositeKeyComparator extends WritableComparator {
+5
+6	protected CompositeKeyComparator() {
+
+
+}
+
+super(CompositeKey.class, true);
+^Override
+public int compare(WritableComparable kl, WritableComparable k2) {
+CompositeKey ckl ■ (CompositeKey) kl;
+CompositeKey ck2 ■ (CompositeKey) k2;
+//比较ckl和ck2，并返回
+II 0,如果ckl和cl<2相等
+it 1,如采ckl > ck2
+// -l,如果ckl < ck2
+//实现细节在后面的小节中给出
+
+示例2-3:插入NaturalKeyPartitioner
+1	import org.apache.hadoop.mapred.DobConf;
+2	...
+B DobConf conf = new 3obConf(getConf(), <your-mapreduce-driver-class>.class);
+4	...
+5	conf.setPartitionerClass(NaturalKeyPartitioner.class);
+接下来定义NaturalKeyPartitioner炎，如示例2-4所示。
+示例2-4 ：定义NaturalKeyPartitioner类
+1	import org.apache.hadoop.mapred.DobConf;
+2	import org.apache.hadoop.mapred.Partitioner;
+3
+4	/**
+5	*映射阶段的数据发送到洗牌阶段之前，
+6	* NaturalKeyPartitioner对输出分区。
+7	*
+8	* getPartition()对映射器生成的数据分区，
+9	*这个函数将按自然键对数据分区。
+10 *
+11 */
+12	public class NaturalKeyPartitioner implements
+13	Partitioner<CompositeKey, NaturalValue> {
+14
+^Override
+public int getPartition(CompositeKey key,
+NaturalValue value,
+
+注 1 ：	org.apache.hadoop.mapred.Partitioner0
+二次排序：详细示例I 45
+域后要插入的是NaturalKeyGroupingComparator，这个类用来比较两个自然键。示例2-5
+展示了如何将这个类插人到MapReduce框架。
+示例 2-5 ：插入NaturalKeyGroupingComparator
+1	import org.apache.hadoop.mapred.DobConf;
+2	...
+3	DobConf conf = new DobConf(getConf(), <your-mapreduce-driver-class>.class);
+4	...
+5	conf.setOutputValueGroupingComparator(NaturalKeyGroupingComparator.class);
+接下来，如示例2-6所示，我们如下定义NaturalKeyGroupingComparator类。
+int numberOfPartitions) {
+return <number-based-on-composite-key> % numberOfPartitions;
+^Override
+public void configure(3obConf arg) {
+示例 2-6:定义NaturalKeyGroupingComparator类
+1	import org.apache.hadoop.io.WritableComparable;
+2	import org.apache.hadoop.io.WritableComparator;
+6	*	NaturalKeyGroupingComparator
+8	*这个类将在Hadoop的洗牌阶段
+9	*根据键的第一部分（即自然键）对组合键分组。
+0 */
+1	public class NaturalKeyGroupingComparator extends WritableComparator {
+2
+3	protected NaturalKeyGroupingComparator() {
+4	super(NaturalKey.class, true);
+5	}
+6
+7	^Override
+8	public	int compare(WritableComparable ol, WritableComparable o2) {
+9	NaturalKey nkl • (NaturalKey) ol;
+0	NaturalKey nk2 = (NaturalKey) o2;
+1	return nkl.getNaturalKey().compareTo(nk2.getNaturalKey());
+2	}
+
+
+示例2-7:定义组合键
+1	import java.io.Datalnput;
+2	import j ava.io.DataOutput;
+3	import java.io.IOException;
+4	import org.apache.hadoop.io.WritableComparable;
+5	import org.apache.hadoop.io.WritableComparator;
+6
+7	/*•
+8	*
+9 * CompositeKey:表示一个（String stockSymbol, long timestamp)#*
+10	*需姜说明，timestamp表示Date。
+11	*
+12	*在stockSymbol字段上完成一次分组，
+IB *将相同类型的所存数据分为一组，然后洗牌阶段的二次排序
+14	*使用timestamp long分量对数据点徘序，
+is *使得它们到达归约器时已经分区而fl.是冇序的（按n期有序），
+16 *
+17	*/
+18	public class CompositeKey implements WritableComparable<CompositeKey> {
+19	// 自然键垃(stockSymbol)
+注2:	WritableComparable可以相互比较，通常利用Comparator来完成比较。Hadoop/MapReduce
+枢架中任何作为鍵的类型都应当实现这个接口。
+
+
+// 组合键进一个（stockSymbol, timestamp)对
+private String stockSymbol; // 股票代由
+private long timestamp; ✓/ 日期
+public CompositeKey(String stockSymbol, long timestamp) {
+set(stockSymbol, timestamp);
+public CompositeKey() {
+public void set(String stockSymbol, long timestamp) {
+this.stockSymbol ■ stockSy*bol;
+this.timestamp = timestamp;
+public String getStockSymbol() {
+return this.stockSynbol;
+public long getTiraestampO {
+return this.timestamp;
+}
+^Override
+public void readFields(OataInput in) throws IOException {
+this.stockSymbol * in.readUTF();
+this.timestamp = in.readLong();
+>
+^Override
+public void write(DataOutput out) throws IOException {
+out•writeUTF(this.stockSymbol);
+out.writelong(this.tiraestanp);
+^Override
+public int conpareTo(CoiRpositeKey other) {
+if (this.stockSyabol.co«pareTo(other.stockSymbol) !■ 0) {
+return this.stockSymbol.compareTo(other.stockSymbol);
+>
+else if (this.timestamp != other.timestamp) {
+return timestamp < other.timestamp ? -1 : 1；
+>
+else {
+return 0；
+}
+}
+
+
+# hadoop fs -Is /secondary一sort一chapter_new一api/input/
+Found l items
+-rw-r--r-- ••• /secondary一sort_chapter_new一api/input/sample_input.txt
+ft hadoop fs -cat /secondary_sort_chapter_new_api/input/sample_input.txt
+ILMN,2013-12-05,97.65
+GOOG,2013-12-09,1078•14
+IBM,2013-12-09,177.46
+ILMN,2013-12-09,101.33
+
+
 
 
 
