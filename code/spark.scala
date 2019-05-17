@@ -1,3 +1,2151 @@
+package org.dataalgorithms.chap23.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+/**
+  *
+  * Correlate "all-samples" vs. "all-samples".
+  * Here we use Apache's PearsonsCorrelation,
+  * but you may replace it with your desired
+  * correlation algorithm.
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+object AllVersusAllCorrelation {
+
+  def main(args: Array[String]): Unit = {
+    //
+    if (args.size < 3) {
+      println("Usage: AllVersusAllCorrelation <input-sample-reference> <input-dir-bioset> <output-dir>")
+      //
+      // <input-sample-reference> can be one of the following:
+      //      "r1" = normal sample
+      //      "r2" = disease sample
+      //      "r3" = paired sample
+      //      "r4" = unknown
+      //
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("AllVersusAllCorrelation")
+    val sc = new SparkContext(sparkConf)
+
+    val inputReference = args(0) // {"r1", "r2", "r3", "r4"}
+    val inputBioset = args(1)
+    val output = args(2)
+
+    val ref = sc.broadcast(inputReference)
+    val biosets = sc.textFile(inputBioset)
+
+    // keep the sample matching with the <input-sample-reference>
+    val filtered = biosets.filter(_.split(",")(1).equals(ref.value))
+
+    val pairs = filtered.map(record => {
+      val tokens = record.split(",")
+      (tokens(0), (tokens(2), tokens(3).toDouble))
+    })
+
+    // note that groupByKey() provides an expensive solution
+    // [you must have enough memory/RAM to hold all values for
+    // a given key -- otherwise you might get OOM error], but
+    // combineByKey() and reduceByKey() will give a better
+    // scale-out performance
+    val grouped = pairs.groupByKey()
+
+    val cart = grouped.cartesian(grouped)
+
+    // since "correlation of (A, B)" is the same as
+    // "correlation of (B, A)", we just only keep (A, B)
+    // before further computation and drop (B, A)
+    val filtered2 = cart.filter(pair => pair._1._1 < pair._2._1)
+
+    val finalresult = filtered2.map(t => {
+      val g1 = t._1
+      val g2 = t._2
+      val g1Map = g1._2.toMap.groupBy(_._1).mapValues(itr => (itr.values.sum, itr.values.size))
+      val g2Map = g2._2.toMap.groupBy(_._1).mapValues(itr => (itr.values.sum, itr.values.size))
+      val xy = for {
+        g1Entry <- g1Map
+        g1PatientID = g1Entry._1
+        g2MD = g2Map.get(g1PatientID)
+        if (g2MD.isDefined)
+      } yield ((g1Entry._2._1 / g1Entry._2._2, g2MD.get._1 / g2MD.get._2))
+
+      val (x, y) = xy.unzip
+      val k = (g1._1, g2._1)
+      if (x.size < 3) (k, (Double.NaN, Double.NaN))
+      else {
+        import org.apache.commons.math3.distribution.TDistribution
+        import org.apache.commons.math3.stat.correlation.PearsonsCorrelation
+        val PC = new PearsonsCorrelation()
+        val correlation = PC.correlation(x.toArray, y.toArray)
+        val t = math.abs(correlation * math.sqrt((x.size - 2.0) / (1.0 - (correlation * correlation))))
+        val tdist = new TDistribution(x.size - 2)
+        val pvalue = 2 * (1.0 - tdist.cumulativeProbability(t))
+        (k, (correlation, pvalue))
+      }
+    })
+
+    // For deugging purpose
+    finalresult.foreach(println)
+
+    // save final output
+    finalresult.saveAsTextFile(output)
+
+    // done!
+    sc.stop()
+  }
+
+}/*                     __                                               *\
+**     ________ ___   / /  ___     Scala API                            **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2013, LAMP/EPFL             **
+**  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
+** /____/\___/_/ |_/____/_/ | |                                         **
+**                          |/                                          **
+\*                                                                      */
+
+package scala.annotation
+
+/**
+  * An annotation that designates the class to which it is applied as cloneable
+  */
+@deprecated("instead of `@cloneable class C`, use `class C extends Cloneable`", "2.10.0")
+class cloneable extends scala.annotation.StaticAnnotation
+
+package org.dataalgorithms.chap16.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+/**
+  *
+  * Count and identify triangles for a given graph
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+object CountTriangles {
+  //
+  def main(args: Array[String]): Unit = {
+    if (args.size < 2) {
+      println("Usage: CountTriangles <input-path> <output-path>")
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("CountTriangles")
+    val sc = new SparkContext(sparkConf)
+
+    val input = args(0)
+    val output = args(1)
+
+    val lines = sc.textFile(input)
+
+    val edges = lines.flatMap(line => {
+      val tokens = line.split("\\s+")
+      val start = tokens(0).toLong
+      val end = tokens(1).toLong
+      (start, end) :: (end, start) :: Nil
+    })
+
+    // note that groupByKey() provides an expensive solution
+    // [you must have enough memory/RAM to hold all values for
+    // a given key -- otherwise you might get OOM error], but
+    // combineByKey() and reduceByKey() will give a better
+    // scale-out performance
+    val triads = edges.groupByKey()
+
+    val possibleTriads = triads.flatMap(tuple => {
+      val values = tuple._2.toList
+      val result = values.map(v => {
+        ((tuple._1, v), 0L)
+      })
+      val sorted = values.sorted
+      val combinations = sorted.combinations(2).map { case Seq(a, b) => (a, b) }.toList
+      combinations.map((_, tuple._1)) ::: result
+    })
+
+    // note that groupByKey() provides an expensive solution
+    // [you must have enough memory/RAM to hold all values for
+    // a given key -- otherwise you might get OOM error], but
+    // combineByKey() and reduceByKey() will give a better
+    // scale-out performance
+    val triadsGrouped = possibleTriads.groupByKey()
+
+    val trianglesWithDuplicates = triadsGrouped.flatMap(tg => {
+      val key = tg._1
+      val values = tg._2
+      val list = values.filter(_ != 0)
+      if (values.exists(_ == 0)) {
+        if (list.isEmpty) Nil
+
+        list.map(l => {
+          val sortedTriangle = (key._1 :: key._2 :: l :: Nil).sorted
+          (sortedTriangle(0), sortedTriangle(1), sortedTriangle(2))
+        })
+      } else Nil
+    })
+
+    val uniqueTriangles = trianglesWithDuplicates distinct
+
+    // For debugging purpose
+    uniqueTriangles.foreach(println)
+
+    uniqueTriangles.saveAsTextFile(output)
+
+    // done
+    sc.stop()
+
+  }
+}package org.dataalgorithms.chap01.scala
+
+import org.apache.spark.Partitioner
+
+
+/**
+  * A custom partitioner
+  *
+  * org.apache.spark.Partitioner:
+  *           An abstract class that defines how the elements in a
+  *           key-value pair RDD are partitioned by key. Maps each
+  *           key to a partition ID, from 0 to numPartitions - 1.
+  *
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+class CustomPartitioner(partitions: Int) extends Partitioner {
+
+  require(partitions > 0, s"Number of partitions ($partitions) cannot be negative.")
+
+  def numPartitions: Int = partitions
+
+  def getPartition(key: Any): Int = key match {
+    case (k: String, v: Int) => math.abs(k.hashCode % numPartitions)
+    case null                => 0
+    case _                   => math.abs(key.hashCode % numPartitions)
+  }
+
+  override def equals(other: Any): Boolean = other match {
+    case h: CustomPartitioner => h.numPartitions == numPartitions
+    case _                    => false
+  }
+
+  override def hashCode: Int = numPartitions
+}
+package org.dataalgorithms.chap04.scala
+
+import org.apache.spark.sql.Row
+import org.apache.spark.SparkConf
+import org.apache.spark.sql.SparkSession
+
+/**
+  * This approach used DataFrame add in Spark 1.3 and above.
+  * DataFrame are quite powerful yet easy to use, hence higly
+  * recommended.
+  *
+  * This program shows two approaches:
+  * 1. Using DataFrame API
+  * 2. Using SQL query (this is more easy approach).
+  *    We used exactly same query as shown in Query 3 page 88.
+  *
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+
+object DataFrameLeftOuterJoin {
+
+  def main(args: Array[String]): Unit = {
+    if (args.size < 3) {
+      println("Usage: DataFrameLeftOuterJoin <users-data-path> <transactions-data-path> <output-path>")
+      sys.exit(1)
+    }
+
+    val usersInputFile = args(0)
+    val transactionsInputFile = args(1)
+    val output = args(2)
+
+    val sparkConf = new SparkConf()
+
+    // Use for Spark 1.6.2 or below
+    // val sc = new SparkContext(sparkConf)
+    // val spark = new SQLContext(sc)
+
+    // Use below for Spark 2.0.0
+    val spark = SparkSession
+      .builder()
+      .appName("DataFram LeftOuterJoin")
+      .config(sparkConf)
+      .getOrCreate()
+
+    // Use below for Spark 2.0.0
+    val sc = spark.sparkContext
+
+    import spark.implicits._
+    import org.apache.spark.sql.types._
+
+    // Define user schema
+    val userSchema = StructType(Seq(
+      StructField("userId", StringType, false),
+      StructField("location", StringType, false)))
+
+    // Define transaction schema
+    val transactionSchema = StructType(Seq(
+      StructField("transactionId", StringType, false),
+      StructField("productId", StringType, false),
+      StructField("userId", StringType, false),
+      StructField("quantity", IntegerType, false),
+      StructField("price", DoubleType, false)))
+
+    def userRows(line: String): Row = {
+      val tokens = line.split("\t")
+      Row(tokens(0), tokens(1))
+    }
+
+    def transactionRows(line: String): Row = {
+      val tokens = line.split("\t")
+      Row(tokens(0), tokens(1), tokens(2), tokens(3).toInt, tokens(4).toDouble)
+    }
+
+    val usersRaw = sc.textFile(usersInputFile) // Loading user data
+    val userRDDRows = usersRaw.map(userRows(_)) // Converting to RDD[org.apache.spark.sql.Row]
+    val users = spark.createDataFrame(userRDDRows, userSchema) // obtaining DataFrame from RDD
+
+    val transactionsRaw = sc.textFile(transactionsInputFile) // Loading transactions data
+    val transactionsRDDRows = transactionsRaw.map(transactionRows(_)) // Converting to  RDD[org.apache.spark.sql.Row]
+    val transactions = spark.createDataFrame(transactionsRDDRows, transactionSchema) // obtaining DataFrame from RDD
+
+    //
+    // Approach 1 using DataFrame API
+    //
+    val joined = transactions.join(users, transactions("userId") === users("userId")) // performing join on on userId
+    joined.printSchema() //Prints schema on the console
+
+    val product_location = joined.select(joined.col("productId"), joined.col("location")) // Selecting only productId and location
+    val product_location_distinct = product_location.distinct // Getting only disting values
+    val products = product_location_distinct.groupBy("productId").count()
+    products.show() // Print first 20 records on the console
+    products.write.save(output + "/approach1") // Saves output in compressed Parquet format, recommended for large projects.
+    products.rdd.saveAsTextFile(output + "/approach1_textFormat") // Converts DataFram to RDD[Row] and saves it to in text file. To see output use cat command, e.g. cat output/approach1_textFormat/part-00*
+    // Approach 1 ends
+
+    //
+    // Approach 2 using plain old SQL query
+    //
+    // Use below for Spark 1.6.2 or below
+    // users.registerTempTable("users") // Register as table (temporary) so that query can be performed on the table
+    // transactions.registerTempTable("transactions") // Register as table (temporary) so that query can be performed on the table
+
+    // Use below for Spark 2.0.0
+    users.createOrReplaceTempView("users") // Register as table (temporary) so that query can be performed on the table
+    transactions.createOrReplaceTempView("transactions") // Register as table (temporary) so that query can be performed on the table
+
+    import spark.sql
+
+    // Using Query 3 given on Page 88
+    val sqlResult = sql("SELECT productId, count(distinct location) locCount FROM transactions LEFT OUTER JOIN users ON transactions.userId = users.userId group by productId")
+    sqlResult.show() // Print first 20 records on the console
+    sqlResult.write.save(output + "/approach2") // Saves output in compressed Parquet format, recommended for large projects.
+    sqlResult.rdd.saveAsTextFile(output + "/approach2_textFormat") // Converts DataFram to RDD[Row] and saves it to in text file. To see output use cat command, e.g. cat output/approach2_textFormat/part-00*
+    // Approach 2 ends
+
+    // done
+    spark.stop()
+  }
+
+}
+package org.dataalgorithms.chap24.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+/**
+  *
+  * DNA-base counts for FASTA files using Spark's combineByKey()
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+object DNABaseCountFASTAWithCombineByKey {
+  //
+  def main(args: Array[String]): Unit = {
+    //
+    if (args.size < 2) {
+      println("Usage: DNABaseCountFASTAWithCombineByKey <input-dir> <output-dir>")
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("DNABaseCountFASTAWithCombineByKey")
+    val sc = new SparkContext(sparkConf)
+
+    val input = args(0)
+    val output = args(1)
+
+    val fastaRDD = sc.textFile(input)
+
+    val dnaSequence = fastaRDD.filter(!_.startsWith(">"))
+
+    val basePair = dnaSequence.flatMap (_.toUpperCase().toCharArray().map((_, 1)))
+
+    val result = basePair.combineByKey(
+      (count: Int) => count,
+      (c1: Int, c2: Int) => c1 + c2,
+      (c1: Int, c2: Int) => c1 + c2
+    )
+
+    // For debugging purpose
+    result.foreach(println)
+
+    result.saveAsTextFile(output)
+
+    // done!
+    sc.stop()
+  }
+}package org.dataalgorithms.chap24.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+/**
+  *
+  * DNA-base counts for FASTA files using Spark's mapPartitions()
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+object DNABaseCountFASTAWithMapPartitions {
+  //
+  def main(args: Array[String]): Unit = {
+    //
+    if (args.size < 2) {
+      println("Usage: DNABaseCountFASTAWithMapPartitions  <input-dir> <output-dir>")
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("DNABaseCountFASTAWithMapPartitions")
+    val sc = new SparkContext(sparkConf)
+
+    val input = args(0)
+    val output = args(1)
+
+    val fastaRDD = sc.textFile(input)
+
+    val partitions = fastaRDD.mapPartitions(itr => {
+      val mutableMap = collection.mutable.Map.empty[Char, Long]
+      itr.filter(!_.startsWith(">")).foreach(_.toUpperCase().toCharArray().foreach(base => {
+        val count = mutableMap.getOrElse(base, 0L)
+        mutableMap.put(base, count + 1L)
+      }))
+      mutableMap.toIterator
+    })
+
+    val collectPartition = partitions.collect()
+
+    val result = collectPartition.groupBy(_._1).mapValues(_.unzip._2.sum)
+
+    // debug output
+    result.foreach(println)
+
+    // save result in output
+
+    // done
+    sc.stop()
+  }
+}package org.dataalgorithms.chap24.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+/**
+  *
+  * DNA-base counts for FASTQ files using Spark's combineByKey()
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+object DNABaseCountFASTQWithCombineByKey {
+  //
+  def main(args: Array[String]): Unit = {
+    if (args.size < 2) {
+      println("Usage: DNABaseCountFASTQWithCombineByKey <input-dir> <output-dir>")
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("DNABaseCountFASTQWithCombineByKey")
+    val sc = new SparkContext(sparkConf)
+
+    val input = args(0)
+    val output = args(1)
+
+    val fastqRDD = sc.textFile(input)
+
+    val dnaSequence = fastqRDD.filter(line => {
+      !(
+        line.startsWith("@") ||
+          line.startsWith("+") ||
+          line.startsWith(";") ||
+          line.startsWith("!") ||
+          line.startsWith("~")
+        )
+    })
+
+    val basePair = dnaSequence.flatMap(_.toUpperCase().toCharArray().map((_, 1)))
+
+    val result = basePair.combineByKey(
+      (count: Int) => count,
+      (c1: Int, c2: Int) => c1 + c2,
+      (c1: Int, c2: Int) => c1 + c2
+    )
+
+    // For debugging purpose
+    result.foreach(println)
+
+    result.saveAsTextFile(output)
+
+    // done!
+    sc.stop()
+  }
+}package org.dataalgorithms.chap24.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+/**
+  *
+  * DNA-base counts for FASTQ files using Spark's mapPartitions()
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+object DNABaseCountFASTQWithMapPartitions {
+  //
+  def main(args: Array[String]): Unit = {
+    //
+    if (args.size < 2) {
+      println("Usage: DNABaseCountFASTQWithMapPartitions  <input dir> <output dir>")
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("DNABaseCountFASTQWithMapPartitions")
+    val sc = new SparkContext(sparkConf)
+
+    val input = args(0)
+    val output = args(1)
+
+    val fastqRDD = sc.textFile(input)
+
+    val partitions = fastqRDD.mapPartitions(itr => {
+      val mutableMap = collection.mutable.Map.empty[Char, Long]
+      itr.filter(line => {
+        !(line.startsWith("@") || line.startsWith("+") || line.startsWith(";") ||
+          line.startsWith("!") || line.startsWith("~"))
+      }).foreach(_.toUpperCase().toCharArray().foreach(base => {
+        val count = mutableMap.getOrElse(base, 0L)
+        mutableMap.put(base, count + 1L)
+      }))
+      mutableMap.toIterator
+    })
+
+    val collectPartition = partitions.collect()
+
+    val result = collectPartition.groupBy(_._1).mapValues(_.unzip._2.sum)
+
+    // debug output
+    result.foreach(println)
+
+    // save result in output
+
+    // done
+    sc.stop()
+  }
+}package org.dataalgorithms.chap07.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+//
+import scala.collection.mutable.ListBuffer
+
+/**
+  * Market Basket Analysis: find association rules
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+object FindAssociationRules {
+
+  def main(args: Array[String]): Unit = {
+
+    if (args.size < 2) {
+      println("Usage: FindAssociationRules <input-path> <output-path>")
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("market-basket-analysis")
+    val sc = new SparkContext(sparkConf)
+
+    val input = args(0)
+    val output = args(1)
+
+    val transactions = sc.textFile(input)
+
+    val patterns = transactions.flatMap(line => {
+      val items = line.split(",").toList // Converting to List is required because Spark doesn't partition on Array (as returned by split method)
+      (0 to items.size) flatMap items.combinations filter (xs => !xs.isEmpty)
+    }).map((_, 1))
+
+    val combined = patterns.reduceByKey(_ + _)
+
+    val subpatterns = combined.flatMap(pattern => {
+      val result = ListBuffer.empty[Tuple2[List[String], Tuple2[List[String], Int]]]
+      result += ((pattern._1, (Nil, pattern._2)))
+
+      val sublist = for {
+        i <- 0 until pattern._1.size
+        xs = pattern._1.take(i) ++ pattern._1.drop(i + 1)
+        if xs.size > 0
+      } yield (xs, (pattern._1, pattern._2))
+      result ++= sublist
+      result.toList
+    })
+
+    val rules = subpatterns.groupByKey()
+
+    val assocRules = rules.map(in => {
+      val fromCount = in._2.find(p => p._1 == Nil).get
+      val toList = in._2.filter(p => p._1 != Nil).toList
+      if (toList.isEmpty) Nil
+      else {
+        val result =
+          for {
+            t2 <- toList
+            confidence = t2._2.toDouble / fromCount._2.toDouble
+            difference = t2._1 diff in._1
+          } yield (((in._1, difference, confidence)))
+        result
+      }
+    })
+
+    // Formatting the result just for easy reading.
+    val formatResult = assocRules.flatMap(f => {
+      f.map(s => (s._1.mkString("[", ",", "]"), s._2.mkString("[", ",", "]"), s._3))
+    })
+    formatResult.saveAsTextFile(output)
+
+    // done!
+    sc.stop()
+  }
+}package org.dataalgorithms.chap08.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+/**
+  * Find Common Friends
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+object FindCommonFriends {
+
+  def main(args: Array[String]): Unit = {
+    if (args.size < 2) {
+      println("Usage: FindCommonFriends <input-dir> <output-dir>")
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("FindCommonFriends")
+    val sc = new SparkContext(sparkConf)
+
+    val input = args(0)
+    val output = args(1)
+
+    val records = sc.textFile(input)
+
+    val pairs = records.flatMap(s => {
+      val tokens = s.split(",")
+      val person = tokens(0).toLong
+      val friends = tokens(1).split("\\s+").map(_.toLong).toList
+      val result = for {
+        i <- 0 until friends.size
+        friend = friends(i)
+      } yield {
+        if (person < friend)
+          ((person, friend), friends)
+        else
+          ((friend, person), friends)
+      }
+      result
+    })
+
+    val grouped = pairs.groupByKey()
+
+    val commonFriends = grouped.mapValues(iter => {
+      val friendCount = for {
+        list <- iter
+        if !list.isEmpty
+        friend <- list
+      } yield ((friend, 1))
+      friendCount.groupBy(_._1).mapValues(_.unzip._2.sum).filter(_._2 > 1).map(_._1)
+    })
+
+    // save the result to the file
+    commonFriends.saveAsTextFile(output)
+
+    //Format result for easy viewing
+    val formatedResult = commonFriends.map(
+      f => s"(${f._1._1}, ${f._1._2})\t${f._2.mkString("[", ", ", "]")}"
+    )
+
+    formatedResult.foreach(println)
+
+    // done!
+    sc.stop()
+  }
+}package org.dataalgorithms.chap09.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+/**
+  * FriendRecommendation: recommed friends...
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+object FriendRecommendation {
+
+  def main(args: Array[String]): Unit = {
+    //
+    if (args.size < 2) {
+      println("Usage: FriendRecommendation <input-path> <output-path>")
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("FriendRecommendation")
+    val sc = new SparkContext(sparkConf)
+
+    val input = args(0)
+    val output = args(1)
+
+    val records = sc.textFile(input)
+
+    val pairs = records.flatMap(line => {
+      val tokens = line.split("\\s")
+      val person = tokens(0).toLong
+      val friends = tokens(1).split(",").map(_.toLong).toList
+      val mapperOutput = friends.map(directFriend => (person, (directFriend, -1.toLong)))
+
+      val result = for {
+        fi <- friends
+        fj <- friends
+        possibleFriend1 = (fj, person)
+        possibleFriend2 = (fi, person)
+        if (fi != fj)
+      } yield {
+        (fi, possibleFriend1) :: (fj, possibleFriend2) :: List()
+      }
+      mapperOutput ::: result.flatten
+    })
+
+    //
+    // note that groupByKey() provides an expensive solution
+    // [you must have enough memory/RAM to hold all values for
+    // a given key -- otherwise you might get OOM error], but
+    // combineByKey() and reduceByKey() will give a better
+    // scale-out performance
+    //
+    val grouped = pairs.groupByKey()
+
+    val result = grouped.mapValues(values => {
+      val mutualFriends = new collection.mutable.HashMap[Long, List[Long]].empty
+      values.foreach(t2 => {
+        val toUser = t2._1
+        val mutualFriend = t2._2
+        val alreadyFriend = (mutualFriend == -1)
+        if (mutualFriends.contains(toUser)) {
+          if (alreadyFriend) {
+            mutualFriends.put(toUser, List.empty)
+          } else if (mutualFriends.get(toUser).isDefined && mutualFriends.get(toUser).get.size > 0 && !mutualFriends.get(toUser).get.contains(mutualFriend)) {
+            val existingList = mutualFriends.get(toUser).get
+            mutualFriends.put(toUser, (mutualFriend :: existingList))
+          }
+        } else {
+          if (alreadyFriend) {
+            mutualFriends.put(toUser, List.empty)
+          } else {
+            mutualFriends.put(toUser, List(mutualFriend))
+          }
+        }
+      })
+      mutualFriends.filter(!_._2.isEmpty).toMap
+    })
+
+    result.saveAsTextFile(output)
+
+    //
+    // formatting and printing it to console for debugging purposes...
+    //
+    result.foreach(f => {
+      val friends = if (f._2.isEmpty) "" else {
+        val items = f._2.map(tuple => (tuple._1, "(" + tuple._2.size + ": " + tuple._2.mkString("[", ",", "]") + ")")).map(g => "" + g._1 + " " + g._2)
+        items.toList.mkString(",")
+      }
+      println(s"${f._1}: ${friends}")
+    })
+
+    // done
+    sc.stop();
+  }
+}package org.dataalgorithms.chap26.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+/**
+  *
+  * Gene Aggregation by Average
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+object GeneAggregationByAverage {
+  //
+  def main(args: Array[String]): Unit = {
+    if (args.size < 5) {
+      println("Usage: GeneAggregationByAverage <input-path> <sample-reference-type> <filter-type> <filter-value-threshold> <output-path>")
+      // <sample-reference-type> can be one of the following:
+      //      "r1" = normal sample
+      //      "r2" = disease sample
+      //      "r3" = paired sample
+      //      "r4" = unknown
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("GeneAggregationByAverage")
+    val sc = new SparkContext(sparkConf)
+
+    val input = args(0)
+    val referenceType = args(1)   // {"r1", "r2", "r3", "r4"}
+    val filterType = args(2)      // {"up", "down", "abs"}
+    val filterValueThreshold = args(3).toDouble
+    val output = args(4)
+
+    val broadcastReferenceType = sc.broadcast(referenceType)
+    val broadcastFilterType = sc.broadcast(filterType)
+    val broadcastFilterValueThreshold = sc.broadcast(filterValueThreshold)
+
+    val records = sc.textFile(input)
+
+    val genes = records.flatMap(record => {
+      val tokens = record.split(";")
+      val geneIDAndReferenceType = tokens(0)
+      val referenceType = geneIDAndReferenceType.split(",")(1)
+      val patientIDAndGeneValue = tokens(1)
+      if (referenceType == broadcastReferenceType.value) ((geneIDAndReferenceType, patientIDAndGeneValue) :: Nil) else Nil
+    })
+
+    // note that groupByKey() provides an expensive solution
+    // [you must have enough memory/RAM to hold all values for
+    // a given key -- otherwise you might get OOM error], but
+    // combineByKey() and reduceByKey() will give a better
+    // scale-out performance
+    val genesByID = genes.groupByKey()
+
+    val frequency = genesByID.mapValues(itr => {
+      val patients = itr.map(str => {
+        val tokens = str.split(",")
+        (tokens(0), tokens(1).toDouble)
+      }).groupBy(_._1).mapValues(itr => {
+        val geneValues = itr.map(_._2)
+        (geneValues.sum / geneValues.size)
+      })
+      val averages = patients.values
+      broadcastFilterType.value match {
+        case "up"   => averages.filter(_ >= broadcastFilterValueThreshold.value).size
+        case "down" => averages.filter(_ <= broadcastFilterValueThreshold.value).size
+        case "abs"  => averages.filter(math.abs(_) >= broadcastFilterValueThreshold.value).size
+        case _      => 0
+      }
+    })
+
+    // For debugging
+    frequency.foreach(println)
+
+    frequency.saveAsTextFile(output)
+
+    // done
+    sc.stop()
+  }
+}package org.dataalgorithms.chap26.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+/**
+  *
+  * Gene Aggregation by Individual
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+object GeneAggregationByIndividual {
+  //
+  def main(args: Array[String]): Unit = {
+    if (args.size < 5) {
+      println("Usage: GeneAggregationByIndividual <input-path> <sample-reference-type> <filter-type> <filter-value-threshold> <output-path>")
+      // <sample-reference-type> can be one of the following:
+      //      "r1" = normal sample
+      //      "r2" = disease sample
+      //      "r3" = paired sample
+      //      "r4" = unknown
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("GeneAggregationByIndividual")
+    val sc = new SparkContext(sparkConf)
+
+    val input = args(0)
+    val referenceType = args(1) // {"r1", "r2", "r3", "r4"}
+    val filterType = args(2)    // {"up", "down", "abs"}
+    val filterValueThreshold = args(3).toDouble
+    val output = args(4)
+
+    val broadcastReferenceType = sc.broadcast(referenceType)
+    val broadcastFilterType = sc.broadcast(filterType)
+    val broadcastFilterValueThreshold = sc.broadcast(filterValueThreshold)
+
+    def checkFilter(value: Double, filterType: String, filterValueThreshold: Double): Boolean = {
+      filterType match {
+        case "abs" if (math.abs(value) >= filterValueThreshold) => true
+        case "up" if (value >= filterValueThreshold) => true
+        case "down" if (value <= filterValueThreshold) => true
+        case _ => false
+      }
+    }
+
+    val records = sc.textFile(input)
+
+    val genes = records.flatMap(record => {
+      val tokens = record.split(";")
+      val geneIDAndReferenceType = tokens(0)
+      val gr = geneIDAndReferenceType.split(",")
+      val geneID = gr(0)
+      val referenceType = gr(1)
+      val patientIDAndGeneValue = tokens(1)
+      val pg = patientIDAndGeneValue.split(",")
+      val patientID = pg(0)
+      val geneValue = pg(1)
+      if (referenceType == broadcastReferenceType.value && checkFilter(geneValue.toDouble, broadcastFilterType.value, broadcastFilterValueThreshold.value)) ((geneIDAndReferenceType, 1) :: Nil) else Nil
+    })
+
+    val counts = genes.reduceByKey(_ + _)
+
+    // For debugging
+    counts.foreach(println)
+
+    counts.saveAsTextFile(output)
+
+    // done
+    sc.stop()
+  }
+}package org.dataalgorithms.chap17.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+/**
+  *
+  * Kmer counting for a given K and N.
+  * K: to find K-mers
+  * N: to find top-N
+  *
+  * A kmer or k-mer is a short DNA sequence consisting of a fixed
+  * number (K) of bases. The value of k is usually divisible by 4
+  * so that a kmer can fit compactly into a basevector object.
+  * Typical values include 12, 20, 24, 36, and 48; kmers of these
+  * sizes are referred to as 12-mers, 20-mers, and so forth.
+  *
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+object Kmer {
+  //
+  def main(args: Array[String]): Unit = {
+    //
+    if (args.size < 3) {
+      println("Usage: Kmer <input-path-as-a-FASTQ-file(s)> <K> <N>")
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("Kmer")
+    val sc = new SparkContext(sparkConf)
+
+    val input = args(0)
+    val K = args(1).toInt
+    val N = args(2).toInt
+
+    val broadcastK = sc.broadcast(K)
+    val broadcastN = sc.broadcast(N)
+
+    val records = sc.textFile(input)
+
+    // remove the records, which are not an actual sequence data
+    val filteredRDD = records.filter(line => {
+      !(
+        line.startsWith("@") ||
+          line.startsWith("+") ||
+          line.startsWith(";") ||
+          line.startsWith("!") ||
+          line.startsWith("~")
+        )
+    })
+
+    val kmers = filteredRDD.flatMap(_.sliding(broadcastK.value, 1).map((_, 1)))
+
+    // find frequencies of kmers
+    val kmersGrouped = kmers.reduceByKey(_ + _)
+
+    val partitions = kmersGrouped.mapPartitions(_.toList.sortBy(_._2).takeRight(broadcastN.value).toIterator)
+
+    val allTopN = partitions.sortBy(_._2, false, 1).take(broadcastN.value)
+
+    // print out top-N kmers
+    allTopN.foreach(println)
+
+    // done!
+    sc.stop()
+  }
+}package org.dataalgorithms.chap13.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+/**
+  * kNN algorithm in scala/spark.
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+object kNN {
+  //
+  def main(args: Array[String]): Unit = {
+    //
+    if (args.size < 5) {
+      println("Usage: kNN <k-knn> <d-dimension> <R-input-dir> <S-input-dir> <output-dir>")
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("kNN")
+    val sc = new SparkContext(sparkConf)
+
+    val k = args(0).toInt
+    val d = args(1).toInt
+    val inputDatasetR = args(2)
+    val inputDatasetS = args(3)
+    val output = args(4)
+
+    val broadcastK = sc.broadcast(k);
+    val broadcastD = sc.broadcast(d)
+
+    val R = sc.textFile(inputDatasetR)
+    val S = sc.textFile(inputDatasetS)
+
+    /**
+      * Calculate the distance between 2 points
+      *
+      * @param rAsString as r1,r2, ..., rd
+      * @param sAsString as s1,s2, ..., sd
+      * @param d as dimention
+      */
+    def calculateDistance(rAsString: String, sAsString: String, d: Int): Double = {
+      val r = rAsString.split(",").map(_.toDouble)
+      val s = sAsString.split(",").map(_.toDouble)
+      if (r.length != d || s.length != d) Double.NaN else {
+        math.sqrt((r, s).zipped.take(d).map { case (ri, si) => math.pow((ri - si), 2) }.reduce(_ + _))
+      }
+    }
+
+    val cart = R cartesian S
+
+    val knnMapped = cart.map(cartRecord => {
+      val rRecord = cartRecord._1
+      val sRecord = cartRecord._2
+      val rTokens = rRecord.split(";")
+      val rRecordID = rTokens(0)
+      val r = rTokens(1) // r.1, r.2, ..., r.d
+      val sTokens = sRecord.split(";")
+      val sClassificationID = sTokens(1)
+      val s = sTokens(2) // s.1, s.2, ..., s.d
+      val distance = calculateDistance(r, s, broadcastD.value)
+      (rRecordID, (distance, sClassificationID))
+    })
+
+    // note that groupByKey() provides an expensive solution
+    // [you must have enough memory/RAM to hold all values for
+    // a given key -- otherwise you might get OOM error], but
+    // combineByKey() and reduceByKey() will give a better
+    // scale-out performance
+    val knnGrouped = knnMapped.groupByKey()
+
+    val knnOutput = knnGrouped.mapValues(itr => {
+      val nearestK = itr.toList.sortBy(_._1).take(broadcastK.value)
+      val majority = nearestK.map(f => (f._2, 1)).groupBy(_._1).mapValues(list => {
+        val (stringList, intlist) = list.unzip
+        intlist.sum
+      })
+      majority.maxBy(_._2)._1
+    })
+
+    // for debugging purpose
+    knnOutput.foreach(println)
+
+    // save output
+    knnOutput.saveAsTextFile(output)
+
+    // done!
+    sc.stop()
+  }
+}package org.dataalgorithms.chap04.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+/**
+  * Demonstrates how to do "left outer join" on two RDD
+  * without using Spark's inbuilt feature 'leftOuterJoin'.
+  *
+  * The main purpose here is to show the comparison with Hadoop
+  * MapReduce shown earlier in the book and is only for demonstration purpose.
+  * For your project we suggest to use Spark's built-in feature
+  * 'leftOuterJoin' or use DataFrame (highly recommended).
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  * *
+  */
+object LeftOuterJoin {
+
+  def main(args: Array[String]): Unit = {
+    if (args.size < 3) {
+      println("Usage: LeftOuterJoin <users-data-path> <transactions-data-path> <output-path>")
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("LeftOuterJoin")
+    val sc = new SparkContext(sparkConf)
+
+    val usersInputFile = args(0)
+    val transactionsInputFile = args(1)
+    val output = args(2)
+
+    val usersRaw = sc.textFile(usersInputFile)
+    val transactionsRaw = sc.textFile(transactionsInputFile)
+
+    val users = usersRaw.map(line => {
+      val tokens = line.split("\t")
+      (tokens(0), ("L", tokens(1))) // Tagging Locations with L
+    })
+
+    val transactions = transactionsRaw.map(line => {
+      val tokens = line.split("\t")
+      (tokens(2), ("P", tokens(1))) // Tagging Products with P
+    })
+
+    // This operation is expensive and is listed to compare with Hadoop
+    // MapReduce approach, please compare it with more optimized approach
+    // shown in SparkLeftOuterJoin.scala or DataFramLeftOuterJoin.scala
+    val all = users union transactions
+
+    val grouped = all.groupByKey()
+
+    val productLocations = grouped.flatMap {
+      case (userId, iterable) =>
+        // span returns two Iterable, one containing Location and other containing Products
+        val (location, products) = iterable span (_._1 == "L")
+        val loc = location.headOption.getOrElse(("L", "UNKNOWN"))
+        products.filter(_._1 == "P").map(p => (p._2, loc._2)).toSet
+    }
+    //
+    val productByLocations = productLocations.groupByKey()
+
+    val result = productByLocations.map(t => (t._1, t._2.size)) // Return (product, location count) tuple
+
+    result.saveAsTextFile(output) // Saves output to the file.
+
+    // done
+    sc.stop()
+  }
+}
+package org.dataalgorithms.chap11.scala
+
+import java.text.SimpleDateFormat
+//
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+/**
+  * Markov algorithm
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+object Markov {
+  //
+  def main(args: Array[String]): Unit = {
+
+    if (args.size < 2) {
+      println("Usage: Markov <input-path> <output-path>")
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("Markov")
+    val sc = new SparkContext(sparkConf)
+
+    val input = args(0)
+    val output = args(1)
+
+    val transactions = sc.textFile(input)
+
+    val dateFormat = new SimpleDateFormat("yyyy-MM-dd")
+    val customers = transactions.map(line => {
+      val tokens = line.split(",")
+      (tokens(0), (dateFormat.parse(tokens(2)).getTime.toLong, tokens(3).toDouble)) // transaction-id i.e. tokens(1) ignored
+    })
+
+    //
+    // note that groupByKey() provides an expensive solution
+    // [you must have enough memory/RAM to hold all values for
+    // a given key -- otherwise you might get OOM error], but
+    // combineByKey() and reduceByKey() will give a better
+    // scale-out performance
+    //
+    val coustomerGrouped = customers.groupByKey()
+
+    val sortedByDate = coustomerGrouped.mapValues(_.toList.sortBy(_._1))
+
+    val stateSequence = sortedByDate.mapValues(list => {
+      val sequence = for {
+        i <- 0 until list.size - 1
+        (currentDate, currentPurchase) = list(i)
+        (nextDate, nextPurchse) = list(i + 1)
+      } yield {
+        val elapsedTime = (nextDate - currentDate) / 86400000 match {
+          case diff if (diff < 30) => "S" //small
+          case diff if (diff < 60) => "M" // medium
+          case _                   => "L" // large
+        }
+        val amountRange = (currentPurchase / nextPurchse) match {
+          case ratio if (ratio < 0.9) => "L" // significantly less than
+          case ratio if (ratio < 1.1) => "E" // more or less same
+          case _                      => "G" // significantly greater than
+        }
+        elapsedTime + amountRange
+      }
+      sequence
+    })
+
+
+    val model = stateSequence.filter(_._2.size >= 2).flatMap(f => {
+      val states = f._2
+
+      val statePair = for {
+        i <- 0 until states.size - 1
+        fromState = states(i)
+        toState = states(i + 1)
+      } yield {
+        ((fromState, toState), 1)
+      }
+      statePair
+    })
+
+    // build Markov model
+    val markovModel = model.reduceByKey(_ + _)
+
+    val markovModelFormatted = markovModel.map(f => f._1._1 + "," + f._1._2 + "\t" + f._2)
+    markovModelFormatted.foreach(println)
+
+    markovModelFormatted.saveAsTextFile(output)
+
+    // done!
+    sc.stop()
+
+  }
+}package org.dataalgorithms.chap28.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+/**
+  * Finding averge using monoid (implement using Spark's combineByKey())
+  *
+  * A monoid is a triple (T, ∗, z) such that ∗ is an associative
+  * binary operation on T, and z ∈ T has the property that for
+  * all x ∈ T it holds that x∗z = z∗x = x.
+  *
+  *
+  * To find means of numbers, convert each number into (number, 1),
+  * then add them preserving a monoid structure:
+  *
+  * The monoid structure is defined as (sum, count)
+  *
+  * number1 -> (number1, 1)
+  * number2 -> (number2, 1)
+  * (number1, 1) + (number2, 1) -> (number1+number2, 1+1) = (number1+number2, 2)
+  * (number1, x) + (number2, y) ->  (number1+number2, x+y)
+  *
+  * Finally, per key, we will have a value as (sum, count), then to find the mean,
+  * mean = sum / count
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+object MeanMonoidizedUsingCombineByKey {
+  //
+  def main(args: Array[String]): Unit = {
+    //
+    if (args.size < 2) {
+      println("Usage: MeanMonoidizedUsingCombineByKey <input-dir> <output-dir>")
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("MeanMonoidizedUsingCombineByKey")
+    val sc = new SparkContext(sparkConf)
+
+    val input = args(0)
+    val output = args(1)
+
+    val records = sc.textFile(input)
+
+    // create a monoid structure
+    val monoid = records.map(line => {
+      val tokens = line.split("\\s+")
+      (tokens(0), tokens(1).toInt)
+    })
+
+    // combineBykey() requires 3 basic functions:
+    val createCombiner = (num: Int) => (num, 1)
+    val mergeValue = (c: (Int, Int), num: Int) => (c._1 + num, c._2 + 1)
+    val mergeCombiners = (a: (Int, Int), b: (Int, Int)) => (a._1 + b._1, a._2 + b._2)
+
+    val combined = monoid.combineByKey(createCombiner, mergeValue, mergeCombiners)
+
+    val result = combined.mapValues(f => f._1.toDouble / f._2)
+
+    // For debugging
+    result.foreach(println)
+
+    result.saveAsTextFile(output)
+
+    // done!
+    sc.stop()
+  }
+}package org.dataalgorithms.chap28.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+/**
+  * Finding averge using monoid (implement using Spark's reduceByKey())
+  *
+  * A monoid is a triple (T, ∗, z) such that ∗ is an associative
+  * binary operation on T, and z ∈ T has the property that for
+  * all x ∈ T it holds that x∗z = z∗x = x.
+  *
+  *
+  * To find means of numbers, convert each number into (number, 1),
+  * then add them preserving a monoid structure:
+  *
+  * The monoid structure is defined as (sum, count)
+  *
+  * number1 -> (number1, 1)
+  * number2 -> (number2, 1)
+  * (number1, 1) + (number2, 1) -> (number1+number2, 1+1) = (number1+number2, 2)
+  * (number1, x) + (number2, y) ->  (number1+number2, x+y)
+  *
+  * Finally, per key, we will have a value as (sum, count), then to find the mean,
+  * mean = sum / count
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+object MeanMonoidizedUsingReduceByKey {
+  //
+  def main(args: Array[String]): Unit = {
+    //
+    if (args.size < 2) {
+      println("Usage: MeanMonoidizedUsingReduceByKey <input-dir> <output-dir>")
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("MeanMonoidizedUsingReduceByKey")
+    val sc = new SparkContext(sparkConf)
+
+    val input = args(0)
+    val output = args(1)
+
+    val records = sc.textFile(input)
+
+    // create a monoid structure
+    val monoid = records.map(line => {
+      val tokens = line.split("\\s+")
+      (tokens(0), (tokens(1).toInt, 1))
+    })
+
+    val reduced = monoid.reduceByKey { case (a, b) => (a._1 + b._1, a._2 + b._2) }
+    val result = reduced.mapValues(f => f._1.toDouble / f._2)
+
+    // For debugging
+    result.foreach(println)
+
+    result.saveAsTextFile(output)
+
+    // done!
+    sc.stop()
+  }
+}package org.dataalgorithms.chap10.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+/**
+  * MovieRecommendations: very basic movie recommnedation...
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+object MovieRecommendations {
+
+  def main(args: Array[String]): Unit = {
+    //
+    if (args.size < 2) {
+      println("Usage: MovieRecommendations <input-path> <output-path>")
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("MovieRecommendations")
+    val sc = new SparkContext(sparkConf)
+
+    val input = args(0)
+    val output = args(1)
+
+    val usersRatings = sc.textFile(input)
+
+    val userMovieRating = usersRatings.map(line => {
+      val tokens = line.split("\\s+")
+      (tokens(0), tokens(1), tokens(2).toInt)
+    })
+
+    val numberOfRatersPerMovie = userMovieRating.map(umr => (umr._2, 1)).reduceByKey(_ + _)
+
+    val userMovieRatingNumberOfRater = userMovieRating.map(umr => (umr._2, (umr._1, umr._3))).join(numberOfRatersPerMovie)
+      .map(tuple => (tuple._2._1._1, tuple._1, tuple._2._1._2, tuple._2._2))
+
+    val groupedByUser = userMovieRatingNumberOfRater.map(f => (f._1, (f._2, f._3, f._4))).groupByKey()
+
+    val moviePairs = groupedByUser.flatMap(tuple => {
+      val sorted = tuple._2.toList.sortBy(f => f._1) //sorted by movies
+      val tuple7 = for {
+        movie1 <- sorted
+        movie2 <- sorted
+        if (movie1._1 < movie2._1); // avoid duplicate
+        ratingProduct = movie1._2 * movie2._2
+        rating1Squared = movie1._2 * movie1._2
+        rating2Squared = movie2._2 * movie2._2
+      } yield {
+        ((movie1._1, movie2._1), (movie1._2, movie1._3, movie2._2, movie2._3, ratingProduct, rating1Squared, rating2Squared))
+      }
+      tuple7
+    })
+
+    //
+    // note that groupByKey() provides an expensive solution
+    // [you must have enough memory/RAM to hold all values for
+    // a given key -- otherwise you might get OOM error], but
+    // combineByKey() and reduceByKey() will give a better
+    // scale-out performance
+    //
+    val moviePairsGrouped = moviePairs.groupByKey()
+
+    val result = moviePairsGrouped.mapValues(itr => {
+      val groupSize = itr.size // length of each vector
+      val (rating1, numOfRaters1, rating2, numOfRaters2, ratingProduct, rating1Squared, rating2Squared) =
+        itr.foldRight((List[Int](), List[Int](), List[Int](), List[Int](), List[Int](), List[Int](), List[Int]()))((a, b) =>
+          (
+            a._1 :: b._1,
+            a._2 :: b._2,
+            a._3 :: b._3,
+            a._4 :: b._4,
+            a._5 :: b._5,
+            a._6 :: b._6,
+            a._7 :: b._7))
+      val dotProduct = ratingProduct.sum // sum of ratingProd
+      val rating1Sum = rating1.sum // sum of rating1
+      val rating2Sum = rating2.sum // sum of rating2
+      val rating1NormSq = rating1Squared.sum // sum of rating1Squared
+      val rating2NormSq = rating2Squared.sum // sum of rating2Squared
+      val maxNumOfumRaters1 = numOfRaters1.max // max of numOfRaters1
+      val maxNumOfumRaters2 = numOfRaters2.max // max of numOfRaters2
+
+      val numerator = groupSize * dotProduct - rating1Sum * rating2Sum
+      val denominator = math.sqrt(groupSize * rating1NormSq - rating1Sum * rating1Sum) *
+        math.sqrt(groupSize * rating2NormSq - rating2Sum * rating2Sum)
+      val pearsonCorrelation = numerator / denominator
+
+      val cosineCorrelation = dotProduct / (math.sqrt(rating1NormSq) * math.sqrt(rating2NormSq))
+
+      val jaccardCorrelation = groupSize.toDouble / (maxNumOfumRaters1 + maxNumOfumRaters2 - groupSize)
+
+      (pearsonCorrelation, cosineCorrelation, jaccardCorrelation)
+    })
+
+
+    // for debugging purposes...
+    result.foreach(println)
+
+    result.saveAsTextFile(output)
+
+    // done
+    sc.stop()
+  }
+}package org.dataalgorithms.chap06.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+/*
+ * Moving Average in Scala sses "secondary sorting" via
+ * repartitionAndSortWithinPartitions()
+ *
+ * One question on using scala.collection.mutable.Queue data structure
+ * for the moving average solution: will this scale out? The answer is
+ * yes, since the queue size is almost fixed and will not grow beyond
+ * the “window” size, it will scale out: if even we use thousands or
+ * 10’s of thousands of it.  If at the reducer level we use unbounded
+ * data structures, then we are looking for OOM error: in our case,
+ * it is well guarded by the window size.
+ *
+ *
+ * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+ *
+ * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+ *
+ */
+object MovingAverage {
+
+  def main(args: Array[String]): Unit = {
+    if (args.size < 4) {
+      println("Usage: MemoryMovingAverage <window> <number-of-partitions> <input-dir> <output-dir>")
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("MovingAverage")
+    val sc = new SparkContext(sparkConf)
+
+    val window = args(0).toInt
+    val numPartitions = args(1).toInt // number of partitions in secondary sorting, choose a high value
+    val input = args(2)
+    val output = args(3)
+
+    val brodcastWindow = sc.broadcast(window)
+
+    val rawData = sc.textFile(input)
+
+    // Key contains part of value (closing date in this case)
+    val valueTokey = rawData.map(line => {
+      val tokens = line.split(",")
+      val dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd")
+      val timestamp = dateFormat.parse(tokens(1)).getTime
+      (CompositeKey(tokens(0), timestamp), TimeSeriesData(timestamp, tokens(2).toDouble))
+    })
+
+    // Secondary sorting
+    val sortedData = valueTokey.repartitionAndSortWithinPartitions(new CompositeKeyPartitioner(numPartitions))
+
+    val keyValue = sortedData.map(k => (k._1.stockSymbol, (k._2)))
+    val groupByStockSymbol = keyValue.groupByKey()
+
+    val movingAverage = groupByStockSymbol.mapValues(values => {
+      val dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd")
+      val queue = new scala.collection.mutable.Queue[Double]()
+      for (TimeSeriesData <- values) yield {
+        queue.enqueue(TimeSeriesData.closingStockPrice)
+        if (queue.size > brodcastWindow.value)
+          queue.dequeue
+
+        (dateFormat.format(new java.util.Date(TimeSeriesData.timeStamp)), (queue.sum / queue.size))
+      }
+    })
+
+    // output will be in CSV format
+    // <stock_symbol><,><date><,><moving_average>
+    val formattedResult = movingAverage.flatMap(kv => {
+      kv._2.map(v => (kv._1 + "," + v._1 + "," + v._2.toString()))
+    })
+    formattedResult.saveAsTextFile(output)
+
+    // done
+    sc.stop()
+  }
+
+}
+
+// Case class comes handy
+case class CompositeKey(stockSymbol: String, timeStamp: Long)
+case class TimeSeriesData(timeStamp: Long, closingStockPrice: Double)
+
+// Defines ordering
+object CompositeKey {
+  implicit def ordering[A <: CompositeKey]: Ordering[A] = {
+    Ordering.by(fk => (fk.stockSymbol, fk.timeStamp))
+  }
+}
+
+
+//---------------------------------------------------------
+// the following class defines a custom partitioner by
+// extending abstract class org.apache.spark.Partitioner
+//---------------------------------------------------------
+import org.apache.spark.Partitioner
+
+class CompositeKeyPartitioner(partitions: Int) extends Partitioner {
+  require(partitions >= 0, s"Number of partitions ($partitions) cannot be negative.")
+
+  def numPartitions: Int = partitions
+
+  def getPartition(key: Any): Int = key match {
+    case k: CompositeKey => math.abs(k.stockSymbol.hashCode % numPartitions)
+    case null            => 0
+    case _               => math.abs(key.hashCode % numPartitions)
+  }
+
+  override def equals(other: Any): Boolean = other match {
+    case h: CompositeKeyPartitioner => h.numPartitions == numPartitions
+    case _                          => false
+  }
+
+  override def hashCode: Int = numPartitions
+}
+package org.dataalgorithms.chap06.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+/**
+  * Moving Avergae in Scala using Sort In Memory
+  *
+  * This example is analogous of to the SortInMemory_MovingAverageDriver
+  * (https://github.com/mahmoudparsian/data-algorithms-book/blob/master/src/main/java/org/dataalgorithms/chap06/memorysort/SortInMemory_MovingAverageDriver.java)
+  *
+  * Please note that this soultion will not scale with large data
+  * (if you cluster nodes have a limited amout of memory/RAM for
+  * sorting).  For large datasets use MovingAverage.scala which
+  * uses secondary sorting via repartitionAndSortWithinPartitions().
+  *
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+object MovingAverageInMemory {
+
+  def main(args: Array[String]): Unit = {
+    if (args.size < 3) {
+      println("Usage: MovingAverageInMemory <window> <input-dir> <output-dir>")
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("MovingAverageInMemory")
+    val sc = new SparkContext(sparkConf)
+
+    val window = args(0).toInt
+    val input = args(1)
+    val output = args(2)
+
+    val brodcastWindow = sc.broadcast(window)
+
+    val rawData = sc.textFile(input)
+    val keyValue = rawData.map(line => {
+      val tokens = line.split(",")
+      (tokens(0), (tokens(1), tokens(2).toDouble))
+    })
+
+    // Key being stock symbol like IBM, GOOG, AAPL, etc
+    val groupByStockSymbol = keyValue.groupByKey()
+
+    val result = groupByStockSymbol.mapValues(values => {
+      val dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd")
+      // in-memory sorting, will not scale with large datasets
+      val sortedValues = values.map(s => (dateFormat.parse(s._1).getTime.toLong, s._2)).toSeq.sortBy(_._1)
+      val queue = new scala.collection.mutable.Queue[Double]()
+      for (tup <- sortedValues) yield {
+        queue.enqueue(tup._2)
+        if (queue.size > brodcastWindow.value)
+          queue.dequeue
+
+        (dateFormat.format(new java.util.Date(tup._1)), (queue.sum / queue.size))
+      }
+    })
+
+    // output will be in CSV format
+    // <stock_symbol><,><date><,><moving_average>
+    val formattedResult = result.flatMap(kv => {
+      kv._2.map(v => (kv._1 + "," + v._1 + "," + v._2.toString()))
+    })
+    formattedResult.saveAsTextFile(output)
+
+    //done
+    sc.stop()
+  }
+}
+package org.dataalgorithms.chap14.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+/**
+  * Use a Naive Bayes Classifier (built by NaiveBayesClassifierBuilder)
+  * to classify new data
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+object NaiveBayesClassifier {
+
+  def main(args: Array[String]): Unit = {
+    //
+    if (args.size < 4) {
+      println("Usage: NaiveBayesClassifier <input-query-data> <input-pt> <input-classes> <output-path>")
+      // <input-query-data> is a new data that we want to classify by using/applying the built Naive Bayes Classifier
+      // <input-pt> is a probability table built by the NaiveBayesClassifierBuilder class
+      // <input-classes> are the classes built by the NaiveBayesClassifierBuilder class
+      // <output-path> is the output of new data classified by the built Naive Bayes Classifier
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("NaiveBayesClassifier")
+    val sc = new SparkContext(sparkConf)
+
+    val input = args(0)
+    val nbProbabilityTablePath = args(1)
+    val classesPath = args(2)
+    val output = args(3)
+
+    val newdata = sc.textFile(input)
+    val classifierRDD = sc.objectFile[Tuple2[Tuple2[String, String], Double]](nbProbabilityTablePath)
+
+    val classifier = classifierRDD.collectAsMap()
+    val broadcastClassifier = sc.broadcast(classifier)
+    val classesRDD = sc.textFile(classesPath)
+    val broadcastClasses = sc.broadcast(classesRDD.collect())
+
+    val classified = newdata.map(rec => {
+      val classifier = broadcastClassifier.value
+      val classes = broadcastClasses.value
+      val attributes = rec.split(",")
+
+      val class_score = classes.map(aClass => {
+        val posterior = classifier.getOrElse(("CLASS", aClass), 1d)
+        val probabilities = attributes.map(attribute => {
+          classifier.getOrElse((attribute, aClass), 0d)
+        })
+        (aClass, probabilities.product * posterior)
+      })
+      val maxClass = class_score.maxBy(_._2)
+      (rec, maxClass._1)
+    })
+
+    // For debugging purpose
+    classified.foreach(println)
+
+    // saved the classified data
+    classified.saveAsTextFile(output)
+
+    // done!
+    sc.stop()
+  }
+}package org.dataalgorithms.chap14.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+/**
+  * NaiveBayesClassifierBuilder builds a Naive Bayes
+  * Classifier. Two outputs are generated by this class:
+  *
+  *   1. Probability Table
+  *   2. Classes used in classification
+  *
+  * These above generated outputs are used (in BayesClassifierBuilder)
+  * to classify new data.
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+object NaiveBayesClassifierBuilder {
+  //
+  def main(args: Array[String]): Unit = {
+    if (args.size < 2) {
+      println("Usage: NaiveBayesClassifierBuilder <input-training-data-path> <output-path>")
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("NaiveBayesClassifierBuilder")
+    val sc = new SparkContext(sparkConf)
+
+    val input = args(0)
+    val output = args(1)
+
+    val training = sc.textFile(input)
+    val trainingDataSize = training count
+
+    val pairs = training.flatMap(line => {
+      val tokens = line.split(",")
+      val theClassification = tokens.last
+      (("CLASS", theClassification), 1) :: tokens.init.map(token => ((token, theClassification), 1)).toList
+    })
+
+    val counts = pairs reduceByKey (_ + _)
+
+    val countsAsMap = counts collectAsMap
+    val pt = countsAsMap.map(tuple => {
+      if (tuple._1._1 == "CLASS") (tuple._1, (tuple._2 / trainingDataSize.toDouble)) else {
+        val count = countsAsMap.getOrElse(("CLASS", tuple._1._2), 0)
+        if (count == 0) (tuple._1, 0d) else (tuple._1, (tuple._2 / count.toDouble))
+      }
+    })
+    val ptRDD = sc.parallelize(pt.toList)
+
+    // For debugging purpose
+    pt.foreach(f => println(s"${f._1._1},${f._1._2},${f._2}"))
+
+    // save the probability table
+    ptRDD.saveAsObjectFile(output + "/naivebayes/pt")
+
+    val classifications = pairs.filter(_._1._1 == "CLASS").map(_._1._2).distinct
+
+    // For debugging purpose
+    classifications.foreach(println)
+
+    // save the classified data (classes used in classification)
+    classifications.saveAsTextFile(output + "/naivebayes/classes")
+
+    // done!
+    sc.stop()
+  }
+}/*                     __                                               *\
+**     ________ ___   / /  ___     Scala API                            **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2011, LAMP/EPFL             **
+**  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
+** /____/\___/_/ |_/____/_/ | |                                         **
+**                          |/                                          **
+\*                                                                      */
+
+package scala.annotation
+
+/**
+  * An annotation that designates the class to which it is applied as serializable
+  */
+@deprecated("instead of `@serializable class C`, use `class C extends Serializable`", "2.9.0")
+class serializable extends annotation.StaticAnnotation
+package org.dataalgorithms.chap04.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+/**
+  * This approach uses 'leftOuterJoin' function available on PairRDD.
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+
+object SparkLeftOuterJoin {
+
+  def main(args: Array[String]): Unit = {
+    if (args.size < 3) {
+      println("Usage: SparkLeftOuterJoin <users> <transactions> <output>")
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("SparkLeftOuterJoin")
+    val sc = new SparkContext(sparkConf)
+
+    val usersInputFile = args(0)
+    val transactionsInputFile = args(1)
+    val output = args(2)
+
+    val usersRaw = sc.textFile(usersInputFile)
+    val transactionsRaw = sc.textFile(transactionsInputFile)
+
+    val users = usersRaw.map(line => {
+      val tokens = line.split("\t")
+      (tokens(0), tokens(1))
+    })
+
+    val transactions = transactionsRaw.map(line => {
+      val tokens = line.split("\t")
+      (tokens(2), tokens(1))
+    })
+
+    val joined =  transactions leftOuterJoin users
+    // getOrElse is a method availbale on Option which either returns value
+    // (if present) or returns passed value (unknown in this case).
+    val productLocations = joined.values.map(f => (f._1, f._2.getOrElse("unknown")))
+
+    val productByLocations = productLocations.groupByKey()
+
+    val productWithUniqueLocations = productByLocations.mapValues(_.toSet) // Converting toSet removes duplicates.
+
+    val result = productWithUniqueLocations.map(t => (t._1, t._2.size)) // Return (product, location count) tuple.
+
+    result.saveAsTextFile(output) // Saves output to the file.
+
+    // done
+    sc.stop()
+  }
+}
+package org.dataalgorithms.chap05.scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.sql.types.IntegerType
+import org.apache.spark.sql.types.StringType
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.StructField
+import org.apache.spark.sql.Row
+
+/**
+  * This solution implements Relative Frequency design pattern using Spark SQL.
+  *
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+object SparkSQLRelativeFrequency {
+
+  def main(args: Array[String]): Unit = {
+
+    if (args.size < 3) {
+      println("Usage: SparkSQLRelativeFrequency <neighbor-window> <input-dir> <output-dir>")
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("SparkSQLRelativeFrequency")
+
+    val spark = SparkSession
+      .builder()
+      .config(sparkConf)
+      .getOrCreate()
+    val sc = spark.sparkContext
+
+    val neighborWindow = args(0).toInt
+    val input = args(1)
+    val output = args(2)
+
+    val brodcastWindow = sc.broadcast(neighborWindow)
+
+    val rawData = sc.textFile(input)
+
+    /*
+    * Schema
+    * (word, neighbour, frequency)
+    */
+    val rfSchema = StructType(Seq(
+      StructField("word", StringType, false),
+      StructField("neighbour", StringType, false),
+      StructField("frequency", IntegerType, false)))
+
+    /*
+     * Transform the input to the format:
+     * Row(word, neighbour, 1)
+     */
+    val rowRDD = rawData.flatMap(line => {
+      val tokens = line.split("\\s")
+      for {
+        i <- 0 until tokens.length
+        start = if (i - brodcastWindow.value < 0) 0 else i - brodcastWindow.value
+        end = if (i + brodcastWindow.value >= tokens.length) tokens.length - 1 else i + brodcastWindow.value
+        j <- start to end if (j != i)
+      } yield Row(tokens(i), tokens(j), 1)
+    })
+
+    val rfDataFrame = spark.createDataFrame(rowRDD, rfSchema)
+    rfDataFrame.createOrReplaceTempView("rfTable")
+
+    import spark.sql
+
+    val query = "SELECT a.word, a.neighbour, (a.feq_total/b.total) rf " +
+      "FROM (SELECT word, neighbour, SUM(frequency) feq_total FROM rfTable GROUP BY word, neighbour) a " +
+      "INNER JOIN (SELECT word, SUM(frequency) as total FROM rfTable GROUP BY word) b ON a.word = b.word"
+
+    val sqlResult = sql(query)
+    sqlResult.show() // print first 20 records on the console
+    sqlResult.write.save(output + "/parquetFormat") // saves output in compressed Parquet format, recommended for large projects.
+    sqlResult.rdd.saveAsTextFile(output + "/textFormat") // to see output via cat command
+
+    // done
+    spark.stop()
+
+  }
+}
+package org.dataalgorithms.chap22.scala
+
+import scala.io.Source;
+//
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+//
+import org.apache.commons.math.stat.inference.TTestImpl;
+
+/**
+  *
+  * Ttest using Apache's TTestImpl
+  *
+  * A Ttest is an analysis of two populations means through the
+  * use of statistical examination; a t-test with two samples is
+  * commonly used, testing the difference between the samples when
+  * the variances of two normal distributions are not known.
+  *
+  *
+  * @author Gaurav Bhardwaj (gauravbhardwajemail@gmail.com)
+  *
+  * @editor Mahmoud Parsian (mahmoud.parsian@yahoo.com)
+  *
+  */
+object Ttest {
+
+  def main(args: Array[String]): Unit = {
+    //
+    if (args.size < 3) {
+      println("Usage: Ttest <input-timetable> <input-dir-bioset> <output-dir>")
+      sys.exit(1)
+    }
+
+    val sparkConf = new SparkConf().setAppName("Ttest")
+    val sc = new SparkContext(sparkConf)
+
+    val inputTimeTable = args(0)
+    val inputBioset = args(1)
+    val output = args(2)
+
+    // Use this if inputTimeTable is the full path of the file
+    // (including filename) on local file system
+    val timeTableFile = Source.fromFile(inputTimeTable).getLines
+    val timeTable = timeTableFile.map(line => {
+      val tokens = line.split("\\s+")
+      (tokens(0), tokens(1).toDouble)
+    }).toMap
+
+    // ----------------------------------------------------
+    // NOTE: Use this if inputTimeTable is the directory
+    // on distributed file system (like HDFS)
+    // ----------------------------------------------------
+    /*
+    val timeTableRDD = sc.textFile(inputTimeTable)
+    val timeTable = timeTableRDD.map(line => {
+      val tokens = line.split("\\s+")
+      (tokens(0), tokens(1).toDouble)
+    }).collect().toMap
+    */
+
+    val broadcastTimeTable = sc.broadcast(timeTable)
+
+    val biosets = sc.textFile(inputBioset)
+    val pairs = biosets.map(line => {
+      val tokens = line.split(",")
+      (tokens(0), tokens(1))
+    })
+
+    // note that groupByKey() provides an expensive solution
+    // [you must have enough memory/RAM to hold all values for
+    // a given key -- otherwise you might get OOM error], but
+    // combineByKey() and reduceByKey() will give a better
+    // scale-out performance
+    val grouped = pairs.groupByKey()
+
+    def ttestCalculator(groupA: Array[Double], groupB: Array[Double]): Double = {
+      val ttest = new TTestImpl()
+      if (groupA.isEmpty || groupB.isEmpty)
+        0d
+      else if ((groupA.length == 1) && (groupB.length == 1))
+        Double.NaN
+      else if (groupA.length == 1)
+        ttest.tTest(groupA(0), groupB)
+      else if (groupB.length == 1)
+        ttest.tTest(groupB(0), groupA)
+      else
+        ttest.tTest(groupA, groupB)
+    }
+
+    val ttest = grouped.mapValues(itr => {
+      val geneBiosets = itr.toSet
+      val timetable = broadcastTimeTable.value
+      val (exist, notexist) = timetable.partition(tuple => geneBiosets.contains(tuple._1))
+      ttestCalculator(exist.values.toArray, notexist.values.toArray)
+    })
+
+    // For debugging purpose
+    ttest.foreach(println)
+
+    // Saving the output
+    ttest.saveAsTextFile(output)
+
+    // done!
+    sc.stop()
+  }
+}
+
 
 // scalastyle:off println
 package org.apache.spark.examples
