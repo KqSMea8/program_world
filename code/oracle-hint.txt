@@ -1,3 +1,22 @@
+
+FULL hint 告诉ORACLE使用全表扫描的方式访问指定表。
+
+ROWID hint 告诉ORACLE使用TABLE ACCESS BY ROWID的操作访问表。
+
+CACHE hint 来告诉优化器把查询结果数据保留在SGA中。
+
+INDEX Hint 告诉ORACLE使用基于索引的扫描方式。
+
+ALL_ROWS
+FIRST_ROWS
+RULE
+USE_NL
+USE_MERGE
+USE_HASH 等等。
+
+       /*+ parallel(table_name 4)*/
+
+
 /*+ leading(table_1,table_2) */
 在多表关联查询中，指定哪个表作为驱动表，即告诉优化器首先要访问哪个表上的数据。 
 select /*+ leading(t,t1) */ t.* from t,t1 where t.id=t1.id; 
