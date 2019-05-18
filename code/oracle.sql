@@ -1,12 +1,1215 @@
 
+SELECT tO.ani AS col—0—0_, COUNT(tO.id) AS col—1_0_
+FROM tO tO
+LEFT JOIN (SELECT tl.id
+FROM tl
+WHERE tl.begin一date >= to_date(*2014-08-08 00:00:00、
+1yyyy-MM-dd HH24:mi:ss1)
+AND tl .begin_date <= to__date (*2014-08-08 23:59:59
+1yyyy-MM-dd HH24：mi:ss')) tl
+ON (tl.id = tO•lead一interaction—id)
+WHERE (tO.task一id IS NOT NULL)
+AND ((tO.type > 1 OR tO.type < 1) AND
+tO.dbdt > current—timestamp - (8 / 24) AND
+(tO.ani IN (’ 列表 1 *) OR concat (* 0 • , tO.ani) IN (* 列表 1
+tO.type = 1 AND tl.id IS NOT NULL AND
+(tO.ani IN (1列表1丨，'列表2丨）OR
+，0丨 | | tO.ani IN (丨列表 ，列表 2',，列表 3f>) AND
+(tO • acdgroup IN (1 列表 4 ')))
+GROUP BY tO.ani;
+M) OR
+
+------------------------------------------------------
+
+SELECT id
+FROM (SELECT a.id, COUNT(b.id) cnt
+FROM a, b
+WHERE a.id = b.cid(+)
+AND a.status = 0
+GROUP BY a.id
+ORDER BY cnt, id)
+WHERE rownum < 2;
+
+
+
+
+SELECT a.cust一income_level, a.cust_idf a.cust—first—name, a•cust一last一name
+FROM (SELECT a.cust_income_level,
+a.cust—id,
+a.cust一first_name,
+a.cust_last—name,
+MAX(cust__city) over(PARTITION BY cust—income—level) AS
+max—city
+FROM sh.customers a
+WHERE a.cust一city IN 「Aachen1, ■Celle1)) a
+WHERE max_city = 'Aachen1;
+
+
+CUST INCOME LEVEL	CUST ID CUST FIRST NAME CUST LAST NAME
+
+A: Below 30,000	324	Brooke	Sanford
+L: 300,000 and above	47870	Yuri	Chang
+L: 300/000 and above	6870	Boyd	Leigh
+3 rows selected
+
+
+
+------------------
+
+SELECT A.*
+FROM (SELECT MSI.*
+FROM INV.MSI@LINK MSI,
+LEFT JOIN APPS.MI0LINK MI
+ON (MSI .FLAG =	!N' AND MI • INVENTORY—ITEM—ID =
+MSI.INVENTORY一ITEM—ID AND MI.OID = MSI.O_ID)
+WHERE MSI•。一ID IN (170, 512, 953, 242, 240, 1052, 1131)
+AND MSI.LASTJJPDATE—DATE BETWEEN (DATE ,2012-1-1') AND (DATE
+•2013-1-1,)
+AND (MSI. FLAG = 'Y ' OR MI • INVENTORY一 ITEM一 ID IS NOT NULL)
+)A,
+(SELECT
+B.SEGMENT1, HAO.ATTRIBUTE1
+FROM APPS.HAO,
+INV.MSI	B
+WHERE B.O一ID = HAO.O_ID) B
+WHERE A.SEGMENT1 = B.SEGMENT1(+)
+AND B.SEGMENT1 IS NULL
+AND A.O ID = B.ATTRIBUTE1(+)
+AND B.ATTRIBUTE1 IS NULL;
+
+--------------------
+
+UPDATE
+SET
+WHERE
+k c
+c.flag = 1
+ROWID IN (SELECT rid
+FROM (SELECT ROWID AS rid,qty/
+COUNT(CASE
+    WHEN eclass IN ('A、'B') THEN
+    eclass
+    END)
+ over(PARTITION BY ename) AS cs
+FROM k x
+WHERE x.month = • 201312*)
+WHERE nvl(qty, 0) = 0
+AND cs <= 1);
+
+--------------------
+
+select * from table(dbms^xplan.display());
+
+SELECT *
+FROM (
+/★按截止时间分组，对起始时间排序，生成序号，因可能有重复数据，这里用了 rank*/
+SELECT rank() over(PARTITION BY col2 ORDER BY coll) AS seq, a.*
+FROM (SELECT lengthb(coll) lb,
+coll,
+col2,
+/★按长度分组，按coll排序，累计取col2的最大值★/
+MAX(col2) over(PARTITION BY lengthb(coll) ORDER BY
+coll) AS max一col2
+FROM t) a
+/★增加条件，取范围截止值*/
+WHERE col2 >= max—col2)
+/★序号为1的，也就是最小起始B?间★/
+WHERE seq = 1;
+
+-----------------
+SELECT empno, ename, job, sal, deptno
+FROM emp
+WHERE (ename, job, sal) IN (SELECT ename, job, sal FROM emp2)
+
+---------------------------------------
+
+WITH xO AS
+(SELECT deptno,
+sal,
+enamef
+MIN(sal) over(PARTITION BY deptno) AS min—sal,
+MAX(sal) over(PARTITION BY deptno) AS max_sal
+FROM emp)
+SELECT a.deptno, a.min一sal, a.ename AS min_n, b.max—sal, b.ename AS max—n
+FROM xO a, xO b
+WHERE a.deptno = b.deptno
+AND a.sal = a.min一sal
+AND b.sal = b.max—sal
+GROUP BY a.deptno, a.min—sal, a.ename, b.max—sal, b.ename;
+
+----------------------
+WITH gccO AS
+(SELECT rownum AS sn,
+gcc.segmentl,
+gcc.segment2f
+gcc.segment3,
+gcc.segments,
+gcc.segment5,
+gcc.segment6,
+gcc.segment7,
+gbb .peri od__name,
+gbb.period_net_dr - gbb.period_net_cr b_amount
+FROM apps.gImbalances gbb, apps.gl_code_combinations gcc
+WHERE gbb.period一name = '2014-01'
+AND gbb.actual一flag = 'B'
+AND gbb.template—id IS NULL
+AND gbb.currency_code * 'CNY'
+AND gbb.code_combination_id = gcc.code一combination一id
+AND gbb.period一net_dr <> gbb.period_net_cr),
+gcc AS
+(SELECT sn, flex一value_set_name, segmentO, segment7, period_name#
+b一amount
+FROM gccO	,
+unpivot(segment0 FOR flex_value_set_name IN(segmentl AS 'JI_COA_COM',
+SELECT MAX (CASE gcc. f lex_value_set_name WHEN
+END) AS segmentl,
+MAX (CASE gcc. f lex_value_set_name WHEN
+segmentl,
+MAX (CASE gcc. f 1 ex_va 1 ue_set_name WHEN
+segmentl,
+MAX (CASE gcc. f lex_value一set一name WHEN
+segmentl,
+MAX (CASE gcc. f lex_value_set_name WHEN
+segmentl,
+MAX (CASE gcc. f lex_value_set_name WHEN
+segmentl,
+segment2	AS	'JI_	_COA_	CST' •
+segment3	AS	'JI_	_COA_	ACC',
+segment^	AS	'JI_	_COA_	BRD',
+segments	AS	'JI.	_COA_	_PRJ',
+segment6	AS	'JI	_COA_	.ICP1)))
+WHEN 'JI_COA_		COM,	THEN gcc.segmentO
+END)
+END)
+END)
+END)
+END)
+AS
+AS
+AS
+AS
+AS
+•JI一COA-CST1
+•JI一COA一ACC'
+'JI一COA一BRD
+'JI COA PRJ
+THEN gcc. segmentO
+THEN gcc.segmentO
+THEN gcc.segmentO
+THEN gcc.segmentO
+■JI COA ICP' THEN gcc.segmentO
+MAX(CASE	gcc.flex_value_set_name
+ffv.description END) AS desl,
+MAX(CASE gcc.flex_value_set_name
+ffv.description END) AS des2.
+WHEN	' JI_COA__COM'	THEN
+WHEN	1 JI COA CST'	THEN
+
+----------
+MAX(CASE
+ffv.description END)
+MAX(CASE
+ffv.description END)
+MAX(CASE
+ffv.description END)
+gcc.flex_value_set_name	WHEN	'JI_COA_ACC'
+AS des3,
+gcc.flex一value一set一name	WHEN	'JI_COA_BRD1
+AS des4,
+gcc.flex_value_set_name	WHEN	'JI_COA_PRJ'
+AS des5,
+gcc.flex value_set name	WHEN	'JI_COA_ICP'
+MAX(CASE
+ffv.description END) AS des6,
+MAX(gcc.segment7) AS segment7,
+MAX(gcc.period一name} AS period一name,
+MAX(gcc.b_amount) AS b一amount
+FROM gcc, apps•fnd_flex_values_vl ffv, apps
+WHERE ffv.flex_value = gcc.segmentO
+AND ffv. flex_value_set_id ® ffvs. flex__value_set__id
+AND ffvs•flex一value一set_name = gcc.flex_value_set_name
+GROUP BY gcc.sn
+,fnd flex value sets
+THEN
+THEN
+THEN
+THEN
+f fvs
+HAVING COUNT <*) = 6
+
+---------
+
+SELECT 日期，
+交易金额，
+本月曰均，
+/★按内层取出的序号前移就是上一个月的数据*/
+lag (本月日均，seq> over (ORDER BY日期）AS上月日均
+FROM (SELECT transdate AS 日期，
+amount AS交易金额，
+AVG (amount) over (PARTITION BY comdate) AS 本月日均，
+/★按月分组，按日期排序，取出当前行在本月的序号*/
+row_number() over(PARTITION BY comdate ORDER BY transdate)
+AS seq
+FROM t);
+----------------------
+
+WITH xl AS
+(SELECT COUNT(CASE WHEN state IN (0, 2) THEN userid END) over(PARTITION
+userid) AS ct2,
+userid,
+username,
+taskid,
+state.
+createtime
+FROM tl),
+x2 AS
+(SELECT COUNT(CASE WHEN state IN (0, 2) THEN userid END) over(PARTITION
+BY userid) AS ctl,
+xl"
+FROM xl
+WHERE createtime BETWEEN '2013.12.07 00:00:00.000' AND '2013.12.19
+23:59:59.999')
+SELECT •
+FROM (SELECT userid,
+username,
+COUNT(userid) AS usercount,
+(CASE
+WHEN (COUNT(userid)) - MAX(a.ctl) <= 0 THEN
+0
+ELSE
+(COUNT(CASE
+WHEN state IN (1, 6) THEN
+userid
+END) / (COUNT(userid)) - MAX(a.ct2)) * 100
+END) AS correctrate,
+row一number(> over(ORDER BY a.userid DESC) AS rn
+FROM x2 a
+WHERE NOT EXISTS (SELECT id FROM t2 WHERE oldtaskid = a.taskid)
+GROUP BY userid, username) z
+WHERE rn BETWEEN 41 AND 60
+
+-----------
+SELECT d•用户号，SUM(d•总数童> AS总数量，SUM(d.总金额）AS总金额
+FROM t一money d
+WHERE d.mon >= 201201
+AND d.mon <= 201207
+GROUP BY d.用户号
+
+--------
+
+SELECT dfl3.用户号,
+dfl3.用户，
+dfl3.地址，
+FROM
+数量DESC)
+AS总金额
+LEFT
+dfl3.com,
+dfl3.总数量,
+dfl3.排名	/
+nvl(dfl3.	,总金额，	0),
+nvl(df12,	,总数最，	0),
+nvl(dfl2,	.总金额，	0)
+(SELECT	★
+FROM (SELECT		c.
+	df	.总数量
+	df	.总金额
+row一number (> over (PARTITION BY c •类型 ORDER BY df •总
+AS排名
+FROM customer c,
+(SELECT d.用户号,
+nvl(SUM(d•总数量>,0)总数量,
+SUM (CASE WHEN mon <= 201307 THEN d.总金额 END)
+FROM t_money d
+WHERE d.mon >= 201301
+AND d.mon <= 201309
+GROUP BY d.用户号> df
+WHERE c.用户号=df.用户号
+AND c•用户类型 IN (丨 10’，'11' f '20') ) cc
+WHERE cc.排名 <=3000) dfl3
+JOIN (SELECT d.用户号，
+SUM(d.总数量> AS总数量，
+SUM (d.总金额）AS总金额
+FROM t一money d
+WHERE d.mon >= 201201
+AND d.mon <= 201207
+GROUP BY d•用户号）dfl2 ON dfl2.用户号=dfl3.用户号
+
+-------
+
+SELECT *
+FROM (SELECT userid,
+username,
+COUNT(userid) AS usercount,
+(CASE
+WHEN (COUNT(userid))-
+(SELECT COUNT(1)
+FROM dbo.tl AS c
+WHERE userid = a.userid
+AND state IN (0, 2)
+AND createtime BETWEEN '2013.12.07 00:00:00.000•
+AND '2013.12.19 23:59:59.999') <= 0 THEN
+0
+ELSE
+((SELECT COUNT<*>
+FROM dbo.tl AS b
+WHERE NOT EXISTS
+(SELECT id FROM dbo.t2 WHERE oldtaskid = b.taskid)
+AND (b.state = 1 OR b.state = 6)
+AND b.userid * a.userid
+AND createtime BETWEEN '2013.12.07 00:00:00.000' AND
+•2013.12.19 23:59:59.999') / (COUNT(userid))-
+(SELECT COUNT(1)
+FROM dbo.tl AS c
+WHERE userid = a.userid
+AND state IN (0, 2))) * 100
+END) AS correctrate,
+row_number() over(ORDER BY a.userid DESC) rownum
+FROM dbo.tl AS a
+WHERE NOT EXISTS (SELECT id FROM dbo.t2 WHERE oldtaskid - a.taskid)
+AND createtime BETWEEN '2013.12.07 00:00:00.000' AND '2013.12.19
+23:59:59.999'
+GROUP BY userid, username) AS z
+WHERE rownum BETWEEN 41 AND 60
+-------------
+
+SELECT dfi3.用户号,
+dfl3.用户，
+dfl3.地址，
+FROM
+数量DESC>
+AS总金额
+LEFT
+dfl3.colli,
+dfl3.总数量,
+dfl3.排名，
+nvl(dfl3.总金额，0> ,
+nvl(dfl2^&St, 0),
+nvl<dfl2.总金额，0>
+(SELECT *
+FROM (SELECT C.*#
+df.总数萤，
+df.总金额，
+row_number()
+AS排名
+FROM customer c.
+over (PARTITION BY c •类型 ORDER BY df •总
+(SELECT d.用户号,
+nvl (SUM(d.总数敢>,
+SUM(CASE WHEN mon
+0)总数貴,
+<=201307 THEN d.总金额 END)
+FROM t_money d
+WHERE d.mon >■ 201301
+AND d.mon <= 201309
+GROUP BY d.用户号} df
+WHERE c.用户号》df.用户号
+AND c•用户类型 IN CIO’，丨 11\ '20') ) CC
+WHERE cc•排名 <=3000) dfl3
+JOIN (SELECT d.用户号，
+SUM<d.总数量> AS总数量，
+SUM<d.总金额> AS总金额
+FROM t一money d
+WHERE d.mon >= 201201
+AND d.mon <= 201207
+GROUP BY d.用户号> dfl2 ON dfl2.用户号=dfl3.用户号
+
+-------
+
+SELECT /*3.02与03部分各合并为一个部门，01要细分为6个部门*/
+FROM
+CASE
+WHEN substr(a.dept_id# 1, 2) = f02' THEN
+■02'
+WHEN substr(a.dept_id, 1, 2) = '03' THEN
+•03*
+WHEN substr<a.dept_id, 1, 4) = *01011 THEN
+'0101'
+WHEN substr(a.dept_id, 1, 4) = '0102' THEN
+'0102'
+WHEN substr<a.dept一id, 1, 4) = •0103* THEN
+•0103'
+WHEN substr(a.dept一id, 1, 4) = '0104' THEN
+’0104.
+WHEN substr(a.dept_id, 1, 4) ■ '0105' THEN
+•0105’
+WHEN substr(a.dept_id, 1, 4) = '0106' THEN
+•0106’
+END dept,
+a.dept_id dept_id,
+nvl((SELECT dept.c_dept_name
+FROM infor一dept dept
+WHERE dept.c_dept_id = a.dept_id),
+•合计AS c_dept_name,
+"这里有很多列"
+(SELECT /*+ index(s I_BI_XY) */
+/*2. c_dept_id LIKE '03V 使用的 c_dept_id,而其他两个用 substr
+CASE
+WHEN s.c_dept一id LIKE '03%' THEN
+s.c_dept_id
+ELSE
+substr(s.c_dept_id, 1, 6)
+END AS dept_id,
+”2013的很多列"
+FROM bi s
+WHERE s.d_retail_time >= to_date('20131101 *, 'yyyymmdd')
+AND s.d_retail_time < to_date('20131201', 'yyyymmdd')
+
+--------
+SELECT /*3.02与03部分各合并为一个部门，01要细分为6个部门*/
+FROM
+CASE
+WHEN substr(a.dept_id# 1, 2) = f02' THEN
+■02'
+WHEN substr(a.dept_id, 1, 2) = '03' THEN
+•03*
+WHEN substr<a.dept_id, 1, 4) = *01011 THEN
+'0101'
+WHEN substr(a.dept_id, 1, 4) = '0102' THEN
+'0102'
+WHEN substr<a.dept一id, 1, 4) = •0103* THEN
+•0103'
+WHEN substr(a.dept一id, 1, 4) = '0104' THEN
+’0104.
+WHEN substr(a.dept_id, 1, 4) ■ '0105' THEN
+•0105’
+WHEN substr(a.dept_id, 1, 4) = '0106' THEN
+•0106’
+END dept,
+a.dept_id dept_id,
+nvl((SELECT dept.c_dept_name
+FROM infor一dept dept
+WHERE dept.c_dept_id = a.dept_id),
+•合计AS c_dept_name,
+"这里有很多列"
+(SELECT /*+ index(s I_BI_XY) */
+/*2. c_dept_id LIKE '03V 使用的 c_dept_id,而其他两个用 substr
+CASE
+WHEN s.c_dept一id LIKE '03%' THEN
+s.c_dept_id
+ELSE
+substr(s.c_dept_id, 1, 6)
+END AS dept_id,
+”2013的很多列"
+FROM bi s
+WHERE s.d_retail_time >= to_date('20131101 *, 'yyyymmdd')
+AND s.d_retail_time < to_date('20131201', 'yyyymmdd')
+-----------
+• yyyynundd •)
+'yyyymmdd')
+AND (s.c_dept_id LIKE '01%' OR s.c一dept_id LIKE '02%' OR
+s.c_dept_id LIKE '03%')
+GROUP BY substr(s.c_dept_id/ 1, 6)
+UNION ALL
+SELECT /*+ index(s I_BI_XY) */
+CASE
+WHEN s.c_dept_id LIKE '03%' THEN
+s.c一dept_id
+ELSE
+substr<s.c一dept一id, 1, 6)
+END AS dept一id,
+"2012的很多列"
+FROM bi s
+WHERE s.d一retail一time >= to_date('201211011
+AND s.d_retail_time < to_date('20121201',
+/*1. where语句中不同的条件合并在一•起*/
+AND (s.c_dept_id LIKE '01%' OR s. c_dept_id LIKE *02%'
+s.c_dept_id LIKE '03%*)
+GROUP BY substr(s.c_dept_id, 1,
+GROUP BY ROLLUP(CASE
+WHEN substr<a.dept一id,
+•02'
+WHEN substr (a. dept__id^
+•03'
+WHEN substr<a.dept一id,
+'0101'
+WHEN substr(a.dept_id,
+•0102'
+WHEN substr(a.dept_id,
+'0103'
+WHEN substr(a.dept一id,
+•0104'
+WHEN substr(a.dept_id,
+•0105'
+WHEN substr(a.dept_id,
+'0106'
+END,
+6)) a
+1, 2)
+2
+4
+4
+4
+4
+4
+4
+'02' THEN
+'03' THEN
+'0101' THEN
+'0102'
+,0103'
+'0104'
+'0105'
+'0106'
+THEN
+THEN
+THEN
+THEN
+THEN
+OR
+a.dept_id)
+-------
+MERGE INTO (SELECT *
+FROM a
+WHERE b_date = '20130101'
+AND state = 0) a
+USING (SELECT /*+ opt_param('_optimizer_mjc_enabled', 'false') */
+t.id, t.cp_id, t.cp_name, t.price
+FROM t
+WHERE t.b一date - '20130101'
+GROUP BY t.id, t.cp_id, t.cp_name, t.price) ng ON (ng.id = a.id)
+WHEN MATCHED THEN
+UPDATE
+SET a.cp id = ng.cp id, a.cp name = nq.cp name, a.value3 = ng.price
+
+---------
+
+
+SELECT COUNT(*)
+FROM (SELECT 1.coll, t.co!27, t.col28, 1.COl2, 1.col3, 1.col4, l.col5.
+1.col6, l.col7, 1.col8, l.col9# l.collO, 1.col20, 1.col21,:
+l.col24, l.col25, l.col26
+FROM 1
+INNER JOIN (SELECT o__id, col2_l AS col27, col28
+col4 FROM o
+UNION ALL
+SELECT a_id AS o一id a.col2_l AS col27,
+•A' AS col4 FROM a
+UNION ALL
+SELECT p_id AS 。一id, col3_l AS col27,
+AS col4 FROM p) t
+ON (t.o id - l.colS AND t.co!4 - a.co!4)
+•col22, l.col23.
+AS col28, 'O' AS
+•col28 AS col28,
+''AS col28, 'P'
+WHERE l.col4 IN (,0,, 'A,, 'P')
+AND (l.col2 = 'TCBANK1 OR l.col3 = 'SELLERWANG')) xtlOO
+
+
+
+--------------------------------------------------------
+
+SUM        ：该函数计算组中表达式的累积和
+
+MIN        ：在一个组中的数据窗口中查找表达式的最小值
+
+MAX        ：在一个组中的数据窗口中查找表达式的最大值
+
+AVG         ：用于计算一个组和数据窗口内表达式的平均值。
+
+COUNT      ：对一组内发生的事情进行累积计数
+
+-------------------------------------------------------------------------------------------------
+
+RANK       ：根据ORDER BY子句中表达式的值，从查询返回的每一行，计算它们与其它行的相对位置
+
+DENSE_RANK ：根据ORDER BY子句中表达式的值，从查询返回的每一行，计算它们与其它行的相对位置
+
+FIRST       ：从DENSE_RANK返回的集合中取出排在最前面的一个值的行
+
+LAST        ：从DENSE_RANK返回的集合中取出排在最后面的一个值的行
+
+FIRST_VALUE ：返回组中数据窗口的第一个值
+
+LAST_VALUE ：返回组中数据窗口的最后一个值。
+
+LAG        ：可以访问结果集中的其它行而不用进行自连接
+
+LEAD       ：LEAD与LAG相反，LEAD可以访问组中当前行之后的行
+
+ROW_NUMBER：返回有序组中一行的偏移量，从而可用于按特定标准排序的行号
+
+-------------------------------------------------------------------------------------------------
+
+STDDEV     ：计算当前行关于组的标准偏离
+
+STDDEV_POP：该函数计算总体标准偏离，并返回总体变量的平方根
+
+STDDEV_SAMP：该函数计算累积样本标准偏离，并返回总体变量的平方根
+
+VAR_POP    ：该函数返回非空集合的总体变量（忽略null）
+
+VAR_SAMP   ：该函数返回非空集合的样本变量（忽略null）
+
+VARIANCE   ：如果表达式中行数为1，则返回0，如果表达式中行数大于1，则返回VAR_SAMP
+
+COVAR_POP  ：返回一对表达式的总体协方差
+
+COVAR_SAMP：返回一对表达式的样本协方差
+
+CORR       ：返回一对表达式的相关系数
+
+-------------------------------------------------------------------------------------------------
+
+CUME_DIST  ：计算一行在组中的相对位置
+
+NTILE       ：将一个组分为"表达式"的散列表示
+
+PERCENT_RANK：和CUME_DIST（累积分配）函数类似
+
+PERCENTILE_DISC：返回一个与输入的分布百分比值相对应的数据值
+
+PERCENTILE_CONT：返回一个与输入的分布百分比值相对应的数据值
+
+RATIO_TO_REPORT：该函数计算expression/(sum(expression))的值，它给出相对于总数的百分比
+
+REGR_ (Linear Regression) Functions：这些线性回归函数适合最小二乘法回归线，有9个不同的回归函数可使用
+
+-------------------------------------------------------------------------------------------------
+
+CUBE        :按照OLAP的CUBE方式进行数据统计,即各个维度均需统计
+
+ROLLUP      :
+
+
+
+分析函数是Oracle从8.1.6开始引入的一个新的概念，为我们分析数据提供了一种简单高效的处理方式。在分析函数出现以前，我们必须使用自联查询，子查询或者内联视图，甚至复杂的存储过程实现的语句，现在只要一条简单的SQL语句就可以实现了，而且在执行效率方面也有相当大的提高。下面我将针对分析函数做一些具体的说明。
+分析函数的一般格式是函数名(参数列表) over ([partition by 字段名或表达式] [order by 字段名或表达式])，其中over()部分称为开窗函数，它是可以选填的。
+    开窗函数指定了分析函数工作的数据窗口大小，这个数据窗口大小可能会随着行的变化而变化，举例如下：
+over(order by salary) 按照salary排序进行累计，order by是个默认的开窗函数
+over(partition by deptno)按照部门分区
+over(order by salary range between 50 preceding and 150 following)
+每行对应的数据窗口是之前行幅度值不超过50，之后行幅度值不超过150
+over(order by salary rows between 50 preceding and 150 following)
+每行对应的数据窗口是之前50行，之后150行
+over(order by salary rows between unbounded preceding and unbounded following)
+每行对应的数据窗口是从第一行到最后一行，等效：
+over(order by salary range between unbounded preceding and unbounded following)
+分析函数用于计算基于组的某种聚合值，它和聚合函数的不同之处是对于每个组返回多行，而聚合函数对于每个组只返回一行。
+许多分析函数同时也是聚合函数，比如sum()函数，这样使用就是聚合函数。
+SQL> select department_id,sum(salary) sum_salary from employees group by department_id;
+而这样使用就是分析函数。
+SQL> select distinct department_id,sum(salary) over(partition by department_id) sum_salary from employees ;
+它们得出的结果是相同的，都是：
+DEPARTMENT_ID SUM_SALARY
+------------- ----------
+           10       4400
+           20      19000
+           30      24900
+           40       6500
+           50     156400
+           60      28800
+           70      10000
+           80     304500
+           90      58000
+          100      51600
+          110      20300
+                    7000
+
+已选择12行。
+请注意，这里我们用到了distinct 关键字，如果不用distinct，第2个查询将返回107行数据，即employees表的每行记录都将返回一行sum_salary，因为不用distinct的含义是：针对每个雇员计算他/她所在的部门的薪金总数。
+在这个例子中，聚合函数是更好的选择，但在另外一些情形下，我们更应该使用分析函数。
+下面通过几个实例来介绍部分分析函数的用途。
+问题1：求出每个省工业企业利润总额最多的前10名。
+利用我们传统的聚合函数max可以方便地取出利润总额最多的一家，但是取出多家就无能为力了，同样，如果不分组我们可以通过排序取出任何一个省利润总额最多的前10名，但无法实现对多个省的分组。而采用rank聚合函数，可以方便地实现我们的要求。
+完整的语句如下:
+select * from
+(select  substr(z01_04,1,2) 地区码,
+DENSE_RANK() OVER (PARTITION BY substr(z01_04,1,2) order by b04_50 desc) 名次, b04_50 "利润总额"
+from cj604,cj601 where b04_50>0 and cj601.uuid=cj604.uuid  ) where 名次<=10;
+我们在开窗函数中使用地区码作为分组标志,并按照利润总额倒序排列。
+结果如下(数据为模拟数据,以下同)
+地区       名次   利润总额
+---- ---------- ----------
+31            1     963799
+31            2     229643
+...
+31            9     135917
+31           10     125245
+32            1     349940
+32            2     300587
+...
+注意:RANK()函数有3组,分别是rank, dense_rank, row_number,它们的区别是：
+rank如果出现两个相同的数据,那么后面的数据就会直接跳过这个排名,比如：当第2名和第3名的利润相同时,rank的结果是1,2,2,4；而dense_rank则不会跳过这个排名,结果是1,2,2,3；而row_number哪怕是两个数据完全相同,排名也会不一样,结果是1,2,3,4
+
+问题2:求出按登记注册类型分组的职工人数和销售额占总体的比重
+分析函数ratio_to_report专门用来解决个体占总体的比重一类的问题。
+语句
+select d.*,round((ratio_to_report(职工人数) over())*100,1) as 人数百分比,
+round((ratio_to_report(销售额) over())*100,1) as 销售额百分比
+from
+(select c.code 代码 , substr(b.reg_type,1,10) 登记注册类型, 职工人数, 销售额 from
+(select substr(z01_08,1,1)||'00' code, sum(z01_171_01) 职工人数,sum(b03_01) 销售额
+from cj603 c,cj601
+j where c.uuid=j.uuid group by  substr(z01_08,1,1)
+)c, djzclx b where c.code=b.reg_code
+)d;
+可以得出下面的结果：
+代码 登记注册类型           职工人数     销售额 人数百分比 销售额百分比
+---- -------------------- ---------- ---------- ---------- ------------
+100  内资企业                8510509 3002627283         63      56.2
+200  港、澳、台商投资企业    2066175  746728306       15.3        14
+300  外商投资企业            2936984 1597046896       21.7      29.9
+
+其中内层的子查询语句
+select substr(z01_08,1,1)||'00' code, sum(z01_171_01) 职工人数,sum(b03_01) 销售额
+from cj603 c,cj601 j where c.uuid=j.uuid group by  substr(z01_08,1,1)
+获得如下的结果
+CODE   职工人数     销售额
+---- ---------- ----------
+100     8510509 3002627283
+200     2066175  746728306
+300     2936984 1597046896
+外层查询中ratio_to_report函数自动对结果集中的职工人数和销售额计算比重。
+
+问题3 求按行业中类划分的大中小型企业个数
+case语句不是分析函数，但它在统计汇总中的作用非常重要，可以用来设定复杂的分组条件。
+以下是统计上工业大中小型企业划分标准。
+指标名称
+计量单位
+大型
+中型
+小型
+
+从业人员数
+人
+2000及以上且
+300-2000以下
+300以下或
+
+销售收入
+万元
+30000及以上且
+3000-30000以下
+3000以下或
+
+资产合计
+万元
+40000及以上
+4000-40000以下
+4000以下
+
+
+请注意下面这个说明：大型和中型企业须同时满足所列各项条件的下限指标，否则下划一档。
+比如某企业虽然从业人员数和销售收入符合大型企业的要求，但资产合计30000万元，不满足大型企业的要求，只能划归中型企业。实际上，中型企业单位数=企业单位总数-大型企业单位数-小型企业单位数。
+因此，用b04_71<2000 and b04_71>=300 and b04_29>=30000 and b04_29<300000 and b04_16>=40000 and b04_16<400000的写法来表述中型标准是错误的。
+正确写法应该是：
+not(b04_71>=2000 and b04_29>=300000 and b04_16>=400000) and not(b04_71<300 or b04_29<30000 or b04_16<40000)，当然前提是这3个字段没有空值null。
+完整的SQL语句如下：
+select code 代码 , substr(INDUSTRY_NAME,1,10) 行业名称, c.*  from
+(
+select substr(z01_064,1,2) as code ,count(*) as TOL,
+count(case when b04_71>=2000 and b04_29>=300000 and b04_16>=400000 then 1 else null end) as big,
+count(case when not(b04_71>=2000 and b04_29>=300000 and b04_16>=400000)
+and not(b04_71<300 or b04_29<30000 or b04_16<40000) then 1 else null end) as mid,
+count(case when b04_71<300 or b04_29<30000 or b04_16<40000 then 1 else null end) as small
+from cj604 a,cj601 b where a.uuid=b.uuid group by substr(z01_064,1,2)
+)c, industry b where c.code=b.INDUSTRY_CODE
+输出结果如下：
+代码 行业名称           CODE        TOL        BIG        MID      SMALL
+---- ------------------ ---- ---------- ---------- ---------- ----------
+06   煤炭开采和洗选业   06            9          1          2          6
+07   石油和天然气开采业 07            3          1          0          2
+08   黑色金属矿采选业   08           13          1          3          8
+13   农副食品加工业     13         1342          2         48       1269
+14   食品制造业         14          784          3         66        691
+15   饮料制造业         15          385          0         31        331
+...
+
+问题4 求按地区划分的3种登记注册类型的营业利润率
+decode函数不是分析函数，但它在统计汇总中的作用非常重要，它的格式是：
+decode(字段名或表达式,比较值1,返回值1, [比较值2,返回值2,...] 默认返回值)，它的作用是当字段或表达式的值等于比较值1时，就得出返回值1，当字段或表达式的值等于比较值2时，就得出返回值2，以此类推，如果都不符合，就返回默认返回值。其中从比较值2开始的参数对可以不提供。
+语句
+select substr(name,1,4) 地区名称, c.*
+from(select 地区代码,
+decode(注册类型码,'1',营业利润率,null) A1,
+decode(注册类型码,'2',营业利润率,null) A2,
+decode(注册类型码,'3',营业利润率,null) A3
+from(
+select
+substr(z01_04,1,2) 地区代码,substr(z01_08,1,1) 注册类型码,
+round(sum(b04_45)/sum(b04_29)*100,2) 营业利润率
+from cj601 a,cj604 b where a.uuid=b.uuid
+group by substr(z01_04,1,2),substr(z01_08,1,1)
+)
+)c,dq
+where 地区代码=dq.code;
+得出如下结果。
+地区名称 地区     A1     A2     A3
+-------- ---- ------ ------ ------
+上海     31     6.74
+上海     31            5.30
+上海     31                   6.37
+江苏     32     3.94
+江苏     32            4.85
+江苏     32                   4.32
+浙江     33     4.55
+浙江     33            5.25
+浙江     33                   5.76
+因为decode函数只针对一行内的数据进行处理，这样的结果并不符合要求，我们需要在第二层查询语句的外面再加一层按地区代码的分组汇总，完整写法如下：
+select substr(name,1,4) 地区名称, c.*
+from(
+select 地区代码,SUM(A1) A1,SUM(A2) A2,SUM(A3) A3 from(
+select 地区代码,
+decode(注册类型码,'1',营业利润率,null) A1,
+decode(注册类型码,'2',营业利润率,null) A2,
+decode(注册类型码,'3',营业利润率,null) A3
+from(
+select
+substr(z01_04,1,2) 地区代码,substr(z01_08,1,1) 注册类型码,
+round(sum(b04_45)/sum(b04_29)*100,2) 营业利润率
+from cj601 a,cj604 b where a.uuid=b.uuid
+group by substr(z01_04,1,2),substr(z01_08,1,1)
+)
+)group by 地区代码 )c,dq
+where 地区代码=dq.code;
+这样就得到了正确的结果：
+地区名称 地区     A1     A2     A3
+------- ---- ------ ------ ------
+上海     31     6.74   5.30   6.37
+江苏     32     3.94   4.85   4.32
+浙江     33     4.55   5.25   5.76
+
+同样的问题我们也可以通过lead分析函数来完成。
+select substr(name,1,4) 地区名称, 地区代码, A1,A2,A3
+from(
+select * from(
+select 地区代码,
+lead(营业利润率,    0) over(partition by 地区代码 order by 注册类型码) A1,
+lead(营业利润率,    1) over(partition by 地区代码 order by 注册类型码) A2,
+lead(营业利润率,    2) over(partition by 地区代码 order by 注册类型码) A3,
+row_number( ) over(partition by 地区代码 order by 注册类型码) rn
+from(
+select
+substr(z01_04,1,2) 地区代码,substr(z01_08,1,1) 注册类型码font-family: Times New Rom
+
+
+
+create table SMALL_CUSTOMERS(CUSTOMER_ID NUMBER,SUM_ORDERS  NUMBER);
+
+insert into SMALL_CUSTOMERS (CUSTOMER_ID, SUM_ORDERS) values (1000, 10);
+
+insert into SMALL_CUSTOMERS (CUSTOMER_ID, SUM_ORDERS) values (1000, 20);
+
+insert into SMALL_CUSTOMERS (CUSTOMER_ID, SUM_ORDERS) values (1000, 30);
+
+insert into SMALL_CUSTOMERS (CUSTOMER_ID, SUM_ORDERS) values (800, 5);
+
+insert into SMALL_CUSTOMERS (CUSTOMER_ID, SUM_ORDERS) values (800, 10);
+
+insert into SMALL_CUSTOMERS (CUSTOMER_ID, SUM_ORDERS) values (800, 1);
+
+
+select customer_id,
+
+        sum_orders,
+
+        ntile(3) over(order by sum_orders) ntile
+
+   from small_customers t;
 
 
 
 
 
 
+      NTILE函数在诸如将总工作量在N个并行的进程中进行划分的实际应用中是很有用的，让我们假设你有3个平行的进程，你可以将工作量划分为3个桶并将每个桶放到一个进程当中分析函数是Oracle从8.1.6开始引入的一个新的概念，为我们分析数据提供了一种简单高效的处理方式。在分析函数出现以前，我们必须使用自联查询，子查询或者内联视图，甚至复杂的存储过程实现的语句，现在只要一条简单的SQL语句就可以实现了，而且在执行效率方面也有相当大的提高。下面我将针对分析函数做一些具体的说明。
+分析函数的一般格式是函数名(参数列表) over ([partition by 字段名或表达式] [order by 字段名或表达式])，其中over()部分称为开窗函数，它是可以选填的。
+    开窗函数指定了分析函数工作的数据窗口大小，这个数据窗口大小可能会随着行的变化而变化，举例如下：
+over(order by salary) 按照salary排序进行累计，order by是个默认的开窗函数
+over(partition by deptno)按照部门分区
+over(order by salary range between 50 preceding and 150 following)
+每行对应的数据窗口是之前行幅度值不超过50，之后行幅度值不超过150
+over(order by salary rows between 50 preceding and 150 following)
+每行对应的数据窗口是之前50行，之后150行
+over(order by salary rows between unbounded preceding and unbounded following)
+每行对应的数据窗口是从第一行到最后一行，等效：
+over(order by salary range between unbounded preceding and unbounded following)
+分析函数用于计算基于组的某种聚合值，它和聚合函数的不同之处是对于每个组返回多行，而聚合函数对于每个组只返回一行。
+许多分析函数同时也是聚合函数，比如sum()函数，这样使用就是聚合函数。
+SQL> select department_id,sum(salary) sum_salary from employees group by department_id;
+而这样使用就是分析函数。
+SQL> select distinct department_id,sum(salary) over(partition by department_id) sum_salary from employees ;
+它们得出的结果是相同的，都是：
+DEPARTMENT_ID SUM_SALARY
+------------- ----------
+           10       4400
+           20      19000
+           30      24900
+           40       6500
+           50     156400
+           60      28800
+           70      10000
+           80     304500
+           90      58000
+          100      51600
+          110      20300
+                    7000
+
+已选择12行。
+请注意，这里我们用到了distinct 关键字，如果不用distinct，第2个查询将返回107行数据，即employees表的每行记录都将返回一行sum_salary，因为不用distinct的含义是：针对每个雇员计算他/她所在的部门的薪金总数。
+在这个例子中，聚合函数是更好的选择，但在另外一些情形下，我们更应该使用分析函数。
+下面通过几个实例来介绍部分分析函数的用途。
+问题1：求出每个省工业企业利润总额最多的前10名。
+利用我们传统的聚合函数max可以方便地取出利润总额最多的一家，但是取出多家就无能为力了，同样，如果不分组我们可以通过排序取出任何一个省利润总额最多的前10名，但无法实现对多个省的分组。而采用rank聚合函数，可以方便地实现我们的要求。
+完整的语句如下:
+select * from
+(select  substr(z01_04,1,2) 地区码,
+DENSE_RANK() OVER (PARTITION BY substr(z01_04,1,2) order by b04_50 desc) 名次, b04_50 "利润总额"
+from cj604,cj601 where b04_50>0 and cj601.uuid=cj604.uuid  ) where 名次<=10;
+我们在开窗函数中使用地区码作为分组标志,并按照利润总额倒序排列。
+结果如下(数据为模拟数据,以下同)
+地区       名次   利润总额
+---- ---------- ----------
+31            1     963799
+31            2     229643
+...
+31            9     135917
+31           10     125245
+32            1     349940
+32            2     300587
+...
+注意:RANK()函数有3组,分别是rank, dense_rank, row_number,它们的区别是：
+rank如果出现两个相同的数据,那么后面的数据就会直接跳过这个排名,比如：当第2名和第3名的利润相同时,rank的结果是1,2,2,4；而dense_rank则不会跳过这个排名,结果是1,2,2,3；而row_number哪怕是两个数据完全相同,排名也会不一样,结果是1,2,3,4
+
+问题2:求出按登记注册类型分组的职工人数和销售额占总体的比重
+分析函数ratio_to_report专门用来解决个体占总体的比重一类的问题。
+语句
+select d.*,round((ratio_to_report(职工人数) over())*100,1) as 人数百分比,
+round((ratio_to_report(销售额) over())*100,1) as 销售额百分比
+from
+(select c.code 代码 , substr(b.reg_type,1,10) 登记注册类型, 职工人数, 销售额 from
+(select substr(z01_08,1,1)||'00' code, sum(z01_171_01) 职工人数,sum(b03_01) 销售额
+from cj603 c,cj601
+j where c.uuid=j.uuid group by  substr(z01_08,1,1)
+)c, djzclx b where c.code=b.reg_code
+)d;
+可以得出下面的结果：
+代码 登记注册类型           职工人数     销售额 人数百分比 销售额百分比
+---- -------------------- ---------- ---------- ---------- ------------
+100  内资企业                8510509 3002627283         63      56.2
+200  港、澳、台商投资企业    2066175  746728306       15.3        14
+300  外商投资企业            2936984 1597046896       21.7      29.9
+
+其中内层的子查询语句
+select substr(z01_08,1,1)||'00' code, sum(z01_171_01) 职工人数,sum(b03_01) 销售额
+from cj603 c,cj601 j where c.uuid=j.uuid group by  substr(z01_08,1,1)
+获得如下的结果
+CODE   职工人数     销售额
+---- ---------- ----------
+100     8510509 3002627283
+200     2066175  746728306
+300     2936984 1597046896
+外层查询中ratio_to_report函数自动对结果集中的职工人数和销售额计算比重。
+
+问题3 求按行业中类划分的大中小型企业个数
+case语句不是分析函数，但它在统计汇总中的作用非常重要，可以用来设定复杂的分组条件。
+以下是统计上工业大中小型企业划分标准。
+指标名称
+计量单位
+大型
+中型
+小型
+
+从业人员数
+人
+2000及以上且
+300-2000以下
+300以下或
+
+销售收入
+万元
+30000及以上且
+3000-30000以下
+3000以下或
+
+资产合计
+万元
+40000及以上
+4000-40000以下
+4000以下
 
 
+请注意下面这个说明：大型和中型企业须同时满足所列各项条件的下限指标，否则下划一档。
+比如某企业虽然从业人员数和销售收入符合大型企业的要求，但资产合计30000万元，不满足大型企业的要求，只能划归中型企业。实际上，中型企业单位数=企业单位总数-大型企业单位数-小型企业单位数。
+因此，用b04_71<2000 and b04_71>=300 and b04_29>=30000 and b04_29<300000 and b04_16>=40000 and b04_16<400000的写法来表述中型标准是错误的。
+正确写法应该是：
+not(b04_71>=2000 and b04_29>=300000 and b04_16>=400000) and not(b04_71<300 or b04_29<30000 or b04_16<40000)，当然前提是这3个字段没有空值null。
+完整的SQL语句如下：
+select code 代码 , substr(INDUSTRY_NAME,1,10) 行业名称, c.*  from
+(
+select substr(z01_064,1,2) as code ,count(*) as TOL,
+count(case when b04_71>=2000 and b04_29>=300000 and b04_16>=400000 then 1 else null end) as big,
+count(case when not(b04_71>=2000 and b04_29>=300000 and b04_16>=400000)
+and not(b04_71<300 or b04_29<30000 or b04_16<40000) then 1 else null end) as mid,
+count(case when b04_71<300 or b04_29<30000 or b04_16<40000 then 1 else null end) as small
+from cj604 a,cj601 b where a.uuid=b.uuid group by substr(z01_064,1,2)
+)c, industry b where c.code=b.INDUSTRY_CODE
+输出结果如下：
+代码 行业名称           CODE        TOL        BIG        MID      SMALL
+---- ------------------ ---- ---------- ---------- ---------- ----------
+06   煤炭开采和洗选业   06            9          1          2          6
+07   石油和天然气开采业 07            3          1          0          2
+08   黑色金属矿采选业   08           13          1          3          8
+13   农副食品加工业     13         1342          2         48       1269
+14   食品制造业         14          784          3         66        691
+15   饮料制造业         15          385          0         31        331
+...
+
+问题4 求按地区划分的3种登记注册类型的营业利润率
+decode函数不是分析函数，但它在统计汇总中的作用非常重要，它的格式是：
+decode(字段名或表达式,比较值1,返回值1, [比较值2,返回值2,...] 默认返回值)，它的作用是当字段或表达式的值等于比较值1时，就得出返回值1，当字段或表达式的值等于比较值2时，就得出返回值2，以此类推，如果都不符合，就返回默认返回值。其中从比较值2开始的参数对可以不提供。
+语句
+select substr(name,1,4) 地区名称, c.*
+from(select 地区代码,
+decode(注册类型码,'1',营业利润率,null) A1,
+decode(注册类型码,'2',营业利润率,null) A2,
+decode(注册类型码,'3',营业利润率,null) A3
+from(
+select
+substr(z01_04,1,2) 地区代码,substr(z01_08,1,1) 注册类型码,
+round(sum(b04_45)/sum(b04_29)*100,2) 营业利润率
+from cj601 a,cj604 b where a.uuid=b.uuid
+group by substr(z01_04,1,2),substr(z01_08,1,1)
+)
+)c,dq
+where 地区代码=dq.code;
+得出如下结果。
+地区名称 地区     A1     A2     A3
+-------- ---- ------ ------ ------
+上海     31     6.74
+上海     31            5.30
+上海     31                   6.37
+江苏     32     3.94
+江苏     32            4.85
+江苏     32                   4.32
+浙江     33     4.55
+浙江     33            5.25
+浙江     33                   5.76
+因为decode函数只针对一行内的数据进行处理，这样的结果并不符合要求，我们需要在第二层查询语句的外面再加一层按地区代码的分组汇总，完整写法如下：
+select substr(name,1,4) 地区名称, c.*
+from(
+select 地区代码,SUM(A1) A1,SUM(A2) A2,SUM(A3) A3 from(
+select 地区代码,
+decode(注册类型码,'1',营业利润率,null) A1,
+decode(注册类型码,'2',营业利润率,null) A2,
+decode(注册类型码,'3',营业利润率,null) A3
+from(
+select
+substr(z01_04,1,2) 地区代码,substr(z01_08,1,1) 注册类型码,
+round(sum(b04_45)/sum(b04_29)*100,2) 营业利润率
+from cj601 a,cj604 b where a.uuid=b.uuid
+group by substr(z01_04,1,2),substr(z01_08,1,1)
+)
+)group by 地区代码 )c,dq
+where 地区代码=dq.code;
+这样就得到了正确的结果：
+地区名称 地区     A1     A2     A3
+------- ---- ------ ------ ------
+上海     31     6.74   5.30   6.37
+江苏     32     3.94   4.85   4.32
+浙江     33     4.55   5.25   5.76
+
+同样的问题我们也可以通过lead分析函数来完成。
+select substr(name,1,4) 地区名称, 地区代码, A1,A2,A3
+from(
+select * from(
+select 地区代码,
+lead(营业利润率,    0) over(partition by 地区代码 order by 注册类型码) A1,
+lead(营业利润率,    1) over(partition by 地区代码 order by 注册类型码) A2,
+lead(营业利润率,    2) over(partition by 地区代码 order by 注册类型码) A3,
+row_number( ) over(partition by 地区代码 order by 注册类型码) rn
+from(
+select
+substr(z01_04,1,2) 地区代码,substr(z01_08,1,1) 注册类型码font-family: Times New Rom开窗函数指定了分析函数工作的数据窗口大小，这个数据窗口大小可能会随着行的变化而变化，举例如下：
+over（order by salary）按照salary排序进行累计，orderby是个默认的开窗函数
+over（partition by deptno）按照部门分区
+over（order by salary range between 50 preceding and 150 following）
+每行对应的数据窗口是之前行幅度值不超过50，之后行幅度值不超过150
+over（order by salary rows between 50 preceding and 150 following）
+每行对应的数据窗口是之前50行，之后150行
+over（order by salary rows between unboundedpreceding and unbounded following）
+每行对应的数据窗口是从第一行到最后一行，等效：
+over（order by salary range between unboundedpreceding and unbounded following）min | max(column1) keep (dense_rank first | last order by column2) over (partion by column3);
+
+另外first last还可以结合avg  sum等使用。
+解释：
+返回按照column3分组后，按照column2排序的结果集中第一个或最后一个最小值或最大值column1。
+
+实例：
+
+create table tx2(id1 int ,id2 int,id3 int);
+insert into tx2(id1,id2,id3)
+values(1,111,1);
+insert into tx2(id1,id2,id3)
+values(1,222,1);
+insert into tx2(id1,id2,id3)
+values(1,333,2);
+insert into tx2(id1,id2,id3)
+values(1,444,3);
+
+insert into tx2(id1,id2,id3)
+values(2,555,1);
+insert into tx2(id1,id2,id3)
+values(2,666,2);
+insert into tx2(id1,id2,id3)
+values(2,777,3);
+
+select  * from tx2;
+ID1       ID2       ID3
+1          111      1
+1          222      1
+1          333      2
+1          444      3
+2          555      1
+2          666      2
+2          777      3
+
+SQL1，
+按照ID1分组,ID3排序后，第一个最小的ID2，预期ID1=1的是111 ID1=2的是555。执行结果：
+SELECT t.id1, t.id2, t.id3, MIN(t.id2) keep(dense_rank FIRST ORDER BY t.id3) over(PARTITION BY t.id1) AS minval FROM tx2 t;
+ID1       ID2       ID3       MINVAL
+1          111      1          111
+1          222      1          111
+1          333      2          111
+1          444      3          111
+2          555      1          555
+2          666      2          555
+2          777      3          555
+
+
+
+SQL2，
+按照ID1分组，ID3排序后，最后一个最小值ID2，预期ID1=1的是444，ID1=2的是777,。执行结果：
+SELECT t.id1, t.id2, t.id3, MIN(t.id2) keep(dense_rank last ORDER BY t.id3) over(PARTITION BY t.id1) AS minval FROM tx2 t;
+ID1       ID2       ID3       MINVAL
+1          111      1          444
+1          222      1          444
+1          333      2          444
+1          444      3          444
+2          555      1          777
+2          666      2          777
+2          777      3          777
+SQL3，
+如果ID3有重复，比如ID1=1，ID3=1的两个数据。此时
+SELECT t.id1, t.id2, t.id3, MAX(t.id2) keep(dense_rank FIRST ORDER BY t.id3) over(PARTITION BY t.id1) as maxval FROM tx2 t;
+
+预期结果ID1=1的值应为444，可是
+ID1       ID2       ID3       MAXVAL
+1          111      1          222----------------结果好像是从ID3=1的分组中取出来的
+1          222      1          222
+1          333      2          222
+1          444      3          222
+1          888      3          222
+2          555      1          555
+2          666      2          555
+2          777      3          555
+SQL4,
+同理，如果在使用LAST时，最后2个排序中ID3有重复，也会出现假分组的现象。
+
+
+-------------------------------------
 
 --任一  所有
  BEGIN

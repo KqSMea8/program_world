@@ -1,3 +1,2843 @@
+explain plan for select * from emp;
+ 
+select * from table(dbms_xplan.display);
+ 
+ 
+
+ select count(*) from tab1,tab2
+ 
+select count(*) from tab2,tab1
+
+SELECT * FROM LOCATION L, CATEGORY C, EMP E
+
+WHERE E.EMP_NO BETWEEN 1000 AND 2000
+
+AND E.CAT_NO = C.CAT_NO
+
+AND E.LOCN = L.LOCN;
+
+ SELECT *   FROM EMP E   WHERE 25  50000  AND JOB = ‘MANAGER’;
+
+--------
+
+优化器的基础知识
+      1、优化器的模式
+
+        Oracle中，优化器的模式是由参数OPTIMIZER_MODE的值来决定的。
+
+        1、RULE：表示Oracle将使用RBO来解析目标SQL，此时SQL中涉及的各个对象的统计信息对于RBO没有任何作用。
+
+        2、CHOOSE：Oracle 9i的默认值，表示在解析目标SQL时使用RBO还是CBO取决于SQL涉及的表对象是否有统计信息。
+
+   3、FIRST_ROWS_n(n=1,10,100,1000)：此时CBO计算SQL的各条执行路径的成本值时的侧重点在于以最快的响应速度返回头n(n=1,10,100,1000)条记录。当选择这条记录的时候Oracle会修改执行步骤的成本值，修改为一个很小的值，从而达到不违背CBO原则的目的。
+
+   4、FIRST_ROWS：Oracle 9i中就已经过时的参数，当一些特殊情况下的时候，会使用RBO中的一些内置的规则来选取执行计划不再考虑成本。
+
+   5、ALL_ROWS：Oracle 10g及以后版本中OPTIMIZER_MODE的默认值，表示使用CBO解析目标SQL，此时CBO计算SQL的各条执行路径的成本值时的侧重点在于最佳的吞吐量(即最小的系统I/O和CPU资源的消耗量)。
+
+
+  2、结果集
+
+    指包含指定执行结果的集合。对RBO来说，对应的执行计划中没有对相关执行步骤对应的结果集的描述，虽然结果集的概念对RBO也是适用的。
+
+  3、访问数据的方法
+
+    访问数据的方法分为两种：直接访问表；先访问索引，再回表。
+
+    直接访问表：
+
+    1、全表扫描：指Oracle访问目标表里的数据时，会从该表所占用的第一个区(Extent)的第一个块(Block)开始扫描，一直扫描到该表的高水位线(HWM)，这段范围内所有的数据块都必须读到。
+
+          2、ROEID扫描：指Oracle访问目标表里的数据时，直接通过数据所在的ROWID定位并访问这些数据。ROWID表示Oracle中的数据行记录所在的物理存储地址，也就是说ROWID实际上和Oracle中数据块里的行记录一一对应的。
+
+ROWID扫描有两层含义：一种是根据用户在SQL语句中输入的ROWID的值直接访问对应的数据行记录；另外一种是先访问相关的索引，然后根据访问索引后得到的ROWID再回表访问对应的数据行记录。
+对Oracle堆表而言，通过Oracle内置的ROWID伪列得到对应航记录所在的ROWID的值(注意：ROWID只是一个伪列，在实际的表块中并不存在该列)，然后还可以根据DBMS_ROWID包中的相关方法(dbms_rowid.rowid_relative_fno、dbms_rowid.rowid_block_number和dbms_rowid.rowid_row_number)将上述ROWID伪列的值翻译成对应数据行的实际物理存储地址。
+   访问索引的方法：
+
+    1、索引唯一性扫描：INDEX UNIQUE SCAN，仅适用于where条件中是等值查询的目标SQL。因为扫描的对象是唯一性索引，所以索引唯一性扫描的结果至多只会返回一条记录。
+
+         2、索引范围扫描：INDEX RANGE SCAN，当扫描的对象是唯一性索引时，目标SQL的where条件一定是范围查询(谓词条件为BETWEEN、<、>等)；当扫描的对象是非唯一性索引时，对目标SQL的where条件没有限制(可以是等值查询，也可以是范围查询)。在同等条件下，当目标索引的索引行的数量大于1时，索引范围扫描所耗费的逻辑读至少会比相应的索引唯一性扫描多1。
+
+         3、索引全扫描：指要扫描目标索引所有叶子块的所有索引行。但并不意味着需要扫描该索引的所有分支块。默认情况下，Oracle在做索引全扫描时只需要通过访问必要的分支块定位到位于该索引最左边的叶子块的第一行索引行，就可以利用该索引叶子块之间的双向指针链表，从左至右依次顺序扫描该索引所有叶子块的所有索引行了。按照索引键值顺序排序，即可达到排序的效果。避免真正的排序。默认情况下，索引全扫描的有序性就决定了所以全扫描不能并行执行，通常使用单块读。做索引全扫描的前提条件是目标索引至少有一个索引键值列的属性是NOT NULL。
+
+        4、索引快速全扫描：INDEX FAST FULL SCAN，需要扫描目标索引所有叶子块的所有索引行。与索引全扫描的区别：
+
+        （1）、索引快速全扫描只适用于CBO。
+        （2）、索引快速全扫描可以使用多块读，也可以并行执行。
+        （3）、索引快速全扫描结果不一定是有序的。因为索引快速全扫描时Oracle是根据索引行在磁盘上的物理存储顺序来扫描，而不是根据索引行的逻辑顺序来扫描的。所以扫描结果才不一定有序（对于单个索引叶子块中的索引行而言，其物理存储顺序和逻辑存储顺序一致，但对于物理存储位置相邻的索引叶子块而言，块与块之间索引行的物理存储顺序则不一定在逻辑上有序。
+        5、索引跳跃式扫描：INDEX SKIP SCAN，它使那些在where条件中没有对目标索引的前导列指定查询条件但同时又对该索引的非前导列指定了查询条件的目标SQL依然可以用上该索引，这就像在扫描该索引时跳过了它的前导列。这是因为Oracle帮你对该索引的前导列的所有distinct值做了遍历。Oracle中的索引跳跃式扫描仅适用于那些目标索引前导列的distinct值数量较少，后续非前导列的可选择性又非常好的情形，因为索引跳跃式扫描的执行效率一定会随着目标索引前导列的distinct值数量的递增而递减。
+
+
+
+（1）在使用 RBO 的情况下，我们可以通过调整相关对象在数据字典缓存中的缓存顺序，改变目标 sQL 中所涉及的各个对象在该 SQL 文本中出现的先后顺序，或者等价改写该 SQL 来调整其执行计划。
+
+（2）成本是指 Oracle 根据相关对象的统计信息计算出来的一个值，它实际上代表了 Oracle 根据相关统计信息估算出来的目标 SQL 的对应执行路径的 I / O 、 CPU 和网络资源的消耗量。 
+
+（3）cardinality 和 selectivity 的值会直接影响 cBO 对于相关执行步骤成本值的估算，进而影响 CBO 对于目标 SQL 执行计划的选择。
+
+（4）可传递性的意义在于提供了更多的执行路径（ Access Path ）给 CBO 做选择，增加了走出更高效执行计划的可能性。
+
+（5）优化器的模式对 CBO 计算成本（进而对 CBO 选择执行计划）有着决定性的影响。
+
+（6）不是说全表扫描不好，事实上 Orade 在做全表扫描操作时会使用多块读，这在目标表的数据量不大时执行效率是非常高的，但全表扫描最大的问题就在于走全表扫描的目标 SQL 的执行时间会不稳定、不可控，这个执行时间一定会随着目标表数据量的递增而递增。
+
+（7）通过 B 树索引访问表里行记录的效率并不会随着相关表的数据量的递增而显著降低，即通过走索引访问数据的时间是可控的、基本稳定的，这也是走索引和全表扫描的最大区别。
+
+（8）Oracle 中索引全扫描的执行结果是有序的，并且是按照该索引的索引键位列来排序的，这意味右走索引全扫描能够既达到排序的效果，同时又能避免对该索引的索引键值列的真正排序操作。另外， Oracle 中能做索引全扫描的前提条件是目标索引至少有一个索引键值列的属性是 NOT NULL 。
+
+（9）索引快速全扫描是可以并行执行的，它的执行结果不一定是有序的。
+
+（10）Oracle 中的索引跳跃式扫描仅仅适用于那些目标索引的前导列的 distinct 值数量较少、后续非前导列的可选择性又非常好的情形，因为索引跳跃式扫描的执行效率 · 定会随着目标索引前导列的 distinct 值数量的递增而递减。
+
+（11）关键字“ ( + ) ”出现在哪个表的连接列后面，就表明嘟个表会以 NULL 值来填充那些不满足连接条件并位于该表中的查询列，此时应该以关键字“ ( + ) ”对面的表来作为外连接的驱动表，这里的关键是决定哪个表是驱动表。
+
+（12）通常情况 F下，排序合并连接的执行效率会远不如哈希连接的执行效率高，但排序合并连接的使用范围更广，因为哈希连接只能用干等值连接条件，而排序合并连接还能用于其他连接条件（例如＜、＜＝、 》 、＞二）。
+
+（13）通常情况下，排序合并连接并不适合 OLTP 类型的系统，其本质原因是对于 OLTP 类型的系统而言，排序是非常昂贵的操作，当然，如果能避免排序操作，那么即使是 OLTP 类型的系统，还是可以使用排序合并连接的。
+
+（14）如果驱动表所对应的驱动结果集的记录数较少，同时在被驱动表的连接列上又存在唯一性索引（或者在被驱动表的连接列上存在选择性很好的非唯一性索引），那么此时使用嵌套循环连接的执行效率就会非常高；但如果驱动表所对应的驱动结果集的记录数很大，即便在被驱动表的连接列上存在索引，此时使用嵌套循环连接的执行效率也不会高。
+
+（15）大表也可以作为嵌套循环连接的驱动表，关键看目标 SQL 中指定的谓词条件（如果有的话）能否将驱动结果集的数据最降卜来。
+
+（16）哈希连接只适用于 CBO ，它也只能用于等值连接条件（即使是哈希反连接， Oracle 实际上也是将其转换成了等价的等值连接）
+
+（17）哈希连接很适合于小表和大表之间做表连接且．连接结果集的记录数较大的情形，特别是在小表的连接列的可选择性非常好的情况下，这时候哈希连接的执行时间就可以近似看作是和全表扫描那个大表所耗费的时间相当。
+
+（18）半连接和普通的内连接不同，半连接实际上会去重
+---------------------
+
+表连接 
+        当优化器解析含表连接的目标SQL时，它除了会根据目标SQL的SQL文本的写法来决定表连接的类型之外，还必须决定如下三件事情才能得到最终的执行计划。
+        （1）表连接顺序
+        （2）表连接方法
+        （3）访问单表的方法
+    
+    表连接类型
+        1、内连接  
+        只要where条件中没有写那些标准SQL中定义或者Oracle中自定义的表示外连接的关键字，则该SQL的连接类型就是内连接。标准SQL中内连接的写法是用JOIN ON或者JOIN USING。
+目标表1 join 目标表2 on （连接条件）
+目标表1 join 目标表2 using （连接列集合）
+        对于使用JOIN USING的标准SQL而言，如果连接列同时又出现在查询列中，则该连接列前不能带上表名或者表名的别名
+   2、外连接 
+        左连接：目标表1 left outer join 目标表2 on （连接条件）或  目标表1 left outer join 目标表2 u si n g （连接列集合）
+left outer join左边的目标表1作为表连接的驱动表，即表明位置处于left的表就是outer table，驱动表。此时连接结果除了包含目标表1和目标表2中所有满足该连接条件的记录外，还会包含驱动表（目标表1）中所有不满足该连接条件的记录，同时，驱动表中所有不满足该连接条件的纪录所对应的被驱动表（目标表2）中的查询列均会以NULL值来填充。
+        右连接：目标表1 right outer join 目标表2 on （连接条件）或目标表1 right outer join 目标表2 using （连接列集合）
+right outer join右边边的目标表1作为表连接的驱动表，即表明位置处于right 的表就是outer table，驱动表。其他的属性和左连接基本相同。
+        全连接：目标表1 full outer join 目标表2 on （连接条件）或  目标表1 full outer join 目标表2 u si n g （连接列集合）
+全连接可以理解为先做左连接，再做右连接。最后把结果做一个union操作
+   自定义关键字“（+）”：其含义是关键字出现在哪个表的连接列的后面，就表明那个表会以null值来填充那些不满足连接条件并位于该表的查询列，此时应该以关键字对面的表作为驱动表。
+
+表连接方式
+
+      1、排序合并连接  
+
+    排序合并连接是一种两个表在做表连接时用排序操作（sort）和合并操作（merge）来得到连接结果集的表连接方法。
+
+
+        排序合并连接的优缺点及适用场景：
+
+   （1）排序合并连接的执行效率不如哈希连接，但是排序合并连接的使用范围更广，因为哈希连接只用于等值连接，排序合并连接除等值连接还用于其他连接条件（<、<=、>、>=）。
+
+   （2）排序合并连接不适合OLTP系统，对OLTP系统来说，排序是非常昂贵的操作。如果能避免排序操作，OLTP系统也可以使用排序合并连接。比如两个表虽然是排序合并连接，实际上并不需要排序，因为这两个表在各自的连接列都有索引。
+
+   （3）排序合并连接不存在驱动表的概念。
+
+     2、嵌套循环连接  
+
+    嵌套循环连接是一种两个表做表连接时依靠两层嵌套循环得到连接结果集的表连接方法。
+
+    嵌套循环连接的优缺点及适用场景：
+    （1）如果驱动表所对应的驱动结果集的记录数较少，同时在被驱动表的连接列存在唯一性索引（或者在被驱动表的连接列存在选择性很好的非唯一性索引），此时嵌套循环连接的执行效率非常高；如果驱动表所对应的驱动结果集的记录数很多，即使在被驱动表的连接列存在索引，此时使用嵌套循环连接的执行效率也不会高。
+    （2）大表也可以做驱动表，关键在于目标SQL的谓词条件能否将驱动结果集的数量降下来。
+    （3）嵌套循环连接可以快速响应。排序合并连接要等到做完排序后合并操作时才能开始返回数据，哈希连接要等到驱动结果集所对应的hash table全部建完后才能开始返回数据。
+
+    在oracle11g中，oracle引入向量I/O(vector I/O)。在引入向量I/O后，oracle可以将原先一批单块读需要耗费的物理I/O组合起来，然后用一个向量I/O批量处理它们。这样就实现了在单块读的数量不降低的情况下减少这些单块读所要耗费的物理I/O数量，从而提高嵌套循环连接的效率。
+
+  3、哈希连接  
+
+    在oracle10g及以后的数据库版本中，优化器（实际上是CBO，哈希连接仅适用于CBO）在解析目标SQL时是否考虑哈希连接受限于隐含参数_HASH_JOIN_ENABLE，而在oracle10g以前受限于隐含参数HASH_JOIN_ENABLE。
+
+USE_HASH Hint的优先级比参数_HASH_JOIN_ENABLE高，即使_HASH_JOIN_ENABLE参数值为FALSE，CBO解析SQL时仍使用哈希连接。
+
+哈希连接的优缺点及适用场景：
+
+    （1）哈希连接不一定会排序，大多数情况下不需要排序。
+    （2）哈希连接的驱动表的连接列的可选择性应尽可能好，可选择性会影响Hash Bucket的记录数，Hash Bucket的记录数会影响从该Hash Bucket中查找匹配记录的效率。
+    （3）哈希连接只适用于CBO和等值连接。
+    （4）哈希连接很适合于小表和大表之间做表连接而且连接结果集的记录较多的情况，特别是小表的连接列的可选择性非常好的情况，这时哈希连接的直线时间近似于全表扫描大表的耗费时间。
+
+  4、笛卡尔连接  
+
+    笛卡尔连接又称笛卡尔乘积，是一种两个表在做表连接时没有任何连接条件的表连接方法。笛卡尔连接实际上一种特殊的合并连接，和排序合并连接类似，只是笛卡尔连接不需要排序，而且在执行合并操作时没有连接条件。
+
+    笛卡尔连接的优缺点及适用场景：
+    （1）笛卡尔连接的出现可能是由于漏写连接条件，可以利用笛卡尔连接减少对目标SQL中大表的全扫描次数。
+
+    （2）有时出现笛卡尔连接是因为目标SQL使用ORDERED Hint，同时在该SQL的位置相邻的两个表之间没有直接的关联条件。
+
+    （3）有时笛卡尔连接出现是因为统计信息不准确。
+
+5、反连接        
+            外部WHERE 条件中NOT EXISTS ,NOT IN 或是<>ALL的子查询转成对应的反连接。NOT EXISTS和<>ALL对NULL值敏感，一但子查询中有NULL，整个结果都是NULL。
+
+6、半连接
+
+            半连接会去重复数据。
+
+            Oracle会把外部WHERE 中含有EXISTS,IN或是=ANY的子查询转换成半连接。
+
+7、星连接     
+
+            它是一种单个事实表（Fact Table）和多个维度表（Dimension Table）之间的连接。它既不是一种额外的连接类型，也不是一种额外的连接方法。星型连接的各维度之间没有直接的关联条件，其试试表和各维度表之间是基于事实表的外键列和对应维度表的主键列之间的连接，通常事实表的外键列上还会存在对应的位图索引。其示意图如下：
+
+
+
+（1）在使用 RBO 的情况下，我们可以通过调整相关对象在数据字典缓存中的缓存顺序，改变目标 sQL 中所涉及的各个对象在该 SQL 文本中出现的先后顺序，或者等价改写该 SQL 来调整其执行计划。
+
+（2）成本是指 Oracle 根据相关对象的统计信息计算出来的一个值，它实际上代表了 Oracle 根据相关统计信息估算出来的目标 SQL 的对应执行路径的 I / O 、 CPU 和网络资源的消耗量。 
+
+（3）cardinality 和 selectivity 的值会直接影响 cBO 对于相关执行步骤成本值的估算，进而影响 CBO 对于目标 SQL 执行计划的选择。
+
+（4）可传递性的意义在于提供了更多的执行路径（ Access Path ）给 CBO 做选择，增加了走出更高效执行计划的可能性。
+
+（5）优化器的模式对 CBO 计算成本（进而对 CBO 选择执行计划）有着决定性的影响。
+
+（6）不是说全表扫描不好，事实上 Orade 在做全表扫描操作时会使用多块读，这在目标表的数据量不大时执行效率是非常高的，但全表扫描最大的问题就在于走全表扫描的目标 SQL 的执行时间会不稳定、不可控，这个执行时间一定会随着目标表数据量的递增而递增。
+
+（7）通过 B 树索引访问表里行记录的效率并不会随着相关表的数据量的递增而显著降低，即通过走索引访问数据的时间是可控的、基本稳定的，这也是走索引和全表扫描的最大区别。
+
+（8）Oracle 中索引全扫描的执行结果是有序的，并且是按照该索引的索引键位列来排序的，这意味右走索引全扫描能够既达到排序的效果，同时又能避免对该索引的索引键值列的真正排序操作。另外， Oracle 中能做索引全扫描的前提条件是目标索引至少有一个索引键值列的属性是 NOT NULL 。
+
+（9）索引快速全扫描是可以并行执行的，它的执行结果不一定是有序的。
+
+（10）Oracle 中的索引跳跃式扫描仅仅适用于那些目标索引的前导列的 distinct 值数量较少、后续非前导列的可选择性又非常好的情形，因为索引跳跃式扫描的执行效率 · 定会随着目标索引前导列的 distinct 值数量的递增而递减。
+
+（11）关键字“ ( + ) ”出现在哪个表的连接列后面，就表明嘟个表会以 NULL 值来填充那些不满足连接条件并位于该表中的查询列，此时应该以关键字“ ( + ) ”对面的表来作为外连接的驱动表，这里的关键是决定哪个表是驱动表。
+
+（12）通常情况 F下，排序合并连接的执行效率会远不如哈希连接的执行效率高，但排序合并连接的使用范围更广，因为哈希连接只能用干等值连接条件，而排序合并连接还能用于其他连接条件（例如＜、＜＝、 》 、＞二）。
+
+（13）通常情况下，排序合并连接并不适合 OLTP 类型的系统，其本质原因是对于 OLTP 类型的系统而言，排序是非常昂贵的操作，当然，如果能避免排序操作，那么即使是 OLTP 类型的系统，还是可以使用排序合并连接的。
+
+（14）如果驱动表所对应的驱动结果集的记录数较少，同时在被驱动表的连接列上又存在唯一性索引（或者在被驱动表的连接列上存在选择性很好的非唯一性索引），那么此时使用嵌套循环连接的执行效率就会非常高；但如果驱动表所对应的驱动结果集的记录数很大，即便在被驱动表的连接列上存在索引，此时使用嵌套循环连接的执行效率也不会高。
+
+（15）大表也可以作为嵌套循环连接的驱动表，关键看目标 SQL 中指定的谓词条件（如果有的话）能否将驱动结果集的数据最降卜来。
+
+（16）哈希连接只适用于 CBO ，它也只能用于等值连接条件（即使是哈希反连接， Oracle 实际上也是将其转换成了等价的等值连接）
+
+（17）哈希连接很适合于小表和大表之间做表连接且．连接结果集的记录数较大的情形，特别是在小表的连接列的可选择性非常好的情况下，这时候哈希连接的执行时间就可以近似看作是和全表扫描那个大表所耗费的时间相当。
+
+（18）半连接和普通的内连接不同，半连接实际上会去重。
+
+
+Oracle的执行计划
+    执行计划的含义
+        Oracle用来执行目标SQL语句的一系列步骤的组合就被称为执行计划。
+            执行计划分为下面三个部分：
+    （1）目标SQL的正文，SQL ID和其执行计划所对应的PLAN HASH VALUE。
+    （2）执行计划的主体。
+    （3）执行计划的额外补充信息。
+如何查看执行计划
+1、explain plan命令
+
+        执行如下命令
+        explain plan for + 目标SQL
+        select * from table(dbms_xplan.display)
+2、DBMS_XPLAN包
+
+        它有四种方式，可以根据不同的场景进行应用。
+        （1）select * from table(dbms_xplan.display);
+
+        （2）select * from table(dbms_xplan.display_cursor(null,null,'advanced'/'all'));
+
+          （3）select * from table(dbms_xplan.display_cursor ('sql_id/hash_value',child_cursor_number,'advanced'));
+
+          （4）select * from table(dbms_xplan.display_awr('sql_id'));
+
+    第一种就是上一节中提到的方法配合explain plan使用。
+
+    第二种方式适合刚刚执行完要查询的SQL之后立刻使用。
+
+    第三种用于查看指定SQL的执行计划，需要SQL ID和Child Cusor Number参数。
+
+    第四种用于查看指定SQL的所有历史执行计划。
+
+3、AUTOTRACE开关
+
+    使用的命令是：
+
+     set autotrace {off|on|traceonly}[explain][statistics]
+
+4、10046事件与tkprof命令
+
+
+        所得到的执行计划中明确显示目标SQL实际执行计划中每一个执行步骤所消耗的逻辑读，物理读和花费的时间。这种细粒度的明细显示在我们诊断复杂 sQL 的性能问题时尤为有用，而几这也是其他二种方法所不能提供的。
+        其执行步骤是：
+    （1）首先在当前 Session 中激活10046事件。
+    （2）接着在此 Session 中执行目标 SQL 
+    （3）最后在此 session 中关闭 10046事件。
+当执行完上述步骤后，Oracle就会将目标SQL的执行计划和明细资源消耗写入此Session所对应的trace文件中，査看这个trace文件就能知道执行SQL的执行计划和资源消耗明细了。Oracle会在参数USER_DUMP_DEST所代表的目录下生成trace文件，命名格式为‘实例名_ora_当前session的spid_trc’。
+
+
+
+执行效率或者一般说的执行时间，是和完成一次SQL所需要访问的资源总量（S）成正比以及单位时间内能够访问的资源量（V）成反比，S越大，效率越低，V越大效率越高。 比如通过并行查询，则可以提升单位时间内访问的资源量。
+
+当然，这仅仅是从执行时间上考虑，SQL优化肯定不仅仅是执行时间降低，应该是资源使用与执行时间降低之间寻求一种平衡，否则，盲目并行，可能提升不了效率，反而让系统资源消耗殆尽。
+最终来说，SQL优化的本质就是：1、缩短响应时间；2、提升系统吞吐量；3、提升系统负载能力。要使用多种手段，在提升系统吞吐量和增加系统负载能力，提高单个SQL效率之间寻求一种平衡。就是要尽量减少一条SQL需要访问的资源总量，比如走索引更好，那么不要使用全表扫描。
+
+
+  如何得到真实的执行计划
+
+
+        得到目标SQL的执行计划，大致有以下四种方式：
+
+            1、explain plan 命令
+
+      2、DBMS_XPLAN包
+
+      3、SQLPLUS中的autotrace开关
+
+      4、10046事件
+
+    除了第四种，其他三种方法都有可能是不准的。判断一个sq计划任务任务是否准确，就要看目标SQL是否真正被执行。 
+
+ 对使用第一种方法（即使用 explain Plan 命令）得到的执行计划而言，因为此时目标 SQL 并没有被实际执行，所以用该方法得到的执行计划有可能是不准的，尤其是在日标 SQL 包含绑定变量时．在默认开启绑定变最窥探（ Bind Peeking ）的情况下，对含绑定变里的目标 sQL 使用 explain plan 得到的执行计划只是一个半成品，Oracle在随后对该 SQL 的绑定变量进行窥探后就得到了这些绑定变量具体的值，此时Oracle很可能会对上述半成品的执行计划做调整，一旦做了调整，使用 explain plan 命令得到的执行计划就不准了。
+
+    第二种方法包里含有四种方式，第一种方式是用于查看explain plan命令得到的目标SQL的执行计划，显然是不准确的。所以如下方式：
+
+
+    select * from table(dbms_xplan.display_cursor(null,null,'advanced'));
+
+    select * from table(dbms_xplan.display_cursor('sql_id/hash_value',child_cursor_number,'advanced'));
+
+    select * from table(dbms_xplan.display_awr('sql_id')); --用于已经被age out 出shared pool的情况
+
+    第三种方法（即使SQLPLUS中的AUTOTRACE开关）而言，你可以选执行如下三种方式中的一种来幵启AUTOTRACE开关：
+
+    SET AUTOTRACE ON (可以简写为 SET AUTOT ON):
+    SET AUTOTRACE TRACEONLY (可以简写为 SET AUTOT TRACE);
+
+    SET AUTOTRACE TRACEONLY EXPLAIN (可以 简写为 SET AUTOT TRACE EXP );
+
+上述三种方式中，当使用SET AUTOTRACE ON和SET AUTOTRACE TRACEONLY时，目标SQL都已经被实际执行过了，正是因为被实际执行过,所以在SET AUTOTRACE ON和SET AUTOTRACE TRACEONLY的情况下我们能看到到目标SQL的实际资源消耗情况，当使用SET AUTOT TRACE EXP，如果执行的是SELECT语句，则该SELECT语句并没有被Oracle实际执行，但如果执行的是DML语句，情况况就不一样了，此时的DML语句是会被Oracle实际执行的.
+
+如果目标SQL的执行计划还在Shared Pool中，那就可以以使用脚本display_cursor_9i.sql和存储过程printsql来得到其真实的执行计划和资源消耗情况，两个文件的地址是：
+
+http://www.dbsnake.net/wp-content/uploads/2012/08/display_cursor_9i.sql_.txt
+
+http://www.dbsnake.net/wp-content/uploads/2012/08/PRINTSQL.prc_.txt
+
+如果目标sql的执行计划已经被age out出shared pool，可以执行DBMS_XPLAN.DISPLAY_AWR或者使用AWR SQL报告和statspack sql报告来得到历史执行计划和资源消耗。
+
+
+
+        得到目标SQL的执行计划，大致有以下四种方式：
+
+            1、explain plan 命令
+
+      2、DBMS_XPLAN包
+
+      3、SQLPLUS中的autotrace开关
+
+      4、10046事件
+
+    除了第四种，其他三种方法都有可能是不准的。判断一个sq计划任务任务是否准确，就要看目标SQL是否真正被执行。 
+
+ 对使用第一种方法（即使用 explain Plan 命令）得到的执行计划而言，因为此时目标 SQL 并没有被实际执行，所以用该方法得到的执行计划有可能是不准的，尤其是在日标 SQL 包含绑定变量时．在默认开启绑定变最窥探（ Bind Peeking ）的情况下，对含绑定变里的目标 sQL 使用 explain plan 得到的执行计划只是一个半成品，Oracle在随后对该 SQL 的绑定变量进行窥探后就得到了这些绑定变量具体的值，此时Oracle很可能会对上述半成品的执行计划做调整，一旦做了调整，使用 explain plan 命令得到的执行计划就不准了。
+
+    第二种方法包里含有四种方式，第一种方式是用于查看explain plan命令得到的目标SQL的执行计划，显然是不准确的。所以如下方式：
+
+
+    select * from table(dbms_xplan.display_cursor(null,null,'advanced'));
+
+    select * from table(dbms_xplan.display_cursor('sql_id/hash_value',child_cursor_number,'advanced'));
+
+    select * from table(dbms_xplan.display_awr('sql_id')); --用于已经被age out 出shared pool的情况
+
+    第三种方法（即使SQLPLUS中的AUTOTRACE开关）而言，你可以选执行如下三种方式中的一种来幵启AUTOTRACE开关：
+
+    SET AUTOTRACE ON (可以简写为 SET AUTOT ON):
+    SET AUTOTRACE TRACEONLY (可以简写为 SET AUTOT TRACE);
+
+    SET AUTOTRACE TRACEONLY EXPLAIN (可以 简写为 SET AUTOT TRACE EXP );
+
+上述三种方式中，当使用SET AUTOTRACE ON和SET AUTOTRACE TRACEONLY时，目标SQL都已经被实际执行过了，正是因为被实际执行过,所以在SET AUTOTRACE ON和SET AUTOTRACE TRACEONLY的情况下我们能看到到目标SQL的实际资源消耗情况，当使用SET AUTOT TRACE EXP，如果执行的是SELECT语句，则该SELECT语句并没有被Oracle实际执行，但如果执行的是DML语句，情况况就不一样了，此时的DML语句是会被Oracle实际执行的.
+
+如果目标SQL的执行计划还在Shared Pool中，那就可以以使用脚本display_cursor_9i.sql和存储过程printsql来得到其真实的执行计划和资源消耗情况，两个文件的地址是：
+
+http://www.dbsnake.net/wp-content/uploads/2012/08/display_cursor_9i.sql_.txt
+
+http://www.dbsnake.net/wp-content/uploads/2012/08/PRINTSQL.prc_.txt
+
+如果目标sql的执行计划已经被age out出shared pool，可以执行DBMS_XPLAN.DISPLAY_AWR或者使用AWR SQL报告和statspack sql报告来得到历史执行计划和资源消耗。
+
+如何查看执行计划的执行顺序
+    查看执行顺序的口诀是：先从最开头一直连续往右看，直到看到最右边的并列的地方；对于不并列的，靠右的先执行；如果见到并列的，就从上往下看，对于并列的部分，靠上的先执行。
+
+    对于复杂的SQL执行的语句，可以使用XPLAN包，包的源码的地址是：
+
+    http://www.dbsnake.net/wp-content/uploads/2012/08/xplan.sql_.txt
+
+Oracle中常见的执行计划
+与表访问相关的执行计划
+
+    Oracle中与表访问有关的两种方法：全表扫描和ROWID扫描。反应在执行计划上，与全表扫描对应的执行计划中的关键字是“TABLE ACCESS FULL”，与ROWID对应的执行计划中的关键字是“TABLE ACCESS BY ROWID”或“TABLE ACCESS BY INDEX ROWID”。如果ROWID来源于用户手工指定的话执行计划的关键字是“TABLE ACCESS BY ROWID”，如果来源于索引则是“TABLE ACCESS BY INDEX ROWID”。
+
+
+与B树索引相关的执行计划
+
+   Oracle中B树索引访问相关的方法是：索引唯一扫描、索引范围扫描、索引全扫描、索引快速全扫描和索引跳跃式扫描．反映在执行计划上与索引唯一扫描对应的关键字是“ INDEX UNIQUE SCAN ",与索引范围扫描对应的关键字是“ INDEX RANGE SCAN"，与索引全扫描对应的关键字是“ INOEX FULL SCAN "，与索引快速全扫描对应的关键字是“INDEX FAST FULL SCAN " ,与索引跳跃式扫描对应的关键字是"INDEX SKIP SCAN"
+
+与位图索引相关的执行计划
+
+   Oracle的位图索引的物理存储结构是：<被索引的键值，对应的rowid下限，对应的rowid上限,位图段>。这里位图段是被压缩存储的，解压缩后就是一连串 0 和 l 的二进制位图序列，其中 l 表示被索引键值的一个有效 rowid ,Oracle通过一个转换函数将解压缩后的位图段中的 l 结合对应 rowid 的上下限，转换为被索引键值所对应的有效 rowid．
+
+   Oracle数据库中位图索引的锁的粒度是在索引行的位图段上。对干 Oracle数据库中的位图索引而言，它是没有行锁这个概念的，要锁就锁索引行的整个位图段，而多个数据行可能对应同一个索引行的位图段。这种锁的粒度就决定了位图索引不适用于高并发且频繁修改的 OLTp 系统，如果在高并发且绷繁修改的 OLTp 系统中使用了位图索引，很可能会导致严重的并发问题，甚至会产生死锁。
+
+   与 B 树索引相比，位图索引的优势主要体现在如下几个方面：
+
+   ( l ）因为位图索引的位图段是服后存储的，所以如果被索引的列的 diatind 位较少，那么位图索引与相同列上的 B 树索引比起来，会显著节省存储空间。
+
+  ( 2 ）如果需要在多个列上创建索引，那么位图索引与同等条件下的 B 树索引比起来，往往会显著节省存储空间。
+
+  ( 3 ）位图索引能够快速处理一些包含了各种 ANO 或 OR 查询条件的 SQL ，这主要是因为位图索引能够实现快捷的按位运算的缘故。
+
+   Oracle 数据库里常见的与位图索引访问相关的方法包括如下这些类型：位图索引单键值扫描、位图索引范围扫描、位图索引全扫描、位图索引快速全扫描、位图按位与、位图按位或、位图按位减等。反映在执行计划上，与位图索引单键值扫描对应的关键字是“ BITMAP INDEX SINGLE VALUE " ，与位图索引范围扫描对应的关键字是“ BITMAP INDEX RANGE SCAN " ，与位图索引全扫描对应的关键字是“ BITMAP INDEX FULL SCAN " ，与位图索引快速全扫描对应的关链字是“ BITMAP INDEX FAST FULL SCAN " ，与位图按位与对应的关健字是“ BITMAP AND " ，与位图按位或对应的关键字是“ BITMAP OR " ，与位图按位减对应的关键字是“ BITMAP MINUS " . 另外需要注意的是，Oracle在使用完位图索引后通常会将最后的位图运算结果转化为 ROWID ，这一步转换过程对应的执行计划中的关键字是“ BITMAP CONVERSION TO ROWIDS "。
+
+与表连接相关的执行计划
+
+   Oracle中与表连接相关的方法有排序合并连接、嵌套循环连接、哈希连接、反连接和半连接。反映在执行计划上，与排序合并连接对应的关键字是“ SORT JoIN ”和“ MERGE JOIN " ，与嵌套循环连接对应的关健字是“ NESTED LOOPS " 与哈希连接对应的关健字是“ HASH JOIN”，与反连接对应的关键字是“ ANTI "（依据所采用的不同的反连接方法，所对应的关键字可能是“ HASH J01N ANTI ”、“ MERGE JOIN ANTI ”或“ NESTED LOOPS ANTI " ) ．与半连接对应的关键字是“ SEMI " （依据所采用的不同的半连接方法，所对应的关键字可能是' HASH JOIN SEMI ”、“ MERGE JOIN SEMI ”或“ NESTED L00PS SEMI " ）。
+
+    
+
+其他的典型的执行计划
+
+    AND-EQUAL（INDEX MERGE）
+
+  AND-EQUAL又称为INDEX MERGE，顾名思义，INDEX MERGE 就是指如果 where 条件里出现了多个针对不同单列的等值条件，并且这几列都有单键值的索引，则 oracle 可能会以相应的单个等值条件去分别扫描这些索引，然后 Oracle 会合并这些扫描单个索引所得到的 rowid 集合，如果能从这些集合中找到值相同的 rowid ，那么这个 rowid 就是目标 SQL 最终执行结果所对应的 rowid记录。最后Oracle只需用这些 rowid 回表就能得到目标SQL执行的结果。
+
+    INDEX JOIN
+
+  INDEX JOIN指的是针对单表上的不同索引之间的连接，在执行计划中对应的关键字与普通的表连接一样，只不过参与连接的对象不是表而是索引。
+
+
+    VIEW
+
+  Oracle 在处理包含视图的 SQL 时，根据该视图是否能做视图合并，其对应的执行计划有如下两种形式：
+
+    1、如果可以做视图合并则 Orade 在执行该 SQL 时可以直接针对该视图的基表，此时 SQL 的执行计划中很可能不会出现关键字“ VIEW" （不能完全依赖关键字“ VIEW ”的出现与否来判断 Oracle是否做了视图合并，因为对于某些 SQL 而言，即使 oracle 已经做了视图合并但其所对应的执行计划中可能还是会显示关键字’VIEW" )。
+
+    2、如果不能做视图合并，则 Oracle 将把该视图看作一个整体并独立地执行它，此时 SOL 的执行计划中将会出现关
+键字“ VIEW ”。
+
+    FILTER
+
+  FILTER 直译过来就足过滤、筛选的意思．它是一种特殊的执行计划，所对应的执行过程就是如下三步：
+
+    ( l ）得到一个驱动结果集。
+
+    ( 2 ）根据一定的过滤条件从上述驱动结果集中滤除不满足条件的记录。
+
+    ( 3 ）结果集中剩下的记录就会返回给最终用户或者继续参与下一个执行步骤。
+
+   SORT
+
+  执行计划中的SORT通常会以组合的方式出现，这些组合方式包括但不限于如下几种：
+
+    （1）SORT AGGREGATE
+
+    （2）SORT UNIQUE
+
+    （3）SORT JOIN
+
+    （4）SORT GROUP BY 
+
+    （5）SORT ORDER BY 
+
+    （6）BUFFRE SORT
+
+   注意，执行计划中及时出现了关键字“SORT”，也不一定意味着就需要排序，比如SORT AGGREGATE和BUFFRE SORT就不一定需要排序。
+
+    UNION/UNIONN ALL
+
+  UNION/UNION ALL表示对两个结果集进行合并，如果他们出现在执行计划中也表示同样的含义。
+
+ UNION和UNION ALL的区别是UNION ALL仅仅是简单的把两个结果集进行合并，并不做任何额外的处理，而UNION出了合并两个结果集之外，还会做对合并后的结果集进行去重和排序。
+
+   CONCAT
+
+  CONCAT就是IN-List扩展或OR扩展，IN-List扩展或OR扩展在执行计划中的关键字就是“CONCATENATION”。
+
+
+  CONNECT BY
+
+  CONNNECT BY 是Oracle中层次查询所对应的关键字，如果出现在执行计划中也表示同样的含义
+---------------------
+作者：PursueDreamZ
+来源：CSDN
+原文：https://blog.csdn.net/qq_34409900/article/details/80752587
+版权声明：本文为博主原创文章，转载请附上博文链接！
+
+Oracle里执行计划的稳定
+ 使用SQL Profile来稳定执行计划
+
+   使用SQL Profile可以很容易的实现下面的目标：
+
+    （1）锁定或者说稳定执行计划。
+
+    （2）在不能修改目标SQL的SQL文本的情况下使目标SQL语句按指定的执行计划运行。
+
+   SQL Profile有两种类型，一种是Automatic，一种是Manual。
+
+   Automatic类型的SQL Profile
+
+    Automatic 类型的 SQL Profile 其实就是针对目标 sQL 的一些额外的调整信息，这些信息存储在数据字典里．当有了 Automatic 类型的 SQL Profile 后，Oracle在产生执行计划时就会根据它对目标 sQL 所涉及的统计信息等内容做相应的调整，因而能够在一定程度上避免产生错误的执行计划。不用担心 Automatic 类型的 sQL Profile 的准确性，因为 oracle 会使用类似于动态采样技术那样的手段来保证这些额外调整信息相对准确。
+
+    Automatic 类型的 SQL Profile 并不会像 Stored Outline 那样锁定目标 SOL 的执行计划，因为 Automatic 类型的 SQL Profile 的本质就是针对目标 SQL 的一些额外的调整信息，这些额外的调核信息需要与原目标 sQL 的相关统计信息等内容一起作用才能得到新的执行计划．即原始 sQL 的统计信息等内容一旦发生变化，即使原有 Automatic 类型的 SQL Profile 并没有改变，该 SQL 的执行计划也可能会发生变化．从这个意义上讲， Automatic 类型的 SOL Profile 并不能完全起到稳定目标 SOL 的执行计划的作用，虽然它确实可以用来调整执行计划。
+
+
+Manual类型的SQL Profile
+
+    Manual类型的 SQL Profile 本质上就是一堆 Hint 的组合，这一堆 Hint 的组合实际上来源于执行计划中 Outline Data 部分的 Hint 组合。 Manual 类型的 SQL Profile同样可以在不更改目标 SQL的 SQL 文本的情况下调整其执行计划，而且更为重要的是， Manual 类型的 SQL Profile可以起到很好的稳定目标 SQL 的执行计划的作用，这一点是 Automatic 类型的 SQL Pro file 所不具备的。
+
+ 使用SPM来稳定执行计划
+
+   SPM 是一种主动的稳定执行计划的手段，能够保证只有被验证过的执行计划才会被启用，当由于种种原因（比如统计信息的变更）而导致目标 SQL 产生了新的执行计划后．这个新的执行计划并不会被马上启用，直到它己经被我们验证过其执行效率会比原先执行计划高才会被启用。
+
+   当启用了SPM后每个SQL都会存在对应的SQL Plan Baseline，这个SQL Plan Baseline中存储的就是该SQL的执行计划，如果一个SQL有多个执行计划，那就有多个SQL Plan Baseline，可以从DBA_SQL_PLAN_BASELINE中查看目标SQL所有的SQL Plan Baseline。
+
+   DBA_SQL_PLAN_BASELINE中的列ENABLED和ACCEPTED用来描述一个SQL Plan Baseline所对应的执行计划是否被Oracle启用，只有ENABLED和ACCEPTED的值均为YES的SQL Plan Baseline所对应的执行计划才会被Oracle启用，如果一个sql有超过1个以上的SQL Plan Baseline的ENABLED和ACCEPTED的值均为YES，则Oracle会从中选择成本值最小的一个所对应的执行计划来作为该SQL的执行计划。
+
+    Oracle里的Cursor
+        Oracle数据库中的Cursor分为两种类型：一种是Shared Cursor；另一种是Session Cursor。
+
+    Oracle里的Shared Cursor
+        库缓存：SGA中的一块内存区域，是缓存刚刚执行过的SQL语句和pl/sql语句（如存储过程、函数、包、触发器）所对应的执行计划、解析树、Pcode、Mcode等对象。
+
+        对每一个库缓存对象而言，都或多或少需要往库缓存中存储一终该库缓存对象所特有的动态运行时 ( runtime ）数据，比如 SQL 语句所对应的库缓存对象就需要在库缓存中缓存该 sQL 语句所对应的编译好的二进制格式的执行计划。
+        Oracle会用 Data Hcap 来存储这些动态运行时教据，所谓的“ Data Heap " ，可以简单地理解成是库缓存中的块连续的内存区域． Data Heap 是动态分配的，其大小并不固定．
+        每一个库缓存对象都可能会拥有多个 Data Heap ，这里分别将它们命名为 Heap 1 . HeapZ 、 · · · 一 Heap n . 各个 Data Heap 之间独立的，没有关联关系， oracle 会在 Heap o 的属性“ Data Blocks Pointer ”中存储指向这些 Data Heap 的指针．这样 Oracle通过访问 Heapo 0就可以按需访问该 Heapo 0 所在的库缓存对象拥有的所有 Data Heap  .
+        oracle 数据库中的 Shared Cursor 就是指缓存在库缓存里的一种库缓存对象，说白了就是指缓存在库缓存堆的 sQL 语句和匿名 PIJSQL 语句所对应的库缓存对象。 Shared Cursor是 oracle 缓存在 Library  Cache中的几十种库缓存对象之一，它所对应的库缓存对象句柄的 Namespace 属性的值是 CRSR （也就是Cursor 的缩写）。shared Cursor 里会存储目标 SQL 的 SQL 文本、解析树、该 SQL 所涉及的对象定义、该 sQL 所使用的绑定变量类型和长度．以及该 SQL 的执行计划等信息。
+
+        Oracle数据库中的 Shared Cursor 又细分为 Parent Cursor （父游标）和 Child Cursor （子游标）这两种类型，我们可以通过分别查询视图 V $ SOLAREA 和V $ SOL 来查看当前缓存在库级存中的 parent Cursor 和 Child Cursor ，其中 V $ SQLAREA 用于变看 Parent Cursor ，V $ SOL用于变看 Child Cursor 。
+
+        Parent Cursor 和 Child Cursor的结构是 ·一样的（它们都是以库缓存对象句柄的方式缓存在库缓存中， Namespace 属性的值均为 CRsR ) ．它们的区别在于目标 sQL 的 sQL 文本会存储在其Parent Cursor 所对应的库缓存对象句柄的属性 Name中（ Child Cursor 对应的库缓存对象句柄的 Name 属性值为空，这意味着只有通过 Parent Cursor 才能找到相应的 Child cursor ) ，而该 SQL 的解析树和执行计划则会存储在其 Child Cursor所对应的库缓存对象句柄的 Heap 6 中。同时Oracle会在该 sQL 所对应的 Parent Cursor的 Heap 0 的 child table 中．存储从属于该 Parent Cursor的所有 Child Cursor，的库级存对象句柄地址（这意味着 Oracle可以通过访问 Parent Cursor的 Heap 6的 child table而依次顺序访问从属于该 Parent Cursor 的所有 Child Cursor ) .
+
+        这种Parent Cursor 和 Child Cursor的结构就决定了在 Oracle数据库里，任何一个目标 SQL 一定会同时对应两个Shared Cursor ，其中一个是 Parent Cursor．另外一个则是 Child Cursor.  Parent Cursor会存储该SQL的 SQL 文本．而该 SQL 其正的可以被重用的解析树和执行计划则存储在 child Cursor 中。
+
+    硬解析
+
+        硬解析（ Hard Parse ）是指 Oracle 在执行目标 SQL 时．在库缓存中找不到可以重用的解析树和执行计划，而不得不从头开始解析目标 SQL 并生成相应的 Parent Cursor 和 Child Cursor的过程。硬解析实际上有两种类型： ·一种是在库缓存中找不到匹配的 Parent Cursor ，此时 oradc 会从头开始解析目标 SQL ，新生成一个Parent Cursor 和 Child Cursor，并把它们挂在对应的 Hash Bucket 中：另外 一种是找到了匹配的 Parent Cursor未找到匹配的 child Cursor ．此时 oracle 也会从头开始解析该日标 SQL ．新生成一个 Child Cursor。并把这个 Child Cursor 挂在对应的 Parent Cursor下。
+
+        硬解析很不好，有以下缺点：
+
+        （1）硬解析可能会导致Shared Pool Latch的争用。
+
+        （2）硬解析可能会导致库缓存相关Latch（如Library Cache Latch）和Mutex的争用。
+
+ 软解析
+
+        软解析是指Oracle在执行目标SQL时，在Library Cache中找到匹配的Parent Cursor 和 Child Cursor，并将存储在Child Cursor中的解析树和执行计划直接拿过来重用而无须从头开始解析的过程。
+
+        与硬解析相比，软解析优势是：
+
+        （1）软解析不会导致Shared Pool Latch的争用。
+
+        （2）软解析虽然也可能会导致库缓存相关 Latch 和 Mutex 的争用．但软解析持有库级存相关 Latch 的次数要少，而且软解析对某些 Latch （如 Library Cache Latch ）的持有时间会比硬解析短，这意味，即使产生了库级存相关 Latch 的争用，软解析的争用程度也没有硬解析那么严重即库级存相关 Lalch 和 Mutex 的争用所带来的系统性能和可扩展性的问从对软解析来说要比硬解析少很多。
+
+
+Oracle里的Session Cursor
+   Session Cursor的含义
+
+   Oracle数据库里第二种类型的 Cursor 就是Session Cursor，它是当前Session 解析和执行 SQL 的载体．换句话说， Session Cursor 用于在当前 Session 中解析和执行 SQL ．和 Shared Cursor 一样， Session Cursor也是 oracle 自定义的 一种 C 语言复杂结构，它也是以哈希表的方式缓存起来的，只不过是缓存在 PGA 中，而不是像 Shared Cursor那样缓存在 SGA的库缓存里。
+
+    关于Session Cursor，有以下需要注意：
+
+    ( 1 )Session Cursor 与 session 是一一对应的，不同 session 的 session Cursor 之间没法共享，这与 Shared Cursor有本质区别． 
+
+   ( 2 ) Session Cursor是有生命周期的，每个Session Cursor 在使用的过程中都至少会经历一次Open、Parse、 Bind 、 Execute 、 Fdch 和 Close中的一个或多个阶段，用过的 Session Cursor不 一定会缓存在对应义Session 的PGA中，这取决于参数SESSION_CACHED_CURSORS的值是否大于 0 
+
+   ( 3 )既然 scssion Cursor 也是以哈希表的方式缓存在 PGA 中，意味着 Oracle会通过相关的哈希运算来存储和访问在当前 Session 的 PGA 中的对应 Session Cursor ．这种访问机制实际上和Shared Cursor是一样的，即可以简单地认为Oracle是根据目标 SQL 的 SQL 文本的哈希值去PAG中的相应 Hash Bucket 中找匹配的 Session Cursor。
+
+    Oracle在解析和执行目标SQL时，会先去当前Session的PGA中找是否存在匹配的缓存Session Cursor。当Oracle第一次解析和执行目标SQL时，当前Session的PGA中肯定不存在匹配的Session Cursor，这时Oracle会新生成一个Session Cursor和一对Shared Cursor，这其中的Shared Cursor会存储能被所有Session共享、重用的内容。而Session Cursor则会经历一次Open、Parse、 Bind 、 Execute 、 Fdch 和 Close中的一个或多个阶段。
+
+
+Session Cursor的相关参数解析
+
+  OPEN_CURSORS
+
+   参数 OPEN_CURSORS用于设定单个Session中同时能够以 Open状态并存的Session Cursor 的总数。
+  SESSION_CACHED_CURSORS
+   参数SESSION_CACHED_CURSORS用于设定单个Session中鞥能够以Soft Closed状态并存的Session Cursor 的总数。即用于设定单个Session能缓存在PGA中的Session Cursor 的总数。
+
+  CURSOR_SOACE_FOR_TIME
+   参数CURSOR_SOACE_FOR_TIME是为了环节发生在Child Cursor上的与库缓存相关的Latch争用。
+
+Session Cursor的种类和用法
+
+   隐式游标
+
+    隐式游标是 Oracle数据库中最常见的一种 Session Cursor．它无处不在，我们在 SQLPLUs 或者在 PL/SQL 代码中直接执行 sQL 语句时， Oracle 实际上都帮我们自动创建了隐式游标来作为这些SQL 语句执行的载体．之所以称为隐式游标，是因为它的生命周期管理全部是由 SQL引擎或 PUSQL 引擎自动来完成，所以我们常常感觉不到它的存在。
+
+    隐式游标的属性
+
+    1、SQL%FOUND属性
+
+    SQL%FOUND表示一条 sQL 语句被执行成功后受其影响而改变的记录数是否大于或等于 l 。既然是要改变记录，这意味着 SQL % FOUND 通常适用于那终执行 INSET、 UPDATE 和 DELETE 操作的 OML 语句，当然，它其实也可以用于 SELECT 语句．在一条 DML 语句被执行前，SQL%FOUND的值是 NULL ．当这条 DML 语句被执行并且成功改变了一条或者一条以卜记录的时候，又或者 SELECT语句成功返回一条或者条以上记录的时候，SQL%FOUND的值是 TRUE ，否则为 FALSE 。
+
+    2、SQL%NOTFOUND
+
+    SQL%FOUND表示一条SQL被执行成功后受其影响而改变的记录数是否为0。
+
+    3、SQL%ISOPEN
+
+    SQL%ISOPEN表示隐式游标是否处于Open状态。
+
+    4、SQL%ROWCOUNT
+
+    SQL%ROWCOUNT表示一条SQL语句成功执行后受其影响而改变的记录数的数量。
+
+  显式游标
+
+    显式游标通常用于PL/SQL代码中，它的定义和生命周期管理中的Open、 Fdch 和 Close均有我们在PL/SQL代码中显式控制。
+
+    显式游标的属性：
+
+    1、CURSORNAME%FOUND
+
+    CURSORNAME%FOUND属性拜师指定的显式游标是否至少有一条记录被Fdch了。
+
+    2、CURSORNAME%ISOPEN
+
+    CURSORNAME%ISOPEN表示指定的显式游标是否被Open。
+
+    3、CURSORNAME%NOTFOUND
+
+    CURSORNAME%NOTFOUND表示指定的显示游标是否已经Fetch完毕。
+
+    4、CURSORNAME%ROWCOUNT
+
+    CURSORNAME%ROWCOUNT表示指定的显示游标迄今为止一共Fetch了多少行记录。
+
+
+  参考游标
+
+    参考游标通常用于PL/SQL代码中，它的定义和生命周期管理中的Open、 Fdch 和 Close均有我们在PL/SQL代码中显式控制。
+
+    参考游标的属性和显示游标是一样的。其是Session Cursor中最灵活的，其灵活性体现在：
+
+    1、它可以有多种定义方式。
+
+    2、参考游标的 Open方式也非常灵活，它可以不和某个固定的 SQL 绑定，参考游标可以随时open ，并且每次Open所对应的 sQL 语句部可以是不一样的
+
+    3、参考游标可以作为存储过程的输入参数和函数的输出参数
+---------------------
+作者：PursueDreamZ
+来源：CSDN
+原文：https://blog.csdn.net/qq_34409900/article/details/80808370
+版权声明：本文为博主原创文章，转载请附上博文链接！
+
+Oracle里的Cursor
+        绑定变量（ Bind variable ）是一种特殊类型的变量，它又被称为占位符（ Placeholder ) ，绑定变量通常出现在目标 SQL 的 SQL 文本中，用于替换 SQL 文本中的 where 条件或者 values 子句（适用于 INSERT语句）中的具体愉入值。 oracle 数据库中绑定变量的使用语法是“ : variable_name " ，即用冒号和自定义变量名称的组合来转换目标 SQL 的 SQL 文本中的具体输入值，这里自定义的变量名称 variable _ name 可以是字母、数字或字母与数字的组合，例如原目标 SQL 为“ select ename from emp where empno =7369 " ，该 SQL 中的具体输入位是 7369 . 如果这里用绑定变最（假设是 x ）来转换上述具体输入值 7369 的话，则转换后的等价改写形式就足“select ename from emp where empno = : x " .
+
+绑定变量的作用
+        绑定变量的最大的作用是可以有效地降低系统硬解析的数量。
+
+绑定变量的典型用法
+        PL/SQL中的绑定变量的典型用法
+    标准语法为：execute immediate [带 绑定变量的目标SQL] using [对应绑定变量的具体输入值]；
+
+    在PL/SQL代码中给绑定变最从仇的关键字是“ using " ，目标 SQL 中有几个绑定变最．关键字“ using " 后就需要跟几个具体的输入值（各愉入位之间以逗号分隔），这一点与之前介绍的在 SQLPLUS 中直接用“ exec " 给 SQL 语句中的绑定变量赋值有区别。
+
+    对于上述这种使用绑定变量的方式，关健字‘ using ’后传入的绑定变，具体输入值只与对应绑定变里在目标 SOL 中所处的位置有关，而与其名称无关，这意味着只要目标 SQL 中绑定变量所处的位置不同，它们所对应的绑定变量名称是可以相同的。
+
+    动态SQL也可以使用绑定变量，关键字“returning”可以和带绑定变量的目标SQL连用，其目的是把受该SQL 影响的行记录的对应字段取出来。
+
+    可以简单地将 PL/SQL看作 Orade 数据库中专门用来处理 PL/SQL代码中除 SQL语句之外所有到余部分的子系统，而 SQL则是 Orade 数据库中专门用来处理 SQL语句的子系统．这里的 PL/SQL引擎和 SQL 引擎上下文切换就是指它们之间的交互．PL/SQL中的批量绑定的优势在于它是一次处理一批数据．而不是常规方式那样一次只处理一条致据，所以它能够有效减少 PL/SQL引擎和 SQL引擎上下文切换的次数。
+
+
+绑定变量的使用原则和最佳实践
+        对于绑定变量，推荐的使用原则为：依据应用系统的类型来决定是否使用绑定变，具体来说就是：．
+    1、对于 OLAP/DSS 类型的应用系统，可以不使用绑定变量。
+    2、对于 OLTP类型的应用系统，在 SQL 语句中一定要使用绑定变量 ，并且最好是使用批量绑定，即尽可能在前台代码和后台 PL/SQL代码中都使用批量绑定
+    3、对干 OLAP和 OLTP混合型的应用系统，如果有循环，不管这个循环是在前台代码还是在后台 PL/SQL代码中．循环内部的 SQL语句一定要使用绑定变量，并且最好是使用批量绑定至于循环外部的 SQL 语句，可以不使用绑定变量。
+绑定变量的个数不宜太多
+        目标 SQL 的 SQL 文本中的绑定变量个数不宜太多，否则可能会导致目标 SQL 总的执行时间大幅度增长。增长的时间主要耗费在执行目标 SQL 时对每一个绑定变量都用其实际的值来替换（这个过程就是所谓的绑定变量值替换），目标 SQL 的 SQL 文本中的绑定变量的个数越多，这个替换过程所耗费的时间就越长，该 sQL 总的执行时间也就越长。
+如何得到已执行的目标SQL中绑定变量的值
+        查询视图 V $ SQL_BIND _ CAPTURE 。如果 V $ SQL_BIND _ CAPTURE 中查不到，那么有可能对应的 Shared Cursor 已经被 age out 出 Shared PooI了 ，这时候可以尝试去 AWR Repository 相关的数据字典表 DBA_HIST_SQLSTAT或 DBA_HIST_SQLBIND 中查询。当 Orade 解析和执行含有绑定变量的目标 SQL 时，如果满足如下两个条件之一，则该 SQL 中的绑定变量的具体输入值就会被 Oracle 捕获，并可通过视图V $ SQL_BIND _ CAPTURE查询。
+    （1）当含有绑定变量的目标 SQL 以硬解析的方式被执行时。
+    （2）当含有绑定变量的目标 SQL 以软解析／软软解析的方式重复执行时，该 SQL 中的绑定变量的具体输入值也可能会被 Oracle 捕获，只不过默认情况下这种捕获操作 Oracle 至少得间隔 15 分钟才会做一次。也就是说当目标 SQL 以软解析／软软解析的方式重复执行时，本次捕获操作和上次捕获操作的时间间隔在默认情况下至少得间隔巧分钟。之所以间隔15分钟，是因为这可以避免频繁捕获而给系统性能带来的负面影响。我们当然希望目标 SQL 每次执行时其绑定变量输入值都被 Oracle 捕获，但这样一来会影响系统性能，二来也没必要（绑定变量窥探在默认情况下己被开启，所以默认情况下对于同一个反复执行的目标 SQL 而言，没必要每次执行时都捕获其绑定变量输入值）。
+     Oracle 只会捕获那些位于目标 SQL 的 where 条件中的绑定变量的具体输入值，而对于那些使用了绑定变量的 INSERT 语句，不管该 INSERT 语句是否是以硬解析的方式执行， Oracle 始终不会捕获其 values 子句中对应绑定变量的具体输入值。
+Oracle里的游标共享
+    游标共享（ Cursor Sharing ）是指Shared Cursor 间的共享，说白了就是重用存储在 Child Cursor 中的解析树和执行计划而不用从头开始硬解析。
+    游标共享对于应用系统在数据库端的性能和可扩展性是有至关重要的影响的，因为如果不能重用解析树和执行计划，就意味着同一类型的 SQL 在并发地被不同用户反复执行时每次都会用硬解析（这里“同一类型”的 SQL 是指除 SQL 文本中对应的输入值不同外，其他部分都一模一样的目标 SQL ）。
+    常规游标共享
+    当开启了常规游标共享后， Oracle 在实际解析目标 SQL 之前，会先用系统产生的绑定变量来替换目标 SQL 的 SQL 文本中 where 条件或者 values 子句（适用于 INSERT 语句）中的具体输入值，这样替换后实际执行的 SQL 就已经是使用了绑定变量的改写后的等价 SQL ，同时因为这个替换过程是 Oracle 帮你做的，所以常规游标共享就可以做到既有效降低系统硬解析的数量又对应用透明。
+    Oracle数据库中的常规游标共享受参数 CURSOR_SHARING 的控制，其值可以被设置为 EXACT 、 SIMILAR 或 FORCE ，它们各自的含义为如下所示。 
+    （1） EXACT 是CURSOR_SHARING的默认值，当CURSOR_SHARING的值为 EXACT 时， Oracle 不会用系统产生的绑定变量来替换目标 SQL 的 SQL 文本中 where 条件或者 values 子句（适用于 INSERT 语句）中的具体输入值。
+    （2）当 CURSOR _ SHARING 的值为 sIMILAR 时， Oracle 会用系统产生的绑定变量来替换目标
+SQL的SQL文本中 where 条件或者values子句（适用于 INSERT 语句）中的具体输入值，但这里替换归替换，替换后同一类型的 SQL 在并发地被不同的用户反复执行时是否能重用解析树和执行计划却是不一定的。因为当CURSOR _ SHARING 的值设为 SIMILAR 后， Oracle 只会对那些它认为是安全的谓词条件在替换后重用解析树和执行计划，对于它认为的不安全的谓词条件，即便用系统产生的绑定变量替换后的 SQL 文本是一模一样的，对于每一个不同的输入值， Oracle 都会执行一次硬解析，即此时会出现一个 Parent Cursor下挂一堆 Child Cursor 的现象，而这些Child Cursor中存储的解析树和执行计划很可能是一样的。
+   （3） FORCE 和 SIMILAR 一样，当CURSOR _ SHARING的值为 FORCE 时， oracle 也会用系统产生的绑定变量来替换目标 SQL 的 SQL 文本中 where 条件或者 values 子句（适用于 INSERT 语句）中的具体输入值。但和 SIMILAR 不同的是，不管是“安全的谓词条件”还是“不安全的谓词条件”，当 CURSOR SHARING 的值为 FORCE 时，替换后同一类型的 SQL 总是会无条件地重用之前硬解析时的解析树和执行计划（注意，因为自适应游标共享的引入，这种行为不再适用于 Oracle 119 及其后续的版本）。
+    总结来看SIMILAR 是一个即将过时的值，它有太多的副作用，无论什么时候都不要将CURSOR _ SHARING 的值设为 SIMILAR 。，如果想在不改一行应用代码的情况下，使那些仅仅是 SQL 文本中的 where 条件或者 values 子句（适用于 INSERT 语句）中的具体输入值不同的目标 SQL 共享解析树和执行计划，以达到有效降低系统硬解析数量的目的，那就将 CURSOR SHARING 的值设成 FORCE 吧，虽然这不是最理想的方案（最理想的方案当然还是修改应用的代码，在 SQL 语句里使用绑定变量，并且尽可能使用批量绑定），但这也许是最省事的方案。
+---------------------
+作者：PursueDreamZ
+来源：CSDN
+原文：https://blog.csdn.net/qq_34409900/article/details/80833783
+版权声明：本文为博主原创文章，转载请附上博文链接！
+
+基于Oracle的SQL优化--学习（十一）
+2018年07月02日 15:47:29 PursueDreamZ 阅读数：71
+绑定变量窥探
+        当绑定变量窥探被启用后，每当 Oracle 以硬解析的方式解析使用了绑定变量的目标 SQL 时， Oracle 都会实际窥探（ Peeking ）一下对应绑定变量的具体输入值，并以这些具体输入值为标准，来决定这些使用了绑定变量的目标 SQL 的 where 条件的 Selectivity 和 Cardinality 的值，并据此来选择该 SQL 的执行计划。注意，这里这个“窥探（ Peeking ) ”的动作只有在硬解析的时候才会执行，当使用了绑定变量的目标 sQL 再次执行时
+（此时对应的是软解析／软软解析），即便此时对应绑定变量的具体输入值和之前硬解析时对应的值不同， Orade 也会沿用之前硬解析时所产生的解析树和执行计划，而不再重复执行上述“窥探”的动作。
+        让 oracle 的表执行 DDL 再次执行目标 SQL 时使用硬解析的方法有很多，其中很常见的一种方法是对目标操作。因为一旦对某个表执行了 DDL 操作，库缓存中所有在 SQL 中所涉及 Cursor 都会被 oracle 标记为失效（ invalid ) ，这意味着这些 Shared Cursor 被重用，所以当 Oracle 再次执行与这个表相关的 SQL 时就会使用硬解析 SQL 文本中包含了这个表的 Shared 中存储的解析树和执行计划将不再能重用，所以再执行目标SQL时就会使用硬解析。DDL 操作有很多种，通常会选择添加注释的 COMMENT 语句，因为使用 COMMENT 添加注释操作，但同时它的杀伤力和对生产环境的影响又微乎其微。
+        使用 DBMS_SHARED POOL.PURGE 可以做到让Oracle只在执行目标SQL时进行硬解析。 DBMS_SHARED POOL.PURGE 是从 oracle 10 . 2 . 0 . 4 它可以用来删除指定的缓存在库缓存中的 Shared Cursor。 DBMS_SHARED POOL.PURGE  可以让 oracle 在执行目标 SQL 时使用硬解析的原理是显而易见的 ― 如果某个 SQL 对应的 Shared Cursor 被删除了， oracle 再次执行该 SQL 时自然就会使用硬解析。
+绑定变量分级
+        绑定变量分级（ Bind Graduation ）是指 oracle 在 PL / SQL 代码中会根据文本型绑定变量的定义长度而将这些文本型绑定变量分为四个等级。
+    （1）定义长度在 32 字节（ Byte ）以内的文本型绑定变量被分在第一个等级。
+    （2）定义长度在 33 一 128 字节之间的被分在第二个等级。
+    （3）定义长度在 129 一 2 , 000 字节之间的文本型绑定变量被分在第三个等级。
+    （4）定义长度在 2000 字节以上被分在第四个等级。
+        在执行目标 SQL 时，对目标 SQL 中的每一个绑定变量 oracle 都要用其实际的值来替换，所以该 SQL 的 Session Cursor 必须为这些绑定变量在 PGA 中预留一定长度的内存，这个预留的内存空间必须能够容纳这些绑定变量实际的值。当然，这里最理想的方式就是预留的内存空间恰好等于这些绑定变量的定义长度，但这样一来 Orade 处理起来就会比较麻烦（因为绑定变量的定义长度千差万别）。为了简化处理流程， Oracle 就分了上述四个等级，这样一来，不管目标 SQL 中文本型的绑定变量的定义长度为多少， Oracle 只需要对不同等级的文本型绑定变量分别分配固定大小的内存空间就可以了。
+
+
+ 自适应游标共享
+    绑定变量窥探的副作用就在于，使用了绑定变量的目标 SQL 只会沿用之前硬解析时所产生的解析树和执行计划，即使这种沿用完全不适合于当前的情形．在 Oracle 10g及其后续的版本中， Oracle 会自动收集直方图统计信息，这意味着与之前的版本相比，在Oracle 10g 及其后续的版本中 Orade 有更大的概率会知道目标列实际数据的分布情况，也就是说绑定变量窥探的副作用将会更加明显。
+    自适应游标共享可以让使用了绑定变量的目标 SQL 在启用了绑定变量窥探的前提条件下，不再只沿用之前硬解析时所产生的解析树和执行计划，也就是说自适应游标共享可以在启用了绑定变量窥探的前提条件下，让目标 SQL 在其可能的多个执行计划之间“自适应”地做出选择，而不再像之前那样必须得刻板地沿用该 SQL 硬解析时所产生的解析树和执行计划。
+
+    Oracle 只需要在它认为目标 SQL 的执行计划可能发生变化时，触发该 SQL 再做一次硬解析就好了。因为一旦触发了硬解析这个动作， Oracle 就会将目标 SQL 重新再解析一遍，其中就包括对该 SQL 再做一次绑定变量窥探。显然，再做一次绑定变量窥探后所对应的执行计划就是当前情形下 CBO 认为的最优执行计划，这个执行计划很可能和该 SQL 硬解析时所产生的执行计划不一样了。也就是说，一个简单的适时触发目标 SQL 再做一次硬解析的动作就在一定程度上缓解了绑定变量窥探所带来的副作用。
+    Oracle 会根据执行目标 SQL 时所对应的 runtime 统计信息（比如所耗费的逻辑读和 CPU 时间，对应结果集的行数等）的变化，以及当前传入的绑定变量输入值所在的谓词条件的可选择率，来综合判断是否需要触发目标 SQL 的硬解析动作。对于这一点，我们会在阐述自适应游标共享的整体执行流程时详细说明。
+    自适应游标共享要做的第一件事就是所谓的扩展游标共享（ Extended Cursor Sharing ) ，而扩展游标共享做的主要事情就是将目标 SQL 所对应的 Child Cursor 标记为 Bind Sensitive 。所谓“ Bind Sensitive " ，就是指 oracle 觉得某个含绑定变量的目标 SQL 的执行计划可能会随着所传入的绑定变量输入值的变化而变化。当满足如下三个条件时，目标 SQL 所对应的 Child Cursor 就会被 oracle 标记为 Bind Sensitive 。
+    （1）启用了绑定变量窥探。
+    （2）该 SQL 使用了绑定变量（不管是该 SQL 自带的绑定变量，还是开启常规游标共享后系统产生的绑定变量）。 
+    （3） 该 SQL 使用的是不安全的谓词条件（例如范围查询，目标列上有直方图统计信息的等值查询等）。
+    自适应游标共享要做的第二件事情就是将目标 SQL 所对应的 Child Cursor 标记为 Bind Aware 。所谓“ Bind Aware " ，就是指 Oracle已经确定某个含绑定变量的目标 SQL 的执行计划会随着所传入的绑定变量输入值的变化而变化。当满足如下两个条件时，目标 SQL 所对应的 Child Curso ：就会被Oracle 标记为 Bind Aware . 
+    （1）该 SQL 所对应的 Child Cursor 在之前已经被标记为 Bind Sensitive 。
+    （2）该 SQL 在接下来连续两次执行时，所对应的 runtime 统计信息与该 SQL 之前硬解析时所对应的 runtime统计信息存在较大的差异。
+    对于自适应游标共享而言，V$SQL中的列IS_BIND_SENSITIVE、IS_BIND_AWARE和IS_SHAREABLE分别用来表示ChildCursor是否是BindSensitive、BindAware和共享的。这里“共享”的含义是指存储在该ChildCursor中的解析树和执行计划是否能被重用，一个非共享的ChildCursor中存储的执行计划和解析树是不能被重用的，并且该ChildCursor也会在第一时间被ageout出SharedPool。
+    与自适应游标共享相关的有两个重要视图，分别是V$SQL_CS_STATISTICS和V$SQL_CS_SELECTIVITY。
+    V$SQL_CS_STATISTICS用于显示指定ChildCursor中存储的runtime统汁信息。V$SQL_CS_SELECTIVITY用于显示指定的、已经被标记为BindAware的ChildCursor中存储的含绑定变量的谓词条件所对应的可选择率的范围。当一个被标记为BindAware的ChildCursor所对应的目标SQL再次被执行时，Oracle就会比较当前传入的绑定变量值所在的谓词条件的可选择率，以及该SQL之前硬解析时同名谓词条件在V$SQL_CS_SELECTIVITY中对应的可选择率的范围，并以此来决定此时的执行是用硬解析还是软解析/软软解析。
+    Oracle数据库中自适应游标共享的整体执行流程为如下所示。
+    (1)当目标SQL第一次被执行时，Oracle会用硬解析，同时Oracle会根据一系列条件（如该SQL有没有使用绑定变量，参数CURSOR_SHAR〖NG的值是多少，绑定变量所在的列是否有直方图，该SQL的where条件是等值查询还是范围查询等）来判断是否将该SQL所对应的ChildCursor标记为BindSensitive。对于标记为BindSensitive的ChildCursor,Oracle会把执行该SQL时所对应的runtime统计信息额外地存储在该SQL所对应的ChildCursor中。
+    (2)当目标SQL第二次被执行时，Oracle会用软解析，并且会重用该SQL第一次执行时所产生的ChildCursor中存储的解析树和执行计划。
+    (3)当目标SQL第三次被执行时，如果该SQL所对应的ChildCursor已经被标记成了BindSensitive，同时Oracle在第二次和第三次执行该SQL时所记录的runtime统计信息和该SQL第一次硬解析时所记录的runtime统计信息均存在较大差异，则该SQL在第三次被执行时就会使用硬解析，Oracle此时会产生一个新的ChildCursor(这个新的ChildCursor会挂在原ParentCursor下），并且Oracle会把这个新的ChildCursor标记为BindAware。
+
+    (4)对于标记为BindAware的ChildCursor所对应的目标SQL，当该SQL再次被执行时，Oracle就会根据当前传入的绑定变量值所对应的谓词条件的可选择率，来决定此时是用硬解析还是用软解析/软软解析。这里的判断原则是，如果当前传入的绑定变量值所在的谓词条件的可选择率处于该SQL之前硬解析时同名谓词条件在V$SQL_CS_STATISTICS中记录的可选择率的范围之内，则此时Oracle就会使用软解析/软软解析，并重用相关ChildCursor中存储的解析树和执行计划，反之则是硬解析。
+    另外，如果是硬解析，且该次硬解析所产生的执行计划和原有ChildCursor中存储的执行计划相同，则Oracle此时除了会新生成一个ChildCursor之外，还会把存储相同执行计划的原有ChildCursor标记为非共享(原有ChildCursor在V$SQL中对应记录的列1S_SHAREABLE的值也会从Y变为N)，在把原有ChildCursor标记为非共享的同时，Oracle还会对新生成的ChildCursor执行一个Cursor合并的过程（这里Cursor合并的含义是指Oracle会合并存储相同执行计划的原有Child Cursor和新生成的Child Cursor）；如果是软解析/软软解析，则Oracle会重用相关Child Cursor中存储的解析树和执行计划。 
+---------------------
+作者：PursueDreamZ
+来源：CSDN
+原文：https://blog.csdn.net/qq_34409900/article/details/80889212
+版权声明：本文为博主原创文章，转载请附上博文链接！
+
+
+Oracle里的应用类型
+    Session Cursor的生命周期
+         Session Cursor是有生命周期的，每个 Session Cursor 在使用的过程中都至少会经历一次 Open、 Parse 、 Bind 、 Execute 、 Fetch 和 Close 中的 一个或多个阶段。
+        Session Cursor的生命周期中各个阶段的先后顺序和关联关系可以用下图 来说明。
+
+        作为Oracle数据库中当前Session解析和执行的SQL的载体，Session Cursor的整改生命周期大致可以分为以下9个阶段：
+        阶段 1 : Open 
+        阶段2 : Parse 
+        阶段 3 : Describe （仅适用于查询语句）
+        阶段 4 : Define （仅适用于查询语句）
+        阶段 5 : Bind （仅适用于使用了绑定变量的目标 SQL ) 
+        阶段 6 : Parallelize （仅适用于开启了并行的情形）
+        阶段 7 : Execute 
+        阶段 8 : Fetch （仅适用于查询语句）
+        阶段 9 : Close
+
+        对于査询语句而言，其对应的SessionCursor可能会经历上述所有的9个阶段。当然，如果该査询语句没有使用绑定变量则其对应的SessionCursor就不需要经历阶段5:如果该査询语句没有使用并行査询，则其对应的SessionCursor就不需要经历阶段6。对于DML语句而言，其对应的SessionCursor可能会经历阶段1、2、5、6、7和9。和查询语句一样，如果该DML语句没有使用绑定变量，则其对应的SessionCursor就不需要经历阶段5;如果该DML语句没有使用并行（ParallelDML)，则其对应的SessionCursor就不需要经历阶段6。和查询语句以及DML语句不同，DDL语句的SessionCursor只会经历阶段1和2，也就是说，DDL语句实际上在解析（Parse)完后就已经执行完毕了。
+        SessionCursor的Parse阶段大致会做如下事情。
+        （1）执行对目标SQL的校验。在这个校验过程中，Oracle会执行对目标SQL的语法、语义和权限的检查。
+        （2）执行对目标SQL的查询转换
+        （3）执行对目标SQL的查询优化（QueryOptimization)。在这个过程中，Oracle会根据不同的优化器类型，按照不同的判断原则，从执行完查询转换这一步后得到的目标SQL诸多可能的执行路径中选择一条来作为其执行计划。
+        SessionCursor的Describe阶段仅适用于查询语句，它用于明确目标SQL所涉及的具体查询列的名称、类型和长度，比如要执行的SQL是“se丨ect*fromemp”，当经过Describe阶段后，Oracle就会知道要执行的SQL实际上是要查询表EMP的所有列（表EMP共有8列，分别为EMPNO、ENAME、JOB、MGR、HIREDATE、SAL、COMM和DEPTNO),以及这些列的名称、类型和长度。
+        SessionCursor的Define阶段也只适用于査询语句，它发生在Describe阶段之后，用于决定一组变量在PGA中的位置、大小和数据类型，这组变量用于存储目标SQL的各个具体査询列所对应的查询结果。SessionCursor的Bind阶段只适用于那些在SQL文本中使用了绑定变量的目标SQL，Oracle在执行含绑定变量的目标SQL时，对目标SQL中的每一个绑定变量都要用其实际的值来替换（即所谓的“绑定变量值替换”)，所以Bind阶段要做的事情就是为这些绑定变量在PGA中预留内存空间（预留的空间必须要能够容纳这些绑定变量实际的值），并创建指向这些预留内存空间的指针（这些指针会用于后续的绑定变量值替换）。
+        SessionCursor的Execute阶段就是目标SQL的实际执行阶段，这个阶段的执行结果就是目标SQL的执行结果。对于那些在SQL文本中使用了绑定变量的目标SQL而言，Oracle在实际执行该SQL之前会做绑定变量值替换，即对该SQL中的每一个绑定变量都用其实际的值来替换。
+        基于Oracle数据库的应用分为如下四种类型：
+        应用类型一：不使用绑定变量。
+        应用类型二：每次Open、Parse、Bind、Execute、Fetch、Close。
+        应用类型三：一次Open+每次Parse、Bind、Execute、Fetch+—次Close。
+        应用类型四：一次Open、Parse、Bind+每次Execute、Fetch+—次Close。
+
+    应用类型一的特点是SQL语句没有使用绑定变量，这意味着硬解析的比率会非常高，正因为如此，我们通常把该种类型的应用系统的特点概括为“硬解析”。这里不使用绑定变量的原因通常是因为开发人员并未意识到硬解析的危害，即开发人员并未意识到硬解析会严重阻碍OLTP类型应用系统在数据库端的性能和可扩展性。
+    应用类型二的特点是SQL语句使用了绑定变量，同时数据库端参数SESSION_CACHED_CURSORS的值为0,这意味着硬解析的比率与应用类型一相比会少很多，正因为如此，我们通常会把该种类型的应用系统的特点概括为“软解析”。应用类型二由于参数SESSION_CACHED_CURSORS的值为0，所以SessionCursor不能以SoftClosed状态缓存在PGA中，这意味着Oracle在执行该类型应用系统中的每一条SQL语句时，其对应的SessionCursor都需要经历Open、Parse、Bind、Execute、Fetch和Close这些阶段。
+    应用类型三的特点是SQL语句使用了绑定变量，而且数据库端参数SESSION_CACHED_CURSORS的值大于0，这意味着这种类型的应用系统中的每一条SQL语句所对应的SessionCursor在经历Execute阶段后，当满足一定的额外条件时（在OraclellgR2中，这个额外条件是该SessionCursor所对应的SQL解析和执行的次数要超过3次），Oracle就不会对上述SessionCursor执行Close操作，而是将其标记为SoftClosed，并将其缓存在当前Session的PGA中。这样做的好处是，当目标SQL再次被执行时，Oracle就不需要为其再生成一个SessionCursor了，只需要从当前Session的PGA中将之前已经被标记为SoftClosed的匹配SessionCursor直接拿过来用就可以了（当然，剩下的Parse、Bind、Execute、Fetch还是需要做的）。所以应用类型三和应用
+类型二比起来，可以省掉Open—个新的SessionCursor及Close—个现有SessionCursor所耗费的资源和时间。Oracle可以通过己缓存的SessionCursor中存储的目标SQL对应的ParentCursor的库缓存对象句柄地址，来建立目标SQL的SessionCursor与其ParentCursor之间的联系，这意味着Oracle可以直接通过己缓存的SessionCursor来定位其对应的ParentCursor，而不再需要先持有库缓存相关Latch，然后再去库缓存的相应HashBucket中的库缓存对象句柄链表中査找匹配的ParentCursor。所以在Oracle 11g之前，应用类型三在对库缓存相关Latch的争用方面会比应用类型二要好
+       应用类型四的特点为如下所示:
+    （1）SQL语句使用了绑定变量。
+    （2）数据库端参数SESSION_CACHED_CURSORS的值大于0。
+    （3）该类型应用系统通过一些手段（例如在Pro*C/C++代码里通过设置HOLD_CURSOR=YES和RELEASE_CURSOR=NO,或者在PL/SQL代码的循环内部执行目标SQL)，使得每一条SQLi吾句所对应的SessionCursor会反复经历Execute和Fetch，但Open、Parse、Bind和Close只用经历一次。
+
+    总结：使用绑定变量（最好是用批量绑定）来有效的降低系统硬解析的数量，并且将应用系统设计成“一次解析，多次执行”的方式。
+Oracle里查询转换的作用
+    oracle 里的查询转换，又称为查询改写，它是 oracle 在解析目标 SQL 的过程中的重要一步，其含义是指oracle 在解析目标 SQL 时可能会对其做等价改写，目的是为了能更高效地执行目标 SQL ，即oracle 可能会将目标 SQL 改写成语义上完全等价但执行效率却更高的形式。
+oracle 数据库里 SQL 语句的执行过程可以用下图 来表示
+---------------------
+作者：PursueDreamZ
+来源：CSDN
+原文：https://blog.csdn.net/qq_34409900/article/details/80901680
+版权声明：本文为博主原创文章，转载请附上博文链接！
+
+子查询展开
+    子查询展开（SubqueryUnnesting)是优化器处理带子査询的目标SQL的一种优化手段，它是指优化器不再将目标SQL中的子查询当作一个独立的处理单元来单独执行，而是将该子査询转换为它自身和外部查询之间等价的表连接。这种等价表连接转换要么是将子查询拆开（即将该子查询中的表、视图从子查询中拿出来，然后和外部査询中的表、视图做表连接），要么是不拆开但是会把该子査询转换为一个内嵌视图（InlineView),然后再和外部查询中的表、视图做表连接。
+    Oracle会确保子查询展开所对应的等价表连接转换的正确性，即转换后的SQL和原SQL在语义上一定是等价的。当然，不是所有的子查询都能做子查询展开，有些子查询是不能做这种等价表连接转换的，这种情况下Oracle就不会对其做子查询展开，也就是说此时Oracle还是会将该子查询当作一个独立的处理单元来单独执行。另外，在Oracle10g及其以后的版本中，对于那种不拆开子查询但是会把该子查询转换成一个内嵌视图的子查询展开（即子查询展开的第二种情形），只有当经过子查询展开后的等价改写SQL的成本值小于原SQL的成本值时，Oracle才会对原SQL执行子查询展开。
+    子査询展开通常都会提高原SQL的执行效率，因为如果原SQL不做子查询展开，那么通常情况下该子查询就会在其执行计划的最后一步才被执行，并且会走FILTER类型的执行计划，这也就意味着对于外部查询所在结果集中的每一条记录，该子查询都会被当作一个独立的执行单元来执行一次，外部查询所在的结果集有多少条记录，该子查询就会被执行多少次（可以近似这么理解，实际上并不完全是这样）。这种执行方式的执行效率通常情况下都不会太高，尤其是在子查询中包含两个或者两个以上表连接时，此时做子查询展开后的执行效率往往会比走FILTER类型的执行计划高很多，因为此时优化器就会有其他更多、更高效的执行路径（比如哈希连接）可以选择。
+    Oracle数据库里子查询前的where条件如果是如下这些条件之一，那么这种类型的目标SQL在满足了一定的条件后就可以做子查询展开：
+    （1）SINGLE-ROW(即=、<、>、<=、>=和?)
+    （2）EXISTS
+    （3）NOTEXISTS
+    （4）IN
+    （5）NOTIN
+    （6）ANY
+    （7）ALL
+     如果一个子查询前的where条件是SINGLE-ROW条件，则意味着该子查询的返回结果至多只会返回一条记录；如果该子査询前的where条件是除SINGLE-ROW条件之外的上述其他类型的条件，则该子查询的返回结果就可以包含多条记录。ANY和ALL通常和SINGLE-ROW条件联用，虽然这两个条件我们不常用，但它们的应用范围其实比EXISTS、NOTEXISTS、IN和NOTIN要广很多，比如IN实际上就相当于=ANY,NOT IN实际上就相当于<> ALL。
+    子査询是否能做子杳询展开取决于如下两个条件:
+    （1）了査询展开所对应的等价改写SQL和原SQL在语义上一定要是完全等价的。如果改写后的SQL和原SQL并不一定能保持语义上的完全等价，这种类型的子查询就不能做子查询展开
+    （2）对于不拆开子杳询但是会把它转换为一个内嵌视图的子査询展开，只有当经过子查询展开后的等价改写SQL的成本值小于原SQL的成本值时，Oracle才会对0标SQL执行子查询展开。
+    需要注意的是，对于子査询展开的第一种情形（即将子査询拆开，把该子査询中的表、视图从子査询中拿出来，然后和外部査询中的表、视图做表连接），即使是在Oracle10g及其以后的版本中，Oracle也不会考虑子査询展开的成本，即Oracle此时会认为这种情形下子査询展开的效率始终比不展开的效率要离，这也就意味着如果目标SQL满足子査询展开的第一种情形，则Oracle始终会对其做子査询展开，而不管经过子查询展开后的等价改写SQL的成本值是否小于原SQL的成本值。
+视图合并
+    视图合并（ViewMerging)是优化器处理带视图的目标SQL的一种优化手段，它是指优化器不再将目标SQL中视图的定义SQL语句当作一个独立的处理单元来单独执行，而是会将其拆开，把其定义SQL语句中的基表拿出来与外部査询中的表合并，这样合并后的SQL将只剩下外部查询中的表和原视图中的基表，不再会有视图出现。
+    Oracle会确保视图合并的正确性，即合并后的SQL和原SQL在语义上一定是完全等价的。当然，不是所有的视图都能做视图合并，有些视图是不能做视图合并的，这种情况下Oracle就会将该视图的定义SQL语句当作一个独立的处理单元来单独执行。视图合并的好处和子查询展开一样，都是让优化器有更多的执行路径可以选择，而不再拘泥于原视图定义QL语句中的谓词条件、表连接方法、表连接顺序等。    
+    Oracle数据库里的视图合并分为简单视图合并、外连接视图合并和复杂视图合并这三种类型。对于符合简单视图合并条件的目标SQL，Oracle始终会对其做视图合并，而不管经过视图合并后的等价改写SQL的成本值是否小于原SQL的成本值。但在Oracle10g及其以后的版本中，对于复杂视图合并，只有等价改写SQL的成本值小于原SQL的成本值时，Oracle才会对目标SQL做复杂视图合并。
+简单视图合并
+
+    简单视图合并（SimpleViewMerging)是指针对那些不含外连接，以及所带视图的视图定义SQL语句中不含distinct、groupby等聚合函数的目标SQL的视图合并。
+外连接视图合并
+
+    外连接视图合并（OuterJoinViewMerging)是指针对那些使用了外连接，以及所带视图的视图定义SQL语句中不含distinct、groupby等聚合函数的目标SQL的视图合并。这里“使用外连接”的含义是指外部查询的表和视图之间使用了外连接，或者该视图的视图定义SQL语句中使用了外连接。
+    外连接会给视图合并带来很多限制，很多在内连接情形下可以做的视图合并一旦换成了外连接就不能做了，因为Oracle能做视图合并的前提条件就是视图合并后的等价改写SQL—定要和原SQL在语义上是完全等价，但对于使用了外连接的目标SQL而言，在很多情况下这种语义上的完全等价性并不能得到保证。
+    关于外连接视图合并有一个很常用的限制，即当目标视图在和外部查询的表做外连接时，该目标视图可以做外连接视图合并的前提条件是，要么该视图被作为外连接的驱动表，要么该视图虽然被作为外连接的被驱动表但它的视图定义SQL语句中只包含一个表。
+---------------------
+
+复杂视图合并
+    复杂视图合并（ComplexViewMerging)是指针对那些所带视图的视图定义SQL语句中含有groupby或distinct的目标SQL的视图合并。
+
+    和简单视图合并、外连接视图合并一样，对这种视图定义SQL语句中含有groupby或distinct的复杂视图做视图合并也同样意味着要把其定义SQL语句拆开，并把其中的基表拿出来和外部査询中的表合并。这通常意味着上述视图定义SQL语句中的groupby或distinct操作会被推迟执行，也就是说，这种情况下通常会先做表连接，再做groupby或distinct操作，而不是像未做复杂视图合并时那样先在视图内部做完groupby或distinct操作，然后才和外部查询中的表做表连接。
+
+    复杂视图合并所对应的这种groupby或distinct操作的延迟，并不一定总是能带来执行效率以及性能上的提升。例如，如果groupby或distinct操作能过滤掉绝大部分的数据且表连接并不能有效过滤数据的话，那么先在视图内部做groupby或distinct操作，然后才和外部查询中的表做表连接的执行效率就会更高一些；但如果表连接能过滤掉绝大部分的数据而groupby或distinct操作并不能有效过滤数据的话，那么先做表连接，再做groupby或distinct操作的执行效率显然会更好一些。
+
+    正是因为复杂视图合并并不一定总是能带来目标SQL的执行效率及性能上的提升，所以在Oracle10g及其以后的版本中，对于复杂视图合并，只有当经过复杂视图合并后的等价改写SQL的成本值小于原SQL的成0本值时，Oracle才会对目标SQL执行复杂视图合并。
+
+    
+
+星型转换
+    星型转换（StarTransformation)是优化器处理表连接方法为星型连接的目标SQL时的一种优化手段，它的核心是将原星型连接中针对各个维度表（DimensionTable)的限制条件，通过等价改写的方式以额外的子査询施加到事实表（FactTable)上，然后再通过对事实表上各连接列上已存在的位图索引间的位图操作（如按位与、按位或等），来达到有效减少事实表上待访问的数据量，避免对事实表做全表扫描的目的，这就可以有效缩短原目标SQL的执行时间，提高其执行效率。
+
+    星型转化的核心是将原星型连接中针对各个维度表的限制条件通过等价改写的方式以额外的子查询施加到事实表上，然后再通过对事实表上各个连接列上已存在的位图索引间的位图操作来达到有效减少事实表上带访问的互数据量，避免对事实表做全表扫描。
+---------------------
+作者：PursueDreamZ
+来源：CSDN
+原文：https://blog.csdn.net/qq_34409900/article/details/80932212
+版权声明：本文为博主原创文章，转载请附上博文链接！
+
+连接谓语推入
+   连接谓词推入（JoinPredicatePushdown)是优化器处理带视图的目标SQL的另外一种优化手段，它是指虽然优化器还是会把该SQL中视图的定义SQL语句当作一个独立的处理单元来单独执行，但此时优化器会把原本处于该视图外部査询中和该视图之间的连接条件推入到该视图的定义SQL语句内部，这样做是为了能使用上该视图内部相关基表上的索引，进而能走出基于索引的嵌套循环连接。和之前介绍的各种查询转换一样，连接谓词推入使优化器在选择目标SQL的执行计划时多出了走基于索引的嵌套循环连接这种选择，这就增加了走出更高效执行计划的可能性。
+    但是请注意，连接谓词推入所带来的基于索引的嵌套循环连接并不一定能走出更高效的执行计划，因为当做了连接谓词推入后，原目标SQL中的视图就和外部査询产生了关联，同时Oracle又必须将该视图的定义SQL语句当作一个独立的处理单元来单独执行，这也就意味着对于外部查询所在结果集中的每一条记录，上述视图的定义SQL语句都得单独执行一次，这样一旦外部査询所在结果集的Cardinality比较大的话，即便在执行上述视图的定义SQL语句时能用上索引，整个SQL的执行效率也不一定会比不做连接谓词推入时的哈希连接或排序合并连接髙。所以，Oracle在做连接谓词推入时会考虑成本，只有当经过连接谓词推入后走嵌套循环连接的等价改写SQL的成本值小于原SQL的成本值时，Oracle才会对目标SQL做连接谓词推入。
+    Oracle是否能做连接谓词推入与目标视图的类型、该视图与外部查询之间的连接类型以及连接方法有关。到目前为止，Oracle仅仅支持对如下类型的视图做连接谓词推入。
+    （1）视图定义SQL语句中包含UNIONALL/UNION的视图
+
+    （2）视图定义SQL语句中包含DISTINCT的视图
+
+    （3）视图定义SQL语句中包含GROUP BY的视图
+
+    （4）和外部查询之间的连接类型是外连接的视图
+
+    （5）和外部查询之间的连接方法是反连接的视图
+
+    （6）和外部查询之间的连接方法是半连接的视图
+
+连接因式分解
+   连接因式分解（Join Factorization)是优化器处理带UNIONALL的目标SQL的一种优化手段，它是指优化器在处理以UNIONALL连接的目标SQL的各个分支时，不再原封不动地分别重复执行每个分支，而是会把各个分支中公共的部分提出来作为一个萆独的结果集，然后再和原UNIONALL中剩下的部分做表连接。连接因式分解在OraclellgR2中才被引入，它的好处是显而易见的。如果不把UNIONALL中公共的部分提出来，则意味着这些公共部分中所包含的表会在UNIONALL的各个分支中被重复访问；而连接因式分解则能够在最大程度上避免这种重复访问现象的产生，当UNIONALL的公共部分所包含的表的数据量很大时，即便是只减少一次对大表的重复访问，那也意味着执行效率上的巨大提升。 
+
+    在Oracle11gR2及其后续的版本中，即使由于在视图定义SQL语句中包含了集合运算符UNIONALL而导致Oracle不能对其做视图合并，Oracle也不一定会把该视图的定义SQL语句当作一个整体来单独执行，因为此时Oracle还可能会对其做连接因式分解。这里需要注意的是，Oracle对包含UNIONALL的目标SQL做连接因式分解的前提条件是，连接因式分解后的等价改写SQL和原SQL在语义上完全等价，如果不能满足这一点，那么Oracle就不会做连接因式分解。
+
+    
+
+表扩展
+   表扩展（TableExpansion)是优化器处理针对分区表的目标SQL的一种优化手段，它是指当目标SQL中分区表的某个局部分区索引由于某种原因在某些分区上变得不可用（索引状态为UNUSABLE)时，Oracle能将原目标SQL等价改写成按分区UNIONALL的形式，这样除了那些不可用的分区所对应的UNIONALL分支之外，其他分区所对应的UNIONALI：分支还是可以正常使用该局部分区索引。
+
+    我们都知道，当查询的数据只是全部数据中的少部分时，使用索引确实能极大提高查询的速度，但索引的维护必然会同时减慢相关DML操作的执行速度，所以使用索引是有副作用的。有的系统的业务特点就是要尽可能快地往目标表的当前分区中导入数据，其修改的数据也仅限于该表中处于当前分区的活动数据，同时还会有针对目标表的査询，这个査询并不局限于当前分区。针对这种类型的系统,为了尽可能快地对当前分区执行DML操作，往往人为地把当前分区的局部分区索引的状态设为UNUSABLE,这样就省去了对当前分区执行DML操作时同步维护相关局部分区索引的成本，所以这样做是能够提高相关DML操作的速度的。但现在的问题是，在OraclellgR2之前，这样做会导致所有原本可以使用该局部分区索引的査询语句都无法正常使用该局部分区索引。。
+
+
+表移除
+   表移除是优化器处理带多表连接的目标SQL的一种优化手段，它是指优化器会把虽然在目标SQL中存在，但是其存在与否对最终执行结果没有影响的表从该目标SQL中移除，这样优化器至少可以少做一次表连接，进而就能提高原目标SQL的执行效率。
+
+Oracle如何处理SQL语句中的IN
+   优化器在处理带IN的目标SQL时，可能也会用到査询转换，也即本节要介绍的IN-ListExpansion(又称为ORExpansion，两者等价）。为了能让大家明白IN-ListExpansion的优缺点，本节除了会介绍IN-ListExpansion之外，还会介绍优化器在处理带IN的目标SQL时可能会使用的其他方法。在Oracle数据库里，IN和OR是等价的，优化器在处理带IN的目标SQL时实际上会将其转换为带OR的等价改写SQL,也就是说，本节介绍的处理带IN的目标SQL的方法也同样适用于带OR的目标SQL。
+
+    优化器在处理带IN的目标SQL时，通常会采用如下这四种方法:
+    （1）使用IN-List Iterator。
+    （2）使用IN-List Expansion。
+    （3）使用IN-List Filter。
+    （4）对IN做子査询展开，或者既做子查询展开又做视图合并。
+
+IN-List Iterator
+
+    IN-List Iterator是针对IN后面是常量集合的一种处理方法。此时优化器会遍历目标SQL中IN后面的常量集合中的每一个值，然后去做比较，看目标结果集中是否存在和这个值匹配的记录。如果存在匹配记录，则这个记录就会成为该SQL的最终返回结果集中的一员；如果不存在匹配记录，则优化器会继续遍历IN后面的常量集合中的下一个值，直到该常量集合遍历完毕。
+关于IN-ListIterator，有如下几点需要注意：
+（1）IN-ListIterator是Oracletf对目标SQL的IN后面是常量集合的首选处理方法，它的处理效率通常都会比IN-ListExpansion高。
+
+（2）Oracle能用IN-ListIterator来处理IN的前提条件是IN所在的列上一定要有索引。
+
+（3）不能强制让Oracle走IN-ListIterator类型的执行计划，Oracle里也没有相关的强制走IN-ListIterator的Hint,但可以通过联合设置10142和10157事件来禁掉IN-ListIterator。
+
+
+IN-List Expansion/OR Expansion
+
+   IN-List Expansion/OR Expansion(IN-List Expansion又称为OR Expansion，两者等价）是针对IN后面是常量集合的另外一种处理方法，它是指优化器会把目标SQL中IN后面的常量集合拆开，把里面的每个常量都提出来形成一个分支，各分支之间用UNIONALL来连接，即IN-ListExpansion的本质是把带IN的目标SQL等价改写成以UNIONALL连接的各个分支。
+
+    IN-List Expansion的好处是改写成以UNIONALL连接的分支后，各个分支就可以各自走索引、分区修剪(PartitionPruning)、表连接等相关的执行计划而互不干扰。它的坏处是未做IN-ListExpansion之前优化器只需要解析一个目标SQL并决定其执行计划，而一旦做了IN-ListExpansion后优化器就要对等价改写后的每一个UNIONALL分支都执行同样的解析、决定执行计划的工作，也就是说，等价改写后的目标SQL的解析时间会随着UNIONALL分支的递增而递增。这意味着当IN后面的常量集合所包含的元素数量非常多的时候，做IN-ListExpansion仅解析的时间可能就会非常长，这就是IN-ListIterator通常会比FN-ListExpansion的效率高的原因。正是基于上述原因，做了IN-ListExpansion的等价改写SQL的执行效率并不一定会比原SQL高，这也就意味着IN-ListExpansion—定也是基于成本的，即只有当经过IN-ListExpansion后的等价改写SQL的成本值小于原SQL的成本值时，Oracle才会对目标SQL执行IN-ListExpansion。
+
+IN-List Filter
+
+    IN-List Filter是针对IN后面是子查询的一种处理方法，优化器会把IN后面的子査询所对应的结果集当作过滤条件，并且走FILTER类型的执行计划IN后面是子查询，意味着IN后面是变量的集合；走的是FILTER类型的执行计划，意味着Oracle并没有对IN后面的子査询做子查询展幵。所以，能走IN-ListFiltei类型的执行计划就意味着目标SQL要满足如下两个条件：
+
+    （1）目标SQL的IN后面是子査询而不是常量的集合。
+    （2）Oracle未对目标SQL的IN后面的子査询做子査询展开。
+
+
+二SQL优化Road Map 
+ 
+
+一条SQL的优化路线图如下所示：
+
+具体操作步骤：
+
+2.1 制定SQL优化目标
+
+获取待优化SQL、制定优化目标：从AWR、ASH、ORA工具等主动发现有问题的SQL、用户报告有性能问题DBA介入等，通过对SQL的执行情况进行了解，先初步制定SQL的优化目标。
+
+2.2 检查执行计划
+explain工具、sql*plus autotrace、dbms_xplan、10046、10053、awrsqrpt.sql等。 执行计划是我们进行SQL优化的核心内容，无计划，不优化。看执行计划有一些技巧，也有很多方式，各种方式之间是有区别的。
+
+2.3 检查统计信息
+
+ORACLE使用DBMS_STATS包对统计信息进行管理，涉及系统统计信息、表、列、索引、分区等对象的统计信息，统计信息是SQL能够使用正确执行计划的保证。我们知道，ORACLE CBO优化器是利用统计信息来判断正确的执行路径，JOIN方式的，因此，准确的统计信息是产生正确执行计划的首要条件。
+可以从这个图看出，一条SQL产生执行计划需要经过哪些步骤，在我看来：1、正确的查询转换；2、准确的统计信息，是产生正确执行计划的重要保证。当然，还有BUG，或优化器限制等也会导致SQL效率低下，无法产生正确的执行计划。
+
+如图所示：
+
+2.4 检查高效访问结构
+
+重要的访问结构，诸如索引、分区等能够快速提高SQL执行效率。表存储的数据本身，如碎片过多、数据倾斜严重、数据存储离散度大，也会影响效率。
+
+2.5 检查影响优化器的参数
+
+optimizer_mode、optimizer_index_cost_adj、optimizer_dynamic sampling、_optimizer_mjc_enabled、_optimizer_cost_based_transformation、hash_join_enable等对SQL执行计划影响较大。比如有时候我们通过禁用_optimizer_mjc_enabled 参数，让执行计划不要使用笛卡尔积来提升效率，因为这个参数开启有很多问题，所以一般生产库都要求禁用。
+
+还有什么能够影响执行计划呢？对，new features,每个版本的new features，引入的目的都是好的，但是实际使用中，可能触发BUG。比如11g的ACS(自适应游标共享）、automatic serial direct path（自动串行直接路径读）、extended statistics、SQL query result cache等。有的新特性会导致问题，所以需要谨慎使用。
+
+比如11g adaptive cursor sharing,自适应游标共享，它的引入是为了解决使用绑定变量与数据倾斜值，要产生多样性执行计划。因为绑定变量是为了共享执行计划，但是数据倾斜了，有的值要求走索引，有的值要求走全表，这样与使用绑定变量就产生了矛盾。以前是通过cursor_sharing=similar这样的设置可以解决，但是有很多BUG，会产生version count过高的问题，或者我们对不同的值（如果值很少），可以写多条SQL来解决，这都不是好的方案，11g acs引入就是为了解决这些问题，让这些东西交给oracle来做。但是事与愿违，以后你们遇到执行计划一会变一下，有快有慢，首先可以检查acs有没有关闭。
+
+ 
+
+alter system set “_optimizer_extended_cursor_sharing_rel”=’NONE';
+
+ 
+
+2.6 SQL语句编写问题
+
+ 
+
+SQL语句结构复杂、使用了不合理的语法，比如UNION代替UNION ALL都可能导致性能低下。 并不是说ORACLE优化器很强大了，我们就可以随便写SQL了，那是不正确的。SQL是一门编程语言，它能够执行的快，是有一些普遍的规则的，遵循这种编程语言特性，简化语句，才能写出好的程序。SQL语句编写出了问题，我们就需要改写，就需要调整业务，改涉及等。
+
+ 
+
+2.7 SQL优化器限制导致的执行计划差
+
+ 
+
+这个很重要，统计信息准确，SQL也不复杂，索引也有。。。都满足，为什么我的SQL还是差，那么得考虑优化器限制因素了。这里说1点常见的执行计划限制，当semi join与or连用的时候（也就是exists(subquery) or ...或者in (subquery) or...，如果执行计划中因为OR导致有FILTER操作符，就得注意了，可能慢的因素就和OR有关。这时候我们得改写SQL，当然改写为UNION或UNION ALL了。
+
+ 
+
+OK，以上全部检查完毕，我的系统还是很差，功能还是很慢，或者已经无法从SQL本身进行调整提升性能了，那咋办？优化设计，这是终极方法。有些东西不优化设计是无法解决的，比如业务高峰期跑了一堆SQL，CPU已经很吃紧，又不给增加，突然上线一个耗资源的业务，其他SQL已无法调整。那只能优化设计，比如有些耗资源的业务可以换时间段执行等。
+
+ 
+
+以上几点，是我们进行优化需要考虑的地方，可以逐步检查。当然，80%到90%的纯SQL性能调整，我们通过建立索引，收集正确统计信息，改写避免优化器限制，已经能够解决了。
+
+ 
+
+三SQL优化案例 
+ 
+
+看第一个获取待优化的SQL.......如果主动优化，一般从AWR、ASH等里面找到性能差的SQL，然后优化之。
+
+ 
+
+
+
+ 
+
+
+
+ 
+
+看一个案例，占CPU 72%的SQL来自于同一模块，第一行是存储过程，通过下面绿色框住的SQL与第一行比较，主要通过EXECUTION，基本判断下面的绿色框住的SQL就是那个存储过程中的。也可以和业务确认下，OK，这些SQL的执行频次很高，因为是营销业务，如果要优化，就得搞定这些SQL。
+
+ 
+
+这些SQL，单条SQL的buffer gets也就1000多点，效率还是很高的，但是因为执行的太过于频繁，所以资源消耗极大，因此，得检查下，能不能更优呢？
+
+ 
+
+以第1条SQL：58q183atbusat为例：
+
+ 
+
+SELECT B.ACT_ID,
+
+B.ACT_NAME,
+
+B.TASK_ID,
+
+B.MKT_DICTION,
+
+B.CUST_GROUP_ID,
+
+NVL(B.ATTEST_FLAG, 'N'),
+
+NVL(B.DOUWIN_FLAG, 'N'),
+
+B.CHN_DESC,
+
+NVL(B.SIGN_FLAG, 'N'),
+
+B.MAX_EXECUTE_NUM
+
+FROM (SELECT DISTINCT (ACT_ID)
+
+FROM MK_RULECHN_REL
+
+WHERE CHN_STATUS = '04'
+
+AND CHN_TYPE = :B1) A,
+
+TABLE(CAST(:B2 AS TYPE_MK_ACTIONINFO_TABLE)) B
+
+WHERE A.ACT_ID = B.ACT_ID
+
+ 
+
+SQL其实很简单，一个查询构建的A表，一个TABLE函数构建的B表关联..... 不知道大家对这个TABLE函数熟悉不熟悉？也就是将一个集合转成表，是PL/SQL里的东西
+
+那个collection部分就是TABLE函数，下面的表走了全表扫描：
+
+ 
+
+
+
+ 
+
+
+
+ 
+
+按步骤检查，发现不了问题，但是知道，可能是因为HASH JOIN导致全表扫描的问题，是否走NESTED LOOPS+INDEX更好，很显然，要检查TABLE函数大概返回多少行。
+
+ 
+
+经过确认，最多也就返回200-300行，最终结果集也是几百行而已。
+
+ 
+
+那么猜测，问题就在于TABLE函数，走了HASH JOIN，上面的执行计划，TABLE函数部分，ROWS为空。
+
+ 
+
+来单独检查一把：返回8168行，返回8000多行，足以导致走HASH JOIN了....而事实，我们至多返回200-300行：
+
+ 
+
+
+
+ 
+
+所以每个步骤返回的行，是JOIN方式选择的重要因素，可以谷歌一把，TABLE函数返回8168就是个固定值，block_size=8K的时候就是这么大，可以说，这是ORACLE的一个限制。
+
+ 
+
+
+
+ 
+
+只要你用了TABLE函数，就偏向于走HASH JOIN了
+
+http://www.oracle-developer.net/display.php?id=427 有兴趣的可以看这个链接的内容。
+
+ 
+
+解决方式很多了，也就是要走NESTED LOOPS+index, 既然8168很大，那么我们就让优化器知道TABLE函数返回的行少点，才百行左右。
+
+ 
+
+以下些都可以，当然也可以使用hint:use_nl等
+
+CARDINALITY hint (9i+) undocumented;
+
+OPT_ESTIMATE hint (10g+) undocumented;
+
+DYNAMIC_SAMPLING hint (11.1.0.7+);
+
+Extensible Optimiser (10g+).
+
+ 
+
+因为SQL的SELECT部分只访问B，全部来自于TABLE函数，所以改写为子查询就可以了，使用子查询，自然distinct也就没有必要了，因为是semi join(半连接）。
+
+ 
+
+最终改写使用cardinality hint让优化器知道B返回的行只有100行，你给我走NESTED LOOPS+INDEX，然后解决。
+
+ 
+
+原来的sql：
+
+ 
+
+
+
+ 
+
+修改后的sql：
+
+ 
+
+
+
+ 
+
+效率提升几十倍：
+
+ 
+
+
+
+ 
+
+一个占72%的应用，我们提升几十倍后，那对系统性能明显是极好的。最终，在执行次数增加50%的情况下，w4sd08pa主机CPU使用率由原来的高峰期平均47%的使用率降低为23%。
+
+ 
+
+这个问题能够解决有两个方面：
+
+ 
+
+1、猜测并测试优化器的限制（table函数固定返回行8168)；2、实际返回的行200-300。两者缺一不可。如果实际返回的行就是几千上万，那么，单纯通过优化SQL，也是无法取得良好效果的。
+
+ 
+
+四SQL执行计划获取 
+ 
+
+执行计划就是SQL调优的核心，上面的SQL也是通过看到执行计划走HASH JOIN可能有问题出发的。
+
+ 
+
+
+
+ 
+
+那么首先要搞定2个问题：
+
+ 
+
+1、如何获取我要的执行计划（准确的计划）；
+
+2、怎么看懂并找出执行计划里的问题。
+
+ 
+
+4.1 如何获取准确的执行计划
+
+ 
+
+获取SQL执行计划的方式：
+
+EXPLAIN PLAN
+
+估算
+
+忽略绑定变量
+
+非执行
+
+SQL_TRACE
+
+真实计划，需要用TKPROF工具解析
+
+可以获得绑定变量值
+
+EVENT 10053
+
+真实计划
+
+研究执行计划产生的原因
+
+AUTOTRACE
+
+内部使用EXPLAIN PLAN
+
+DBMS_XPLAN
+
+dbms_xplan.display_cursor
+
+dbms_xplan.display_awr
+
+真实计划
+
+OTHERS
+
+如awrsqrpt、sqlt、pl/sql、sql developer、toad等
+
+ 
+
+大家一般怎么获取执行计划？我一般用的较多的是dbms_xplan.display_cursor，优点很明显：1、获取的是真实执行的计划；2、多种参数。还可以获取绑定变量的值方便验证。
+
+ 
+
+10053是检查优化器行为的，实在搞不懂为什么走那个计划可以看看，用得较少。
+
+ 
+
+10046可以检查一些等待事件的内容，也可以获取绑定变量，一般用得也比较少。
+
+ 
+
+set autotrace traceonly或者explain,他们的执行计划是同一来源，记住，都来自plan_table，是估算的，可能不是真实执行的计划，可能是不准的。
+
+ 
+
+所以，你看得不对劲了，就得质疑它的准确性，autotrace traceonly的好处是可以看到一致性读，物理读，返回行等，这是真实的。因为可以用一致性读，物理读来验证优化效果
+
+ 
+
+其他的，比如awrsqrpt等都可以获取执行计划，不过我很少用，特别是plsq developer这种工具，F5看计划，我几乎是不用的，他也是plan table里的估算计划。如果很长，那无法分析。
+
+ 
+
+建议大家看真实的计划，说一点，我经常通过alter session set statistics_level=all或者gather_plan_statistics hint，然后执行sql,然后通过
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));来看实际执行的信息
+
+好处很明显，能够看到执行计划每步的E-ROWS（估算的行）,A-ROWS（真实的行）,STARTS,BUFFER GETS，A-TIME（真实的执行时间）等信息。。。我们通过对比估算的与真实的差距，可以判断哪些表统计信息可能有问题，执行计划是不是走错了，省的我们自己根据谓词去计算这步导致返回多少行。
+
+ 
+
+注意一点，如果一SQL执行很长时间，通过上面的方式来看计划，我们是可以终止的，比如执行2小时执行不玩的SQL，一般我没有耐心，最多5分钟，我就终止。终止完，通过display_cursor也是可以看出执行信息的。
+
+比如某个步骤执行100万次，我这条SQL才能执行完，要3小时才可以，我5分钟执行了100次，我终止了SQL我要看的就是一个比例情况，可以通过这个比例来判断，哪个步骤耗的时间最长，哪里大概有问题，然后解决。
+
+ 
+
+优化器很多限制的，比如刚才的TABLE函数固定返回8168，或者算法限制.....很多不准的，如果算法算出来的与真实差别很大，那可能就会导致问题。统计信息有时候也无法收集准确的，比如直方图，就有很多问题，所以12c的直方图多了几种....之前只有等高和等频直方图。
+
+ 
+
+刚才的set statistics_level直接写会输出结果，我们可以让他不输出结果：
+
+ 
+
+1、sql内容放到文件中，前面加上set termout off （这样可以对输出结果不输出）
+
+2、然后display_cursor文件中
+
+ 
+
+
+
+ 
+
+用这种东西看执行计划，有时候很方便找出问题,否则我们自己得手动根据每个步骤对应的谓词，自己写SQL去计算真实返回的行，然后再来比较，用这个，ORACLE全帮我们干好了。
+
+ 
+
+4.2  看懂执行计划执行顺序
+
+ 
+
+一般怎么看执行计划呢？
+
+ 
+
+
+
+ 
+
+COPY到UE里去。
+
+ 
+
+
+
+ 
+
+用光标大法，找到入口，最先执行的，光标定位ID=0的，然后一直缩进向下，如果被挡住了，那么这部分就是入口了。
+
+ 
+
+比如ID=10的继续索引，就被ID=11的挡住了，所以第10步就是入口。
+
+ 
+
+
+
+ 
+
+找到入口后，反向光标来，利用平行级别的最上最先执行，最右最先执行原则，来看父操作与子操作的关系，移动光标即可。
+
+ 
+
+比如这里的第13步，我只需要定位光标在PARTITION这个P前面，然后向上移动，立马就知道，它的驱动表是ID=5的VIEW，因为他们是对齐的。
+
+ 
+
+
+
+ 
+
+然后看看之间的JOIN关系是不是有问题，返回的行估算等。
+
+ 
+
+执行计划最右最上最先执行规则，有个例外，大家知道不？？就是通过以上规则，是不正确的。
+
+（标量子查询）
+
+ 
+
+SELECT a.employee_id,
+
+a.department_id,
+
+(SELECT COUNT(*) FROM emp_b b
+
+WHERE a.department_id=b.department_id
+
+) cnt
+
+FROM emp_a a;
+
+ 
+
+比如这个ID=2的在前面，但是它事实上是被ID=3的驱动的，也就是被emp_a驱动的，这违背了一般的执行计划顺序规则，平时注意点就行了，标量子查询谓词里会出现绑定变量，比如这里的：B1，因为每次带一个值去驱动子查询。
+
+ 
+
+
+
+ 
+
+搞清楚执行计划怎么干，那么看执行计划看啥？
+
+ 
+
+1、看JOIN的方式
+
+2、看表的访问方式，走全表，走索引
+
+3、看有没有一些经常影响性能的操作，比如FILTER
+
+4、看cardinality(rows)与真实的差距
+
+ 
+
+不要太过于关注COST，COST是估算的，大不一定就慢，小不一定就快……当然比如COST很小，rows返回的都是很小的，很慢。那么，我们可能得考虑统计信息是不是过旧问题。
+
+ 
+
+统计信息很重要，就说一个例子：
+
+ 
+
+
+
+ 
+
+走了索引，COST很小，一切都很完美，但是AWR现实占80%的资源。一般啥情况？单纯从SQL上看，也就是这执行计划估计不对，自己测一下，很慢。也就是COST很小，ROWS很小，走索引，很完美的计划是错误的，那么很显然，基本就是统计信息导致的了。
+
+ 
+
+实际第4步走sendtime索引，应该返回1689393行，但是执行计划估算返回1行，统计信息不准确，再次检查统计信息收集日期是5月前的。
+
+ 
+
+SQL> SELECT COUNT(1) FROM MSP.T_MS_MEDIA_TASK WHERE SENDTIME >=TRUNC(SYSDATE,'dd') AND MONTHDAY = TO_CHAR(SYSDATE,'mmdd') ;
+
+? COUNT(1)
+
+----------
+
+? ?1689393
+
+ 
+
+收集统计信息，for all columns size repeat 保持原有直方图信息
+
+ 
+
+?exec DBMS_STATS.GATHER_TABLE_STATS(ownname=>'MSP',tabname=>'T_MS_MEDIA_TASK',estimate_percent=>10,method_opt=>'for all columns size repeat', no_invalidate=>false,cascade=>true,degree => 10);
+
+ 
+
+返回168万行，但是现有统计信息却让cbo认为是1行，这差别也太大了。
+
+ 
+
+method_opt=>'for all columns size repeat', 这里说下，更新统计信息，最好使用for all columns size repeat...
+
+ 
+
+repeat的好处是啥，比如列有直方图，会给你保留，列没有统计信息会按照for all columns size 1收集。。。其他原来怎么收就怎么收。
+
+ 
+
+你用一个for all columns size 1或size skewonly,或者不写（auto)都可能改变原有统计信息的收集方式，都有可能影响SQL的执行效率。
+
+ 
+
+高效访问结构让SQL更快，这个不说了，主要是建索引。如何建索引也是一个很复杂的问题，说一点，一般复合索引，等值查询条件频率高的，作为前导列较好。因为直接访问可能效率比>,<...等高，后者访问了还需要过滤。
+
+ 
+
+下面看下影响优化器的参数导致的性能问题。
+
+ 
+
+这是10g执行计划，一个视图是UNION ALL做的，全部走索引：
+
+ 
+
+
+
+ 
+
+但是11.2.0.4全表扫描了。
+
+ 
+
+
+
+ 
+
+10g视图有谓词推荐，也就是查询转换里的一种OJPPD=OLD JOIN PUSH PREDICATE
+
+ 
+
+升级到11.2.0.4，视图里的10张表都变成FULL SCAN。
+
+连接谓词(A.“PAYIO_SN”=“B”.“WRTOFF_SN”)未推入到视图中。
+
+ 
+
+执行时间从0.01s到4s,buffer gets从212到99w。
+
+ 
+
+很显然，我要检查，统计信息没有问题，然后怎么干？？看在11g里做优化器降级如何。
+
+ 
+
+在11.2.0.4中使用optimizer_features_enable分别测试10.2.0.4和11.2.0.3均可谓词推入到视图中走索引。那么问题就出现在11.2.0.4了，因为11.2.0.3都是可以的。说明11.2.0.4对视图谓词推入算法有了改变。很多优化器的东西，oracle都有参数控制的，除了参数，还有各补对应的fix control。那么先检查补丁相关的
+
+ 
+
+from v$system_fix_control WHERE sql_feature LIKE ‘%JPPD%’
+
+ 
+
+查到了，各种开启关闭，没有用。最后看10053，分析10053，详细参看是否是BUG导致，还是优化器改进问题，参数设置问题：
+
+ 
+
+
+
+ 
+
+10053看到默认参数被关了，检查下，大概和查询转换的两个参数:
+
+_optimizer_cost_based_transformation
+
+_optimizer_squ_bottomup
+
+都被关了，当然10.2.0.4和11.2.0.3被关了也是可以的。
+
+ 
+
+
+
+ 
+
+还看到基于CBO的查询转换失败，因为参数被关了，OJPPD（10g那种方式）失效了……那当然走不了，JPPD是11g的，也失效了。
+
+ 
+
+基本知道执行计划如何看，关注哪些就很有用了，不要太关注啥COST前面讲了11.2.0.3都可以，到11.2.0.4不行了，那可能有2种原因：1、算法改了；2、BUG。
+
+ 
+
+当然基于正常的理解，视图谓词推荐，ORACLE是必须支持的，也是不存在问题的，所以肯定有正规的解决方式。先看第2个 BUG，按理说，这种常见的东西，特别是这SQL不算复杂，ORACLE应该不会触发BUG，当然，查询转换是存在各种BUG的，11.2.0,4少了很多MOS中搜一下，比如这个JPPD，就有很多BUG，但是没有看到11.2.0.4对应的。
+
+ 
+
+
+
+ 
+
+**************************
+
+Predicate Move-Around (PM)
+
+**************************
+
+。。。
+
+OJPPD: OJPPD bypassed: View semijoined to table.
+
+JPPD: JPPD bypassed: View not on right-side of outer-join.
+
+ 
+
+通过这个判断，10.2.0.4那种OJPPD，基于规则的查询转换不行了，也就是算法改变，因为cost_base_query_transformation参数关了，应该走OJPPD的。现在JPPD也走不了，因为参数被关了，这个是基于成本的查询转换才可以。
+
+ 
+
+所以，这是由于算法更新导致的问题，要求必须按照ORACLE官方建议，恢复对应查询转换参数默认值：在基于COST的查询转换部分，只能走JPPD（和OJPPD类似），ORACLE建议设置CBQT参数，基于COST查询转换更准确。
+
+ 
+
+开启COST查询转换，初始化优化器参数 _optimizer_cost_based_transformation设为默认值(linear)。CBQT参数有如下值：
+
+"exhaustive", "iterative", "linear", "on", "off"。
+
+ 
+
+另外通过测试得知，还需要设置_optimizer_squ_bottomup （enables unnesting of subquery in a bottom-up manner）
+
+参数默认值true.
+
+ 
+
+这个问题，但是发了SR，老外也不知道，然后我发现这2个参数恢复默认值可以，当然首先cbqt参数我认为肯定有关系，后面的squ_bottomup是测试出来的。。。后来告诉老外，老外也认可算法改变导致的问题。所以核心参数的默认值改变，是很危险的，可能影响全局，如果这两个参数不恢复，涉及数百条核心SQL就无法正常执行，也就是系统不具有可用性了。
+
+ 
+
+最后说一下，经常碰到的一个优化器缺陷：
+
+SELECT ELEMENT_TYPEA,
+
+ELEMENT_IDA,
+
+ELEMENT_TYPEB,
+
+ELEMENT_IDB,
+
+RELATION_TYPE,
+
+EFF_RULE_ID,
+
+EXP_RULE_ID,
+
+CTRL_CODE,
+
+EFF_DATE,
+
+EXP_DATE,
+
+GROUP_ID,
+
+BASE_TIME_ TYPE,
+
+POWER_RIGHT,
+
+POSITIVE_TYPE,
+
+BOTHWAY_FLAG
+
+FROM DBPRODADM.pd_prc_rel a
+
+WHERE EXISTS (SELECT 1
+
+FROM DBPRODADM.pd_prc_dict b
+
+WHERE a.element_ida = b.prod_prcid
+
+AND b.prod_prc_type = '1')
+
+AND a.exp_date > SYSDATE
+
+AND (EXISTS (SELECT 1
+
+FROM DBPRODADM.pd_prc_dict c
+
+WHERE a.element_idb = c.prod_prcid
+
+AND c.prod_prc_type = '1')
+
+OR a.element_idb = 'X')
+
+AND a.relation_type = '10'
+
+ 
+
+当OR与semi join放在一起的时候，会触发无法进行subquery unnest的问题，也就是可能会产生FILTER,导致SQL非常缓慢，有的甚至几天，几十天也别想运行结束了。
+
+ 
+
+
+
+ 
+
+第5、6步执行92万多次，那肯定慢了……问题就是有个FILTER……
+
+ 
+
+FILTER类似循环，在无法unnest子查询中存在，类似标量子查询那种走法，谓词里也有绑定变量的东西。
+
+ 
+
+他们唯一的好处就是内部构建HASH 表，如果匹配的重复值特别多，那么探测次数少，效率好，但是大部分时候，重复值不多，那么就是灾难了
+
+对于这种优化器限制的，一般就是得改写了，因为SQL结构决定无法走高效的执行计划。。。因为我这里虽然走了所以，但是执行次数太多，如果执行次数少，到也无所谓。
+
+ 
+
+改写后的sql：
+
+SELECT ELEMENT_TYPEA,
+
+ELEMENT_IDA,
+
+ELEMENT_TYPEB,
+
+ELEMENT_IDB,
+
+RELATION_TYPE,
+
+EFF_RULE_ID,
+
+EXP_RULE_ID,
+
+CTRL_CODE,
+
+EFF_DATE,
+
+EXP_DATE,
+
+GROUP_ID,
+
+BASE_TIME_ TYPE,
+
+POWER_RIGHT,
+
+POSITIVE_TYPE,
+
+BOTHWAY_FLAG
+
+FROM DBPRODADM.pd_prc_rel a
+
+WHERE EXISTS (SELECT 1
+
+FROM DBPRODADM.pd_prc_dict b
+
+WHERE a.element_ida = b.prod_prcid
+
+AND b.prod_prc_type = '1')
+
+AND a.exp_date > SYSDATE
+
+AND (EXISTS (SELECT 1
+
+FROM DBPRODADM.pd_prc_dict c
+
+WHERE a.element_idb = c.prod_prcid
+
+AND c.prod_prc_type = '1')
+
+OR a.element_idb = 'X')
+
+AND a.relation_type = '10'
+
+ 
+
+很显然，这里的条件是exists or ...那么改写得用UNION或UNION ALL了，为了避免有重复行，用UNION
+
+select ELEMENT_TYPEA,ELEMENT_IDA,ELEMENT_TYPEB,ELEMENT_IDB,RELATION_TYPE
+
+,EFF_RULE_ID,EXP_RULE_ID,CTRL_CODE,EFF_DATE,EXP_DATE,GROUP_ID,BASE_TIME_TYPE,
+
+POWER_RIGHT,POSITIVE_TYPE,BOTHWAY_FLAG
+
+from DBPRODADM.pd_prc_rel a
+
+where exists
+
+(select 1
+
+from DBPRODADM.pd_prc_dict b
+
+where a.element_ida = b.prod_prcid
+
+and b.prod_prc_type = '1')
+
+and a.exp_date > sysdate
+
+and exists (select 1
+
+from DBPRODADM.pd_prc_dict c
+
+where a.element_idb = c.prod_prcid
+
+and c.prod_prc_type = '1')
+
+and a.relation_type = '10'
+
+union
+
+select ELEMENT_TYPEA,ELEMENT_IDA,ELEMENT_TYPEB,ELEMENT_IDB,RELATION_TYPE
+
+,EFF_RULE_ID,EXP_RULE_ID,CTRL_CODE,EFF_DATE,EXP_DATE,GROUP_ID,BASE_TIME_TYPE,
+
+POWER_RIGHT,POSITIVE_TYPE,BOTHWAY_FLAG
+
+from DBPRODADM.pd_prc_rel a
+
+where exists
+
+(select 1
+
+from DBPRODADM.pd_prc_dict b
+
+where a.element_ida = b.prod_prcid
+
+and b.prod_prc_type = '1')
+
+and a.exp_date > sysdate
+
+and a.element_idb = 'X'
+
+and a.relation_type = '10';
+
+ 
+
+两个分支都走HASH JOIN，starts全部为1，虽然全部是全表扫描，但是执行效率提升很明显，执行时间从12s到7s,gets从222w到4.5w之后，是否还有优化空间？
+
+ 
+
+
+
+ 
+
+特别逻辑读少了很多。后续优化：
+
+ 
+
+1)改写使用了UNION,是否能改成UNION ALL避免排序？
+
+ 
+
+2)这么多全表扫描，是否能够让一些可以走索引？当然，这些是可以做到的，但是不是主要工作了。这个案例告诉我们，优化器是有很多限制的，不是万能的。
+
+ 
+
+
+
+ 
+
+除了统计信息正确，良好的SQL结构，能够让SQL正确进行查询转换，正确的访问结构，如索引等……都是让SQL高效执行的前提条件。复杂！=低效，简单！=高效。让优化器理解，并且有合适的访问结构支持，才是王道！
+
+ 
+
+简单的SQL不是快的保证，复杂的也不一定见得慢，高效的执行计划才是最重要的，索引优化SQL，最重要的就是让不好的执行计划变得好。
+
+ 
+
+也就是从多个方面入手，最终达到我们的优化目标。
+
+ 
+      1、优化器的模式
+
+        Oracle中，优化器的模式是由参数OPTIMIZER_MODE的值来决定的。
+
+        1、RULE：表示Oracle将使用RBO来解析目标SQL，此时SQL中涉及的各个对象的统计信息对于RBO没有任何作用。
+
+        2、CHOOSE：Oracle 9i的默认值，表示在解析目标SQL时使用RBO还是CBO取决于SQL涉及的表对象是否有统计信息。
+
+   3、FIRST_ROWS_n(n=1,10,100,1000)：此时CBO计算SQL的各条执行路径的成本值时的侧重点在于以最快的响应速度返回头n(n=1,10,100,1000)条记录。当选择这条记录的时候Oracle会修改执行步骤的成本值，修改为一个很小的值，从而达到不违背CBO原则的目的。
+
+   4、FIRST_ROWS：Oracle 9i中就已经过时的参数，当一些特殊情况下的时候，会使用RBO中的一些内置的规则来选取执行计划不再考虑成本。
+
+   5、ALL_ROWS：Oracle 10g及以后版本中OPTIMIZER_MODE的默认值，表示使用CBO解析目标SQL，此时CBO计算SQL的各条执行路径的成本值时的侧重点在于最佳的吞吐量(即最小的系统I/O和CPU资源的消耗量)。
+
+
+  2、结果集
+
+    指包含指定执行结果的集合。对RBO来说，对应的执行计划中没有对相关执行步骤对应的结果集的描述，虽然结果集的概念对RBO也是适用的。
+
+  3、访问数据的方法
+
+    访问数据的方法分为两种：直接访问表；先访问索引，再回表。
+
+    直接访问表：
+
+    1、全表扫描：指Oracle访问目标表里的数据时，会从该表所占用的第一个区(Extent)的第一个块(Block)开始扫描，一直扫描到该表的高水位线(HWM)，这段范围内所有的数据块都必须读到。
+
+          2、ROEID扫描：指Oracle访问目标表里的数据时，直接通过数据所在的ROWID定位并访问这些数据。ROWID表示Oracle中的数据行记录所在的物理存储地址，也就是说ROWID实际上和Oracle中数据块里的行记录一一对应的。
+
+ROWID扫描有两层含义：一种是根据用户在SQL语句中输入的ROWID的值直接访问对应的数据行记录；另外一种是先访问相关的索引，然后根据访问索引后得到的ROWID再回表访问对应的数据行记录。
+对Oracle堆表而言，通过Oracle内置的ROWID伪列得到对应航记录所在的ROWID的值(注意：ROWID只是一个伪列，在实际的表块中并不存在该列)，然后还可以根据DBMS_ROWID包中的相关方法(dbms_rowid.rowid_relative_fno、dbms_rowid.rowid_block_number和dbms_rowid.rowid_row_number)将上述ROWID伪列的值翻译成对应数据行的实际物理存储地址。
+   访问索引的方法：
+
+    1、索引唯一性扫描：INDEX UNIQUE SCAN，仅适用于where条件中是等值查询的目标SQL。因为扫描的对象是唯一性索引，所以索引唯一性扫描的结果至多只会返回一条记录。
+
+         2、索引范围扫描：INDEX RANGE SCAN，当扫描的对象是唯一性索引时，目标SQL的where条件一定是范围查询(谓词条件为BETWEEN、<、>等)；当扫描的对象是非唯一性索引时，对目标SQL的where条件没有限制(可以是等值查询，也可以是范围查询)。在同等条件下，当目标索引的索引行的数量大于1时，索引范围扫描所耗费的逻辑读至少会比相应的索引唯一性扫描多1。
+
+         3、索引全扫描：指要扫描目标索引所有叶子块的所有索引行。但并不意味着需要扫描该索引的所有分支块。默认情况下，Oracle在做索引全扫描时只需要通过访问必要的分支块定位到位于该索引最左边的叶子块的第一行索引行，就可以利用该索引叶子块之间的双向指针链表，从左至右依次顺序扫描该索引所有叶子块的所有索引行了。按照索引键值顺序排序，即可达到排序的效果。避免真正的排序。默认情况下，索引全扫描的有序性就决定了所以全扫描不能并行执行，通常使用单块读。做索引全扫描的前提条件是目标索引至少有一个索引键值列的属性是NOT NULL。
+
+        4、索引快速全扫描：INDEX FAST FULL SCAN，需要扫描目标索引所有叶子块的所有索引行。与索引全扫描的区别：
+
+        （1）、索引快速全扫描只适用于CBO。
+        （2）、索引快速全扫描可以使用多块读，也可以并行执行。
+        （3）、索引快速全扫描结果不一定是有序的。因为索引快速全扫描时Oracle是根据索引行在磁盘上的物理存储顺序来扫描，而不是根据索引行的逻辑顺序来扫描的。所以扫描结果才不一定有序（对于单个索引叶子块中的索引行而言，其物理存储顺序和逻辑存储顺序一致，但对于物理存储位置相邻的索引叶子块而言，块与块之间索引行的物理存储顺序则不一定在逻辑上有序。
+        5、索引跳跃式扫描：INDEX SKIP SCAN，它使那些在where条件中没有对目标索引的前导列指定查询条件但同时又对该索引的非前导列指定了查询条件的目标SQL依然可以用上该索引，这就像在扫描该索引时跳过了它的前导列。这是因为Oracle帮你对该索引的前导列的所有distinct值做了遍历。Oracle中的索引跳跃式扫描仅适用于那些目标索引前导列的distinct值数量较少，后续非前导列的可选择性又非常好的情形，因为索引跳跃式扫描的执行效率一定会随着目标索引前导列的distinct值数量的递增而递减。
+
+
+
+SELECT VALUE FROM v$parameter t WHERE t.name = 'optimizer_mode';
+
+showparameter optimizer_mode
+
+
+CBO用到了字典中的Statistics
+
+analyze table tablename compute statistics;
+analyze table tablename compute statistics for all indexes
+analyze table tablename delete statistics
+
+
+* Full Table Scans 全表扫描
+
+* Rowid Scans  rowid扫描
+
+* Index Scans 索引扫描
+
+* Index Unique Scans
+
+* Index Range Scans
+
+* Index Range Scans Descending
+
+* Index Skip Scans
+
+* Full Scans
+
+* Fast Full Index Scans（CBO）
+
+* Index Joins
+
+* Bitmap Joins
+
+* Cluster Scans  簇扫描
+
+* Hash Scans   散列扫描
+
+* Sample Table Scans  表取样扫描
+
+²在RBO时代，关于access path，很简单，有index就用，而对于join方法，编程人员一般会通过调整关联表之间的先后顺序来获得比较好的运行结果。有什么缺点呢？
+
+²有了CBO，简单就是两个字-----CBO走的是包办婚姻：你的事交给我办。
+
+ORACLE默认情况下，周一到周五每天晚上10点到第二天早上6点以及整个周末期间会自动收集统计信息
+
+可以查看参数：
+
+show parameter STATISTICS_LEVEL
+
+
+²问题：CBO执行计划依赖的statistic不准确（缺失或者太旧），导致在计算执行成本时就会出现偏差，很可能会产生错误的执行计划，怎么办呢？
+第一步：重新收集统计信息！
+第二部：第一部解决不了的情况下，使用Hints
+
+3.合理应用Hints
+3.1Hints
+
+慎用hint，可能会产生严重的后果，比如append会产生锁块，导致并发资源等待等
+
+Hints的分类：
+
+
+
+
+
+*Hints forOptimization Approaches and Goals(4)
+
+    /*+ ALL_ROWS */
+
+    /*+ FIRST_ROWS ( n )*/
+
+    /*+ CHOOSE */
+
+    /*+ RULE */
+
+
+*Hints for AccessPaths(12)
+
+    /*+ FULL ( table ) */
+
+    /*+ INDEX ( tableindex) */
+
+    /*+ INDEX_ASC ( tableindex) */
+
+    /*+ INDEX_COMBINE (table index) */
+
+    /*+ INDEX_JOIN (table index) */
+
+    /*+ INDEX_DESC (table index) */
+
+    /*+ INDEX_FFS ( tableindex) */
+
+    /*+ NO_INDEX ( tableindex) */
+
+    /*+ AND_EQUAL ( tableindex index) */
+
+
+
+*Hints for QueryTransformations(10)
+
+*Hints for JoinOrders(2)
+
+*Hints for JoinOperations(11)
+
+    /*+ USE_NL ( table )*/
+
+    /*+ USE_MERGE ( table) */
+
+    /*+ USE_HASH ( table) */
+
+    /*+ LEADING ( table )*/
+
+
+
+*Hints for ParallelExecution(5)
+
+*Additional Hints(13)
+
+
+以下为使用Hints的例子
+
+
+
+
+
+
+
+create table t_1(owner varchar2(30),table_name varchar2(30));
+
+create table t_2(owner varchar2(30),table_name varchar2(30));
+
+insert into t_1 SELECT owner,table_name FROM dba_tables;
+
+insert into t_2 SELECT owner,view_name FROM dba_views t;
+
+create index idx_t_1 on t_1(table_name);
+
+create index idx_t_2 on t_2(table_name);
+
+analyze table t_1 compute statistics;
+
+analyze table t_2 compute statistics;
+
+
+SELECT *
+
+FROM (SELECT * FROM t_1
+
+UNION ALL
+
+SELECT * FROM t_2) aa
+
+WHERE aa.table_name LIKE 'Z%'; ---- Full Table Scans
+
+
+SELECT /*+ index(AA.t_1 idx_t_1) index(AA.t_2 idx_t_2)*/ *
+
+FROM (SELECT * FROM t_1
+
+UNION ALL
+
+SELECT * FROM t_2) AA
+
+WHERE AA.table_name LIKE 'Z%'; ---- Index Scans
+
+
+贴上执行图：
+
+
+
+
+
+
+
+4.索引及应用实例
+
+
+4.1什么是索引
+
+
+
+*Oracle的索引是一种自平衡的B*Tree存储结构，其基本存储单位为数据块，称之为节点，共有三种类型的节点：根（root）节点，分枝（Branch）节点，叶（leaf）节点。
+
+*分枝节点存储{索引值，键值对应下一级节点块地址，lmc指针}
+
+*叶节点存储{索引值及其rowid，当前节点的前后节点的数据块地址}
+所有叶节点上的两个指针形成一个双向链表，在这个双向链表上的所有索引值，从小到大排列，而对于倒序desc索引，则是从大到小排列
+
+B*TREE索引图：
+
+
+4.2索引分类
+
+
+
+逻辑上：
+Single column 单列索引
+Concatenated 多列索引
+Unique 唯一索引
+Non-Unique 非唯一索引
+Function-based函数索引
+Domain 域索引
+
+物理上：
+Partitioned 分区索引
+Non-Partitioned 非分区索引
+B*tree：
+  Normal 正常型B树
+  ReverseKey 反转型B树
+  Bitmap 位图索引
+
+
+
+4.3什么时候使用索引
+
+
+
+*如果要检索全表，不必要建索引，因为索引会带来额外的IO操作。
+
+*如果检索的记录数占全部表记录的10%以下可以考虑建索引(大表)。
+
+*表之间的关联字段可以考虑建索引，特别是一张大表和一张小表的关联。
+
+*B*Tree索引适合于大量的增、删、改（OLTP）；
+     不适合用包含OR操作符的查询；一般不适用NULL判断；
+     适合高基数的列（重复值少）
+
+*Bitmap索引适合于决策支持系统OLAP；
+    做UPDATE代价比较高；会锁块；
+    非常适合OR操作符的查询；
+    适合低基数的列（比如，只有Y和N两种值） ；
+
+*Reverse索引反转了b*tree索引码中的字节，是索引条目分配更均匀，多用于并行服务器环境下，用于减少索引叶的竞争。
+
+    索引是’双刃剑’，在查询与DML之间寻求平衡
+
+
+
+4.4改写SQL使用索引
+
+*普通索引列 a is not null 按逻辑改为a>0或a>''
+
+*like操作改写
+
+*能用union all绝不用union，除非要去重
+
+
+
+*in操作虽然简单易懂，但oracle内部会转换为表连接查询，使用in会多一步转换操作，所以建议使用表关联查询
+
+*not in 强烈建议使用not exists或（外连接+判断为空）
+
+*<>（不等于）操作不走索引，推荐a<>0改为(a>0 ora<0)    a<>’’改为a>’’
+
+*提防隐式类型转换， oracle内部处理a=0与a=‘0’是完全不同的，甚至会导致不走索引，这个深有体会，最近一个项目就是这个隐式类型转换出了问题，导致速度
+
+很慢
+
+
+
+
+
+4.5索引应用
+
+
+
+例1.用合适的索引来避免不必要的全表扫
+
+    如果要在索引列查询is not null条件，建议列加上is not null约束，默认值约束，
+
+    然而确实由于某种原因索引列设计为null，还想通过is null条件走索引，该如何是好呢？请看
+
+
+
+
+
+drop table t_tab1;
+
+create table t_tab1 as
+
+SELECT t.owner,
+
+t.object_name,
+
+t.object_type,
+
+t.created,
+
+t.last_ddl_time
+
+FROM dba_objects t;
+
+analyze table t_tab1 compute statistics;
+
+create index idx01_t_tab1 on t_tab1(last_ddl_time);--普通索引
+
+set autotrace trace;
+
+SELECT * FROM t_tab1 t where t.last_ddl_time is null;
+
+
+执行计划如下图：
+
+
+
+
+
+如上情况调整为复合索引
+
+
+
+
+
+drop index idx01_t_tab1;
+
+create index idx01_t_tab1 on t_tab1(last_ddl_time,1);--加了个常量
+
+set autotrace trace;
+
+SELECT * FROM t_tab1 t where t.last_ddl_time is null;
+
+
+执行计划如下图：
+
+
+
+
+
+
+
+ 例2：用合适的函数索引来避免看似无法避免的全表扫描
+
+
+
+
+
+drop table t_tab1 purge;
+
+create table t_tab1 as
+
+SELECT t.owner,
+
+t.object_name,
+
+t.object_type,
+
+t.OBJECT_ID,
+
+t.created,
+
+t.last_ddl_time
+
+FROM dba_objects t;
+
+CREATE INDEX IDX01_T_TAB1 ON T_TAB1(object_name);
+
+analyze table t_tab1 compute statistics;
+
+set autot trace
+
+SELECT * FROM t_tab1 t where t.object_name like '%20121231';
+
+
+执行计划如下：
+
+
+
+
+
+改进索引，此处使用反转函数索引，此外经常用到的函数索引还有，instr(),substr()等
+
+
+
+
+
+drop index IDX01_T_TAB1;
+
+CREATE INDEX IDX02_T_TAB1 ON T_TAB1(reverse(object_name));
+
+analyze table t_tab1 compute statistics;
+
+SELECT * FROM t_tab1 t where reverse(t.object_name) like reverse('%20121231');
+
+执行计划如下：
+
+
+
+
+
+
+
+
+
+5.其他优化技术及应用
+
+
+5.1其他优化技术及思路
+
+
+
+并行技术，并行执行目标SQL语句，这实际上是以额外的资源消耗来换取执行时间的缩短，很多情况下使用并行是针对某些SQL的唯一优化手段。
+
+使用shell调度或其他调度工具。
+
+      SQL语句级别的并行：/*+parallel*/
+
+       /*+ parallel(table_name 4)*/
+
+表压缩技术
+
+  compress
+
+NOLOGGING
+
+  减少日志
+
+Partition技术
+
+  分而治之
+
+中间表/临时表事务分解思路
+
+  ‘大事化小’
+
+求平衡
+
+    CPU，Memory很强大，IO存在瓶颈（最普遍的情况）
+
+使用新特性
+
+     insertall 啦       使用listagg()比wm_concat()快大概50倍、row_number()等分析函数
+
+软硬件资源合理搭配
+
+       黔驴技穷，要求加硬件资源？ Boss会对你说，找会计去吧，提前给你开工资 ……
+
+5.2 SQL优化总结
+
+
+
+SQL的优化的手段是五花八门、不一而足的，包括但不限于如下措施：
+
+*如果是统计信息不准或是因为CBO计算某些SQL的执行路径（Access Path）的成本所用公式的先天不足而导致的SQL性能问题，
+ 我们可以通过重新收集统计信息或者手工修改统计信息或者使用Hint来加以解决；
+
+*如果是SQL语句的写法问题，我们可以通过在不更改业务逻辑的情况下改写SQL来加以解决；
+
+*如果是不必要的全表扫描/排序而导致了目标SQL的性能问题，我们可以通过建立合适的索引（包括函数索引、位图索引等）来加以解决；
+
+*如果是表或者索引的不良设计导致的目标SQL的性能问题，我们可以通过重新设计表/索引，重新组织表里的数据来加以解决；
+
+*如果上述调整措施都失效，我们可以考虑用并行来缩短目标SQL的执行时间；
+
+*如果上述调整措施、包括并行都失效，我们还可以在联系实际业务的基础上更改目标SQL的执行逻辑，甚至不执行目标SQL，这是最彻底的优化:)
+
+  1）语法分析，分析语句的语法是否符合规范，衡量语句中各表达式的意义。
+
+  2）语义分析，检查语句中涉及的所有数据库对象是否存在，且用户有相应的权限。
+
+  3）视图转换，将涉及视图的查询语句转换为相应的对基表查询语句。
+
+  4）表达式转换， 将复杂的 SQL 表达式转换为较简单的等效连接表达式。
+
+  5）选择优化器，不同的优化器一般产生不同的“执行计划”
+
+  6）选择连接方式， ORACLE 主要有三种连接方式，对多表连接ORACLE会选择适当的连接方式。
+
+  7）选择连接顺序， 对多表连接 ORACLE 选择哪一对表先连接，选择这两表中哪张表做为基础数据表。
+
+  8）选择数据的搜索路径，根据以上条件选择合适的数据搜索路径，比如，是选用全表搜索还是利用索引或是其他的方式。
+
+  9）运行“执行计划”
+
+我们可以通过如下语句来查询缓存中的执行计划：
+
+
+
+
+
+SELECT t1.*,
+
+'t2-->',
+
+t2.*
+
+FROM v$sql_plan t1
+
+JOIN v$sql t2
+
+ON t1.address = t2.address
+
+AND t1.hash_value = t2.hash_value
+
+AND t1.child_number = t2.child_number;--缓存中的执行计划。
+
+
+
+1.2 典型SELECT语句完整的执行顺序
+
+
+
+  1）from子句组装来自不同数据源的数据；
+
+  2）where子句基于指定的条件对记录行进行筛选；
+
+  3）group by子句将数据划分为多个分组；
+
+  4）使用聚集函数进行计算；
+
+  5）使用having子句筛选分组；
+
+  6）计算所有的表达式；
+
+  7）计算select的字段；
+
+  8）使用order by对结果集进行排序。
+
+1.3 SQL语句执行过程
+
+如下图所示：
+
+
+
+说明：
+
+*这是一张SQL语句执行过程图
+
+*执行计划是SQL语句执行过程中必然用到的
+
+*执行计划是优化器（Optimizer）的产物
+
+*两种不同的方式：CBO和RBO
+
+查看优化器设置：
+
+方法一：
+
+
+
+SELECT VALUE FROM v$parameter t WHERE t.name = 'optimizer_mode';
+
+方法二(SQLPLUS下执行)：
+
+
+
+
+
+showparameter optimizer_mode
+
+
+*CBO用到了字典中的Statistics,而RBO没有
+
+分析统计信息相关SQL：
+
+
+
+analyze table tablename compute statistics;
+analyze table tablename compute statistics for all indexes
+analyze table tablename delete statistics
+
+
+2.优化器及执行计划
+
+
+2.1 SQL优化方法论
+
+
+
+*ORACLE10g以后的版本，SQL优化的本质是基于对CBO和执行计划的深刻理解，进入CBO时代，一定要理解执行计划。
+*查看执行计划有好多方式，比如使用PL/SQL Developer工具，选中select语句，按F5键就可以显示其执行计划，不过显示的不完全
+
+
+*最好使用在Oracle官方的sqlplus工具，性能最好，方便直观，下面介绍两种查看执行计划方式（也是最简单的两种方式）
+
+
+
+
+
+
+
+关于执行计划的一些知识：
+
+
+
+* Full Table Scans 全表扫描
+
+* Rowid Scans  rowid扫描
+
+* Index Scans 索引扫描
+
+* Index Unique Scans
+
+* Index Range Scans
+
+* Index Range Scans Descending
+
+* Index Skip Scans
+
+* Full Scans
+
+* Fast Full Index Scans（CBO）
+
+* Index Joins
+
+* Bitmap Joins
+
+* Cluster Scans  簇扫描
+
+* Hash Scans   散列扫描
+
+* Sample Table Scans  表取样扫描
+
+
+²在RBO时代，关于access path，很简单，有index就用，而对于join方法，编程人员一般会通过调整关联表之间的先后顺序来获得比较好的运行结果。有什么缺点呢？
+
+²有了CBO，简单就是两个字-----CBO走的是包办婚姻：你的事交给我办。
+
+ORACLE默认情况下，周一到周五每天晚上10点到第二天早上6点以及整个周末期间会自动收集统计信息
+
+可以查看参数：
+
+show parameter STATISTICS_LEVEL
+
+
+²问题：CBO执行计划依赖的statistic不准确（缺失或者太旧），导致在计算执行成本时就会出现偏差，很可能会产生错误的执行计划，怎么办呢？
+第一步：重新收集统计信息！
+第二部：第一部解决不了的情况下，使用Hints
+
+3.合理应用Hints
+3.1Hints
+
+慎用hint，可能会产生严重的后果，比如append会产生锁块，导致并发资源等待等
+
+Hints的分类：
+
+
+
+
+
+*Hints forOptimization Approaches and Goals(4)
+
+    /*+ ALL_ROWS */
+
+    /*+ FIRST_ROWS ( n )*/
+
+    /*+ CHOOSE */
+
+    /*+ RULE */
+
+
+*Hints for AccessPaths(12)
+
+    /*+ FULL ( table ) */
+
+    /*+ INDEX ( tableindex) */
+
+    /*+ INDEX_ASC ( tableindex) */
+
+    /*+ INDEX_COMBINE (table index) */
+
+    /*+ INDEX_JOIN (table index) */
+
+    /*+ INDEX_DESC (table index) */
+
+    /*+ INDEX_FFS ( tableindex) */
+
+    /*+ NO_INDEX ( tableindex) */
+
+    /*+ AND_EQUAL ( tableindex index) */
+
+
+
+*Hints for QueryTransformations(10)
+
+*Hints for JoinOrders(2)
+
+*Hints for JoinOperations(11)
+
+    /*+ USE_NL ( table )*/
+
+    /*+ USE_MERGE ( table) */
+
+    /*+ USE_HASH ( table) */
+
+    /*+ LEADING ( table )*/
+
+
+
+*Hints for ParallelExecution(5)
+
+*Additional Hints(13)
+
+
+以下为使用Hints的例子
+
+
+
+
+
+
+
+create table t_1(owner varchar2(30),table_name varchar2(30));
+
+create table t_2(owner varchar2(30),table_name varchar2(30));
+
+insert into t_1 SELECT owner,table_name FROM dba_tables;
+
+insert into t_2 SELECT owner,view_name FROM dba_views t;
+
+create index idx_t_1 on t_1(table_name);
+
+create index idx_t_2 on t_2(table_name);
+
+analyze table t_1 compute statistics;
+
+analyze table t_2 compute statistics;
+
+
+SELECT *
+
+FROM (SELECT * FROM t_1
+
+UNION ALL
+
+SELECT * FROM t_2) aa
+
+WHERE aa.table_name LIKE 'Z%'; ---- Full Table Scans
+
+
+SELECT /*+ index(AA.t_1 idx_t_1) index(AA.t_2 idx_t_2)*/ *
+
+FROM (SELECT * FROM t_1
+
+UNION ALL
+
+SELECT * FROM t_2) AA
+
+WHERE AA.table_name LIKE 'Z%'; ---- Index Scans
+
+
+贴上执行图：
+
+
+
+
+
+
+
+4.索引及应用实例
+
+
+4.1什么是索引
+
+
+
+*Oracle的索引是一种自平衡的B*Tree存储结构，其基本存储单位为数据块，称之为节点，共有三种类型的节点：根（root）节点，分枝（Branch）节点，叶（leaf）节点。
+
+*分枝节点存储{索引值，键值对应下一级节点块地址，lmc指针}
+
+*叶节点存储{索引值及其rowid，当前节点的前后节点的数据块地址}
+所有叶节点上的两个指针形成一个双向链表，在这个双向链表上的所有索引值，从小到大排列，而对于倒序desc索引，则是从大到小排列
+
+B*TREE索引图：
+
+
+4.2索引分类
+
+
+
+逻辑上：
+Single column 单列索引
+Concatenated 多列索引
+Unique 唯一索引
+Non-Unique 非唯一索引
+Function-based函数索引
+Domain 域索引
+
+物理上：
+Partitioned 分区索引
+Non-Partitioned 非分区索引
+B*tree：
+  Normal 正常型B树
+  ReverseKey 反转型B树
+  Bitmap 位图索引
+
+
+
+4.3什么时候使用索引
+
+
+
+*如果要检索全表，不必要建索引，因为索引会带来额外的IO操作。
+
+*如果检索的记录数占全部表记录的10%以下可以考虑建索引(大表)。
+
+*表之间的关联字段可以考虑建索引，特别是一张大表和一张小表的关联。
+
+*B*Tree索引适合于大量的增、删、改（OLTP）；
+     不适合用包含OR操作符的查询；一般不适用NULL判断；
+     适合高基数的列（重复值少）
+
+*Bitmap索引适合于决策支持系统OLAP；
+    做UPDATE代价比较高；会锁块；
+    非常适合OR操作符的查询；
+    适合低基数的列（比如，只有Y和N两种值） ；
+
+*Reverse索引反转了b*tree索引码中的字节，是索引条目分配更均匀，多用于并行服务器环境下，用于减少索引叶的竞争。
+
+    索引是’双刃剑’，在查询与DML之间寻求平衡
+
+
+
+4.4改写SQL使用索引
+
+*普通索引列 a is not null 按逻辑改为a>0或a>''
+
+*like操作改写
+
+*能用union all绝不用union，除非要去重
+
+
+
+*in操作虽然简单易懂，但oracle内部会转换为表连接查询，使用in会多一步转换操作，所以建议使用表关联查询
+
+*not in 强烈建议使用not exists或（外连接+判断为空）
+
+*<>（不等于）操作不走索引，推荐a<>0改为(a>0 ora<0)    a<>’’改为a>’’
+
+*提防隐式类型转换， oracle内部处理a=0与a=‘0’是完全不同的，甚至会导致不走索引，这个深有体会，最近一个项目就是这个隐式类型转换出了问题，导致速度
+
+很慢
+
+
+
+
+
+4.5索引应用
+
+
+
+例1.用合适的索引来避免不必要的全表扫
+
+    如果要在索引列查询is not null条件，建议列加上is not null约束，默认值约束，
+
+    然而确实由于某种原因索引列设计为null，还想通过is null条件走索引，该如何是好呢？请看
+
+
+
+
+
+drop table t_tab1;
+
+create table t_tab1 as
+
+SELECT t.owner,
+
+t.object_name,
+
+t.object_type,
+
+t.created,
+
+t.last_ddl_time
+
+FROM dba_objects t;
+
+analyze table t_tab1 compute statistics;
+
+create index idx01_t_tab1 on t_tab1(last_ddl_time);--普通索引
+
+set autotrace trace;
+
+SELECT * FROM t_tab1 t where t.last_ddl_time is null;
+
+
+执行计划如下图：
+
+
+
+
+
+如上情况调整为复合索引
+
+
+
+
+
+drop index idx01_t_tab1;
+
+create index idx01_t_tab1 on t_tab1(last_ddl_time,1);--加了个常量
+
+set autotrace trace;
+
+SELECT * FROM t_tab1 t where t.last_ddl_time is null;
+
+
+执行计划如下图：
+
+
+
+
+
+
+
+ 例2：用合适的函数索引来避免看似无法避免的全表扫描
+
+
+
+
+
+drop table t_tab1 purge;
+
+create table t_tab1 as
+
+SELECT t.owner,
+
+t.object_name,
+
+t.object_type,
+
+t.OBJECT_ID,
+
+t.created,
+
+t.last_ddl_time
+
+FROM dba_objects t;
+
+CREATE INDEX IDX01_T_TAB1 ON T_TAB1(object_name);
+
+analyze table t_tab1 compute statistics;
+
+set autot trace
+
+SELECT * FROM t_tab1 t where t.object_name like '%20121231';
+
+
+执行计划如下：
+
+
+
+
+
+改进索引，此处使用反转函数索引，此外经常用到的函数索引还有，instr(),substr()等
+
+
+
+
+
+drop index IDX01_T_TAB1;
+
+CREATE INDEX IDX02_T_TAB1 ON T_TAB1(reverse(object_name));
+
+analyze table t_tab1 compute statistics;
+
+SELECT * FROM t_tab1 t where reverse(t.object_name) like reverse('%20121231');
+
+执行计划如下：
+
+
+
+
+
+
+
+
+
+5.其他优化技术及应用
+
+
+5.1其他优化技术及思路
+
+
+
+并行技术，并行执行目标SQL语句，这实际上是以额外的资源消耗来换取执行时间的缩短，很多情况下使用并行是针对某些SQL的唯一优化手段。
+
+使用shell调度或其他调度工具。
+
+      SQL语句级别的并行：/*+parallel*/
+
+       /*+ parallel(table_name 4)*/
+
+表压缩技术
+
+  compress
+
+NOLOGGING
+
+  减少日志
+
+Partition技术
+
+  分而治之
+
+中间表/临时表事务分解思路
+
+  ‘大事化小’
+
+求平衡
+
+    CPU，Memory很强大，IO存在瓶颈（最普遍的情况）
+
+使用新特性
+
+     insertall 啦       使用listagg()比wm_concat()快大概50倍、row_number()等分析函数
+
+软硬件资源合理搭配
+
+       黔驴技穷，要求加硬件资源？ Boss会对你说，找会计去吧，提前给你开工资 ……
+
+5.2 SQL优化总结
+
+
+
+SQL的优化的手段是五花八门、不一而足的，包括但不限于如下措施：
+
+*如果是统计信息不准或是因为CBO计算某些SQL的执行路径（Access Path）的成本所用公式的先天不足而导致的SQL性能问题，
+ 我们可以通过重新收集统计信息或者手工修改统计信息或者使用Hint来加以解决；
+
+*如果是SQL语句的写法问题，我们可以通过在不更改业务逻辑的情况下改写SQL来加以解决；
+
+*如果是不必要的全表扫描/排序而导致了目标SQL的性能问题，我们可以通过建立合适的索引（包括函数索引、位图索引等）来加以解决；
+
+*如果是表或者索引的不良设计导致的目标SQL的性能问题，我们可以通过重新设计表/索引，重新组织表里的数据来加以解决；
+
+*如果上述调整措施都失效，我们可以考虑用并行来缩短目标SQL的执行时间；
+
+
+
+
+
+
 基于规则的优化器——Rule Based Optimizer，即RBO
 基于成本的优化器——Cost Based Optimizer，即CBO。
 
