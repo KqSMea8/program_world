@@ -594,11 +594,1027 @@ AS col28, 'O' AS
 •col28 AS col28,
 ''AS col28, 'P'
 WHERE l.col4 IN (,0,, 'A,, 'P')
-AND (l.col2 = 'TCBANK1 OR l.col3 = 'SELLERWANG')) xtlOO
+AND (l.col2 = 'TCBANK1 OR l.col3 = 'SELLERWANG')) xtlOO;
+
+UPDATE t 00000000000000000000000 a
+SET a.status = -1
+WHERE a.uuuuuuuuuuu IN
+(SELECT m.uuuuuuuuuuu
+FROM	m
+WHERE m.sttttttt >= trunc(SYSDATE - 1)
+AND m.pppp = substr(m.uuuuuuuuuuu, -2, 2));
+
+
+MERGE INTO emp2 a
+USING (SELECT b.rowid AS rid,
+row一number(> over(ORDER BY b.hiredate) AS empno
+FROM emp2 b) b
+ON (b.rowid = a.rowid)
+WHEN MATCHED THEN
+UPDATE SET a.empno = b.empno;
+SELECT empno, ename, hiredate FROM emp2 ORDER BY 3;
+
+
+WITH Tl AS
+/*1.行转列*/
+(SELECT GROUPING(T.B) AS GP_B
+T.B AS品牌，
+SUM (CASE T.A WHEN •门店
+SUM (CASE T.A WHEN •门店
+SUM (CASE T.A WHEN •门店
+SUM(T.C) AS销童_合计，
+SUM (CASE T.A WHEN •门店
+SUM (CASE T.A WHEN •门店
+SUM (CASE T.A WHEN •门店
+SUM(T.D) AS收入_合计
+FROM T
+GROUP BY ROLLUP(T.B)
+ORDER BY 1 DESC,2)
+/*2.列转行*/
+SELECT CASE WHEN GP一B = 1 THEN '销量合计' else 品牌,
+销最_门店1 AS H店1,
+销lft_门店2 AS 门店2,
+销擀_门店3 AS 门店3,
+销激_合计 AS 合计
+FROM Tl
+
+
+UNION ALL
+SELECT CASE WHEN GP_B - 1 THEN
+收入一门店1 AS h店1,
+收入一门店2 AS门店2,
+收入一门店3,
+收入_合计AS合计
+FROM Tl
+UNION ALL
+SELECT CASE WHEN GP一B = 1 THEN ,
+round (销量一门店_1 ★收入_门店
+round (销量_门店2 ★收入一门店
+round (销量_门店3 ★收入门店
+收入合计AS合计
+•收入合计• ELSE品牌END AS品牌
+收入合计，ELSE品牌END AS
+1 /销童_合计，2) AS门店1,
+1 /销量_合计，2> AS门店2,
+1 /销量合计，2) AS门店3,
+
+
+SELECT a.empno, a.ename, b.lv
+FROM	emp a
+LEFT	JOIN	emp一level	b ON	(b.empno	=a.empno)
+WHERE	b. lv	=2
+START	WITH	a.empno =	7876
+CONNECT BY		((PRIOR a.	mgr)=	3 a.empno	AND (PRIOR.b.lv)>2);
+
+
+SELECT fc>•emp一name, a.totalcharges
+FROM (SELECT emp_id, SUM(bi11一rate ★ bill一hrs> AS totalcharges
+FROM (SELECT bl•bill_rate,
+bl.emp_id,
+hi.bill_hrs,
+rank() over(PARTITION BY bl.emp一id, hi.work_date
+ORDER BY bl.bill date DESC) AS sn
 
 
 
+FROM billings bl, hoursworked hi
+WHERE bl.emp_id = hi.emp_id
+AND hi.work一date >= bl,bill_date)
+WHERE sn = 1
+GROUP BY emp_id) a
+INNER JOIN consultants b ON b.emp一id = a.emp_id;
+
+
+SELECT *
+FROM (SELECT psl •飞行员，
+COUNT (psl.飞机> AS 6行员会开的飞机数,
+COUNT (hi.飞机> AS库中能开的飞机数，
+MAX(hl.机库里的飞机数）AS机库里的6机数
+FROM pilotskills psl
+LEFT JOIN (SELECT COUNT (*) over () AS 机库里的飞机数，6机 FROM
+hangar) hi ON (psl.务机=hi.飞机)
+GROUP BY psl.飞行员）
+WHERE 库中能开的飞机数=机库里的飞机数
+AND 飞行员会开的飞机数=机库里的飞机数/*只会开*/;
+
+SELECT供应商1,供应商2
+FROM (SELECT a.供应商编码AS供应商1, b.供应商编码AS供应商2, MAX <a.零件数>
+AS 零件数，COUNT (*) AS 相同零件数
+FROM (SELECT供应商编码，
+零件编码，
+COUNT (*) over (PARTITION BY 供应商编码）AS 零件数
+FROM supparts) a
+INNER JOIN supparts b ON (a •零件编码厂b.零件编码AND a •供应商编码<
+b.供应商编码）
+GROUP BY a.供应商编码，b.供应商编码）
+WHERE零件数-相同零件数；
 --------------------------------------------------------
+
+SELECT cl.索赔号,
+Cl .患者，
+/*取seq®大的状态★/
+MAX (lag_status) keep (dense—rank FIRST ORDER BY si •顺序> AS s
+FROM claims cl
+INNER JOIN defendants dl ON cl.索赔号=dl.索赔号
+CROSS JOIN (SELECT /*用laq 取上一个状态★ /
+lag (索赔状态）over (ORDER BY 顺序）AS lag_status,
+索赔状态，
+顺序
+FROM claimstatuscodes) si
+LEFT OUTER JOIN legalevents el ON (cl.索赔号=el.索赔号 AND dl •被告
+被告AND si.索赔状态- el •索赔状态>
+WHERE el.索赔号 IS NULL
+GROUP BY cl.索赔号，cl.患者；
+
+WITH xO AS
+(
+/★枚举时间点t*/
+SELECT proc id, anest一name, start一time, end_time, t
+FROM (SELECT proc_id,
+anest一name,
+start time.
+
+end_time,
+start_time AS s,
+end_time AS e
+FROM procs) unpivot(t FOR col IN(s, e)))r
+xl AS
+(
+/*落实重叠行*/
+SELECT (PRIOR t) AS t, proc_id, anest一name, start_time, end_time
+FROM xO
+WHERE LEVEL = 2
+CONNECT BY nocycle(PRIOR anest_name) = anest_name
+AND start_time <- (PRIOR t)
+AND (PRIOR t) < end一time
+AND LEVEL <= 2
+ORDER BY 1),
+x2 AS
+(/★计算《脅行数目★/
+SELECT proc_id,
+anest_name,
+start一time,
+end一time,
+tf
+COUNT(DISTINCT proc_id) over(PARTITION BY t, anest_name) AS cnt
+FROM xl)
+/*取最值*/
+SELECT proc一id, anest—name, start一time, end一time, MAX(cnt) AS cnt
+FROM x2
+GROUP BY proc id, anest name, start time, end time
+ORDER BY 1;
+
+
+SELECT
+FROM	0,
+	(SELECT	★
+	FROM	F
+	WHERE	END	_DT = TO__DATE('29991231、
+where	0.PTY_	ID =	F.PTY一ID
+AND	O.ORG :	=F.ORG
+AND	0.CODE	=F	.CODE
+'YYYY-MM-DD')) F
+AND O.xx || O.xx || O.xxx
+<> F.xx 丨丨 F.xx || F.xx
+
+WITH x AS
+(SELECT m.coll, d.col2, m.col3, m.col4, d.col5
+FROm m, d
+WHERE m.col3 = d.col3
+AND m.col6 IN (2, 3)
+AND m.col7 < »201312')
+SELECT a.coll, a.col2, wmsys.wm_concat(a.col3) col3s
+FROM x a
+LEFT JOIN (SELECT b.col4f b.col2, SUM(b.col5)
+,m.col6
+col3s
+AS col5
+FROM x b
+a.col2)
+WHERE
+AND
+AND
+WHERE b.col6 = 3
+GROUP BY b.col4, b.col2) b ON (b.col4 = a.col3 AND b.col2
+i.col4 IS NULL
+.col6 = 2
+b.col4 IS NULL OR b.co!5 < a.col5)
+GROUP BY a.coll, a.col2;
+
+
+SELECT COUNT⑴ num
+FROM
+status,
+4) THEN
+(SELECT tl.*
+FROM t一asset tl
+LEFT JOIN (SELECT asset_code,
+MAX (CASE WHEN status IN <1, 10, 11, 12) THEN
+MAX (CASE WHEN (content_status = 1 OR content—
+END) AS content一status
+FROM t—asset一file
+GROUP BY asset—code) al
+ON <al.asset•一code = tl•resource—id)
+WHERE 1=1
+AND tl.type = 0
+AND (tl.status IN (1, 10, 11, 12, 100) OR
+(tl.status IN (3, 4, 8) AND al.status = 1))
+AND (al.content status = 1 OR al.asset code IS NULL)
+1 END)
+status
+ORDER BY tl.create time DESC, tl.resource id) a;
+
+SELECT gys.khbh,
+gys.khmc,
+wz.wzzbm,
+wz•wzmbm.
+wz.wzmcf
+wz.wzgg,
+a. si,
+wz.jldw,
+wz.wzflmbm,
+a.si * wz.wzflmbm jhje,
+a.rkids
+FROM wz6dblink wz,
+gysGdblink gys,
+(SELECT m.khbh,
+d.wzzbm,
+SUM (CASE m.rkzt WHEN '2' THEN d.xysl ELSE -1 * d.xysl END) si,
+wmsys.wm一concat(CASE
+WHEN (m.rkzt - 2 AND
+(ml.zxdid IS NULL OR nvl(ml.xysl, 0) <
+d.xysl)) THEN
+m.rkid
+END) AS rkids
+FROM m0dblink m
+WHERE
+INNER	JOIN d@dblink d
+ON	(m.rkid =	d.rkid)
+LEFT	JOIN (SELECT SUM(dl.xysl) AS xysl, ml.zxdid,
+	FROM	m@dblink ml,	d0dblink dl
+	WHERE	ml.rkid = dl	.rkid
+	AND	ml.rkzt - 3
+	GROUP	BY ml.zxdid.	dl.wzzbm) ml
+ON	(ml.zxdid	-m.rkid AND	ml.wzzbm ■ d.wzzbm)
+WHERE	m.rkzt IN	(2, 3)
+AND	m.ssny < •	201311'
+GROUP	BY m.khbh,	,d.wzzbm) a
+a.si >	0
+AND gys.khbh = a.khbh
+AND wz.wzzbm ■ a.wzzbm';
+
+SELECT deptno, empno, ename, sal, min_sal, max_sal
+FROM <SELECT a.deptno.
+a.empno,
+a.ename,
+a.sal,
+a.hiredate,
+MIN(a.sal) over(PARTITION BY a.deptno) AS min
+MAX(a.sal) over(PARTITION BY a.deptno) AS max
+FROM emp a
+WHERE a.deptno IN (10, 20)) a
+WHERE a.hiredate >■ to_date('1981-01-01', 'yyyy-nun-dd')
+AND a.hiredate < to_date('1982-01-01', 'yyyy-mm-dd')
+ORDER BY 1, 4;
+
+'
+SELECT b.scode, b.f_t_day, b.t_date AS t_date
+FROM (SELECT a.scode,
+a.t_date,
+c.year f_t_day,
+MIN(a.lowprice) over(PARTITION BY a.scode.
+min_ndata/
+a.lowprice ndata
+FROM a, c
+WHERE a.t_date ■ c.tdate
+AND a.mktcode IN (1, 2)
+AND c.year = to_char(SYSDATE, 'YYYY')) b
+WHERE min ndata ■ ndata
+c.year) AS
+
+
+SELECT
+FROM sawithO
+WHERE (t6982 4.ship_to_base_flag IN (1) OR
+t49495.segmentl IN (SELECT DISTINCT dl.cl AS cl FROM dl))
+
+
+WITH Dl AS
+(select Dl.c2 as cl
+from (select distinct Dl.cl as cl, Dl.c2 as c2
+from (select sum(case
+when T49296.T49296_ID in (1, 31, 40, 41) then
+T49296.AMOUNT * -1
+else
+0
+end) as cl,
+T494 95.SEGMENT1 as c2
+from T49221 T49221,
+T49495 T49495,
+T48941 T48941,
+(select /*这里有i60多列*/
+from T49296) T49296	•
+where (T48941.C_D_ID = T49296.B_DATE_D and
+T48941.C_Y_ID * '2013' and
+T49221.0一ID = T49296.0一ID and
+T49296.I_ITEM_ID =* T49495 .1_ITEM_ID and
+T49296.0一ID = T49495.0_ID and
+(T4 9221.ATTRIBUTE1 in
+<•〇’，•01l, .02、*03', ,04、'051, '06')) and
+T49221.NAME <> 'xxxxx')
+group by T49495.SEGMENT1
+having 0 < sum(case
+when T49296.T49296_ID in
+(1, 31, 40, 41) then
+T49296.AMOUNT * -1
+else
+0
+end)) Dl) Dl),
+SAWITHO AS
+(select /*sum(T69824.AMOUNT_R) as cl,*/
+ROWNUM AS SN,
+T69824.AMOUNT R,
+
+T69824.SHIP_TO_BASE_FLAG,
+T49495.SEGMENT1
+from (select case
+when (sysdate - siqn_date) is null then
+0
+else
+(sysdate - sign_date) / 365
+end as fundation_date,
+/•这里有50多列•/ "
+from EDW_CUX_INN_INFO_HEADER
+WHERE CURRENT_FLAG ■ 'Y') T49157,
+T49495 T49495,
+T99532 T99532,
+T69824 T69824
+where (T49157,ORG_ID - T69824.ORG_ID
+and T49495.IITEMID = T69824.ITEMID
+and T49495.0_ID - T69824.ORG_ID
+and T4 9157.INN_S_NAME - 'xxxxx'
+and T69824.T_L_CODE - 'ZZZZ'
+and T69824.P_FLG = 'N'
+and T69824.RECEIVING_MON = T99532.CAL_MONTH_NAME
+and T99532.C_Y_ID - '2013'
+and substr(T49157.INN_CODE, 1, 1)
+and (T69824.APPROVED_FLAG in ('N'
+and (T69824.CANCEL_FLAG in ('N')
+/*and (T69824.SHIP_TO_BASE_FLAG in
+distinct Dl.cl as cl from Dl))*/
+and sub3tr(T49157.INN CODE, 1, 1) <> 'T'
+<> 'H*
+•R,, 'Y'))
+or T69824 .CANCEL_FLAG is null)
+(1) or T4 94 95.SEGMENT1 in (select
+SAWITH1 AS (
+SELECT sum(AMOUNT_R) AS Cl FROM
+(
+/*注意这示的列要全.能唯一标识各行，能办pk列蚰好•否则union后会丢数裾*/
+SELECT AMOUNTR,SN
+FROM SAWITHO
+WHERE SHIP_TO_BASE_FLAG in (1)
+UNION
+SELECT AMOUNT_R,SN
+FROM SAWITHO
+WHERE SEGMENT1 in (select distinct Dl.cl as cl from Dl Dl)
+)
+
+WITH l_cur AS
+(SELECT 12.10_id,
+12.creditor_user_id,
+lpiO.periodnum,
+lpi0.period_end_time
+FROM 10 12
+LEFT JOIN IppO on 12.10_id ■ IppO.10_id
+LEFT JOIN lpiO lpiO on IppO.id3 - Ipi0.id3
+LEFT JOIN ardaO on ardaO.id3 ■ Ipi0.id3
+WHERE 12.creditor_user_id = 5263
+AND 12.status != *2'
+AND lpi0.period_start_time <• SYSDATE
+AND lpi0.period_end_time > SYSDATE
+GROUP BY 12.10_id,
+lpiO.period_num,
+12.creditor_user_id,
+lpiO.period_end_time
+HAVING SUM(ardaO.repayment_amt} =0 OR SUM(ardaO.repayment_amt)
+SELECT l_target.rownum AS rn
+FROM (SELECT 10.10_id AS lOid,
+lO.datel AS createdate,
+lO.idl AS applyid,
+bai.stitle AS applytitle,
+bai.amtl AS applyamt,
+bai.ratel AS applyratio,
+10-valuel AS oripri,
+10.value2 AS leftamt,
+SUM (CASE WHEN lpi.status !■	'1'	THEN	1	ELSE	0
+remperiods,
+lO.flagl AS flag2,
+curi.s_cnname AS name2,
+curi.i_user_id AS selluserid
+FROM 10
+LEFT JOIN lpp on lpp.lO_id - 10.10_id
+LEFT JOIN lpiO lpi on lpi.id3 - lpp.id3
+LEFT JOIN b_apply_info bai on bai.i_idl •
+LEFT JOIN pbpO pbpO on pbpO.idl = lO.idl
+LEFT JOIN ppO ppO on pbpO.id2 - ppO.id2
+
+
+INNER JOIN c_user_regist_info curi on 10.creditor_user_id -
+curi.i_user_id
+WHERE 1=1
+AND 10.creditor_user_id = 5263
+AND 10.status !■ '2*
+AND lO.flagl - '1'
+AND ppO.product_type • 1
+GROUP BY 10.10_id,
+10.valuel/
+10.value2,
+lO.idl,
+lO.datel,
+bai.stitle,
+bai.amtl,
+bai.ratel,
+lO.flagl,
+curi.s_cnname,
+curi.i_user_id) l_target
+INNER JOIN lcur ON lcur.lOid 】l_target.lOid
+LEFT JOIN (SELECT IppO.lOid, IppO.status, IppO.period
+FROM IppO
+INNER JOIN l_cur lc on lc.lO_id - lpp0.10_id
+WHERE lc.period一num - IppO.period + 1) l_pre
+ON l_pre.10_id • l_target.lOid
+LEFT JOIN (SELECT ttla.seller_10_id,
+COUNT(*) t_cnt,
+MAX(transferable) transferable
+FROM tla transfer_10_apply ttla
+WHERE 1-1
+AND ttla.seller_id ■ 5263
+GROUP BY ttla.seller_10_id) l_tran
+ON l_tran.seller_10_id ■ l_target.lOid
+LEFT JOIN (SELECT * FROM tla_transfer_10_apply WHERE transferable - 'I')
+ttlal
+ON ttlal.seller_10_id = l_target.lOid
+WHERE 1-1
+AND (l_tran.transferable IS NULL OR l_tran.transferable !» '1')
+AND applyratio - 12
+ORDER BY leftamt DESC;
+
+WITH base AS
+(SELECT /*省略返回值列表*/
+FROM tsl tsll_
+WHERE 1-1
+AND tsll_.created_date >_ to_date('2013-09-01 00:00:00',
+hh24:mi:ss')
+AND tsll_.created一date <= to_date('2013-09-30 23:59:59*,
+hh24:mi:ss')
+AND ((tsll_.adjust_status = '1' AND tsll_.serialstatus :
+(tsll_.adjust一status = '6' AND tsll_.serialstatus ■
+(tsll_.adjust_status ■ '2' AND tsi1_.serialstatus =
+AND <(tsll—.sales_offi_id = tsll_.shipments一offi_id> OR
+(tsll__.shipments_offi—id * 1337))
+AND NOT EXISTS
+(SELECT 1
+FROM tsl 1
+WHERE l.s一no = tsll_.s_no
+AND 1.serialstatus = *0*
+AND 1.created_date <	to一date<•2013-09-01
+'yyyy-MM-dd hh24:mi:ss')))
+SELECT /*省略返回值列表*/
+FROM (SELECT *
+FROM base
+WHERE base.tf_adjustment = '0'
+1yyyy-MM-dd
+1 yyyy-MM-dd
+:'1') OR
+•O') OR
+'2'))
+00:00:00*,
+
+INNER
+ON
+AND base.empl_type - '2') a
+JOIN (SELECT s_no,
+retailer_code,
+retailer_name,
+creator_name,
+empl_type,
+sales_offi_id,
+sales_offi_name,
+sales__group_name,
+created_date
+FROM tsl 1
+WHERE 1.s_no IN (SELECT base.s_no
+AND 1.serialstatus - '0') b
+(a.s no - b.s no AND a.sales offi id -
+FROM base)
+b.sales offi
+ORDER BY a.created date, a.id DESC;
+
+
+
+SELECT
+FROM (SELECT &.*, rownum rn
+FROM (SELECT /*+ index(o,idx一t一objects> leading(o) */
+o.object_id,
+o.owner,
+o.object_name,
+o.object_type,
+o.created,
+o.status
+FROM t一objects o
+WHERE EXISTS
+(SELECT /*+ nl_sj qb_name(dinner) */
+NULL
+FROM t一users tu
+WHERE (tu.user_id - o.user—ici>
+AND tu.username IN ('HR', •SCOTT', 'OE*,
+AND EXISTS (SELECT /*+ nl_sj use_nl(tcft) */
+•SYS,)>
+NULL
+FROM t一columns tc
+INNER JOIN t_tables t ON (t.owner ■ tc.owner AND
+table_name = tc.table_name)
+WHERE tc.object_id = o.object_id)
+ORDER BY o.created DESC) a
+WHERE rownum <® 5) b
+WHERE rn > 0；
+SELECT * FROM TABLE(DBMS XPLAN.DISPLAY CURSOR(NULL,0,'iostats'))；
+
+SELECT *
+FROM (SELECT rownum r, t.*
+FROM (SELECT /★+ use—nl<t,s) use_nl(t,r>
+t.rollno, t.bizfileno, t.id regiid,
+FROM t
+LEFT JOIN s
+ON s.regiid = t.id
+INNER JOIN r
+ON r.docid = t.id
+AND r.status = 3701
+WHERE t.rollno LIKE SIOV
+leading(t,r,s) */
+s.status
+AND t.status NOT IN (-1, -2, -3, -4f 1001, 1301, 1005)
+ORDER BY t.rollno DESC) t
+WHERE rownum <= 20)
+WHERE r > 10;
+
+SELECT
+FROM
+(SELECT a.
+FROM
+rownum num
+WHERE
+(SELECT a.*
+FROM	b a
+INNER	JOIN b一price	b ON (b.id = a
+WHERE	1 = 1
+AND	b.max一price =	:'I'
+AND	a.type = '101
+AND	a.s_cd = * 1000'
+AND	a.name LIKE '	%xxx%*
+ORDER	BY regexp—replace(des, '[A0-
+num <=	20)
+a. id)
+WHERE num > 1;
+
+MERGE INTO mwm
+USING (SELECT mwm.rowid AS rid, SUM(mws.qty) AS qty
+FROM mwm
+LEFT JOIN mws
+ON (mws.oid = mwm.oid AND mws.wid = mwm.wid AND mws.seq <
+mwm.out一seq>	%
+GROUP BY mwm.rowid) mws ON (mws.rid = mwm.rowid)
+WHEN MATCHED THEN
+UPDATE SET mwm.qty1 = nvl(mws.qty, 0);
+
+MERGE INTO tablel f
+USING (SELECT b.rowid AS rid,
+SUM (b.金额 1) over (PARTITION BY b.公司，b•部门，b
+b.currency—id ORDER BY b.会计期间）AS 累计金额 1,
+e .金额2,
+e.累计金额2
+FROM tablel b
+LEFT JOIN (SELECT e.公司，
+e.部门，
+e.业务，
+e.会计期间，
+e.金额2,
+SUM (金额 2> over (PARTITION BY e.公司，e •部门，
+.业务，
+e.业务
+ORDER BY e.会计期间）AS累计金额2
+FROM (SELECT e.公司，
+e.部门，
+e.业务，
+e.会计期间，
+SUM (金额1> AS金额2
+FROM table2 e
+WHERE substr (e •会计期间，1, 4) = extract (YEAR
+SYSDATE)
+GROUP BY e.公司，e.部门，e.业务，e.会计期间）e
+ON (e.会计期间=b.会计期间AND e.公司=b.公司AND e.部门=b
+AND e.业务=b.业务>
+WHERE substr (b.会计期间，1, 4) = extract (YEAR FROM SYSDATE))
+(f.rowid = b.rid)
+WHEN MATCHED THEN
+UPDATE
+SET f.累计金额1 = nvl (b.累计金额1, 0),
+f.金额 2	=	nvl (b.金额 2, 0),
+f.累计金额2 = nvl (b.累计金额2, 0)
+
+MERGE INTO g
+USING (SELECT a.col6,
+wmsys.wm_concat(c.col2 ||	||	nvl(c.col3,	c.col4)) AS coll
+FROM	g	a
+JOIN	b	ON a.col7 =	b.col8
+JOIN	k	c ON b.id =	c.col5
+WHERE	a _	,col9 = '10A	1
+GROUP	BY a.col6) x
+ON (x.col6 =	g	.col6)
+WHEN MATCHED	THEN
+UPDATE SET g.coll = x.coll WHERE g.col9 = 110A*;
+
+
+MERGE INTO g
+USING (SELECT a.col6,
+wmsys.wm_concat(c.col2 ||	||	nvl(c.col3,	c.col4)) AS coll
+FROM	g	a
+JOIN	b	ON a.col7 =	b.col8
+JOIN	k	c ON b.id =	c.col5
+WHERE	a _	,col9 = '10A	1
+GROUP	BY a.col6) x
+ON (x.col6 =	g	.col6)
+WHEN MATCHED	THEN
+UPDATE SET g.coll = x.coll WHERE g.col9 = 110A*;
+
+MERGE INTO (SELECT a.coll, a.col4, a.nchar col
+FROM f3111 a
+WHERE a.nchar_col = f
+AND a.col7 = fWX*
+AND a.col8 = ,CD1999f
+AND a.col9 = 0) a
+USING (SELECT b.col2, b.col3, b.col6
+FROM f3112 b
+GROUP BY b.col2, b.col3, b.col6)
+ON (b.col3 = a.col4 AND a.nchar_col = t
+WHEN MATCHED THEN
+UPDATE SET a.coll = to_char(b.col2)
+WHERE a.coll <> to char(b.col2);
+CD10f
+b
+.col6);
+
+MERGE INTO t_objects o
+USING t—tables t ON (t.owner = o.owner AND t.table_name = o.object_name)
+WHEN MATCHED THEN UPDATE
+SET o.tablespace_name = t.tablespace_name;
+
+WITH UP AS
+(SELECT MAX(BDSJ) UTIME, PPC.JG
+FROM PPC, PP
+WHERE PPC.PID = PP.PKID
+AND PPC.TZLX IN ('lb',	'dr,,	fjy')
+GROUP BY PPC.JG),
+AP AS
+(SELECT MAX(SYSTIME) SYSTIME, ORGID FROM NPS GROUP BY ORGID),
+XO AS
+(SELECT DISTINCT PPC.JG ORGID,
+(SELECT NAME FROM QHDM WHERE VALUE = O.QHDM) QHDM,
+O.ORGNAME,
+COUNT(CASE
+WHEN PPC.BDSJ > NVL(AP.SYSTIME,	'1600-09-14
+00:00:00*) AND
+PPC . TZLX IN (丨 lb * , 'dr 1 ) AND PP. PKID IS NOT NULL
+THEN
+PPC.JG
+END) OVER(PARTITION BY PPC.JG) AS LB,
+COUNT(CASE
+WHEN PPC.BDSJ > NVL(AP.SYSTIME,	'1600-09-14
+00:00:00') AND
+PPC.TZLX = ' jy' AND AND UPPER (SPXX. JYBIAO) <>
+'LTRY' THEN
+PPC.JG
+END) OVER(PARTITION BY PPC.JG) AS JY,
+UP.UTIME,
+O.QFBS,
+'.'CONTEXT,
+(SELECT ORGNAME FROM OO WHERE ORGID = O.PORGID) PORGNAME,
+O.PORGID,
+AP.SYSTIME
+FROM PPC
+INNER	JOIN	(SELECT * FROM OO WHERE YOUXIAO = '1') O	ON O.ORGID = PPC.JG
+INNER	JOIN	UP ON UP.PPC.JG = PPC.JG		新消皂（1)
+LEFT	JOIN	AP ON AP.ORGID = PPC.JG		斷l新闻
+LEFT	JOIN	PP ON PPC.PID = PP.PKID
+LEFT	JOIN	SPXX ON (SPXX.EVENTID = PPC.EVENTID AND	SPXX.XM =
+SPYY SF7.H s	PP CIF7.H) . . . . , ■ ■ .. . . r ■ 1 1 II
+WHERE
+                                                                    AND
+                                                                    SELECT *
+                                                                    PPC.TZLX IN ('lb',	•dr.,	1jy*)
+                                                                    -AND NVL(AP.SYSTIME, •1600-09-14 00:00:00*)
+                                                                    PPC.BDSJ >= '2013-09-26 00:00:00')
+                                                                    FROM XO
+                                                                    UP.UTIME
+                                                                    WHERE NVL(SYSTIME, '1600-09-14 00:00:00') < UTIME
+
+
+SELECT A.*, •
+B.SNAME AS SNAME,
+TO_CHAR(SYSDATE, 'YYYYMMDD') AS CREATETIME,
+TO一CHAR(SYSDATE, YYYYMMDD') AS UPDATETIME
+FROM (SELECT A.CODE AS CODE,
+A.M一CODE AS M一CODE,
+A.STKTYPE AS F_STYPE,
+A.E_YEAR AS E_YEAR,
+A.C_DATE AS C一DATE,
+CASE
+WHEN A.C一DATE >= TO一CHAR(SYSDATE - 3,	*YYYYMMDD')
+SUM(VALUEF2)
+OVER(PARTITION BY A.CODE,
+A.E一YEAR ORDER BY TO_DATE(C一DATE, 'YYYYMMDD')
+RANGE BETWEEN 180 PRECEDING AND CURRENT ROW)
+END AS F70115一70011,
+CASE
+WHEN A.C_DATE >= TO一CHAR<SYSDATE - 3,	*YYYYMMDD')
+SUM(VALUEFl)
+OVER(PARTITION BY A.CODE,
+A.E_YEAR ORDER BY TO_DATE(C_DATE,	1YYYYMMDD*)
+RANGE BETWEEN 180 PRECEDING AND CURRENT ROW)
+END AS F70104—70011,
+CASE
+WHEN A.C_DATE >= TO一CHAR(SYSDATE - 3,	1YYYYMMDD1)
+SUM(VALUEF6)
+OVER(PARTITION BY A.CODE,
+A.E_YEAR ORDER BY TO一DATE(C_DATE, 'YYYYMMDD')
+RANGE BETWEEN 180 PRECEDING AND CURRENT ROW)
+THEN
+THEN
+THEN
+END AS F70126一70011,
+
+CASE
+WHEN A.C_DATE >= TO一CHAR(SYSDATE - 3, 'YYYYMMDD*) THEN
+SUM(VALUEF5)
+OVER(PARTITION BY A.CODE,
+A.E_YEAR ORDER BY TO_DATE<C_DATE, 'YYYYMMDD1)
+RANGE BETWEEN 180 PRECEDING AND CURRENT ROW)
+END AS F70131-70011,
+•-* AS F—UNIT
+FROM A
+WHERE A.C一DATE >- TO一CHAR(SYSDATE - 3 - 180, 'YYYYMMDD*)
+)A
+INNER JOIN B0LINK B ON (A.CODE « B.SCODE)
+WHERE B.STYPE = 2
+AND B.STATUS * 1
+AND A.C DATE >= TO CHAR(SYSDATE - 3,	'YYYYMMDD');
+
+
+
+SELECT a.code
+AS code
+FROM
+a.m—code AS
+a.stktype AS
+a.c一date	AS
+a2.*,
+b.	sname AS
+a
+m一code•
+f_stype,
+c_date,
+sname
+INNER JOIN (SELECT a.e_year.
+180,
+SUM(valuef2) over(PARTITION BY a.e一year> AS
+SUM(valuefl) over(PARTITION BY a.e一year) AS
+SUM(valuef6) over<PARTITION BY a.e_year) AS
+SUM(valuef5) over (PARTITION BY a.e^year) AS
+AS f__unit
+FROM a
+WHERE (a.c__date >= to_char (to__date (20140218,
+'YYYYMMDD') AND a.c_date <= 20140218)
+AND a.code = * 000001 *
+GROUP BY e_year) a2
+ON (a2.e_year = a.e_year)
+INNER JOIN (SELECT b.snamef b.scode
+FROM b@link b
+WHERE b.stype = 2
+AND b.status = 1
+AND b.scode = '0000011) b
+ON (a.code = b.scode)
+WHERE a.c date = 20140218;
+f70115__70011f
+f70104一70011,
+f70126一70011,
+f70131 70011,
+'YYYYMMDD1)-;
+
+
+SELECT *
+FROM (SELECT ii.*,
+CASE
+/ *用分析函数代替标董自连接*/
+WHEN (SUM(CASE WHEN flag = 2 AND c.c_id IS NULL THEN 1 END)
+over(PARTITION BY ii.i一code)) > 1 THEN
+2
+ELSE
+1
+END AS mulinv
+FROM ii
+/★因c.cid为主键，所以可改为LEFT JOIN,而不必担心主查询数据会翻倍★ /
+LEFT JOIN c ON (c.c__id = ii.c_id AND c.ig__name LIKE 停用％•>
+/*为了保证分析函数窗n内一数据与原标量_范围一致，这里&过滤条件要保持一致★/
+WHERE ii.id > 0)
+/★提取出原标最所需数据后再应用其他的过滤条件*/
+WHERE itemdesc LIKE :1
+AND ii.isphantom <> :2
+AND ii.c_id * :3
+ORDER BY ii.i_code, ii.i_name, ii. d id;
+
+SELECT a.empno,
+di • 01131116 9
+a•sal,
+(SELECT SUM(b.sal)
+FROM b
+WHERE b.sal >= a.sal - 100
+AND b.sal <= a.sal) AS 改写前，
+c.改写后
+FROM a
+LEFT JOIN (SELECT a. rowid AS rid, SUM (b.sal) AS 改写后
+FROM b
+INNER JOIN a ON (b.sal >: a.sal - 100 AND b.sal <= a.sal)
+GROUP BY a.rowid) c
+ON c.rid = a.rowid
+ORDER BY 3;
+
+SELECT a.empno,
+di • 01131116 9
+a•sal,
+(SELECT SUM(b.sal)
+FROM b
+WHERE b.sal >= a.sal - 100
+AND b.sal <= a.sal) AS 改写前，
+c.改写后
+FROM a
+LEFT JOIN (SELECT a. rowid AS rid, SUM (b.sal) AS 改写后
+FROM b
+INNER JOIN a ON (b.sal >: a.sal - 100 AND b.sal <= a.sal)
+GROUP BY a.rowid) c
+ON c.rid = a.rowid
+ORDER BY 3;
+
+WITH ct2 AS
+(SELECT a.rowid AS rid,
+MIN(CASE
+WHEN trunc(ct.contdate) >« a.opensaledate THEN
+ct.contdate
+END) AS mincontdate,
+MIN(CASE
+WHEN trunc(ct.buydate) >= a.opensaledate THEN
+ct.buydate
+END) AS minbuydate
+FROM ct
+INNER JOIN a ON (ct.licenceid = a.licenceid AND ct.data一source -
+a.data一source)
+GROUP BY a.rowid)
+SELECT a•licenceid,
+a.data_source,
+a.street,
+ct2 .mincontdate AS mincontdate, 一 标最2
+ct2 .minbuydate AS minbuydate --标最3
+FROM a
+LEFT JOIN ct2 ON (ct2.rid = a.rowid);
+
+SELECT s.sid, s.sname, c.cid, c.ringcid, c.mvcid
+FROM
+INNER
+WHERE
+AND
+JOIN (SELECT c.sid,
+MAX(CASE	WHEN	c
+MAX(CASE	WHEN	c
+MAX(CASE	WHEN	c
+FROM b c
+WHERE status IN Cl'
+GROUP BY c.sid) c ON
+1*1
+NOT EXISTS (SELECT 1
+FROM b c
+WHERE c.sstype ® '8'
+AND c.price = '0'
+AND c.distributionarea
+AND c.distributionarea
+sstype
+sstype
+sstype
+11	THEN	cid	END)	AS	mvcid,
+8*	THEN	cid	END)	AS	ringcid.
+6'	THEN	cid	END)	AS	cid
+*3')
+(c.sid
+s.sid)
+!= '99'
+IS NOT NULL
+AND s.sid = c.sid);
+
+SELECT /*省略部分返回列*/
+FROM f4101
+INNER JOIN
+f4102.iblitm)
+LEFT JOIN
+« f4101.imuoml)
+LEFT JOIN
+f4102 ON (f4101.imitm = f4102.ibitm AND f4101.imlitm
+(SELECT umitm,
+umum.
+MAX(CASE	WHEN	m =	'I'	THEN	round(v.	2)	END)	AS	m3.
+MAX(CASE	WHEN	m -	,2.	THEN	round(v.	2)	END)	AS	kg,
+MAX(CASE	WHEN	m =	• 3,	THEN	round(v,	2)	END)	AS	kn,
+MAX(CASE	WHEN	m =	'4'	THEN	round<v,	2)	END)	AS	mh.
+MAX(CASE	WHEN	m =	•5.	THEN	round(v.	2)	END)	AS	ml.
+MAX(CASE	WHEN	m =	'6'	THEN	round(v.	2)	END)	AS	mw
+FROM F2
+GROUP BY umitm, umum) F2 ON (F2 . umitm = f 4101. imitm AND F2 . umum
+(SELECT bplitm,MAX(bpuprc) / 10000 AS bpuprc
+FROM f4106
+WHERE TRIM(bpmcu) * 'ZX10'
+AND bpcrcd » fCNY'
+GROUP BY bplitm) f4101 ON f4106.bplitm = f4101.imlitm
+WHERE ibmcu <> •	ZX10'
+
+AND imdscl NOT LIKE *%取消％•
+AND (imsrp5 IN (*1*, '6') OR imsrp3 IN ('371,
+iblitm IN (1506000040') AND TRIM(ibmcu)=
+'38') OR
+'SF10')；
+
+SELECT d.departn\ent_id,
+d.department_name,
+d. location__id,
+nvl(e•sum 一sal, 0) AS sum一sal
+FROM hr.departments d
+LEFT JOIN (SELECT e•department_id, SUM(e.salary) AS sum一sal
+FROM hr.employees e
+GROUP BY e. department*_id) e ON (e. department_id
+d.department一id);
+
+SELECT /*+ use nl(e,d) */
+e.empno, e.ename, e.sal, e.deptno, d.dname
+FROM emp e
+LEFT JOIN dept d ON '(d.deptno = e.deptno);
+
+WITH 1 AS
+(SELECT LEVEL AS lv FROM dual CONNECT BY LEVEL O 9),
+m AS
+(SELECT a.lv AS lv一a,
+t».lv AS lv_b,
+to_char{b.lv) ||	•	X	•	||	to_char(a.lv) II '='
+rpad(to一char(a•lv * b.lv), 2,	'	') AS text
+FROM 1 a, 1 b
+WHERE b.lv <= a.lv)
+SELECT listagg(m.text, ’	'	)	within	GROUP	(ORDER	BY	m.lv_b)	AS 小九九
+FROM m
+GROUP BY m.lv a;
+
+
+oracle 的列转行函数 listagg()
+当你的表X中有A,B两列，数据如下
+
+A　　B
+
+a　　1
+
+a　　2
+
+a　　3
+
+b　　1
+
+b　　2
+
+b　　3
+
+想让数据以 a|1|2|3 , b|1|2|3 格式显示可使用listagg()
+
+1、使用listagg() + group by
+
+select A,B,listagg(B,'|') within GROUP (order by A)  C from X group by A;
+
+
+
+2、使用listagg() + over(partition by ?)
+
+select A,B listagg(B,'|') within Group(order by A) over(partition by A)  C from X;
+
+
+
+
+select deptno,ename,sal,listagg(ename,',')within group(order by sal)over(partition by deptno)name from emp;
+
+----------------------------------------------------------------------------------------------------------
+
 
 SUM        ：该函数计算组中表达式的累积和
 
