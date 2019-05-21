@@ -2436,3 +2436,515 @@ AST280
 12.5.2　编写Pass 434
 12.5.3　Obfuscator-LLVM 440
 12.5.4　代码混淆壳的脱壳 443
+
+
+Android 实习生面试经历记录
+
+链接：https://www.jianshu.com/p/3cd5ef51eed5
+
+从 2018.12.28 的第一次面试到 2019.01.09 整整横跨了一年。也面试了几家公司的 Android 实习僧的岗位。
+
+有大厂：滴滴、猪厂、字节等
+也有中厂：玩吧App等
+也有小厂：xxxxxx
+
+给我的感觉就是
+大厂更注重你的基本知识，你对待一个问题的思路。是否是以一个工程师的角度去看待问题。也更注重数据结构&&算法（我的痛）这一块的知识的考察。不会是简单的考你排序、查找这种考研层面上的东西。小厂的话，大概是因为需要即插即用，也没有很好的导师类资源，更看重你的自我学习能力和一个自我学习的过程，以及实际开发的能力。好了，话不多说，我们就直接进入面试的总结。题目旁边会标注是大厂中厂还是小厂的面试题，就不按公司整理啦，如果是All就是基本都会考到（需要重点理解）（部分问题的答案是自己 google 后的结果和学习的结果，部分问题的答案也来自厘米姑娘小姐姐的简书里的三份安卓面试题解（真的很详细很感谢了！）)
+
+一、四大组件相关问题
+是否了解Activity的四种启动模式？(All）
+
+
+四种启动模式：Standerd、SingleTop、SingleTask、SingleInstance。
+
+
+Standard(默认标准启动模式):每次启动都重新创建一个新的实例，不管它是否存在。且谁启动了这个Acitivity,那么这个Acitivity就运行在启动它的那个Acitivity的任务栈中。
+
+SingleTop(栈顶复用模式):如果新的Activity已经位于任务栈的栈顶，那么不会被重新创建，而是回调onNewIntent()方法，通过此方法的参数可以取出当前请求的信息。
+
+SingleTask(栈内复用模式):这是一种单例模式，在这种模式下，只要Acitivity在一个栈中存在，那么多次启动此Acitivity都不会重建实例，而是回调onNewIntent方法。同时由于SingleTask模式有ClearTop功能，因此会导致所要求的Acitivity上方的Acitivity全部销毁。
+
+SingleInstance(单实例模式):和栈内复用类似，此种模式的Acitivity只能单独位于一个任务栈中。全局唯一性。单例实例，不是创建，而是重用。独占性，一个Acitivity单独运行在一个工作栈中。
+
+如果假设A是Standard，B是SingleTop，C是SingleTask，D是SingleInstance的启动模式，那么以A->B->C->D->A->B->C->D这种情况开启Activity，分析一下最后的工作栈是怎样的情况？（大厂）
+
+此题在理解启动模式的情况下解答。
+
+栈内情况
+栈内情况
+Activity的生命周期？在横竖屏转换时候的生命周期流程是怎样的？（小厂）
+
+onCreate()表示 Activity 正在创建，常做初始化工作，如 setContentView界面资源、初始化数据。
+onStart()表示Activity 正在启动，这时Activity 可见但不在前台，无法和用户交互。
+onResume()表示Activity 获得焦点，此时Activity 可见且在前台并开始活动。
+onPause()表示Activity 正在停止，可做 数据存储、停止动画等操作。
+onStop()表示activity 即将停止，可做稍微重量级回收工作，如取消网络连接、注销广播接收器等。
+onDestroy()表示Activity 即将销毁，常做回收工作、资源释放。
+onRestart()表示Activity由不可见到可见的过程，Activity重新启动。
+
+屏幕旋转时的生命流程：
+onPause()
+onSaveInstanceState()
+onStop()
+onDestroy()
+onCreate()
+onStart()
+onRestoreInstanceState()
+
+onResume()为了避免由于配置改变导致 Activity 重建，可在AndroidManifest.xml中对应的 Activity中设置android:configChanges="orientation|screenSize"。此时再次旋转屏幕时，该Activity不会被系统杀死和重建，只会调用onConfigurationChanged。
+
+在 SingleTop 模式中，我如果打开一个已经存在栈顶的Activity，他的生命流程是怎样的？（小厂）
+
+打开第一个A：A.OnCreate()->A.onStart()->A.onResume()
+此时由A跳转至B：A.onPause()->B.onCreate()->B.onStart()->B.onResume()->A.onStop()
+此时B的启动模式是栈顶模式，再由B打开B：B.onPause()->B.onNewIntent()->B.onResume()
+
+Service简要介绍一下？（基本都会问，但不可能只说概念上的，需要展开All）
+
+Service是Android中实现程序后台运行的一种解决方案，适合执行那些不需要与用户交互而且要求长期运行的任务。
+
+Service的两种启动方式简要介绍一下吧？（大厂、小厂)
+
+①组件通过调用 Context 的 StartService()方法启动一个服务，回调服务中的onStartCommand()。如果该服务还没有被创建，则回调的顺序为 onCreate()->onStartCommand()。服务被启动后会一直保存运行的状态，直到 StopService()或者 StopSelf() 方法被调用，服务停止并回调 onDestroy()。无论调用多少次StartService()只需要调用一次 StopService() 就能终止服务。
+②组件通过调用 Context 的 bindService() 可以绑定一个服务，回调服务中的onBind() 方法。类似地，如果该服务之前还没创建，那么回调的顺序是onCreate()->onBind()。之后调用方可以获取到 onBind() 方法里返回的IBinder 对象的实例，从而实现和服务的通信。直到调用了 unBindService() 方法使服务终止，回调顺序 onUnBind()->onDestroy()。
+
+Service 如何和 Activity 进行通信？(中厂）
+
+①通过绑定服务的方式。在绑定的服务中声明一个Binder类，并创建一个Binder对象，在onBind()函数中返回这个对象，并让Activity实现ServiceConnection接口，在OnServiceConnected方法中获取到Service提供的这个Binder对象，通过这个对象的各种自定义的方法就能完成Service与Activity的通信。
+②通过Intent的方式，在StartService()中需要传入一个Intent对象作为参数，通过这个Intent实例对象进行实现通信。
+③通过Callback和Handler的方式，在绑定的服务中声明一个Binder类，并创建一个Binder对象，在onBind()函数中返回这个对象，让Activity实现ServiceConnection接口，并且在OnserviceConnected方法中实例化Service中的CallBack接口，并且实现OnDataChange()方法，其中的实质是一段Handler代码，可以在其中完成耗时操作，以这种方式完成通信。
+
+Android 数据持久化的方式有了解过嘛？ContentProvider 有接触过吗？（小厂）
+
+①File文件存储方式：写入读取文件和Java中实现IO类似
+②SharePreferences存储：一种轻型的数据存储方式，适用于基本类型数据，本质是以键值对存在的XML文件。
+③SQLite数据库存储：   一款轻量级的关系型数据，运算速度快，资源占用少，存储复杂的关系型数据时候使用
+④ContentProvider：四大组件，用于数据的存储和共享，不止局限于数据被该应用程序使用，且能让不同的应用之间进行数据共享，还能通过对指定的一部分数据进行共享，从而保证隐私数据不会有泄露的风险。
+
+
+ContentProvider是安卓的四大组件之一，主要负责数据的存储和共享。与文件存储、sharePreferences存储、SQLite存储方式不同的是，后者保存的数据只能被该应用程序使用，而前者所保存的数据可以让不同应用之间的数据进行共享，还可以对指定的一部分数据进行共享，从而保证隐私数据不会有泄露的风险。
+
+聊聊 Android 的广播机制吧？(All）
+
+广播是一种运用在应用程序之间传输信息的机制，Android中我们发送广播内容实质是一个Intent，这个Intent中可以携带我们要发送的数据。（当然也不可以像Service一样简单的谈谈概念性的东西，你可以深入的展开。）
+
+譬如广播的三大种类
+①普通广播：一种完全异步执行的广播，在广播发出之后，所有的广播接收器几乎都会在同一时刻接收到这条广播消息，因此它们接收的先后是随机的。
+②有序广播：一种同步执行的广播，在广播发出之后，同一时刻只会有一个广播接收器能够收到这条广播消息，当这个广播接收器中的逻辑执行完毕后，广播才会继续传递，所以此时的广播接收器是有先后顺序的，且优先级（priority）高的广播接收器会先收到广播消息。有序广播可以被接收器截断使得后面的接收器无法收到它。
+③本地广播：发出的广播只能够在应用程序的内部进行传递，并且广播接收器也只能接收本应用程序发出的广播。
+
+或者广播的两大注册方式？
+
+静态注册：
+① 创建一个广播接受器类，在onReceive()方法中Toast一段信息。
+② 在AndroidMainfest.xml中注册才可以使用。
+
+动态注册：
+新建一个类，继承自BroadCastReceiver，并重写OnReceive函数。
+由于动态注册是实现在OnCreate方法中的，因此存在一个缺点，必须启动后才能接受到广播。未启动之下就能接收到广播的话，使用静态注册广播接收器。
+
+或者再深入可以聊聊本地广播的源码角度分析其高效、安全、内部协作是如何实现的。这里我们就不展开了。
+
+二、Android 消息机制
+简单的描述一下Handler消息传递机制是怎么实现的？（All）
+
+① 概述：Handler是可以通过发送和处理Message和Runnable对象来进行消息传递，是一种异步消息机制。可以让对应的Message和Runnable在未来的某个时间点进行相应的处理。让耗时操作在子线程里执行，让更新UI的操作在主线程中完成，而子线程和主线程之间的通信就是靠Handler实现的。
+② 成员：
+
+Message(消息)：是线程之间传递的信息，可以携带少量的信息，用于在不同线程之间交换数据。
+
+Handler(处理者)：负责Message的发送及处理。通过 Handler.sendMessage() 向消息池发送各种消息事件；通过 Handler.handleMessage() 处理相应的消息事件。
+
+MessageQueue(消息队列)：用来存放Handler发送过来的消息，内部通过单链表的数据结构来维护消息列表，等待Looper的抽取。
+
+Looper(消息泵)：通过Looper.loop()不断地从MessageQueue中抽取Message，按分发机制将消息分发给目标处理者。
+③ 流程：
+
+Handler信息传递机制
+Handler信息传递机制
+Handler.sendMessage()发送消息时，会通过MessageQueue.enqueueMessage()向 MessageQueue 中添加一条消息；
+
+通过 Looper.loop() 开启循环后，不断轮询调用 MessageQueue.next()；
+
+调用目标 Handler.dispatchMessage() 去传递消息，目标 Handler 收到消息后调用 Handler.handlerMessage() 处理消息。
+
+子线程中使用 Handler 需要注意什么？(中厂)
+
+和在主线程中直接 new 一个 Handler 不同，由于子线程的 Looper 需要手动去创建，需要手动编写 Looper.loop() 与 Looper.prepare() 方法。
+
+            @Override
+            public void run() {
+                Looper.prepare();//调用Looper.prepare()
+                new Handler() {
+                @Override
+                public void handleMessage(Message msg) {
+                    super.handleMessage(msg);
+                }
+            };
+                Looper.loop(); //调用Looper.loop()
+            }
+        }).start();
+
+
+Hanlder 的 postDealy()调用后消息队列会发生什么变化？（中厂）
+
+这题我当时没回答上来，回来以后仔细查看了相关的答案。在这里直接引用的厘米姑娘小姐姐的答案回答的这个问题。
+
+post delay 的 Message 并不是先等待一定时间再放入到 MessageQueue 中，而是直接进入并阻塞当前线程，然后将其 delay 的时间和队头的进行比较，按照触发时间进行排序，如果触发时间更近则放入队头，保证队头的时间最小、队尾的时间最大。此时，如果队头的 Message 正是被 delay 的，则将当前线程堵塞一段时间，直到等待足够时间再唤醒执行该 Message，否则唤醒后直接执行。
+
+简要解释一下 ANR？为什么会发生 ANR？如何避免发生 ANR？如何定位 ANR？那你还了解哪些线程间切换的类？简要选一个进行一下阐述吧？（大厂）
+
+先说点无关的，这是一连串的提问，涉及到性能优化->ANR问题定位->消息传递->实现原理，所以在面试的时候你尽量不要选择他问一个你答一句话，你可以把你有把握，之前有所准备的内容，按照一个条理跟面试官阐述清楚，他大概会好感度UP。当然必须要对你所说的东西保证充分的熟悉，因为他基本都会抓着你所说的继续跟你深入探讨下去。当然实习僧不会问的特别深入，但是你如果能把原理、机制都跟他说的很清晰有条理且有结构的话。会让面试官对你的好感有一定的上升（我猜的但应该没猜错）。也就是我们开题的时候所说的用工程师的眼光看待问题。什么问题？为什么发生问题？怎么定位并解决问题？
+
+
+以下是我对这道题的回答，只是参考，如果有错误希望指正：
+① ANR(Application Not Responding，应用程序无响应)：当操作在一段时间内系统无法处理时，譬如：应用在5秒内未相应用户的输入事件。广播接收器10秒内未完成相关的处理。服务20秒内无法处理完成，那么会在系统层面会弹出应用程序无响应的对话框。
+② 所以为了避免发生ANR，我们尽量使用多线程，不要在主线程做耗时操作，而是通过开子线程，把耗时的工作放在工作线程中处理。所使用的方法比如继承自Thread类、实现Runnable接口、使用AsyncTask、IntentService、HandlerThread等机制。
+③ 如果发生了ANR则可以通过data/anr找到traces.txt文件确定ANR发生的原因。
+④ 关于上面说的这些多线程机制，如果您感兴趣的话我可以简要的跟你阐述其中的一个或几个机制的具体内容。比如AsyncTask机制，AsyncTask机制底层封装了线程池和Handler，便于执行后台任务以及在子线程中进行UI操作。使用AsyncTask要理解3个泛型参数和4个方法。
+
+Params: 这个泛型指定的是我们传递给异步任务执行时的参数的类型。
+
+Progress: 这个泛型指定的是我们的异步任务在执行的时候将执行的进度返回给UI线程的参数的类型。
+
+Result: 这个泛型指定的异步任务执行完后返回给UI线程的结果的类型。
+我们在定义一个类继承AsyncTask类的时候，必须要指定好这三个泛型的类型，如果都不指定的话，则都将其写成Void。
+4个方法：当我们执行一个异步任务的时候，其需要按照下面的4个步骤分别执行
+onPreExecute(): 这个方法是在执行异步任务之前的时候执行，并且是在主线程当中执行的，通常我们在这个方法里做一些UI控件的初始化的操作，例如弹出一给ProgressDialog。
+
+doInBackground(Params… params): 在onPreExecute()方法执行完之后，会马上执行这个方法，这个方法就是来处理异步任务的方法，Android操作系统会在后台的线程池当中开启一个worker thread来执行我们的这个方法，所以这个方法是在工作线程当中执行的，这个方法执行完之后就可以将我们的执行结果发送给我们的最后一个 onPostExecute 方法，在这个方法里，我们可以从网络当中获取数据等一些耗时的操作。
+
+onProgressUpdate(Progess… values): 这个方法也是在主线程当中执行的，我们在异步任务执行的时候，有时候需要将执行的进度返回给我们的UI界面，例如下载一张网络图片，我们需要时刻显示其下载的进度，就可以使用这个方法来更新我们的进度。在调用之前，我们要在 doInBackground 方法中调用publishProgress(Progress) 的方法来将我们的进度时刻传递给onProgressUpdate 方法来更新。
+
+onPostExecute(Result… result): 当我们的异步任务执行完之后，就会将结果返回给这个方法，这个方法也是在UI Thread当中调用的，我们可以将返回的结果显示在UI控件上。
+
+你可以不用说的这么具体，但是如果你能把这一系列都答上来，那面试官应该是不会在继续为难你。我在回答的时候还聊到了多线程可能发生内存泄露的问题，然后被面试官尴尬的说：“不用了不用了，我们继续下一个问题。”其实我也不懂这算不算一种好事吧，但是总归是你对整个知识体系的理解嘛。希望有大佬能指正什么的。感恩！
+
+三、View 及其他控件的使用和优化
+其实在这一块，主要还是按照你所做的项目的情况对你进行具体的提问，所以对你的项目所使用的框架、组件、控件必须要烂熟于心。知道为什么使用它，怎么使用它，使用它的结果是优化了些什么？
+
+简要阐述一下消息分发机制吧？（All）
+
+这也算是老生常谈的一道基本是必考题了，可以先谈谈MotionEvent的几种事件，分别在什么条件下会发生。再谈谈分发的本质、传递顺序、核心方法等，有一点非常关键，因为消息分发机制是一个责任链模式，所以在阐述的时候务必逻辑清晰。如果能结合源码的实现来谈大概也会让面试官好感Up。
+
+MotionEvent 是手指触摸屏幕产生的一系列事件。包含的事件有：
+
+ACTION_DOWN：手指接触屏幕
+
+ACTION_MOVE：手指在屏幕上滑动
+
+ACTION_UP：手指在屏幕上松开的一瞬间
+
+ACTION_CANCEL：手指保持按下操作，并从当前控件转移到外层控件时会触发
+
+事件分发本质：就是对MotionEvent事件分发的过程。即当一个MotionEvent产生了以后，系统需要将这个点击事件传递到一个具体的View上。
+点击事件的传递顺序：Activity（Window） -> ViewGroup -> View
+三个主要方法：
+
+dispatchTouchEvent：进行事件的分发。返回值是 boolean 类型，受当前onTouchEvent和下级view的dispatchTouchEvent影响.
+
+onInterceptTouchEvent：对事件进行拦截。该方法只在ViewGroup中有，一旦拦截，则执行ViewGroup的onTouchEvent，在ViewGroup中处理事件，而不接着分发给View。且只调用一次，所以后面的事件都会交给ViewGroup处理。
+
+onTouchEvent：进行事件处理。
+
+另外可以有选择性的记录两段源码，分别是 view 和 viewGroup 的dispatchTouchEvent 方法。以下是 view 的 dispatchTouchEvent()函数的主要部分，主要是三个判断条件的分析。
+
+public boolean dispatchTouchEvent(MotionEvent event){
+    ...//省略
+    if(mOnTouchListener != null && (mViewFlags & ENABLED_MASK)==ENABLED &&
+mOnTouchListener.onTouch(this,event)){
+        return true;
+    }
+    return onTouchEvent(event);
+}
+以下是ViewGroup的dispatchTouchEvent()函数的主要部分：
+
+public boolean dispatchTouchEvent(MotionEvent event){
+   ...//省略
+   if(disallowIntercept||!onInterceptTouchEvent(ev)){
+       child.dispatchEvent()
+}
+你甚至可以和他谈一谈关于 disallowIntercept 去解决滑动冲突的问题。理论搭配源码，食用极佳。关于源码的分析很多大牛都写过了，我也是抱着学习的态度。这里就不贴出来了。
+
+滑动冲突事件应该怎样去解决?(中厂、小厂）
+
+这里当时第一次被问到的时候确实没有准备，之后看了厘米姑娘的面试题解（再次强力安利！）就回答上来了，以下直接贴小姐姐所写的解答，可以在这个解答的基础上加上一些自己的看法或者实际开发中遇到的类似问题。
+（1）处理规则：
+对于由于外部滑动和内部滑动方向不一致导致的滑动冲突，可以根据滑动的方向判断谁来拦截事件。
+对于由于外部滑动方向和内部滑动方向一致导致的滑动冲突，可以根据业务需求，规定何时让外部View拦截事件何时由内部View拦截事件。
+对于上面两种情况的嵌套，相对复杂，可同样根据需求在业务上找到突破点。
+（2）实现方法：
+
+外部拦截法：指点击事件都先经过父容器的拦截处理，如果父容器需要此事件就拦截，否则就不拦截。具体方法：需要重写父容器的 onInterceptTouchEvent 方法，在内部做出相应的拦截。
+
+内部拦截法：指父容器不拦截任何事件，而将所有的事件都传递给子容器，如果子容器需要此事件就直接消耗，否则就交由父容器进行处理。具体方法：需要配合requestDisallowInterceptTouchEvent 方法。
+
+ListView 和 RecyclerView的选择？为什么？（中厂）
+
+①布局效果：RecyclerView支持线性布局、网格布局、瀑布布局，可以控制横向纵向滚动，从布局效果上来看完爆ListView。
+②基础使用：ListView需要继承重写BaseAdapter类，自定义ViewHolder和重用ConvertView完成优化工作。
+RecyclerView继承重写RecyclerView.Adapter和RecyclerView.ViewHolder，设置布局管理器，控制整体布局。规范化了ViewHolder，复用item也不需要像ListView一样SetTag。
+③空数据处理：ListView提供了setEmptyView这个API来处理Adapter中数据为空的情况，RecyclerView没提供相应API。
+④HeaderFooter：ListView提供了AddRemoveHeaderView方法解决，RecyclerView没有提供。
+⑤局部刷新：ListView刷新notifyDataSetChanged()方法，局部刷新需要自己实现。RecyclerView.Adapter则提供了notifyItemChanged()拥有更新单个itemView的刷新。
+⑥动画效果：Recycler轻松实现，listview需要自己写属性动画，或者调用第三方库
+⑦监听item事件：ListView专门提供了用于监听item的回调接口，RecyclerView提供的是addOnItemTouchListener。
+
+ListView 怎么进行优化的？（All）
+
+①ConvertView重用机制：在getView()方法中使用ConvertView，不需要每次都inflate一个View出来，这样既浪费时间又浪费内存。
+②Viewholder：使用Viewholder，避免在getView()方法频繁调用去使用findViewById方法，节省时间和内存。
+③分页加载：每加载一页的数据就覆盖上一页的数据。
+④数据中有图片：使用第三方库（三级缓存机制）
+
+ListView 是怎么实现 RecycleBin 并更新 View 的？（大厂）
+
+关于这道题，第一次被问及的时候确实没回答上来，然后面试官就冲我笑笑：“嘿嘿没读过源码吧？”回去以后读了郭霖大佬的博客。做了以下记录：
+在 Adapter 中的 getView()方法中执行 LayoutInflater.inflate()方法是很消耗资源的，所以ListView通过 RecycleBin 去维护两个数组 mActiveViews 和mScrapViews 用来进行 view 的复用工作。具体是在绘制 view 的(measure->layout->draw)的 layout 过程中实现。
+主要有三个步骤：
+①ListView的children->RecycleBin
+②ListView清空children
+③Recyclebin->ListView的children
+举个例子，某一时刻ListView中显示10个子View，position依次是0-9，这时下滑，ListView需要绘制下一帧，这时候ListView在layoutchildren方法中把这10个子View都存入了mActiveViews数组中，然后清空children数组，调用filldown方法，向listview中依次添加position 1到10的子view，在填充1-9时，由于在上一帧position=1-9的view已经被放入了mActiveViews数组中，因此可以直接将其从数组中取出，直接复用。如果没能够从mActivieViews中直接复用View，那么就要调用obtainView方法获取View，该方法尝试间接复用RecycleBin中的mScrapViews中的View，如果不能间接复用，则创建新的View。这边去看郭霖大神的文章：ListView工作原理完全解析。https://blog.csdn.net/guolin_blog/article/details/44996879
+
+四、Java 基础和计网基础
+简要介绍一下HashMap的实现原理？（中厂、小厂）
+
+HashMap 基于 AbstractMap类，实现了Map、Cloneable（能被克隆）、Serializable（支持序列化）接口； 非线程安全；允许存在一个为null的key和任意个为null的value；采用链表散列的数据结构，即数组和链表的结合；初始容量为16，填充因子默认为0.75，扩容时是当前容量翻倍，即2capacity。
+1、Put方法的实现原理：比如hashMap.put(“Java”,0)，先使用hash函数来确定这个Entry的插入位置，下标为Index。即index=hash(“java”)，存入数组下标为Index的地方，但是因为hashmap长度有限，插入的Entry越来越多，Index值会发生冲突，此时可以用链表的方式解决，通过头插法，发生冲突时，插入对应的链表之中。
+2、Get方法的实现原理，比如hashMap.get(“apple”)，同样对Key值做一次hash映射，算出其对应的index值，即Index = Hash(“apple”)这时从头结点开始，一个个向下查找，通过keys.equals()方法去找到链表中正确的节点。
+
+HashMap 线程安全吗？那如何保证其线程安全呢？（中厂）
+
+可以简单谈谈，使用 Hashtable 或者 ConcurrentHashMap。它们都可以用于多线程的环境，但是当 Hashtable 的大小增加到一定的时候，性能会急剧下降，因为迭代时需要被锁定很长的时间。而 ConcurrentHashMap 引入了分割(segmentation)，不论它变得多么大，仅仅需要锁定 map 的某个部分，而其它的线程不需要等到迭代完成才能访问 map。简而言之，在迭代的过程中，ConcurrentHashMap 仅仅锁定 map 的某个部分，而 Hashtable 则会锁定整个map。在 jdk1.8 之后，取消了segments 的方式，而是使用了transient volatile HashEntry[] table 的方式保存数据，将数组元素作为锁，对每一行数据进行加锁，减少了并发冲突的概率。由数组+单向链表变为了数组+单向链表+红黑树，将查询的时间复杂度降至了O(logn)改进了一些性能。
+
+HashMap 有序吗？如何实现有序呢？（中厂）
+
+HashMap 是无序的，而 LinkedHashMap 是有序的 HashMap，默认为插入顺序，还可以是访问顺序，基本原理是其内部通过 Entry 维护了一个双向链表，负责维护 Map的迭代顺序。甚至可以深入的去谈谈 LinkHashMap 的底层实现机制。
+
+你知道哪些垃圾回收算法?（小厂）
+
+四种主要的垃圾回收算法：
+新生代：大批对象死去，只有少量存活。
+①复制算法：把可用内存按容量划分为大小相等的两块，每次只使用其中的一块，当这一块用尽时，把还活着的对象复制到另一块上，再将这块给一次性清理掉。
+老生代：对象存活率高，只需标记少量回收的对象。
+②标记-清除算法：首先标记出要回收的对象，然后统一清除带标记的对象。
+③标记-整理算法：首先标记出要回收的对象，然后进行整理，使得存活的对象都向一端移动，直接清理掉端边界以外的对象。
+④分代收集算法，集成以上的特点，对新生代和老生代分别使用不同的回收算法。
+
+TCP如何保证传输是可靠的？数据不丢失？连续且按序？（中厂）
+
+①校验和：在数据传输的过程中，将发送的数据段当做一个16位整数，将整数加起来。进位补到最后，最后取反，得到校验和。发送方和接收方对比校验和，一致不一定传输成功，但不一致一定失败。
+②确认应答与序列号：TCP传输时每个字节的数据都编了号，这就是序列号seq。每当接收方接受到数据后，都会对传输方进行确认应答，也就是发送ACK报文。这个ACK报文携带者对应的确认序列号，告诉发送方，接收到了哪些数据，下次从哪里发。
+③超时重传：两种情况没收到确认应答报文，A.数据丢包，接收方没接到。B.ACK报文丢失。
+发送方会等待一段时间，没收到ACK的情况下重发刚才发送的数据包，如果是情况A，则接收方接到后回ACK，如果是第二种情况则接收方会发现重复，丢弃数据但仍然发送ACK。
+④连接管理：三次握手、四次挥手，连接是传输的保证。
+⑤流量控制：TCP根据接收端对数据的处理能力，决定发送端的发送速度，这个机制就是流量控制。在TCP协议的报头信息中，有一个16位的窗口大小，接收方在发送确认应答ACK时，把自己的即时窗口大小填入，接收方根据这个即时窗口大小决定发送的速度。如果为0，则停止发送，等待一个超时重传的时间，并发送窗口侦测数据段，直到接收端更新这个窗口大小。
+⑥拥塞控制：如果一开始就发送大量的数据，那么可能刚开始就很拥堵，incident引入了慢启动的方式，先发送少量的数据探路，定义拥塞窗口为1，每次收到ACK就+1，然后两拥塞窗口和接受端的窗口大小进行比对，取较小的值作为实际发送的窗口。
+
+TCP、UDP有什么区别？如果我要实现一个视频播放，我应该用TCP还是UDP，为什么？（中厂）
+
+TCP：传输控制协议，面向连接的，使用全双工的可靠信道，提供可靠的服务，无差错，不丢失，不重复且按序到达。提供拥塞控制、流量控制、超时重发、丢弃重复数据等等可靠性检测手段，面向字节流，仅支持一对一，用于传输可靠性要求高的数据。
+UDP：用户数据报协议，无连接的，使用不可靠信道。尽最大努力交付，不保证可靠交付，无拥塞控制等，面向报文，支持一对一、一对多、多对多的通信，用于传输可靠性要求不高的数据。
+UDP适合于对网络通讯质量要求不高，要求网络通讯速度尽量快的应用。TCP则适合于对网络通讯质量要求高，且可靠的应用。视频播放分为关键帧和普通帧，且是实时应用，丢失一些普通帧并不会有什么影响，使用UDP更能保证其高效性和实时性。
+
+get和post有什么区别？（中厂）
+
+Get：当客户端要从服务器中读取某个资源时使用Get，一般用于获取、查询资源信息，Get参数通过URL传递，传递的参数有长度限制，不能用来传递敏感信息。
+Post：当客户端给服务器提供信息较多时可以使用Post，Post附带有用户数据，一般用于更新资源信息，Post将请求参数封装在HTTP请求数据中，可以传输大量数据，传参方式也比Get更安全。
+
+谈谈TCP为什么要三次握手、四次挥手？（中厂）
+
+TCP建立连接时为了保证连接的可靠需要进行三次握手。客户端向服务端发送建立连接的SYN报文段，一旦包含SYN报文段的数据到达服务端，服务端从中提取出SYN报文段，为该TCP连接分配需要的缓存和变量。并向客户端发送允许连接的报文段ACK以及报文段SYN，在收到报文段ACK之后，客户端也要给连接分配需要的缓存和变量，再发送一个报文段ACK，表示确认。自此完成TCP连接。
+
+由于TCP是全双工的，因此两方向需要单独关闭。客户端发起结束连接的数据段FIN，客户端确认后发送确认数据段ACK。此时结束了客户端-服务端的链接。服务端再向客户端发送数据段FIN和数据段ACK，客户端收到后回复ACK数据段。自此双方的连接正式结束。
+
+请求报文和响应报文的报文格式是怎样的？（中厂）
+
+啊啊啊讲道理，以上问题都出自同一家公司。主要是他问到了我大学期间哪门课比较擅长，我说是计算机网络。所以可见，你说你擅长的，你就一定要对它很了解。覆盖面要广，深度也要够。不然很容易被考倒，问题真的是一个接一个提出来。
+
+请求报文：
+＜request-line＞ 请求行
+＜headers＞ 请求头
+＜blank line＞ 空格
+＜request-body＞ 请求数据
+1.请求行：由请求方法字段、URL字段和HTTP协议版本字段3个字段组成，它们用空格分隔。例如，GET /index.html HTTP/1.1。
+2.请求头部：由关键字/值对组成，每行一对，关键字和值用英文冒号“:”分隔。常见的请求头：
+User-Agent：产生请求的浏览器类型。
+Accept：客户端可识别的内容类型列表。
+Host：请求的主机名，允许多个域名同处一个IP地址，即虚拟主机。
+3.空行：最后一个请求头之后是一个空行，发送回车符和换行符，通知服务器以下不再有请求头。
+4.请求数据：请求数据不在GET方法中使用，而是在POST方法中使用。POST方法适用于需要客户填写表单的场合。与请求数据相关的最常使用的请求头是Content-Type和Content-Length。
+
+响应报文
+＜status-line＞ 状态行
+＜headers＞  消息报头
+＜response-body＞ 响应正文
+1.状态行：
+HTTP-Version  Status-Code   Reason-Phrase   CRLF
+其中，HTTP-Version表示服务器HTTP协议的版本；Status-Code表示服务器发回的响应状态代码；Reason-Phrase表示状态代码的文本描述。
+状态码一般由三位数字组成，第一位数字表示相应的类型，常用的五大类型：
+①1xx：表示服务器已接受了客户端请求，客户端可继续发送请求。
+②2xx：表示服务器已接受了请求并进行处理。
+200 OK：表示客户端请求成功。
+③3xx：表示服务器要求客户端重定向。
+④4xx：表示客户端的请求有非法内容。
+400 Bad Request：表示客户端请求有语法错误，不能被服务器理解。
+401 Unauthonzed：表示请求未经授权，该状态码与WWW-Authenticate报头域一起使用。
+403 Forbidden：表示服务器接受到请求，但是拒绝提供服务，通常会在响应正文中给出不提供服务的原因。
+404 Not Found：请求的资源不存在，例如，收到了错误的url。
+⑤5xx：表示服务器未能正确处理客户端的请求而产生意外错误。
+500 Internal Server Error：表示服务器发生不可预期的错误，导致无法完成客户端的请求。
+503 Service Unavailable：表示服务器当前不能处理客户端的请求，在一段时间之后，服务器可能恢复正常。
+2.消息头部：如 Content-Type: text/html等。
+3.响应正文
+
+了解反射机制吗？简要的说一说？Class要获取的几种方式？（大厂、小厂）
+
+Java 反射机制是在运行状态下，对任意一个类，都能够知道这个类的所有属性和方法，对于任意一个对象，都能够调用它的任意一个方法和属性。这种动态获取信息的方式称作反射机制。
+①Object.getClass() （不适用于int、float等）
+Car car = new Car();
+Class clazz = car.getClass();
+②.class标识 （用于未创建该类的实例时）
+Class clazz = Car.class;
+③Class.forName() （安卓中使用@hide注解隐藏起来的类）
+Class clazz = Class.forName(com.example.test.Car);
+
+简要的谈谈序列化的机制吧？(小厂)
+
+序列化主要有两大接口 Srializable 接口和 Parcelable 接口。序列化将一个对象转换可存储可运输的状态，可以通过网络进行传递，也可以存储到本地。
+应用场景：需要通过 Intent 和 Binder 等传输类的对象都需要完成对象的序列化过程。
+①平台不同：S 是 Java 的序列化接口，P 是 Android 的序列化接口
+②序列化原理不同：S将对象转换成可存储可运输的状态，P将对象分解，分解后的每一个部分都是可传递的数据类型。
+③优缺点：S简单但是效率低，开销大，序列化、反序列化需要大量的IO操作，P高效但是编写麻烦。
+④使用场景：S主要用于序列化到存储设备或者通过网络设备传输，P主要用于内存的序列化。
+
+简要的谈谈注解的理解？(大厂)
+
+这个问题我确实还是处在知识的盲区，还需要不断学习，这里就推荐一篇文章吧。Java注解相关。https://blog.csdn.net/ClAndEllen/article/details/79392453
+
+五、项目相关问题
+以下的问题就是仁者见仁、智者见智了。主要是关于你项目的问题，所以你必须对你简历上的项目负责。保证他不问倒你，如果你也有用到以下的这些框架，或者这些控件。你也可以跟下来继续看看。
+
+你的项目中提到你使用 ViewPager+Fragment 实现相应的界面，那你了解过ViewPager 的滑动是如何实现的吗？ （中厂）
+
+ViewPager是一个容器类，直接继承自ViewGroup，ViewPager主要就是根据重写OnInterceptTouchEvent()与onTouchEvent()两个事件分发的函数，而实现的手势滑动。有两种滑动方式：
+1、在MOVE触摸事件中，页面随手指的拖动而移动。
+2、在UP事件后，页面滑动到指定页面(通过Scroller实现的)
+  先来看第一种情况，onInterceptTouchEvent()主要作用就是判断各种情况是不是在拖拽，是否要拦截此事件。在MOVE事件中，如果在拖拽，会调用performDrag()方法让当前页面移动。 performDrag()方法做了这么几件事：首先得到ViewPager需要滚动的距离，其次得到边界条件leftBound和rightBound，根据边界条件的约束得到真正的滚动距离，最后调用scrollTo()方法滚动到最终的位置。pageScrolled()简单来说就是根据当前的滑动位置，找到当前的页面信息，然后得到viewpager滑动距离，最后调用了onPageScrolled(currentPage, pageOffset, offsetPixels)。首先获得viewpager滑动过的距离比例，然后通过遍历mItems缓存列表，根据每个缓存页面的offset值得到该页面的左右边界，最后就是判断viewpager滑动过的距离比例在哪一个缓存页面的边界之内，这个缓存页面就是当前显示的页面。而如果viewpager显示区域内存在两个页面显示的时候，从缓存列表的遍历顺序就可以看出，返回的必然是最左边的页面。onPageScrolled()做了三件事：将DecorView显示在屏幕中，不移除屏幕、回调接口onPageScrolled()方法、回调接口的transformPage()方法，自定义实现页面转换动画。
+简单总结下，就是在onInterceptTouchEvent()方法中根据不同情况对mIsBeingDragged进行赋值，对触摸事件是否进行拦截；如果在MOVE事件中是可滑动的，就调用performDrag()让视图跟着滑动，当然此方法中是调用scrollTo()方法形成拖拽效果，接着调用pageScrolled()对DecorView固定显示，回调接口，回调转换动画接口。
+再来看第二种情况，另外一种移动方式在onTouchEvent()的UP事件中，调用setCurrentItemInternal()对平滑滑动进行处理，通过最后调用smoothScrollTo()方法，利用Scroller达到目的，当然最后也调用了pageScrolled()进行接口的回调等操作，在滑动结束的最后，调用completeScroll(boolean postEvents)完成滑动结束后的相关清理工作。
+情况一：onInterceptTouchEvent()--->赋值mIsBeingDragged，判断是否拦截。--->performDrag()->ScrollTo()->pageScrolled()->onPageScrolled()->DecorView固定显示，回调接口，回调转换动画接口。
+情况二：onTouchEvent()->UP事件->计算下一个应该显示的nextPage->setCurrentItemInternal()->smoothScrollTo()方法，利用Scroller达到目的 ->startScroll()->computeScroll()不断的重绘->completeScroll()完成滑动结束后的相关清理工作。
+
+ViewPager加载Fragment时，使用什么适配器？有什么区别呢？（大厂）
+
+两种适配器，FragmentPagerAdapter 和 FragmentStateAdapter。前者类内的每一个生成的 Fragment 都将保存在内存之中，因此适用于那些相对静态的页，数量也比较少的场景。如果需要处理有很多页，并且数据动态性较大、占用内存较多的情况，这时候，就需要用到后者。后者会把已经创建的Fragment进行保存。
+
+你的项目中使用了Fragment，那在一个Fragment里面打开另一个Fragment（嵌套Fragment）要注意什么呢？（大厂）
+
+在Fragment中嵌套Fragment时，一定要使用getChildFragmentManager();否则，会在ViewPager中出现fragment不会加载的情况，即fragment出现空白页的情况。
+
+你的项目有没有进行相应的性能优化呢？从几个方面具体讲讲怎么做到的吧？（All）
+
+关于这个问题有一些想说的，如果面试官询问你项目中有遇到什么难点，或者有什么你解决的不错的事情时，你也可以把这一块尝试着回答。毕竟优化对于一个移动应用开发是极其关键的。主要的方向是：流畅性、稳定性、资源节省性。毕竟是用户留存率的关键嘛。一个优化好的APP总是能提高其用户留存率，经常ANR的软件你巴不得卸载了他！主要从以下几个角度去切入主题：
+1、布局优化：核心是减少层级：
+①多嵌套情况下尽可能使用RelativeLayout减少嵌套。
+②布局层级相同的情况下尽量使用LinearLayout(更加高效)。
+③尽量使用标签重用布局，标签来减少层级，标签进行懒加载。
+④使用布局调优工具，如AndroidStudio自带的Hierarchy Viewer，可以查看布局和绘制的时间。
+⑤尽量少使用wrap_content这种测量耗时较长的属性。
+2、绘制优化：①降低View.onDraw()的复杂度。不要在onDraw()中创建新的局部对象,因为onDraw会被频繁的调用。避免在onDraw()中执行大量&耗时的操作。
+②避免过度绘制OverDraw，移除不必要的控件背景。减少布局的层级。
+3、响应速度优化：ANR（应用程序无响应），应用在5秒内未相应用户的输入事件。广播接收器10秒内未完成相关的处理。服务20秒内无法处理完成。优化方案：使用多线程，把大量&耗时的工作放在工作线程中处理。比如AsyncTask、继承自Thread类，实现Runnable接口，Handler消息机制，HandlerThread进行异步消息传递等。 当发生ANR时，可以通过data/anr找到traces.txt文件确定ANR发生的原因。
+4、内存优化：核心问题是内存泄露的问题：在申请内存后，不需使用时无法释放的现象，是导致内存溢出（程序所需的内存>所分配的内存资源）的原因。
+①集合类，集合类添加元素后，仍引用着集合元素对象，导致集合元素对象不可被回收。
+通过集合类的clear()方法&设置为null方式解决。
+②Static关键字修饰的成员变量（单例模式）：由于引用耗费资源过多的实例（比如context）导致该成员变量的生命周期>引用实例的生命周期，导致实例无法被回收。
+通过：
+A、尽量避免Static成员变量引用消耗资源过多的实例（如Context），假设需要引用Context可以使用Application的Context。
+B、使用弱引用代替强引用去持有实例。
+③非静态内部类/匿名类：由于非静态内部类所创建的实例是静态的，会因非静态内部类默认持有外部类的引用而导致外部类无法被释放。
+通过将非静态内部类设置为静态内部类，尽量避免费静态内部类所创建的实例=静态，或者将内部类抽取出来封装成单例。
+④多线程：多线程大都是非静态内部类/匿名类，持有外部类的引用导致无法被销毁。或是线程的生命周期>Activity这种外部类的生命周期。
+通过1、在Activity这种外部类的生命周期的onDestroy函数中强制关闭线程，或是将非静态内部类该为静态内部类，使引用关系不存在。
+⑤资源对象使用后未关闭：比如广播、文件、数据库游标、图片资源未及时关闭、注销。通过在Activity的onDestroy()方法中调用相应的注销、关闭方法将其关闭或注销。
+5、Bitmap优化：①使用完毕后，通过软引用释放掉图片资源。②根据分辨率适配&缩放图片。A.设置对应的图片资源(hdpi,xxhdpi,xhdpi)等。B.通过decodeResource()方法适配③选择合适的解码方式 ④设置图片缓存机制，如A.三级缓存机制（内存缓存-本地缓存-网络缓存）B.使用软引用的方式（内存空间不足时，才回收这些对象的内存）
+
+你说你项目中使用了OkHttp框架，你可以说一下你为什么要使用该框架呢？->延伸，他的内部的拦截器机制是怎么实现的呢？（All）
+
+关于框架类的题目，如果你体现在简历上，是一定会被问到的。所以一切要理解清楚，有时间还要去研读一下他的具体实现机制。面试官是很有可能会一路小跑问到底层。这里我们来聊聊OkHttp的内部拦截器机制以及OkHttp发起一次请求的过程。
+
+创建一个 OkHttpClient（单例模式），重复创建 OkHttpClient 内存可能会爆掉，创建 request对象（建造者模式），初始化请求方式（Get/Post)，请求头（Header）以及请求的链接地址（url）。根据request对象，通过OkHttpClient的newCall()方法创建一个RealCall对象。判断是同步（execute）异步(enqueue) ，如果是异步则通过Dispatcher。RealCall通过执行getResponseWithInterceptorChain()返回Response。
+
+OkHttp请求的流程
+OkHttp请求的流程
+
+okHttp的拦截器是一个责任链模式，真正的执行网络请求和返回相应结果是通过函数getResponseWithInterceptorChain()实现，通过实现Interceptor.Chain，并且执行了Chain.proceed()方法在拦截器间传递，责任链中每个拦截器都会执行chain.proceed()方法之前的代码，等责任链最后一个拦截器执行完毕后会返回最终的响应数据，而chain.proceed() 方法会得到最终的响应数据，这时就会执行每个拦截器的chain.proceed()方法之后的代码，其实就是对响应数据的一些操作。当责任链执行完毕，如果拦截器想要拿到最终的数据做其他的逻辑处理等，这样就不用在做其他的调用方法逻辑了，直接在当前的拦截器就可以拿到最终的数据。
+五大拦截器的主要顺序是：
+1.负责失败重试以及重定向的 RetryAndFollowUpInterceptor。
+2.负责把用户构造的请求转换为发送到服务器的请求、把服务器返回的响应转换为用户友好的响应的BridgeInterceptor。
+3.负责读取缓存直接返回、更新缓存的CacheInterceptor。
+4.负责和服务器建立连接的ConnectInterceptor。
+5.负责向服务器发送请求数据、从服务器读取响应数据的CallServerInterceptor。
+拦截器顺序流程
+拦截器顺序流程
+
+其他的除了纯技术实现角度，你还可以聊一聊具体在项目中使用这个框架遇到的坑（比如怎么搞的内存又爆了，可能会引起共鸣，或者让面试官确认你确实使用过这个框架，有个实际操作，而不是纯粹的背知识点，这就和回答某种卷子的理论联系材料中是一个道理），或者说这个框架主要帮助你项目的点，以一个聊天的形式进行，我觉得就是很良好的面试心态了。
+
+
+你说你项目中使用了Glide框架，说说你为什么要使用这个框架呢？->延伸：它的三级缓存机制是如何实现的呢？->你了解LRU缓存算法吗？->你了解LinkHashMap吗？->它是怎么实现的呢？(大厂)
+
+大厂很多情况下不仅考察知识的广度、也考察知识的深度，因此可能会环环相扣，成为一个类责任链模式的问题链模式，所以如果你能够抢先一步，在他陈述这个问题最浅显的角度时，层层展开，完成知识的深度优先遍历。面试官的好感应该是up的。同时也是理论联系实际，可以谈谈实际开发遇到的一些问题。怎么使用的？
+
+这里我们讨论一下，在使用Glide加载图片时with()方法有两种情况，传入Application类型的参数，和传入非Application类型的参数，那么如果是后者，如何保证Activity被关闭掉时，Glide也停止进行图片加载呢？
+
+在Glide的With（）方法中返回的是一个RequestManager对象可以看出，在传入非Application类型的参数情况下，不管是Activity还是Fragment，都会向当前的Activity中添加一个隐藏的Fragment，可是Glide并没有办法知道Activity的生命周期，于是Glide就使用了添加隐藏Fragment的这种小技巧，因为Fragment的生命周期和Activity是同步的，如果Activity被销毁了，Fragment是可以监听到的，这样Glide就可以捕获这个事件并停止图片加载了。而如果是第一种情况，传入的是Application类型的参数，那么Glide的生命周期就和应用程序的周期同步，应用程序关闭，Glide也停止。  另外，如果如果我们是在非主线程当中使用的Glide，那么不管你是传入的Activity还是Fragment，都会被强制当成Application来处理。 详情见郭霖大神的文章详解Glide内部实现机制还。https://blog.csdn.net/sgiceleo/article/details/64440783 还是需要认真的去研读内部实现的。
+
+你项目中有遇到什么问题吗？怎么解决的？
+
+关于这个问题，我回答了ListView加载图片时出现的乱序问题，这个问题当时也困扰了我很久，图片怎么在乱闪！乱加载！所以，实际开发时遇到的问题一定要记下来！！！！
+每当有新的元素进入界面时就会回调getView()方法，而在getView()方法中会开启异步请求从网络上获取图片，因为网络操作都是比较耗时的， 所以某一个位置上的元素进入屏幕后开始从网络上请求图片，但是还没等图片下载完成，它就又被移出了屏幕。这种情况下根据ListView的工作原理，被移出屏幕的控件将会很快被新进入屏幕的元素重新利用起来，而如果在这个时候刚好前面发起的图片请求有了响应，就会将刚才位置上的图片显示到当前位置上，因为虽然它们位置不同，但都是共用的同一个ImageView实例，这样就出现了图片乱序的情况。但是还没完，新进入屏幕的元素它也会发起一条网络请求来获取当前位置的图片，等到图片下载完的时候会设置到同样的ImageView上面，因此就会出现先显示一张图片，然后又变成了另外一张图片的情况。
+有以下几种解决方案：
+①使用findViewByTag。由于findViewByTag()方法需要有ListView的实例。恰好在getView()方法中的第三个参数就是ListView的实例，并且在getView()中调用ImageView的setTag()方法，并将当前图片的Url传进去，并在onpostExcute()里通过ListView的findViewByTag方法去获取ImageView实例，判断是否为空，不为空就填入图片。原因是getView方法调用时，setTag会覆盖旧的Url，如果这时候调用findViewBytag如果传的是旧的url则返回就是null，我们又规定只有不会Null时才会设置图片，因此解决这个问题。
+②使用双向弱引用关联。BitmapWorkerTask指向ImageView：在BitmapWorkerTask中加一个构造函数，并在构造函数中要求ImageView这个参数。不过不是直接持有ImageView的引用，而是用WeakReference对ImageView进行一层封装。
+ImageView指向BitmapWorkerTask：借助自定义Drawable的方式来实现。自定义一个AsyncDrawble类继承自BitmapDrawable，然后重写其构造函数，在构造函数中要求把BitmapWorkerTask传入，并包装一层弱引用。并在getView()方法中调用imageView.setImageDrawable()方法把AsyncDrawable设置进去，如此便关联完成。
+通过getAttachImageView()方法和getBitmapWorkerTask()方法，如果获取到的BitmapWorkerTask等于this，那么就返回ImageView，否则返回null。
+③使用NetWorkImageView。如果控件已经被移出了屏幕且被重新利用了，那么就把之前的请求取消掉。由于Volley在网络方面的封装非常优秀，它可以保证只要是取消掉的线程，就绝对不会进行回调。
+
+六、算法与数据结构、设计模式
+Talk is cheap.Show me the Code.
+这一块毫无疑问是我相对比较薄弱的地方了！
+手写算法。有时间限制的情况下。
+在刷的题比较少的条件下。
+确实还是有压力的。
+慢慢学习吧！（LeetCode&剑指Offer）
+先留着坑把碰到的题目都摆上来。
+算法篇容我整理一下周末见。
+
+最长回文子串问题？(大厂)
+
+我给他写了暴力..他问我有时间复杂度上的改进吗…然后在他的指引下又写了中心波纹….然后…其实我是听了同学聊到马拉车算法的线性的。但是具体实现还没有看到…就只能跟他阐述了一下..也没有为难我…
+
+给字符数组，去除字符串间多余的空格且将每个字符串首字母大写，不开辟新空间。(大厂)
+
+给定字符串，要求翻转字符串里面的单词，但不改变字符串单词的顺序(大厂)。
+
+关于这题我本来是觉得不能使用String的Split()和Reverse()函数的，但是先写在纸上试探了一下，没想到他说可以，那这题..就…有点太…简单了..
+
+大数乘法（不能使用BigInteger类）（大厂）
+
+这题不能用自带类的情况下，就是用数组存放乘法的局部结果之后再进位解决了。
+
+给定数字n,1..n分布在二叉搜索树上，问有多少独一无二的二叉搜索树？
+
+卡特兰数问题…当时确实有时间压力没有解出来，然后就凉凉了。(大厂)
+
+快速排序（小厂）
+
+这没什么好说的了，小厂大部分还是…比较尊重基础的….
+
+二分排序（小厂）
+
+其实从题目上来看，就很明显看出大小厂关于数据结构与算法要求的不同了…..
+
