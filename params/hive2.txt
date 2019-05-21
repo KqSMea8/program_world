@@ -1566,6 +1566,7 @@
     // Indexes
     HIVEOPTINDEXFILTER_COMPACT_MINSIZE("hive.optimize.index.filter.compact.minsize", (long) 5 * 1024 * 1024 * 1024,
         "Minimum size (in bytes) of the inputs on which a compact index is automatically used."), // 5G
+
     HIVEOPTINDEXFILTER_COMPACT_MAXSIZE("hive.optimize.index.filter.compact.maxsize", (long) -1,
         "Maximum size (in bytes) of the inputs on which a compact index is automatically used.  A negative number is equivalent to infinity."), // infinity
     HIVE_INDEX_COMPACT_QUERY_MAX_ENTRIES("hive.index.compact.query.max.entries", (long) 10000000,
