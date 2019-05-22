@@ -1,0 +1,13 @@
+简要介绍一下HashMap的实现原理？（中厂、小厂）
+
+HashMap 基于 AbstractMap类，实现了Map、Cloneable（能被克隆）、Serializable（支持序列化）接口； 非线程安全；允许存在一个为null的key和任意个为null的value；采用链表散列的数据结构，即数组和链表的结合；初始容量为16，填充因子默认为0.75，扩容时是当前容量翻倍，即2capacity。
+1、Put方法的实现原理：比如hashMap.put(“Java”,0)，先使用hash函数来确定这个Entry的插入位置，下标为Index。即index=hash(“java”)，存入数组下标为Index的地方，但是因为hashmap长度有限，插入的Entry越来越多，Index值会发生冲突，此时可以用链表的方式解决，通过头插法，发生冲突时，插入对应的链表之中。
+2、Get方法的实现原理，比如hashMap.get(“apple”)，同样对Key值做一次hash映射，算出其对应的index值，即Index = Hash(“apple”)这时从头结点开始，一个个向下查找，通过keys.equals()方法去找到链表中正确的节点。
+
+HashMap 线程安全吗？那如何保证其线程安全呢？（中厂）
+
+可以简单谈谈，使用 Hashtable 或者 ConcurrentHashMap。它们都可以用于多线程的环境，但是当 Hashtable 的大小增加到一定的时候，性能会急剧下降，因为迭代时需要被锁定很长的时间。而 ConcurrentHashMap 引入了分割(segmentation)，不论它变得多么大，仅仅需要锁定 map 的某个部分，而其它的线程不需要等到迭代完成才能访问 map。简而言之，在迭代的过程中，ConcurrentHashMap 仅仅锁定 map 的某个部分，而 Hashtable 则会锁定整个map。在 jdk1.8 之后，取消了segments 的方式，而是使用了transient volatile HashEntry[] table 的方式保存数据，将数组元素作为锁，对每一行数据进行加锁，减少了并发冲突的概率。由数组+单向链表变为了数组+单向链表+红黑树，将查询的时间复杂度降至了O(logn)改进了一些性能。
+
+HashMap 有序吗？如何实现有序呢？（中厂）
+
+HashMap 是无序的，而 LinkedHashMap 是有序的 HashMap，默认为插入顺序，还可以是访问顺序，基本原理是其内部通过 Entry 维护了一个双向链表，负责维护 Map的迭代顺序。甚至可以深入的去谈谈 LinkHashMap 的底层实现机制。

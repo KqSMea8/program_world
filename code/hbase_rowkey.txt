@@ -1,0 +1,274 @@
+
+如果想及时了解Spark、Hadoop或者Hbase相关的文章，欢迎关注微信公共帐号：iteblog_hadoop
+
+类似于 MySQL、Oracle中的主键，用于标示唯一的行；
+
+完全是由用户指定的一串不重复的字符串；
+
+HBase 中的数据永远是根据 Rowkey 的字典排序来排序的。
+
+RowKey的作用
+读写数据时通过 RowKey 找到对应的 Region；
+
+MemStore 中的数据按 RowKey 字典顺序排序；
+
+HFile 中的数据按 RowKey 字典顺序排序。
+
+Rowkey对查询的影响
+如果我们的 RowKey 设计为 uid+phone+name，那么这种设计可以很好的支持以下的场景：
+
+uid = 111 AND phone = 123 AND name = iteblog
+
+uid = 111 AND phone = 123
+
+uid = 111 AND phone = 12?
+
+uid = 111
+
+难以支持的场景：
+
+phone = 123 AND name = iteblog
+
+phone = 123
+
+name = iteblog
+
+Rowkey对Region划分影响
+HBase 表的数据是按照 Rowkey 来分散到不同 Region，不合理的 Rowkey 设计会导致热点问题。热点问题是大量的 Client 直接访问集群的一个或极少数个节点，而集群中的其他节点却处于相对空闲状态。
+
+如上图，Region1 上的数据是 Region 2 的5倍，这样会导致 Region1 的访问频率比较高，进而影响这个 Region 所在机器的其他 Region。
+
+RowKey设计技巧
+
+我们如何避免上面说到的热点问题呢？这就是这章节谈到的三种方法。
+
+避免热点的方法 - Salting
+这里的加盐不是密码学中的加盐，而是在rowkey 的前面增加随机数。具体就是给 rowkey 分配一个随机前缀 以使得它和之前排序不同。分配的前缀种类数量应该和你想使数据分散到不同的 region 的数量一致。 如果你有一些 热点 rowkey 反复出现在其他分布均匀的 rwokey 中，加盐是很有用的。考虑下面的例子：它将写请求分散到多个 RegionServers，但是对读造成了一些负面影响。
+
+假如你有下列 rowkey，你表中每一个 region 对应字母表中每一个字母。 以 'a' 开头是同一个region, 'b'开头的是同一个region。在表中，所有以 'f'开头的都在同一个 region， 它们的 rowkey 像下面这样：
+
+foo0001
+foo0002
+foo0003
+foo0004
+现在，假如你需要将上面这个 region 分散到 4个 region。你可以用4个不同的盐：'a', 'b', 'c', 'd'.在这个方案下，每一个字母前缀都会在不同的 region 中。加盐之后，你有了下面的 rowkey:
+
+a-foo0003
+b-foo0001
+c-foo0004
+d-foo0002
+所以，你可以向4个不同的 region 写，理论上说，如果所有人都向同一个region 写的话，你将拥有之前4倍的吞吐量。
+
+现在，如果再增加一行，它将随机分配a,b,c,d中的一个作为前缀，并以一个现有行作为尾部结束：
+
+a-foo0003
+b-foo0001
+c-foo0003
+c-foo0004
+d-foo0002
+因为分配是随机的，所以如果你想要以字典序取回数据，你需要做更多工作。加盐这种方式增加了写时的吞吐量，但是当读时有了额外代价。
+
+避免热点的方法 - Hashing
+Hashing 的原理是计算 RowKey 的 hash 值，然后取 hash 的部分字符串和原来的 RowKey 进行拼接。这里说的 hash 包含 MD5、sha1、sha256或sha512等算法。比如我们有如下的 RowKey：
+
+foo0001
+foo0002
+foo0003
+foo0004
+我们使用 md5 计算这些 RowKey 的 hash 值，然后取前 6 位和原来的 RowKey 拼接得到新的 RowKey：
+
+95f18cfoo0001
+6ccc20foo0002
+b61d00foo0003
+1a7475foo0004
+优缺点：可以一定程度打散整个数据集，但是不利于 Scan；比如我们使用 md5 算法，来计算Rowkey的md5值，然后截取前几位的字符串。subString(MD5(设备ID), 0, x) + 设备ID，其中x一般取5或6。
+
+避免热点的方法 - Reversing
+Reversing 的原理是反转一段固定长度或者全部的键。比如我们有以下 URL ，并作为 RowKey：
+
+flink.iteblog.com
+www.iteblog.com
+carbondata.iteblog.com
+def.iteblog.com
+这些 URL 其实属于同一个域名，但是由于前面不一样，导致数据不在一起存放。我们可以对其进行反转，如下：
+
+moc.golbeti.knilf
+moc.golbeti.www
+moc.golbeti.atadnobrac
+moc.golbeti.fed
+经过这个之后，这些 URL 的数据就可以放一起了。
+
+RowKey的长度
+RowKey 可以是任意的字符串，最大长度64KB（因为 Rowlength 占2字节）。建议越短越好，原因如下：
+
+数据的持久化文件HFile中是按照KeyValue存储的，如果rowkey过长，比如超过100字节，1000w行数据，光rowkey就要占用100*1000w=10亿个字节，将近1G数据，这样会极大影响HFile的存储效率；
+
+MemStore将缓存部分数据到内存，如果rowkey字段过长，内存的有效利用率就会降低，系统不能缓存更多的数据，这样会降低检索效率；
+
+目前操作系统都是64位系统，内存8字节对齐，控制在16个字节，8字节的整数倍利用了操作系统的最佳特性。
+
+RowKey 设计案例剖析
+
+交易类表 Rowkey 设计
+查询某个卖家某段时间内的交易记录
+sellerId + timestamp + orderId
+
+查询某个买家某段时间内的交易记录
+buyerId + timestamp ＋orderId
+
+根据订单号查询
+orderNo
+
+如果某个商家卖了很多商品，可以如下设计 Rowkey 实现快速搜索
+salt + sellerId + timestamp 其中，salt 是随机数。
+可以支持的场景：
+
+全表 Scan
+
+按照 sellerId 查询
+
+按照 sellerId + timestamp 查询
+
+金融风控 Rowkey 设计
+查询某个用户的用户画像数据
+
+prefix + uid
+
+prefix + idcard
+
+prefix + tele
+
+其中 prefix = substr(md5(uid),0 ,x)， x 取 5-6。uid、idcard以及 tele 分别表示用户唯一标识符、身份证、手机号码。
+
+车联网 Rowkey 设计
+查询某辆车在某个时间范围的交易记录
+carId + timestamp
+
+某批次的车太多，造成热点
+prefix + carId + timestamp 其中 prefix = substr(md5(uid),0 ,x)
+
+查询最近的数据
+查询用户最新的操作记录或者查询用户某段时间的操作记录，RowKey 设计如下：
+uid + Long.Max_Value - timestamp
+支持的场景
+
+查询用户最新的操作记录
+Scan [uid] startRow [uid][000000000000] stopRow [uid][Long.Max_Value - timestamp]
+
+查询用户某段时间的操作记录
+Scan [uid] startRow [uid][Long.Max_Value – startTime] stopRow [uid][Long.Max_Value - endTime]
+
+OpenTSDB 的 Rowkey 设计
+参见 OpenTSDB 底层 HBase 的 Rowkey 是如何设计的
+
+如果 RowKey 无法满足我们的需求，可以尝试二级索引。Phoenix、Solr 以及 ElasticSearch 都可以用于构建二级索引。
+
+
+OpenTSDB 底层 HBase 的 Rowkey 是如何设计的
+原创： 过往记忆大数据  过往记忆大数据  2018-11-16
+在https://www.iteblog.com/archives/2450.html文章中有实际的案例分析 Rowkey 如何设计的，感兴趣的可以点击下面阅读原文去查看。
+
+
+
+OpenTSDB 是基于 HBase 的可扩展、开源时间序列数据库(Time Series Database)，可以用于存储监控数据、物联网传感器、金融K线等带有时间的数据。它的特点是能够提供最高毫秒级精度的时间序列数据存储，能够长久保存原始数据并且不失精度。它拥有很强的数据写入能力，支持大并发的数据写入，并且拥有可无限水平扩展的存储容量。目前，阿里云 HBase 产品是直接支持 OpenTSDB 组件的。
+
+
+
+OpenTSDB 拥有如此的强大的读写和近乎无限的存储能力源自于基于 HBase 的架构设计，我们甚至可以说 OpenTSDB 就是 HBase 的一个应用。熟悉 HBase 的同学肯定知道，要看 HBase 的表设计的好不好，关键是看其 Rowkey 设计的好不好，HBase 的 Rowkey 设计会考虑到实际的查询场景。所以读到这里，大家肯定知道这篇文章是要讲什么内容的。
+
+OpenTSDB 基本概念
+
+在介绍 OpenTSDB 系统如何设计 Rowkey 之前，我们先来了解 OpenTSDB 的一些基本概念。（因为本文侧重于介绍 HBase 的 Rowkey 设计，所以关于 OpenTSDB 的其他一些知识本文并不会涉及，如果你对这部分知识感兴趣，请自行去网上搜索相关文章。）
+
+我们往 OpenTSDB 里面写入一条时序数据，至少包含以下几个数据：
+
+指标名字：这个就是我们监控的指标，比如 sys.cpu.user；
+
+时间戳：监控数据产生的时间；
+
+值：Long 或者 Double 类型的数据，这个是监控指标在某个时间的具体值；
+
+标签：包括标签名字（tagk）和标签值（tagv），比如 tagk1=tagv1，主要用于描述数据属性，每条时序数据必须包含一组和多组的标签数据。目前 OpenTSDB 最多支持8组标签。
+
+
+
+所以如果我们使用终端往 OpenTSDB 写入时序数据，格式如下：
+
+
+put <metric> <timestamp> <value> <tagk1=tagv1[ tagk2=tagv2 ...tagkN=tagvN]>
+比如
+put sys.cpu.user 1541946115 42.5 host=iteblog cpu=0
+OpenTSDB 的 Rowkey 设计
+
+上面我们已经简单了解了 OpenTSDB 每条时序数据所包含的要素。基于这些时序数据，OpenTSDB 为我们提供的查询功能其实很简单：指定指标名称和时间范围，并且给定一个或多个标签名称和标签的值作为过滤条件，以此查询符合条件的数据。
+
+Rowkey 设计版本一
+OpenTSDB 为我们提供的查询业务场景已经有了，我们可以很快设计出 HBase 的 Rowkey：
+metric + timestamp + tagk1 + tagv1 + tagk2 + tagv2 + ... + tagkn + tagvn
+注意，实际存储的时候 + 并不会写入到磁盘，这里只是为了说明方便，人为加了这个符号。
+比如如果我们往 OpenTSDB 插入下面的数据:
+
+
+
+put sys.cpu.user 1541946115 42.5 host=iteblog cpu=0
+
+
+
+那么按照上面的思路 Rowkey 应该为:
+sys.cpu.user+1541946115+host+iteblog+cpu+0
+
+
+
+那如果这个指标有很多监控数据，其存储在 HBase 的 key-value 如下：
+
+
+
+如果想及时了解Spark、Hadoop或者Hbase相关的文章，欢迎关注微信公共帐号：iteblog_hadoop
+
+Rowkey 设计版本二
+上面表格记录着指标名 sys.cpu.user 标签为 host=iteblog cpu=0 和 标签为 host=iteblog cpu=1 每隔十秒的监控数据。有些同学可能已经看出来了，如果我们按照这样的方式去设计 HBase 表的 Rowkey，虽然可以满足我们的查询需求，但是这种存储数据的方式导致 Key 大量的重复存储，这样会导致数据的急剧增加，所以 OpenTSDB 并没有这样存储的。在 OpenTSDB 里面，会对每个指标名、标签以及标签值进行编码，每个指标的编码都不一样；同理，每个标签的编码也不一样，但是标签和指标名称可以编码一样，不同类型之间的编码互不影响。所以编码后的数据如下：
+
+sys.cpu.user  => \x00\x00\x01
+host => \x00\x00\x01
+iteblog => \x00\x00\x01
+cpu => \x00\x00\x02
+0 => \x00\x00\x02
+1 => \x00\x00\x03
+在上面，OpenTSDB 默认使用三个字节来编码指标名称，三个字节编码标签名称以及标签值。经过这样的编码之后，OpenTSDB 的 Rowkey 就变成了下面的形式：
+
+sys.cpu.user+1541946115+host+iteblog+cpu+0
+变成
+\x00\x00\x01+1541946115+\x00\x00\x01+\x00\x00\x01+\x00\x00\x02+\x00\x00\x02
+
+所以上表的数据就变成下面的了：
+
+如果想及时了解Spark、Hadoop或者Hbase相关的文章，欢迎关注微信公共帐号：iteblog_hadoop
+
+这样我们可以节省一些存储空间（不要看这张表好像比上面的表要长了，这里其实是用十六进制表示的，每个\x00占用一个字节，整个指标名称默认只占用三个字节，如果用字符串表示是不止三个字节的）。
+
+Rowkey 设计版本三
+但是细心的同学肯定发现了，上表中同一个指标每隔十秒发送一条监控数据，但是每条监控数据就只是当前指标的监控值，如上表的42.5、39.1、41.4、40.0。而每次发送的数据都在 HBase 里面存储一行，这样会导致重复存储大量相同的指标名、标签名、标签值等数据。我们仔细观察可以发现，Rowkey 组成中同一个指标的监控数据除了的时间不一样，其他都是一样的！基于这个特点，OpenTSDB 对 Rowkey 进行了进一步的优化，思想为：将 Rowkey 中时间戳由原来的秒级别或毫秒级别统一转换成小时级别的，多余的秒数据或者毫秒数据作为 HBase 的列名称。可能大家没有理解这句话的含义，下面我们来具体介绍这个实现。
+
+1541946115 时间戳转换成时间为 2018-11-11 22:21:55，其对应的整点小时为 2018-11-11 22:00:00，这个转换成时间戳是 1541944800。1541946115 相对于 1541944800 多余出来的秒数为 1315，在 HBase 里面，1315 就作为当前指标对应值的列名。经过这样的优化之后，同一小时的监控数据都放在一行的不同列里面，所以上面的表格就变成下面的了：
+
+如果想及时了解Spark、Hadoop或者Hbase相关的文章，欢迎关注微信公共帐号：iteblog_hadoop
+
+注意：
+
+第三张表中为了展示方便，我将 000001+1541944800+000001+000001+000002+000003 简写为 001+1541944800+001+001+002+003；
+
+上面几张表中的 Rowkey 部分我这里都是使用时间戳的形式显示的，只是为了查看方便，在实际存储中时间戳其实是以二进制形式存储的，比如 1541944800 的十六进制表示为 5BE835E0；所以上面表格中 Rowkey 为 001+1541944800+001+001+002+003 在 HBase 实际存储为（十六进制表示） 0000015BE835E0000001000001000002000003；
+
+第三张表中的列名称在实际存储中除了包含相对于 Rowkey 的秒数或者毫秒数，其实还包含了当前列值的数据类型，数据长度等标识。
+
+
+
+如果说用一张图表示上面的过程，可以如下所示。
+
+
+
+如果想及时了解Spark、Hadoop或者Hbase相关的文章，欢迎关注微信公共帐号：iteblog_hadoop
+
+
+
+在https://www.iteblog.com/archives/2450.html文章中有实际的案例分析 Rowkey 如何设计的，感兴趣的可以点击下面阅读原文去查看。

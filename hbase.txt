@@ -84,8 +84,6 @@ Salt
 
 让数据均衡的分布到各个 Region 上，结合 pre-split，我们对查询键即 check 表的 check_id 求 hashcode 值，然后 modulus(numRegions) 作为前缀，注意补齐数据。
 
-
-
 说明：如果数据量达上百 G 以上，则 numRegions 自然到 2 位数，则 salt 也为 2 位。
 
 Hash 散列
@@ -3221,4 +3219,6 @@ Syntax : user_permission
 For example:hbase> user_permission
 hbase> user_permission ‘table1’
 Share this:
+
+=================
 

@@ -1,0 +1,225 @@
+基于CTC的语音识别基础知识讲解以及代码实现
+
+关键时刻，第一时间送达
+
+
+
+作者：范汝超
+
+本文已获原作者授权，禁止二次转载
+
+来源：https://zhuanlan.zhihu.com/p/33464788
+
+
+
+
+
+1、语音识别过程
+
+首先明确语音识别的任务是怎样的。输入input是音频wav文件，保存的一般是经过抽样量化编码之后数字信号，也就是每个样点的值，即我们经常看到的波形序列（图1的cat的波形）。输出是文字序列，代表这段音频的内容。很显然，按照现在对深度学习任务的划分，这是一个Sequence-to-Sequence的问题。也可以理解为是一个序列标注的问题。该问题与机器翻译，连续手写数字体识别类似，可以划分到一类。
+
+
+图1 语音识别过程组成部分
+
+但是语音识别的问题远没有这么简单。想象一下如果人在听一句话的时候，如果这句话具有很强的领域性，在没有相关领域的知识情况下，可能很难得到这句话正确的内容。比如某个词你没有学过，你可能能复述发音，但是是无法书写出来并且理解的。所以只有wav文件的信息是不够的，需要语言学的先验知识，所以语言模型(Language Model)在语音识别的过程中是必不可少的，而对wav作为输入得到的模型叫做声学模型（Acoustic Model）。另外在传统的语音识别过程中，声学模型的输出单元一般为音素或者是音素的状态，而语言模型一般是词级别的语言模型，两者的联合解码（也就是一般的测试推断过程）时需要知道每个词（word）是由哪些音素（phoneme）组成的，也就是这个词是怎么发音的。所以中间需要一个发音词典，一般也被叫做音素模型（Phoneme Model）。
+
+这是对语音识别直观的理解上分析的结果，从公式中得到的结果也是一样的。假设输入的音频序列为  , 输出为文本序列为  。我们的目的是构建一个模型，使得  最大，也就是训练集中n个样本的后验概率最大，为什么是后验呢，因为人在说话的时候是想好了W，然后产生O的，所以W是因，O是果。单独拿出一个样本的后验概率使用贝叶斯公式可以得到：
+
+
+
+通常在进行解码（或者说推断）的时候输入O是保持不变的，目的是找到一个W使得后验概率最大，所以我们忽略分母项。再看分子，P(W)是输出词序列的概率，用语言模型来刻画，P(O|W)为似然概率，用声学模型来刻画。所以语音识别问题用公式来表示就是：
+
+
+
+看到这里，有人会问PM模型去哪儿了。我们接着分析，因为输入的音频一帧大概只有20-30ms，其信息不能覆盖一个词，甚至一个字符覆盖不了，所以一般输出的建模单元为音素或者音素的状态，这里以音素为例，假设音素序列为  ，那么声学模型部分的概率可以进一步化简为：
+
+
+
+化简后的P（O|Q）就是真正意义的声学模型，P（Q|W）表示在词序列条件下的音素序列的概率，这不就是发音词典嘛。所以整个过程又通过公式的方式理顺了。
+
+下文要讲的CTC模型只是对P(O|Q)进行建模，通过贝叶斯公式，很容易把P（O|Q）与判别模型的CTC网络的输出联系起来。这个就不多说了。
+
+
+
+2、基于CTC的声学模型
+
+2.1 什么是CTC
+
+网上关于CTC Loss的介绍有很多，这里就不再详细的介绍。想要仔细探究公式及原理的可以去看Alex Graves的《Supervised Sequence Labelling with Recurrent Neural Networks》一书，很容易下载得到。当然他的很多论文也介绍了CTC， 但是都没有此书介绍的详细。
+
+简单介绍一下CTC所解决的问题。在Sequence-to-Sequence的任务中，以输入输出的长度不同我们会遇到以下几种情况：
+
+输入长度 = 输出长度 ： 比如词性标注等，这类问题很好解决，直接每个时刻softmax计算交叉熵 作为损失函数
+
+输入长度 ？ 输出长度 ： 比如机器翻译问题，解决办法是decoder一个输出一个输出的往外蹦，同样可以用sotfmax然后计算交叉熵
+
+输入长度 > 输出长度 ： 这种情况当然也是上述情况的一种，但是这种情况还有另外一种解决办法，就是使用CTC-LOSS
+
+语音识别问题的输入长度是远大于输出长度的，这是因为语音信号的非平稳性决定的，我们只能做短时傅里叶变换，这就造成了一个句子会有很多帧，即很多时刻。而标签（输出词序列）中的一个词往往对应了好几帧。最后输出的长度会远小于输入的长度。CTC就是为了解决这个问题。
+
+CTC是怎么做的呢？如果不考虑标签的话，使用RNN，每帧语音都会有一个输出，比如输入是200帧，输出有20个词。这样就会得到200个输出序列，这200个输出序列如何与标签的20词计算loss的呢？首先，在多对少的映射中，我们很容易想到应该会有很多重复的词，把这些词去掉就行了，然后因为帧长很短，有些帧的输出没有任何意义，可能只包含静音。所以CTC增加了一个blank标签，也就是每帧softmax的时候增加一个类别。最后CTC的映射规则就出来了，200->20，去blank+去重。规则出来了，就可以设计算法进行loss的计算了。其计算过程类似于HMM中的前向后向算法，详细的算法过程可以翻看参考文献中的论文。这里只介绍Loss function和LSTM每个时刻的输出关系。
+
+假设输出序列为  ,ground truth即标签为序列为  ，m<n， l与π的映射规则为  , 每帧的输出概率用y表示。  表示第t时刻输出  的概率。则输出序列为π的概率和网络的输出概率之间的关系为：  ,映射到标签的概率为:  。即所有能映射到l序列的π序列之和。p(l|x)就是单个样本的loss。这样就建立了loss和网络输出之间的关系。可以看到，这个loss的计算和loss对输出值导数的计算是比较麻烦的，所以就有了前向后向算法。这里就不详细介绍了。
+
+综上，CTC只是一个解决输出长度小于输入长度的损失函数（loss function）的计算问题的一种方法。
+
+
+图2 CTC前向后向计算
+
+2.2 如何在pytorch中实现CTC Loss
+在pytorch中官方是没有实现CTC-loss的，要写一个自己的loss在pytorch中也很好实现，只要使用Variable的输出进行运算即可，这样得到的loss也是Variable类型，同时还保存了其梯度。但是CTCloss的计算需要将每一个输出神经元值进行单独的计算，使用前向后向算法来计算最终的loss。所以无法得到一个Variable变量的loss，这个时候就需要在torch.autograd.Function上写一个派生类，复写forward函数和backward函数，完成数据的前向传播和梯度的反向传播过程。而因为效率的影响，一般会在C或者C++中实现计算过程。然后使用pytorch中的torch.utils.ffi.create_extension对C代码进行编程生成动态链接库，最后使用python调用计算过程，完成整个loss的实现。
+
+如果没有明白的话，没有关系。百度的warp-ctc帮我们实现了这CTC的计算过程（github.com/baidu-resear）
+
+同样，也有人帮我们完成了warp-ctc与pytorch的binding工作。如果想自己体验一下与pytorch的binding过程，也可以换别的方式进行。详细的过程看README文件即可（github.com/SeanNaren/wa）
+
+2.3 网络结构
+考虑到输入是一个序列，对时间的建模是必不可少的，所以RNN的结构必须有，这也是能够替代HMM的一个很重要的模型。输出需要映射到输出的类别上，所以至少一层的前馈层是需要的。鉴于语音信号的多样性，前端使用CNN进行特征的预处理也是可选的。所以网络结构选定为 CNN -》 RNN -》 FC -》 CTC。输入是语音的频谱图，输出是音素的类别或者是字的类别，决定于自己要构建一个什么级别的声学模型。结构图如下图所示（图示为一个character-level的AM）：
+
+
+图3 Spectrum->CNN->LSTM->FC->CTC
+
+这里仅仅解释一下在实现过程中的两个类（在ctc_model.py中）。
+
+62 class BatchRNN(nn.Module):
+ 63     """
+ 64     Add BatchNorm before rnn to generate a batchrnn layer
+ 65     """
+ 66     def __init__(self, input_size, hidden_size, rnn_type=nn.LSTM,
+ 67                     bidirectional=False, batch_norm=True, dropout=0.1):
+ 68         super(BatchRNN, self).__init__()
+ 69         self.input_size = input_size
+ 70         self.hidden_size = hidden_size
+ 71         self.bidirectional = bidirectional
+ 72         self.batch_norm = SequenceWise(nn.BatchNorm1d(input_size)) if batch_norm else None
+ 73         self.rnn = rnn_type(input_size=input_size, hidden_size=hidden_size,
+ 74                                 bidirectional=bidirectional, dropout = dropout, bias=False)
+ 75
+ 76     def forward(self, x):
+ 77         if self.batch_norm is not None:
+ 78             x = self.batch_norm(x)
+ 79         x, _ = self.rnn(x)
+ 80         return x
+
+这个类的目的是在RNN的层间加入Batch Normalization。
+
+17 class SequenceWise(nn.Module):
+ 18     def __init__(self, module):
+ 19         super(SequenceWise, self).__init__()
+ 20         self.module = module
+ 21
+ 22     def forward(self, x):
+ 23         '''
+ 24         two kinds of inputs:
+ 25             when add cnn, the inputs are regular matrix
+ 26             when only use lstm, the inputs are PackedSequence
+ 27         '''
+ 28         try:
+ 29             x, batch_size_len = x.data, x.batch_sizes
+ 30             #print(x)
+ 31             #x.data:    sum(x_len) * num_features
+ 32             x = self.module(x)
+ 33             x = nn.utils.rnn.PackedSequence(x, batch_size_len)
+ 34         except:
+ 35             t, n = x.size(0), x.size(1)
+ 36             x = x.view(t*n, -1)
+ 37             x = self.module(x)
+ 38             x = x.view(t, n, -1)
+ 39         return x
+ 40
+ 41     def __repr__(self):
+ 42         tmpstr = self.__class__.__name__ + ' (\n'
+ 43         tmpstr += self.module.__repr__()
+ 44         tmpstr += ')'
+ 45         return tmpstr
+
+这个类的目的是为了考虑加入CNN和不加入CNN的时候输入的数据格式是不同的。不加入CNN的话，输入的数据是pack成packedSequence输入到RNN中的。
+
+
+
+3、语言模型
+
+目前使用kenlm（github.com/kpu/kenlm）训练bi-gram语言模型。bi-gram表示当前时刻的输出概率只与前一个时刻有关。即
+
+
+
+当然，更为准确的是忽略马尔科夫假设，使用RNNLM可以很好地解决这个问题。pytorch官网中也有关于RNNLM的example：
+
+github.com/pytorch/exam
+
+后续的计划也打算将2-gram替换为RNNLM。语言模型结构如下图所示，一个LSTM就能搞定，输入是一个SOS起始符号+sequence，输出是从第二个词开始到末尾加上EOS终止符。既然输入是文本的话，就少不了对文本的表示。就是在nlp中常用的词向量。也就是说语言模型的输入是每个词的词向量表示，输出仍然是分类问题。
+
+每个时刻的输出概率也很明确，表示的是 。这个输出概率也就是语言模型的概率。
+
+
+图4 RNN for language model
+
+
+
+4、解码(测试test过程)
+
+以上均为训练过程，训练完了声学模型和语言模型就到了测试的过程。也就是本节的解码过程，也可以称为推断过程。与传统的深度学习任务不同，语音识别的解码是一个很复杂的搜索过程。用公式表示为：
+
+
+
+λ是语言模型的权重，λ越大表示越依赖语言模型。正常的想法是遍历所有可能词序列找到概率最大的那个座位输出结果，但是计算量太大。所以就有了各种优化的算法。比如WFST，Beam Search等。
+
+下面由易到难分别介绍几种解码(测试)的方法。
+
+Greedy Decode ： 也被称为best-path-decode， 将每个时刻输出概率最大的类别作为推断结果，然后进行前文所提到的去重复去blank的映射规则得到最后的结果，即为测试结果。这个方法是最简单的，也是最不耗时的，没有搜索的过程 当然结果也是最粗糙的。
+
+
+Beam Search Decode： 考虑到best-path得到的概率并不一定最大的，于是我们就要用到维特比译码的动态规划算法，考虑到算法的效率，加上剪枝操作，所以称为Beam Search Decode。算法的详细过程参见文献[3].具体思想就是在上一时刻的剪枝结果上加上本时刻的输出判断所有可能出现的序列的概率，保留前Beam=n个结果，继续下一个时刻，最后得到概率最大的输出序列即为解码的结果。
+
+
+Beam Search with LM and PM：加入LM和PM的解码将充分的结合语言学和语音学的先验知识。文献【3】中也讲到了如何加入词级语言模型进行解码。本项目曾用python实现，但是效率太低，一句话解码超过20s。目前比较好的做法是使用WFST构建加权有限状态机进行解码。该方法目前在kaldi系统中应用比较成熟。目前尚未在项目中实现。另外一个做法是可以使用字级别的声学模型和字级别的语言模型，这样不需要PM的参与，能够使得Beam Search算法有更高的效率和准确率。本项目中也是使用这种方法。使用的语言模型和声学模型的输出单元是统一级别的。
+
+
+
+5、趋势
+
+语音识别框架的趋势是End-to-End，也就是未来希望是不需要进行联合解码，直接声学模型和语言模型是一块训练，一块识别的。这部分的工作研究也有很多，有兴趣的可以读一读相关的论文。
+
+RNN-Tranducer：Graves A. Sequence Transduction with Recurrent Neural Networks[J]. Computer Science, 2012, 58(3):235-242.
+
+Sequence-to-Sequence：arxiv.org/abs/1712.0176
+
+参考文献
+[1]Graves A. Supervised Sequence Labelling with Recurrent Neural Networks[M]. Springer Berlin Heidelberg, 2012.
+
+[2]Graves A, Gomez F. Connectionist temporal classification:labelling unsegmented sequence data with recurrent neural networks[C]// International Conference on Machine Learning. ACM, 2006:369-376.
+
+[3]Graves A, Jaitly N. Towards end-to-end speech recognition with recurrent neural networks[C]// International Conference on Machine Learning. 2014:1764-1772.
+
+
+
+
+
+结束
+
+
+
+
+
+4篇NLP最新论文速读
+
+八篇最新ASR论文速读
+
+语音识别训练时间由7天降至11.5小时，IBM提出分布式深度学习技术
+
+【谷歌最新论文】语音识别系统，全离线，无延迟，模型大小仅80M
+
+
+
+
+
+欢迎关注，查看更多优质内容
+
+
+
+请把我分享给你身边更多的人
+
+阅读原文
+
+微信扫一扫
+关注该公众号
