@@ -1,9 +1,1496 @@
-返回主页 高瑞林
-博客园首页新随笔联系订阅管理
-随笔 - 11  文章 - 1  评论 - 6
-基于oracle的sql优化
-[基于oracle的sql优化]
+insert /*+ append parallel(a, 4) nologging */
+into target_table a
+select /*+ parallel(b, 4) */ *
+from source_table b;
+APPEND的作用是在表的高水位上分配空间,不去寻找 freelist 中的free block , 直接在table HWM 上面加入数据；
+nologging 会大量减少日志；
+parallel 并行。
 
+
+ select
+                /*+ parallel(p, 10) */
+
+
+drop table CateringCustomer;
+drop type EventNestedtable;
+drop type Event_Type ;
+
+Create or replace type Event_Type as object
+(EventId varchar2(250),
+Description varchar2 (250),
+EventDate date,
+Location varchar2(100));
+
+Create or replace type EventNestedtable as table of Event_Type;
+
+Create table CateringCustomer
+(CustomerNo varchar2 (20),
+Name varchar2(25),
+Address varchar2 (100)，
+Events eventNestedtable)
+nested table Events store as EventNestedtable_tab;
+
+
+
+insert into CateringCustomer values ('aaa','bbb','ccc', EventNestedtable(Event_Type('ddd','eee', sysdate, 'fff')) );
+
+
+Oracle中的Hint可以用来调整SQL的执行计划，提高SQL执行效率。下面分类介绍Oracle数据库中常见的Hint。这里描述的是Oracle11gR2中的常见Hint，Oracle数据库中各个版本中的Hint都不尽相同，所以这里讲述的的Hint可能并不适用于Oracle早期的版本。
+一、与优化器模式相关的Hint
+1、ALL_ROWS
+ALL_ROWS是针对整个目标SQL的Hint，它的含义是让优化器启用CBO，而且在得到目标SQL的执行计划时会选择那些吞吐量最佳的执行路径。这里的“吞吐量最佳”是指资源消耗量(即对I/O、CPU等硬件资源的消耗量)最小，也就是说在ALL_ROWS Hint生效的情况下，优化器会启用CBO而且会依据各个执行路径的资源消耗量来计算它们各自的成本。
+ALL_ROWS Hint的格式如下：
+/*+ ALL_ROWS */
+使用范例：
+
+1
+
+2
+
+3
+select /*+ all_rows */ empno,ename,sal,job
+  from emp
+ where empno=7396;
+从Oracle10g开始，ALL_ROWS就是默认的优化器模式，启用的就是CBO。
+
+1
+
+2
+
+3
+
+4
+
+5
+scott@TEST>show parameter optimizer_mode
+
+NAME                     TYPE                 VALUE
+------------------------------------ --------------------------------- ------------------------------
+optimizer_mode               string                   ALL_ROWS
+如果目标SQL中除了ALL_ROWS之外还使用了其他与执行路径、表连接相关的Hint，优化器会优先考虑ALL_ROWS。
+2、FIRST_ROWS(n)
+FIRST_ROWS(n)是针对整个目标SQL的Hint，它的含义是让优化器启用CBO模式，而且在得到目标SQL的执行计划时会选择那些能以最快的响应时间返回头n条记录的执行路径，也就是说在FIRST_ROWS(n) Hint生效的情况下，优化器会启用CBO，而且会依据返回头n条记录的响应时间来决定目标SQL的执行计划。
+FIRST_ROWS(n)格式如下：
+/*+ FIRST_ROWS(n) */
+使用范例
+
+1
+
+2
+
+3
+select /*+ first_rows(10) */ empno,ename,sal,job
+  from emp
+ where deptno=30;
+上述SQL中使用了/*+ first_rows(10) */，其含义是告诉优化器我们想以最短的响应时间返回满足条件"deptno=30"的前10条记录。
+注意，FIRST_ROWS(n) Hint和优化器模式FIRST_ROWS_n不是一一对应的。优化器模式FIRST_ROWS_n中的n只能是1、10、100、1000。但FIRST_ROWS(n) Hint中的n还可以是其他值。
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+11
+
+12
+
+13
+
+14
+
+15
+
+16
+
+17
+
+18
+
+19
+
+20
+scott@TEST>alter session set optimizer_mode=first_rows_9;
+ERROR:
+ORA-00096: invalid value FIRST_ROWS_9 for parameter optimizer_mode, must be from among first_rows_1000, first_rows_100, first_rows_10, first_rows_1, first_rows, all_rows, choose,rule
+
+scott@TEST>set autotrace traceonly
+scott@TEST>select /*+ first_rows(9) */ empno from emp;
+
+14 rows selected.
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 179099197
+
+---------------------------------------------------------------------------
+| Id  | Operation    | Name   | Rows  | Bytes | Cost (%CPU)| Time    |
+---------------------------------------------------------------------------
+|   0 | SELECT STATEMENT |     |   9 |    36 |   1   (0)| 00:00:01 |
+|   1 |  INDEX FULL SCAN | PK_EMP |  9 |    36 |   1   (0)| 00:00:01 |
+---------------------------------------------------------------------------
+如果在UPDATE、DELETE或者含如下内容的查询语句中使用了FIRST_ROWS(n) Hint，则该Hint会被忽略：
+集合运算(如UNION,INTERSACT,MINUS,UNION ALL等)
+GROUP BY
+FOR UPDATE
+聚合函数(比如SUM等)
+DISTINCT
+ORDER BY(对应的排序列上没有索引)
+这里优化器会忽略FIRST_ROWS(n) Hint是因为对于上述类型的SQL而言，Oracle必须访问所有的行记录后才能返回满足条件的头n行记录，即在上述情况下，使用该Hint是没有意义的。
+3、RULE
+RULE是针对整个目标SQL的Hint，它表示对目标SQL启用RBO。
+格式如下：
+/*+ RULE */
+使用范例：
+
+1
+
+2
+
+3
+select /*+ rule */ empno,ename,sal,job
+  from emp
+ where deptno=30;
+RULE不能与除DRIVING_SITE以外的Hint联用，当RULE与除DRIVING_SITE以外的Hint联用时，其他Hint可能会失效；当RULE与DRIVING_SITE联用时，它自身可能会失效，所以RULE Hint最好是单独使用。
+一般情况下，并不推荐使用RULE Hint。一来是因为Oracle早就不支持RBO了，二来启用RBO后优化器在执行目标SQL时可选择的执行路径将大大减少，很多执行路径RBO根本就不支持(比如哈希连接)，就也就意味着启用RBO后目标SQL跑出正确执行计划的概率将大大降低。
+因为很多执行路径RBO根本就不支持，所以即使在目标SQL中使用了RULE Hint，如果出现了如下这些情况(包括但不限于)，RULE Hint依然会被Oracle忽略。
+目标SQL除RULE之外还联合使用了其他Hint(如DRIVING_SITE)。
+目标SQL使用了并行执行
+目标SQL所涉及的对象有IOT
+目标SQL所涉及的对象有分区表
+......
+二、与表访问相关的Hint
+1、FULL
+FULL是针对单个目标表的Hint，它的含义是让优化器对目标表执行全表扫描。
+格式如下：
+/*+ FULL(目标表) */
+使用范例：
+
+1
+
+2
+
+3
+select /*+ full(emp) */ empno,ename,sal,job
+  from emp
+ where deptno=30;
+上述SQL中Hint的含义是让优化器对目标表EMP执行全表扫描操作，而不考虑走表EMP上的任何索引(即使列EMPNO上有主键索引)。
+2、ROIWD
+ROIWD是针对单个目标表的Hint，它的含义是让优化器对目标表执行RWOID扫描。只有目标SQL中使用了含ROWID的where条件时ROWID Hint才有意义。
+格式如下：
+/*+ ROWID(目标表) */
+使用范例：
+
+1
+
+2
+
+3
+select /*+ rowid(emp) */ empno,ename,sal,job
+  from emp
+ where rowid='AAAR3xAAEAAAACXAAA';
+Oracle 11gR2中即使使用了ROWID Hint，Oracle还是会将读到的块缓存在Buffer Cache中。
+三、与索引访问相关的Hint
+1、INDEX
+INDEX是针对单个目标表的Hint，它的含义是让优化器对目标表的的目标索引执行索引扫描操作。
+INDEX Hint中的目标索引几乎可以是Oracle数据库中所有类型的索引(包括B树索引、位图索引、函数索引等)。
+INDEX Hint的模式有四种：
+格式1 /*+ INDEX(目标表 目标索引) */
+格式2 /*+ INDEX(目标表 目标索引1 目标索引2 …… 目标索引n) */
+格式3 /*+ INDEX(目标表 (目标索引1的索引列名) (目标索引2的索引列名) …… (目标索引n的索引列名)) */
+格式4 /*+ INDEX(目标表) */
+格式1表示仅指定了目标表上的一个目标索引，此时优化器只会考虑对这个目标索引执行索引扫描操作，而不会去考虑全表扫描或者对该目标表上的其他索引执行索引扫描操作。
+格式2表示指定了目标表上的n个目标索引，此时优化器只会考虑对这n个目标索引执行索引扫描操作，而不会去考虑全表扫描或者对该目标表上的其他索引执行索引扫描操作。注意，优化器在考虑这n个目标索引时，可能是分别计算出单独扫描各个目标索引的成本后，再选择其中成本值最低的索引；也可能是先分别扫描目标索引中的两个或多个索引，然后再对扫描结果执行合并操作。当然，后面这种可能性的前提条件是优化器计算出来这样做的成本值是最低的。
+格式三也是表是指定了目标表上的n个目标索引，只不过此时是用指定目标索引的索引列名来代替对应的目标索引名。如果目标索引是复合索引，则在用于指定该索引列名的括号内也可以指定该目标索引的多个索引列，各个索引列之间用空格分隔就可以了。
+格式的表示指定了目标表上所有已存在的索引，此时优化器只会考虑对该目标表上所有已存在的索引执行索引扫描操作，而不会去考虑全表扫描操作。注意，这里优化器在考虑该目标表上所有已存在的索引时，可能是分别计算出单独扫描这些索引的成本后再选择其中成本值最低的索引；也可能是先分别扫描这些索引中的两个或多个索引，然后再对扫描结果执行合并操作。当然，后面这种可能性的前提条件是优化器计算出来这样做的成本值是最低的。
+使用范例：
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+11
+
+12
+
+13
+
+14
+
+15
+select /*+ index(emp pk_emp) */ empno,ename,sal,job
+  from emp
+ where empno=7369 and mgr=7902 and deptno=20;
+
+select /*+ index(emp pk_emp idx_emp_mgr idx_emp_dept) */ empno,ename,sal,job
+  from emp
+ where empno=7369 and mgr=7902 and deptno=20;
+
+select /*+ index(emp (empno) (mgr) (deptno)) */ empno,ename,sal,job
+  from emp
+ where empno=7369 and mgr=7902 and deptno=20;
+
+select /*+ index */ empno,ename,sal,job
+  from emp
+ where empno=7369 and mgr=7902 and deptno=20;
+2、NO_INDEX
+NO_INDEX是针对单个目标表的Hint，它是INDEX的反义Hint，其含义是让优化器不对目标表上的目标索引执行扫描操作。
+INDEX Hint中的目标索引也几乎可以是Oracle数据库中所有类型的索引(包括B树索引、位图索引、函数索引等)。
+格式有如下三种：
+格式1 /*+ NO_INDEX(目标表 目标索引) */
+格式2 /*+ NO_INDEX(目标表 目标索引1 目标索引2 …… 目标索引n) */
+格式3 /*+ NO_INDEX(目标表) */
+格式1表示仅指定了目标表上的一个目标索引，此时优化器只是不会考虑对这个目标索引执行索引扫描操作，但还是会考虑全表扫描或者对该目标表上的其他索引执行索引扫描操作。
+格式2表示指定了目标表上的n个目标索引，此时优化器只是不会考虑对这n个目标索引执行索引扫描操作，但还是会考虑全表扫描或者对该目标表上的其他索引执行索引扫描操作。
+格式3表示指定了目标表上的所有已存在的索引，即此时优化器不会考虑对该目标表上所有已存在的索引执行索引扫描操作，这相当于对目标表指定了全表扫描。
+使用范例：
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+11
+select /*+ no_index(emp pk_emp) */ empno,ename,sal,job
+  from emp
+where empno=7369 and mgr=7902 and deptno=20;
+
+select /*+ no_index(emp pk_emp idx_emp_mgr idx_emp_dept) */ empno,ename,sal,job
+  from emp
+ where empno=7369 and mgr=7902 and deptno=20;
+
+select /*+ no_index */ empno,ename,sal,job
+  from emp
+ where empno=7369 and mgr=7902 and deptno=20;
+3、INDEX_DESC
+INDEX_DESC是针对单个目标表的Hint，它的含义是让优化器对目标表上的目标索引执行索引降序扫描操作。如果目标索引是升序的，则INDEX_DESC Hint会使Oracle以降序的方式扫描该索引；如果目标索引是降序的，则INDEX_DESC Hint会使Oracle以升序的方式扫描该索引。
+格式有三种：
+格式1 /*+ INDEX_DESC(目标表 目标索引) */
+格式2 /*+ INDEX_DESC(目标表 目标索引1 目标索引2 …… 目标索引n) */
+格式3 /*+ INDEX_DESC(目标表) */
+上述3种格式的含义和INDEX中对应格式的含义相同。
+使用范例：
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+11
+select /*+ index_desc(emp pk_emp) */ empno,ename,sal,job
+  from emp
+ where empno=7369 and mgr=7902 and deptno=20;
+
+select /*+ index_desc(emp pk_emp idx_emp_mgr idx_emp_dept) */ empno,ename,sal,job
+  from emp
+ where empno=7369 and mgr=7902 and deptno=20;
+
+select /*+ index_desc */ empno,ename,sal,job
+  from emp
+ where empno=7369 and mgr=7902 and deptno=20;
+实例：
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+11
+
+12
+
+13
+
+14
+
+15
+
+16
+
+17
+
+18
+
+19
+
+20
+
+21
+
+22
+
+23
+
+24
+
+25
+
+26
+
+27
+
+28
+
+29
+
+30
+
+31
+
+32
+
+33
+scott@TEST>select /*+ index_desc(emp,pk_emp) */ empno from emp;
+
+     EMPNO
+----------
+      7934
+      7902
+      7900
+      7876
+      7844
+      7839
+      7788
+      7782
+      7698
+      7654
+      7566
+      7521
+      7499
+      7369
+
+14 rows selected.
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 1838043032
+
+-------------------------------------------------------------------------------------
+| Id  | Operation          | Name   | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT     |     |    10 |  40 |   1   (0)| 00:00:01 |
+|   1 |  INDEX FULL SCAN DESCENDING| PK_EMP |     10 |  40 |   1   (0)| 00:00:01 |
+-------------------------------------------------------------------------------------
+......
+4、INDEX_COMBINE
+INDEX_COMBINE是针对单个目标表的Hint，它的含义是让优化器对目标表上的多个目标索引执行位图布尔运算。Oracle数据库里有一个映射函数(Mapping Function)，它可以实例B*Tree索引中的ROWID和对应位图索引中的位图之间的互相转换，所以INDEX_COMBINE Hint并不局限于位图索引，它的作用对象也可以是B*Tree索引。
+格式有如下两种
+格式1 /*+ INDEX_COMBINE(目标表 目标索引1 目标索引2 …… 目标索引n) */
+格式2 /*+ INDEX_COMBINE(目标表) */
+格式1表示指定了目标表上的n个目标索引，此时优化器会考虑对这n个目标索引中的两个或多个执行位图布尔运算。
+格式2表示指定了目标表上所有已存在的索引，此时优化器会考虑对该表上已存在的所有索引中的两个或多个执行位图布尔运算。
+使用范例：
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+11
+select /*+ index_combine(emp pk_emp idx_emp_mgr) */ empno,ename,sal,job
+  from emp
+ where empno=7369 and mgr=7902 ;
+
+select /*+ index_combine(emp pk_emp idx_emp_mgr idx_emp_deptno) */ empno,ename,sal,job
+  from emp
+ where empno=7369 and mgr=7902 and deptno=20;
+
+select /*+ index_combine(emp) */ empno,ename,sal,job
+  from emp
+ where empno=7369 and mgr=7902 and deptno=20;
+下面看一个实例，在表EMP上创建两个索引
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+11
+
+12
+
+13
+
+14
+
+15
+
+16
+
+17
+
+18
+
+19
+
+20
+
+21
+
+22
+
+23
+
+24
+
+25
+
+26
+
+27
+
+28
+
+29
+
+30
+
+31
+
+32
+
+33
+
+34
+
+35
+
+36
+scott@TEST>create index idx_emp_mgr on emp(mgr);
+
+Index created.
+
+scott@TEST>create index idx_emp_dept on emp(deptno);
+
+Index created.
+
+scott@TEST>select /*+ index_combine(emp pk_emp idx_emp_mgr idx_emp_deptno) */ empno,ename,sal,job
+  2   from emp
+  3   where empno=7369 and mgr=7902 and deptno=20;
+
+     EMPNO ENAME               SAL JOB
+---------- ------------------------------ ---------- ---------------------------
+      7369 SMITH              800 CLERK
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 1816402415
+
+-------------------------------------------------------------------------------------------------
+| Id  | Operation            | Name  | Rows | Bytes | Cost (%CPU)| Time    |
+-------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT       |     |     1 |    29 |     2   (0)| 00:00:01 |
+|   1 |  TABLE ACCESS BY INDEX ROWID   | EMP        |     1 |    29 |     2   (0)| 00:00:01 |
+|   2 |   BITMAP CONVERSION TO ROWIDS  |     |   |   |        |     |
+|   3 |    BITMAP AND           |     |   |   |        |     |
+|   4 |     BITMAP CONVERSION FROM ROWIDS|      |   |   |        |     |
+|*  5 |      INDEX RANGE SCAN         | PK_EMP |   |   |     0   (0)| 00:00:01 |
+|   6 |     BITMAP CONVERSION FROM ROWIDS|      |   |   |        |     |
+|*  7 |      INDEX RANGE SCAN         | IDX_EMP_MGR    |   |   |     1   (0)| 00:00:01 |
+|   8 |     BITMAP CONVERSION FROM ROWIDS|      |   |   |        |     |
+|*  9 |      INDEX RANGE SCAN         | IDX_EMP_DEPT |    |   |     1   (0)| 00:00:01 |
+-------------------------------------------------------------------------------------------------
+......
+从上面的执行计划中可以看到关键字“BITMAP CONVERSION FROM ROWIDS”、“BITMAP AND”和“BITMAP CONVERSION TO ROWIDS”，这说明Oracle先分别对上述三个单键值的B*Tree索引IDX_EMP_MGR、IDX_EMP_DEPT和PK_EMP用映射函数将其中的ROWID转换成了位图，然后对转换后的位图执行了BITMAP AND(位图按位与)布尔运算，最后将布尔运算的结果再次用映射函数转换成了ROWID并回表得到最终的执行结果。能走出这样的执行计划显然是因为INDEX_COMBINE Hint生效了。
+用映射函数将ROWID转换成了位图，然后再执行布尔运算，最后将布尔运算的结果再次用映射函数转换成了ROWID并回表得到最终的执行结果，这个过程在实际生产环境中的执行效率可能是有问题的，可以使用隐含参数_B_TREE_BITMAP_PLANS禁掉该过程中的ROWID到位图的转换：
+alter session set "_b_tree_bitmap_plans"=false;
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+11
+
+12
+
+13
+
+14
+
+15
+
+16
+
+17
+
+18
+
+19
+
+20
+
+21
+
+22
+
+23
+
+24
+
+25
+scott@TEST>alter session set "_b_tree_bitmap_plans"=false;
+
+Session altered.
+
+scott@TEST>select /*+ index_combine(emp pk_emp idx_emp_mgr idx_emp_deptno) */ empno,ename,sal,job
+  2    from emp
+  3   where empno=7369 and mgr=7902 and deptno=20;
+
+     EMPNO ENAME               SAL JOB
+---------- ------------------------------ ---------- ---------------------------
+      7369 SMITH              800 CLERK
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 2949544139
+
+--------------------------------------------------------------------------------------
+| Id  | Operation           | Name   | Rows  | Bytes | Cost (%CPU)| Time     |
+--------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT      |        |    1 |    29 |      1   (0)| 00:00:01 |
+|*  1 |  TABLE ACCESS BY INDEX ROWID| EMP    |       1 |    29 |      1   (0)| 00:00:01 |
+|*  2 |   INDEX UNIQUE SCAN     | PK_EMP |       1 |       |    0   (0)| 00:00:01 |
+--------------------------------------------------------------------------------------
+......
+从上面的执行计划中可以看出没有出现BITMAP相关的关键字，即INDEX_COMBINE Hint被Oracle忽略了。
+5、INDEX_FFS
+INDEX_FFS是针对单个目标表的Hint，它的含义是让优化器对目标表上的目标索引执行索引快速全扫描操作。注意，索引快速全扫描能成立的前提条件是SELECT语句中所有的查询列都存在于目标索引中，即通过扫描目标索引就可以得到所有的查询列而不用回表。
+格式有如下三种：
+格式1 /*+ INDEX_FFS(目标表 目标索引) */
+格式2 /*+ INDEX_FFS(目标表 目标索引1 目标索引2 …… 目标索引n) */
+格式3 /*+ INDEX_FFS(目标表) */
+上述3种格式的含义和INDEX中对应格式的含义相同。
+使用范例：
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+11
+select /*+ index_ffs(emp pk_emp) */ empno
+  from emp;
+
+select /*+ index_ffs(emp idx_emp_1 idx_emp_2) */ empno
+  from emp
+ where mgr=7902 and deptno=20;
+--create index idx_emp_1 on emp(mgr,deptno,1);
+--create index idx_emp_2 on emp(mgr,deptno,2);
+
+select /*+ index_ffs(emp) */ empno
+  from emp;
+看下面的实例：
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+11
+
+12
+
+13
+
+14
+
+15
+
+16
+
+17
+
+18
+
+19
+
+20
+
+21
+
+22
+
+23
+
+24
+
+25
+
+26
+
+27
+
+28
+
+29
+
+30
+
+31
+
+32
+scott@TEST>select empno from emp;
+
+14 rows selected.
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 179099197
+
+---------------------------------------------------------------------------
+| Id  | Operation    | Name   | Rows  | Bytes | Cost (%CPU)| Time    |
+---------------------------------------------------------------------------
+|   0 | SELECT STATEMENT |     |    10 |    40 | 1   (0)| 00:00:01 |
+|   1 |  INDEX FULL SCAN | PK_EMP |    10 |    40 |    1   (0)| 00:00:01 |
+---------------------------------------------------------------------------
+......
+scott@TEST>select /*+ index_ffs(emp) */empno from emp;
+
+14 rows selected.
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 366039554
+
+-------------------------------------------------------------------------------
+| Id  | Operation        | Name   | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT     |         |    10 |    40 |     2  (0)| 00:00:01 |
+|   1 |  INDEX FAST FULL SCAN| PK_EMP |    10 |    40 |     2 (0)| 00:00:01 |
+-------------------------------------------------------------------------------
+......
+6、INDEX_JOIN
+INDEX_JOIN是针对单个目标表的Hint，它的含义是让优化器对目标表上的多个目标索引执行INDEX JOIN操作。INDEX JOIN能成立的前提条件是SELECT语句中所有的查询列都存在于目标表上的多个目标索引中，即通过扫描这些索引就可以得到所有的查询列而不用回表。
+格式如下：
+格式1 /*+ INDEX_JOIN(目标表 目标索引1 目标索引2 …… 目标索引n) */
+格式2 /*+ INDEX_JOIN */
+上述两种格式的含义与INDEX_COMBINE Hint中对应格式的含义相同。
+使用范例：
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+select /*+ index_join(emp pk_emp idx_emp_mgr) */ empno,mgr
+  from emp
+ where empno>7369 and mgr<7902;
+
+select /*+ index_join(emp) */ empno,mgr
+  from emp
+ where empno>7369 and mgr<7902;
+来看下面的实例：
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+11
+
+12
+
+13
+
+14
+
+15
+
+16
+
+17
+
+18
+
+19
+
+20
+
+21
+
+22
+
+23
+
+24
+
+25
+
+26
+
+27
+
+28
+
+29
+
+30
+
+31
+
+32
+
+33
+
+34
+
+35
+
+36
+
+37
+
+38
+
+39
+
+40
+scott@TEST>select empno,mgr
+  2    from emp
+  3   where empno>7369 and mgr<7902;
+
+12 rows selected.
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 2059184959
+
+-------------------------------------------------------------------------------------------
+| Id  | Operation           | Name   | Rows  | Bytes | Cost (%CPU)| Time   |
+-------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT      |         |    10 |    80 | 2   (0)| 00:00:01 |
+|*  1 |  TABLE ACCESS BY INDEX ROWID| EMP   |    10 |    80 | 2   (0)| 00:00:01 |
+|*  2 |   INDEX RANGE SCAN      | IDX_EMP_MGR |    11 |    |   1   (0)| 00:00:01 |
+-------------------------------------------------------------------------------------------
+......
+scott@TEST>select /*+ index_join(emp) */ empno,mgr
+  2    from emp
+  3   where empno>7369 and mgr<7902;
+
+12 rows selected.
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 3030719951
+
+---------------------------------------------------------------------------------------
+| Id  | Operation      | Name         | Rows  | Bytes | Cost (%CPU)| Time     |
+---------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |             |    10 |    80 |     3  (34)| 00:00:01 |
+|*  1 |  VIEW         | index$_join$_001 |    10 |    80 |     3  (34)| 00:00:01 |
+|*  2 |   HASH JOIN     |           |       |       |       |       |
+|*  3 |    INDEX RANGE SCAN| IDX_EMP_MGR      |    10 |    80 |     2  (50)| 00:00:01 |
+|*  4 |    INDEX RANGE SCAN| PK_EMP         |    10 |    80 |     2  (50)| 00:00:01 |
+---------------------------------------------------------------------------------------
+......
+7、AND_EQUAL
+AND_EQUAL是针对单个目标表的Hint，它的含义是让优化器对目标表上的多个目标索引执行INDEX MERGE操作。INDEX MERGE能成立的前提条件是目标SQL的where条件里出现了多个针对不同单列的等值条件，并且这些列上都有单键值的索引。另外，在Oracle数据库里，能够做INDEX MERGE的索引数量的最大值是5。
+格式如下：
+/*+ AND_EQUAL(目标表 目标索引1 目标索引2 …… 目标索引n)*/
+使用范例：
+
+1
+
+2
+
+3
+select /*+ and_equal(emp idx_emp_mgr idx_emp_dept) */ empno,mgr
+  from emp
+ where deptno=20 and mgr=7902;
+看下面的实例：
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+11
+
+12
+
+13
+
+14
+
+15
+
+16
+
+17
+
+18
+
+19
+
+20
+
+21
+
+22
+
+23
+
+24
+
+25
+
+26
+
+27
+
+28
+
+29
+
+30
+
+31
+
+32
+
+33
+
+34
+
+35
+
+36
+scott@TEST>select empno,mgr
+  2    from emp
+  3   where deptno=20 and mgr=7902;
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 2059184959
+
+-------------------------------------------------------------------------------------------
+| Id  | Operation           | Name   | Rows  | Bytes | Cost (%CPU)| Time   |
+-------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT      |         |   1 |    11 |   2   (0)| 00:00:01 |
+|*  1 |  TABLE ACCESS BY INDEX ROWID| EMP   |   1 |    11 |   2   (0)| 00:00:01 |
+|*  2 |   INDEX RANGE SCAN      | IDX_EMP_MGR |   2 |      |   1   (0)| 00:00:01 |
+-------------------------------------------------------------------------------------------
+......
+scott@TEST>select /*+ and_equal(emp idx_emp_mgr idx_emp_dept) */ empno,mgr
+  2    from emp
+  3   where deptno=20 and mgr=7902;
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 3295440569
+
+--------------------------------------------------------------------------------------------
+| Id  | Operation           | Name    | Rows  | Bytes | Cost (%CPU)| Time      |
+--------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT      |          |  1 |  11 |    3   (0)| 00:00:01 |
+|*  1 |  TABLE ACCESS BY INDEX ROWID| EMP    |  1 |  11 |    3   (0)| 00:00:01 |
+|   2 |   AND-EQUAL          |          |    |    |     |      |
+|*  3 |    INDEX RANGE SCAN        | IDX_EMP_MGR  |  2 |     |  1   (0)| 00:00:01 |
+|*  4 |    INDEX RANGE SCAN        | IDX_EMP_DEPT |   5 |     |  1   (0)| 00:00:01 |
+--------------------------------------------------------------------------------------------
+......
+四、与表连接顺序相关的Hint
+1、ORDERED
+ORDERED是针对多个目标表的Hint，它的含义是让优化器对多个目标表执行表连接操作时，执照它们在目标SQL的where条件中出现的顺序从左到右依次进行连接。
+格式如下：
+/*+ ORDERED */
+使用范例：
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+select /*+ ordered */ e.ename,j.job,e.sal,d.deptno
+  from emp e,jobs j,dept d
+ where e.empno=j.empno
+   and e.deptno=d.deptno
+   and d.loc='CHICAGO'
+ order by e.ename;
+实例：
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+11
+
+12
+
+13
+
+14
+
+15
+
+16
+
+17
+
+18
+
+19
+
+20
+
+21
+
+22
+
+23
+
+24
+
+25
+
+26
+
+27
+
+28
+
+29
+
+30
+
+31
+
+32
+
+33
+
+34
+
+35
+
+36
+
+37
+
+38
+
+39
+
+40
+
+41
+
+42
+
+43
+
+44
+
+45
+
+46
+
+47
+
+48
+
+49
+
+50
+
+51
+
+52
+
+53
+
+54
+
+55
+
+56
+
+57
+
+58
+
+59
+
+60
+
+61
+
+62
+
+63
+
+64
+
+65
+
+66
+
+67
+
+68
+
+69
+
+70
+
+71
+
+72
+
+73
+
+74
+
+75
+
+76
+
+77
+
+78
+
+79
+
+80
+
+81
+
+82
+
+83
+
+84
+scott@TEST>select e.ename,j.job,e.sal,d.deptno
+  2    from emp e,jobs j,dept d
+  3   where e.empno=j.empno
+  4     and e.deptno=d.deptno
+  5     and d.loc='CHICAGO'
+  6   order by e.ename;
+
+6 rows selected.
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 4113290228
+
+-----------------------------------------------------------------------------------------------
+| Id  | Operation                      | Name         | Rows  | Bytes | Cost (%CPU)| Time     |
+-----------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT               |              |     5 |   235 |     9  (23)| 00:00:01 |
+|   1 |  SORT ORDER BY                 |              |     5 |   235 |     9  (23)| 00:00:01 |
+|*  2 |   HASH JOIN                    |              |     5 |   235 |     8  (13)| 00:00:01 |
+|   3 |    NESTED LOOPS                |              |       |       |            |          |
+|   4 |     NESTED LOOPS               |              |     5 |   140 |     4   (0)| 00:00:01 |
+|*  5 |      TABLE ACCESS FULL         | DEPT         |     1 |    11 |     3   (0)| 00:00:01 |
+|*  6 |      INDEX RANGE SCAN          | IDX_EMP_DEPT |     5 |       |     0   (0)| 00:00:01 |
+|   7 |     TABLE ACCESS BY INDEX ROWID| EMP          |     5 |    85 |     1   (0)| 00:00:01 |
+|   8 |    TABLE ACCESS FULL           | JOBS         |    14 |   266 |     3   (0)| 00:00:01 |
+-----------------------------------------------------------------------------------------------
+......
+scott@TEST>select /*+ ordered */ e.ename,j.job,e.sal,d.deptno
+  2    from emp e,jobs j,dept d
+  3   where e.empno=j.empno
+  4     and e.deptno=d.deptno
+  5     and d.loc='CHICAGO'
+  6   order by e.ename;
+
+6 rows selected.
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 3031293267
+
+-----------------------------------------------------------------------------------------
+| Id  | Operation                      | Name   | Rows  | Bytes | Cost (%CPU)| Time     |
+-----------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT               |        |     5 |   235 |    11  (28)| 00:00:01 |
+|   1 |  SORT ORDER BY                 |        |     5 |   235 |    11  (28)| 00:00:01 |
+|*  2 |   HASH JOIN                    |        |     5 |   235 |    10  (20)| 00:00:01 |
+|   3 |    MERGE JOIN                  |        |    14 |   504 |     6  (17)| 00:00:01 |
+|   4 |     TABLE ACCESS BY INDEX ROWID| EMP    |    14 |   238 |     2   (0)| 00:00:01 |
+|   5 |      INDEX FULL SCAN           | PK_EMP |    14 |       |     1   (0)| 00:00:01 |
+|*  6 |     SORT JOIN                  |        |    14 |   266 |     4  (25)| 00:00:01 |
+|   7 |      TABLE ACCESS FULL         | JOBS   |    14 |   266 |     3   (0)| 00:00:01 |
+|*  8 |    TABLE ACCESS FULL           | DEPT   |     1 |    11 |     3   (0)| 00:00:01 |
+-----------------------------------------------------------------------------------------
+......
+scott@TEST>select /*+ ordered */ e.ename,j.job,e.sal,d.deptno
+  2    from emp e,dept d,jobs j
+  3   where e.empno=j.empno
+  4     and e.deptno=d.deptno
+  5     and d.loc='CHICAGO'
+  6   order by e.ename;
+
+6 rows selected.
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 1175157407
+
+-----------------------------------------------------------------------------------------------
+| Id  | Operation                      | Name         | Rows  | Bytes | Cost (%CPU)| Time     |
+-----------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT               |              |     5 |   235 |    11  (28)| 00:00:01 |
+|   1 |  SORT ORDER BY                 |              |     5 |   235 |    11  (28)| 00:00:01 |
+|*  2 |   HASH JOIN                    |              |     5 |   235 |    10  (20)| 00:00:01 |
+|   3 |    MERGE JOIN                  |              |     5 |   140 |     6  (17)| 00:00:01 |
+|   4 |     TABLE ACCESS BY INDEX ROWID| EMP          |    14 |   238 |     2   (0)| 00:00:01 |
+|   5 |      INDEX FULL SCAN           | IDX_EMP_DEPT |    14 |       |     1   (0)| 00:00:01 |
+|*  6 |     SORT JOIN                  |              |     1 |    11 |     4  (25)| 00:00:01 |
+|*  7 |      TABLE ACCESS FULL         | DEPT         |     1 |    11 |     3   (0)| 00:00:01 |
+|   8 |    TABLE ACCESS FULL           | JOBS         |    14 |   266 |     3   (0)| 00:00:01 |
+-----------------------------------------------------------------------------------------------
+......
+从上面的执行计划可以看出不使用ordered Hint时表扫描的顺序是DEPT->EMP->JOBS，但是使用ordered Hint后，表扫描的顺序变为了EMP->JOBS->DEPT与目标SQL中的顺序一致了，在修改了目标SQL文本之后表的扫描顺序也相应地变为了EMP->DEPT->JOBS。
+2、LEADING
+LEADING是针对多个目标表的Hint，它的含义是让优化器将我们指定的多个表的连接结果作为目标SQL表连接过程中的驱动结果集，并且将LEADING Hint中从左至右出现的第一个目标表作为整个表连接过程中的首个驱动表。
+LEADING比ORDERED要温和一些，因为它只是指定了首个驱动表和驱动结果集，没有像ORDERED那样完全指定了表连接的顺序，也就是说LEADING给了优化器更大的调整余地。
+当LEADING Hint中指定的表并不能作为目标SQL的连接过程中的驱动表或者驱动结果集时，Oracle会忽略该Hint。
+格式如下：
+/*+ LEADING(目标表1 目标表2 …… 目标表n) */
+使用范例：
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+select /*+ leading(t e) */ e.ename,j.job,e.sal,d.deptno
+  from emp e,jobs j,dept d,emp_temp t
+ where e.empno=j.empno
+   and e.deptno=d.deptno
+   and d.loc='CHICAGO'
+   and e.ename=t.ename
+ order by e.ename;
+实例：
+
+--不使用Hint
+scott@TEST>select e.ename,j.job,e.sal,d.deptno
+  2    from emp e,jobs j,dept d,emp_temp t
+  3   where e.empno=j.empno
+  4     and e.deptno=d.deptno
+  5     and d.loc='CHICAGO'
+  6     and e.ename=t.ename
+  7   order by e.ename;
+
+6 rows selected.
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 558051962
+
+------------------------------------------------------------------------------------------------
+| Id  | Operation                       | Name         | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                |              |     5 |   270 |    12  (17)| 00:00:01 |
+|   1 |  SORT ORDER BY                  |              |     5 |   270 |    12  (17)| 00:00:01 |
+|*  2 |   HASH JOIN                     |              |     5 |   270 |    11  (10)| 00:00:01 |
+|*  3 |    HASH JOIN                    |              |     5 |   235 |     8  (13)| 00:00:01 |
+|   4 |     NESTED LOOPS                |              |       |       |            |          |
+|   5 |      NESTED LOOPS               |              |     5 |   140 |     4   (0)| 00:00:01 |
+|*  6 |       TABLE ACCESS FULL         | DEPT         |     1 |    11 |     3   (0)| 00:00:01 |
+|*  7 |       INDEX RANGE SCAN          | IDX_EMP_DEPT |     5 |       |     0   (0)| 00:00:01 |
+|   8 |      TABLE ACCESS BY INDEX ROWID| EMP          |     5 |    85 |     1   (0)| 00:00:01 |
+|   9 |     TABLE ACCESS FULL           | JOBS         |    14 |   266 |     3   (0)| 00:00:01 |
+|  10 |    TABLE ACCESS FULL            | EMP_TEMP     |    14 |    98 |     3   (0)| 00:00:01 |
+------------------------------------------------------------------------------------------------
+......
+--使用LEADING Hint
+scott@TEST>select /*+ leading(t e) */ e.ename,j.job,e.sal,d.deptno
+  2    from emp e,jobs j,dept d,emp_temp t
+  3   where e.empno=j.empno
+  4     and e.deptno=d.deptno
+  5     and d.loc='CHICAGO'
+  6     and e.ename=t.ename
+  7   order by e.ename;
+
+6 rows selected.
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 937897748
+
+----------------------------------------------------------------------------------
+| Id  | Operation             | Name     | Rows  | Bytes | Cost (%CPU)| Time     |
+----------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT      |          |     5 |   270 |    15  (20)| 00:00:01 |
+|   1 |  SORT ORDER BY        |          |     5 |   270 |    15  (20)| 00:00:01 |
+|*  2 |   HASH JOIN           |          |     5 |   270 |    14  (15)| 00:00:01 |
+|*  3 |    HASH JOIN          |          |     5 |   175 |    10  (10)| 00:00:01 |
+|*  4 |     HASH JOIN         |          |    14 |   336 |     7  (15)| 00:00:01 |
+|   5 |      TABLE ACCESS FULL| EMP_TEMP |    14 |    98 |     3   (0)| 00:00:01 |
+|   6 |      TABLE ACCESS FULL| EMP      |    14 |   238 |     3   (0)| 00:00:01 |
+|*  7 |     TABLE ACCESS FULL | DEPT     |     1 |    11 |     3   (0)| 00:00:01 |
+|   8 |    TABLE ACCESS FULL  | JOBS     |    14 |   266 |     3   (0)| 00:00:01 |
+----------------------------------------------------------------------------------
+......
+--使用Ordered Hint
+scott@TEST>select /*+ ordered */ e.ename,j.job,e.sal,d.deptno
+  2    from emp e,jobs j,dept d,emp_temp t
+  3   where e.empno=j.empno
+  4     and e.deptno=d.deptno
+  5     and d.loc='CHICAGO'
+  6     and e.ename=t.ename
+  7   order by e.ename;
+
+6 rows selected.
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 2459794491
+
+--------------------------------------------------------------------------------------------
+| Id  | Operation                       | Name     | Rows  | Bytes | Cost (%CPU)| Time     |
+--------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                |          |     5 |   270 |    14  (22)| 00:00:01 |
+|   1 |  SORT ORDER BY                  |          |     5 |   270 |    14  (22)| 00:00:01 |
+|*  2 |   HASH JOIN                     |          |     5 |   270 |    13  (16)| 00:00:01 |
+|*  3 |    HASH JOIN                    |          |     5 |   235 |    10  (20)| 00:00:01 |
+|   4 |     MERGE JOIN                  |          |    14 |   504 |     6  (17)| 00:00:01 |
+|   5 |      TABLE ACCESS BY INDEX ROWID| EMP      |    14 |   238 |     2   (0)| 00:00:01 |
+|   6 |       INDEX FULL SCAN           | PK_EMP   |    14 |       |     1   (0)| 00:00:01 |
+|*  7 |      SORT JOIN                  |          |    14 |   266 |     4  (25)| 00:00:01 |
+|   8 |       TABLE ACCESS FULL         | JOBS     |    14 |   266 |     3   (0)| 00:00:01 |
+|*  9 |     TABLE ACCESS FULL           | DEPT     |     1 |    11 |     3   (0)| 00:00:01 |
+|  10 |    TABLE ACCESS FULL            | EMP_TEMP |    14 |    98 |     3   (0)| 00:00:01 |
+--------------------------------------------------------------------------------------------
+......
+从上面的执行计划可以看出不使用Hint时表扫描顺序是DEPT->EMP->JOBS->EMP_TEMP；使用LEADING Hint时表扫描顺序是EMP_TEMP->EMP->DEPT->JOBS，EMP_TEMP做首个驱动表和表EMP的连接结果做为驱动结果集，与Hint要求一致。；使用Ordered Hint时表扫描顺序是EMP->JOBS->DEPT->EMP_TEMP，与SQL中顺序一致。
 
 
 
@@ -3593,7 +5080,7 @@ RBO Path 15: Full Table Scan
 可以看到，优先级最高的是Single Row by Rowid，这就意味着在基于规则的优化器如果有索引可以利用，即使全表扫描更有效率，也不会使用全表扫描，因为Full Table Scan 的优先级是最低的。这也是大家通常所说的RBO总是认为索引最优的原因。
 RBO的缺点很显而易见，就是对数据不敏感，也就是说，数据的变化是不会影响执行计划的生成，优化器不会考虑数据的多少、数据分布、索引的可选择性等等，而这是非常不好的。
 RBO对于开发人员的要求也会相对比较高，在RBO模式，需要按照一定的规则来写SQL。
-由于RBO有这么多的缺点，所以oracle推出了CBO，虽然在早期的版本中存在很多缺点，但是在oracle每个版本中都对它有增强，在平安常用的版本10.2.0.4以上已相对比较稳定了。
+由于RBO有这么多的缺点，所以oracle推出了CBO，虽然在早期的版本中存在很多缺点，但是在oracle每个版本中都对它有增强，在常用的版本10.2.0.4以上已相对比较稳定了。
 
 
 基于成本的优化器——Cost Based Optimizer，即CBO。
@@ -3624,7 +5111,7 @@ FIRST_ROW：是优化器使用的第二种具体的优化方法，是以数据�
 FIRST_ROWS_[1 | 10 | 100 | 1000] ：是优化器使用的第三种具体的优化方法，让优化器选择一个能够把响应时间减到最小的查询执行计划，以迅速产生查询结果的前 n 行。该参数为ORACLE 9I新引入的。
 注意，在使用这个参数时，由于某些bug会导致优化器选择次优化的执行计划。
 
-从ORACLE V7以来，optimizer_mode参数的缺省设置应是"choose"，即如果对已分析的表查询的话选择CBO，否则选择RBO。在此种设置中，如果采用了CBO，则缺省为CBO中的all_rows模式，目前平安10g以上包括10g的库现在采用的都是ALL_ROWS的优化器。
+从ORACLE V7以来，optimizer_mode参数的缺省设置应是"choose"，即如果对已分析的表查询的话选择CBO，否则选择RBO。在此种设置中，如果采用了CBO，则缺省为CBO中的all_rows模式，目前10g以上包括10g的库现在采用的都是ALL_ROWS的优化器。
 需要注意的是，不管optimizer_mode参数如何设置，只要满足下面3个条件，就一定使用CBO：
 1）如果使用Index Organized Tables(IOTs), 自动使用CBO。
 2）Oracle 7.3以后，如果表上的Paralle degree option设为>1，则自动使用CBO, 而不管是否用rule hints.。
@@ -3805,7 +5292,7 @@ FORMAT          VARCHAR2                  IN   Y
 
 
 3）Dbms_xplan.display_awr：
-查看历史的执行计划，从10g开始，oracle提供了awr来记录数据库的信息，平安默认保留时间是90天。对于某个sql的历史执行情况，包括执行计划和逻辑读、物理读、cpu time以及elapsed time等信息，这个在9i的数据库中是无从查询的。
+查看历史的执行计划，从10g开始，oracle提供了awr来记录数据库的信息，默认保留时间是90天。对于某个sql的历史执行情况，包括执行计划和逻辑读、物理读、cpu time以及elapsed time等信息，这个在9i的数据库中是无从查询的。
 SQL> desc dbms_xplan.display_awr
 Parameter       Type                      Mode Default?
 --------------- ------------------------- ---- --------
@@ -4321,7 +5808,7 @@ LEADING /*+ LEADINGING(TAB1,TAB2,……)*/
 
 1)stored outline简介
    有时候生产上sql的执行计划发生突变引发生产紧急问题，修改源码加hint在解决问题的时效上不允许的，这时候stored outline就有了用武之地。
-可以通过做stored outline，无需更改sql源码，永久地为sql固定执行计划。同样引入了问题，如果数据分布是不均匀的，用stored outline固定后，就算之后发生硬解析，不管bind value是什么（在有直方图的情况下），执行计划也不会变。所以，我觉得stored outline适用于那种数据分布均匀的情况。还有一个问题，oracle的版本升级后，stored outline很可能会失效，如果dba没有做相应的措施，那么很可能在oracle版本升级后原先正确的执行计划会出现问题，所以stored outline的管理也是一件麻烦的事。在平安，stored outline可以作为临时解决生产问题的方法，但是开发一定要在后续的版本中修正sql问题而不是依赖于stored outline。
+可以通过做stored outline，无需更改sql源码，永久地为sql固定执行计划。同样引入了问题，如果数据分布是不均匀的，用stored outline固定后，就算之后发生硬解析，不管bind value是什么（在有直方图的情况下），执行计划也不会变。所以，我觉得stored outline适用于那种数据分布均匀的情况。还有一个问题，oracle的版本升级后，stored outline很可能会失效，如果dba没有做相应的措施，那么很可能在oracle版本升级后原先正确的执行计划会出现问题，所以stored outline的管理也是一件麻烦的事。在，stored outline可以作为临时解决生产问题的方法，但是开发一定要在后续的版本中修正sql问题而不是依赖于stored outline。
 2）spm简介
  在Oracle 11g前，我们可以借助Stored Outline来固定sql的执行计划。在oracle 11g中，提供了SPM（SQL PLAN Managment），SPM是Oracle自我管理发展的新功能，自动去判断某个SQL的新的执行计划是否更加合理（成本更低），只有在新的执行计划比原来的执行计划更好的情况下，它才会被使用，从而有效的保护了执行计划的稳定性，进而保证了SQL语句的执行效率。
      Oracle提供了 DBMS_SPM来做相关的管理工作，常用方法有：
@@ -4436,7 +5923,7 @@ Oracle中的频率直方图是按照累积某一列值的出现次数来生成�
 所以oracle引入了直方图。它可以描述列中数据的分布以及倾斜度。当sql发生硬解析时，优化器会依据传入的绑定变量值以及直方图信息来选择正确的执行计划，而不是一成不变的，这个过程叫做bind peeking。
 但是同样引入了一个问题，在sql第一次执行时传入的bind值决定了执行计划，不管之后传入的bind值是怎样的，执行计划都不会变，除非发生硬解析，这样，当第一次传入的bind值和之后执行的bind值是在列的倾斜度的两端的数据时，这个执行计划对于这个特定的bind值就不是一个正确的执行计划，直方图依然没有解决问题。(在oracle 9i和10g中，cursor_sharing参数设置为similar可以为不同的bind值生成不同的执行计划，这听起来很不错，但是很不幸的是，它会导致子游标数过高的问题)。折衷的办法就是，分析数据分布，为不同的倾斜度的bind值（在一个范围内，而不是每一个的bind值）sql加hint固定。
 
-由于直方图的种种问题，在平安的9i、10g库中是不建议自动收集直方图的信息的，对于已有的直方图，为避免影响，不做删除。
+由于直方图的种种问题，在的9i、10g库中是不建议自动收集直方图的信息的，对于已有的直方图，为避免影响，不做删除。
 如何在收集统计信息时不收集直方图信息呢？在收集统计信息时，METHOD_OPT参数设置为“FOR ALL COLUMNS SIZE1”就不会收集直方图信息。
 那么对于已有的直方图信息，在不重新收集统计信息的情况下如何删除呢？dbms_stats同样提供方法，使用dbms_stats.delete_column_stats可以删除列上的统计信息。
 Oracle的bind peeking问题，直到11g才得到了解决。11g 的Adaptive Cursor Sharing in Oracle Database 11g Release 1新特性改善了这个情况，即使被bind peeking了，之后执行的时候11g的优化器会选择更优的执行计划。
@@ -4448,9 +5935,9 @@ Oracle的bind peeking问题，直到11g才得到了解决。11g 的Adaptive Curs
 这种情况下，原先的执行计划还是正确的执行计划，就无需启用新的统计信息。
 
 
-平安的统计信息收集策略
-从oracle 10g开始，oracle会自动进行统计信息收集工作，看起来这个功能不错，遗憾的是，往往这个自动收集会带来很多问题，比如执行时间过长，在生产库自动收集统计信息导致生产执行计划突变等，所以在平安，除了11g的库以外（11g有强大的SPM），其他版本的数据库是不允许oracle自动收集统计信息的（9i本身就不会自动收集）。
-现在平安的非11g库的统计信息收集工作是由DBA开发的统计信息收集脚步来实现的（11g库在今年也会使用这套脚步），一般原则下，所有的ddl变更，都是需要重新收集统计信息。对于dml变更，程序会判断数据的变化量，如果达到10%（这个标准和oracle的自动收集标准是一致的），就会自动备份当前统计信息，然后调用我们的给的规范收集统计信息，再根据当前库的收集策略是收集启用还是收集不启用来判断是否需要启用新的统计信息。
+的统计信息收集策略
+从oracle 10g开始，oracle会自动进行统计信息收集工作，看起来这个功能不错，遗憾的是，往往这个自动收集会带来很多问题，比如执行时间过长，在生产库自动收集统计信息导致生产执行计划突变等，所以在，除了11g的库以外（11g有强大的SPM），其他版本的数据库是不允许oracle自动收集统计信息的（9i本身就不会自动收集）。
+现在的非11g库的统计信息收集工作是由DBA开发的统计信息收集脚步来实现的（11g库在今年也会使用这套脚步），一般原则下，所有的ddl变更，都是需要重新收集统计信息。对于dml变更，程序会判断数据的变化量，如果达到10%（这个标准和oracle的自动收集标准是一致的），就会自动备份当前统计信息，然后调用我们的给的规范收集统计信息，再根据当前库的收集策略是收集启用还是收集不启用来判断是否需要启用新的统计信息。
 
 
 表的数据量大不代表性能就一定差，可能我们只是在数据量为1亿的表中查找几条数据，如果是在走索引的情况下，和在100W表的表中查询几条数据的效率几乎是没有区别的。这和索引的结构有关系，见下页的图。

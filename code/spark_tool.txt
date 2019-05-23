@@ -1,0 +1,130 @@
+package com.pingan.lcloud.ifrs17.tool
+
+import org.apache.log4j.{Level, Logger}
+import org.apache.spark.sql.hive.HiveContext
+import org.apache.spark.{Logging, SparkConf, SparkContext}
+
+/**
+  * Created by EX-ZHANGYONGTIAN001 on 2018-10-10.
+  */
+object SparkSQLExecute extends Logging {
+
+  def main(args: Array[String]): Unit = {
+
+    val startTime = System.currentTimeMillis
+    log.info("=======================> 开始 <==========================")
+
+    val app = s"${this.getClass.getSimpleName}".filter(!_.equals('$'))
+
+    println("appName:" + app)
+
+    // TODO: 初始化参数集合
+    println("参数集合....")
+
+    //参数校验
+    if (args.length < 4) {
+      logError("Usage: 未指定参数列表 " +
+        "[env][loglevel] [hive_db] [SQL]")
+      System.exit(1)
+    }
+
+    // TODO: 运行环境 （研发、测试、生产）
+    val env = args(0)
+    println("运行模式：" + env)
+
+    // TODO: 日志级别设置
+    val logLevel = args(1)
+    println("日志级别：" + logLevel)
+
+    logLevel match {
+      case "debug" => Logger.getLogger("org").setLevel(Level.DEBUG)
+      case "info" => Logger.getLogger("org").setLevel(Level.INFO)
+      case "warn" => Logger.getLogger("org").setLevel(Level.WARN)
+      case "error" => Logger.getLogger("org").setLevel(Level.ERROR)
+    }
+
+
+    // TODO: 验证参数
+    println("验证参数....")
+
+    val hive_db = args(2)
+
+    val sqlText = args(3)
+
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // TODO：初始化环境
+    println("初始化环境....")
+
+
+    val sparkConf = new SparkConf()
+      .setAppName(app)
+      .set /*spark.sql.codegen 是否预编译sql成java字节码，长时间或频繁的sql有优化效果*/ ("spark.sql.codegen", "true")
+      .set /*spark.sql.inMemoryColumnarStorage.batchSize 一次处理的row数量，小心oom*/ ("spark.sql.inMemoryColumnarStorage.batchSize", "20000")
+      .set /*spark.sql.inMemoryColumnarStorage.compressed 设置内存中的列存储是否需要压缩*/ ("spark.sql.inMemoryColumnarStorage.compressed", "true")
+      .set /*spark.sql.autoBroadcastJoinThreshold,解决数据倾斜*/ ("spark.sql.autoBroadcastJoinThreshold", "20971520")
+      .set("hive.execution.engine", "spark")
+    //      .set("spark.sql.shuffle.partitions","200")
+
+
+    if (env.equals("local")) {
+      sparkConf.setMaster("local[*]")
+    }
+
+    val sc = new SparkContext(sparkConf)
+
+    logLevel match {
+      case "debug" => sc.setLogLevel(Level.DEBUG.toString)
+      case "info" => sc.setLogLevel(Level.INFO.toString)
+      case "warn" => sc.setLogLevel(Level.WARN.toString)
+      case "error" => sc.setLogLevel(Level.ERROR.toString)
+    }
+
+    val hiveContext = new HiveContext(sc)
+
+    if (env.equals("prd")) {
+      hiveContext.sql("use " + hive_db)
+      hiveContext.sql("set hive.exec.dynamic.partition = true")
+      hiveContext.sql("set hive.exec.dynamic.partition.mode = nonstrict")
+    }
+
+    val arr = sqlText.split(";")
+
+    for (i <- 0 until arr.length) {
+      println(arr(i))
+      hiveContext.sql(arr(i)).show(false)
+    }
+
+    // TODO:输出
+    //    resRDD.cache()
+    //    if(env=="local"){
+    //      resRDD.foreach(println)
+    //    }
+    //    val result_table = "LAR_DCS_RESULT_IND"
+    //
+    //    println(s"$result_table 数据量："+resRDD.count)
+    //
+    //    if(env=="prd"){
+    //      resRDD.saveAsTextFile(paramConf.getString("out.hdfs.path")+"_"+System.currentTimeMillis())
+    //    }
+
+
+    //    hiveContext.sql(s"LOAD DATA LOCAL INPATH '${hdfsPath}' OVERWRITE INTO TABLE sx_core_safe.LAR_DCS_RESULT_IND")
+
+
+    //    val hdfs = org.apache.hadoop.fs.FileSystem.get(sc.hadoopConfiguration)
+    //    val path = new Path(hdfsPath)
+    //    if(hdfs.exists(path)){
+    //      //为防止误删，禁止递归删除
+    //      hdfs.delete(path,false)
+    //    }
+
+    //TODO:结束
+    sc.stop()
+    val endTime = System.currentTimeMillis
+    println("耗时：" + (endTime - startTime) / 1000 + " 秒")
+    println("=======================> 结束<==========================")
+  }
+
+}

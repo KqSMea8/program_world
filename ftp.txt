@@ -1,0 +1,11 @@
+使用的是FreeSSHD安装的SFTP（FTP可以使用IIS方式安装，但不符合安全规范，所以采用的SFTP）服务。搭建过程大致如下：
+1.下载freeSSHD：http://www.freesshd.com/
+2.安装freeSSHD（windows傻瓜式一键安装）
+3.管理员方式运行
+4.配置SFTP服务（主要配置以下内容）
+Users：设置用户相关信息，添加用户并设置密码
+SSH：设置IP端口等信息
+SFTP：设置SFTP服务的根目录
+Host rest：设置IP白名单
+5.启动
+Server status：启动服务

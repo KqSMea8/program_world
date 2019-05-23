@@ -1,3 +1,1865 @@
+
+
+import org.apache.spark.SparkContext
+
+object App {
+
+  def main(args: Array[String]): Unit = {
+
+
+    val sc: SparkContext = new SparkContext()// An existing SparkContext.
+
+    val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+
+    // this is used to implicitly convert an RDD to a DataFrame.
+    import sqlContext.implicits._
+
+    val df = sqlContext.read.json("examples/src/main/resources/people.json")
+
+
+    // Show the content of the DataFrame
+    df.show()
+    // age  name
+    // null Michael
+    // 30   Andy
+    // 19   Justin
+
+    // Print the schema in a tree format
+    df.printSchema()
+    // root
+    // |-- age: long (nullable = true)
+    // |-- name: string (nullable = true)
+
+    // Select only the "name" column
+    df.select("name").show()
+    // name
+    // Michael
+    // Andy
+    // Justin
+
+    // Select everybody, but increment the age by 1
+    df.select(df("name"), df("age") + 1).show()
+    // name    (age + 1)
+    // Michael null
+    // Andy    31
+    // Justin  20
+
+    // Select people older than 21
+    df.filter(df("age") > 21).show()
+    // age name
+    // 30  Andy
+
+    // Count people by age
+    df.groupBy("age").count().show()
+    // age  count
+    // null 1
+    // 19   1
+    // 30   1
+
+   sqlContext.sql("SELECT * FROM table")
+
+    // Encoders for most common types are automatically provided by importing sqlContext.implicits._
+    val ds = Seq(1, 2, 3).toDS()
+
+    ds.map(_ + 1).collect() // Returns: Array(2, 3, 4)
+
+//    // Encoders are also created for case classes.
+//    case class Person(name: String, age: Long)
+//    val ds = Seq(Person("Andy", 32)).toDS()
+//
+//    // DataFrames can be converted to a Dataset by providing a class. Mapping will be done by name.
+//    val path = "examples/src/main/resources/people.json"
+//    val people = sqlContext.read.json(path).as[Person]
+
+//
+//    // Define the schema using a case class.
+//    // Note: Case classes in Scala 2.10 can support only up to 22 fields. To work around this limit,
+//    // you can use custom classes that implement the Product interface.
+//    case class Person(name: String, age: Int)
+//
+//    // Create an RDD of Person objects and register it as a table.
+//    val people = sc.textFile("examples/src/main/resources/people.txt").map(_.split(",")).map(p => Person(p(0), p(1).trim.toInt)).toDF()
+//    people.registerTempTable("people")
+//
+//    // SQL statements can be run by using the sql methods provided by sqlContext.
+//    val teenagers = sqlContext.sql("SELECT name, age FROM people WHERE age >= 13 AND age <= 19")
+//
+//    // The results of SQL queries are DataFrames and support all the normal RDD operations.
+//    // The columns of a row in the result can be accessed by field index:
+//    teenagers.map(t => "Name: " + t(0)).collect().foreach(println)
+//
+//    // or by field name:
+//    teenagers.map(t => "Name: " + t.getAs[String]("name")).collect().foreach(println)
+//
+//    // row.getValuesMap[T] retrieves multiple columns at once into a Map[String, T]
+//    teenagers.map(_.getValuesMap[Any](List("name", "age"))).collect().foreach(println)
+//    // Map("name" -> "Justin", "age" -> 19)
+
+
+//    // Create an RDD
+//    val people = sc.textFile("examples/src/main/resources/people.txt")
+//
+//    // The schema is encoded in a string
+//    val schemaString = "name age"
+//
+//    // Import Row.
+//    import org.apache.spark.sql.Row;
+//
+//    // Import Spark SQL data types
+//    import org.apache.spark.sql.types.{StructType,StructField,StringType};
+//
+//    // Generate the schema based on the string of schema
+//    val schema =
+//      StructType(
+//        schemaString.split(" ").map(fieldName => StructField(fieldName, StringType, true)))
+//
+//    // Convert records of the RDD (people) to Rows.
+//    val rowRDD = people.map(_.split(",")).map(p => Row(p(0), p(1).trim))
+//
+//    // Apply the schema to the RDD.
+//    val peopleDataFrame = sqlContext.createDataFrame(rowRDD, schema)
+//
+//    // Register the DataFrames as a table.
+//    peopleDataFrame.registerTempTable("people")
+//
+//    // SQL statements can be run by using the sql methods provided by sqlContext.
+//    val results = sqlContext.sql("SELECT name FROM people")
+//
+//    // The results of SQL queries are DataFrames and support all the normal RDD operations.
+//    // The columns of a row in the result can be accessed by field index or by field name.
+//    results.map(t => "Name: " + t(0)).collect().foreach(println)
+
+
+
+//    val df = sqlContext.read.load("examples/src/main/resources/users.parquet")
+//    df.select("name", "favorite_color").write.save("namesAndFavColors.parquet")
+
+
+
+//    val df = sqlContext.read.format("json").load("examples/src/main/resources/people.json")
+//    df.select("name", "age").write.format("parquet").save("namesAndAges.parquet")
+
+
+//    val df = sqlContext.sql("SELECT * FROM parquet.`examples/src/main/resources/users.parquet`")
+
+
+//    val people: RDD[Person] = ... // An RDD of case class objects, from the previous example.
+//
+//    // The RDD is implicitly converted to a DataFrame by implicits, allowing it to be stored using Parquet.
+//    people.write.parquet("people.parquet")
+//
+//    // Read in the parquet file created above. Parquet files are self-describing so the schema is preserved.
+//    // The result of loading a Parquet file is also a DataFrame.
+//    val parquetFile = sqlContext.read.parquet("people.parquet")
+//
+//    //Parquet files can also be registered as tables and then used in SQL statements.
+//    parquetFile.registerTempTable("parquetFile")
+//    val teenagers = sqlContext.sql("SELECT name FROM parquetFile WHERE age >= 13 AND age <= 19")
+//    teenagers.map(t => "Name: " + t(0)).collect().foreach(println)
+
+
+    // Create a simple DataFrame, stored into a partition directory
+    val df1 = sc.makeRDD(1 to 5).map(i => (i, i * 2)).toDF("single", "double")
+    df1.write.parquet("data/test_table/key=1")
+
+    // Create another DataFrame in a new partition directory,
+    // adding a new column and dropping an existing column
+    val df2 = sc.makeRDD(6 to 10).map(i => (i, i * 3)).toDF("single", "triple")
+    df2.write.parquet("data/test_table/key=2")
+
+    // Read the partitioned table
+    val df3 = sqlContext.read.option("mergeSchema", "true").parquet("data/test_table")
+    df3.printSchema()
+
+    // The final schema consists of all 3 columns in the Parquet files together
+    // with the partitioning column appeared in the partition directory paths.
+    // root
+    // |-- single: int (nullable = true)
+    // |-- double: int (nullable = true)
+    // |-- triple: int (nullable = true)
+    // |-- key : int (nullable = true)
+
+
+    // sqlContext is an existing HiveContext
+//    sqlContext.refreshTable("my_table")
+
+
+
+//    // A JSON dataset is pointed to by path.
+//    // The path can be either a single text file or a directory storing text files.
+//    val path = "examples/src/main/resources/people.json"
+//    val people = sqlContext.read.json(path)
+//
+//    // The inferred schema can be visualized using the printSchema() method.
+//    people.printSchema()
+//    // root
+//    //  |-- age: integer (nullable = true)
+//    //  |-- name: string (nullable = true)
+//
+//    // Register this DataFrame as a table.
+//    people.registerTempTable("people")
+//
+//    // SQL statements can be run by using the sql methods provided by sqlContext.
+//    val teenagers = sqlContext.sql("SELECT name FROM people WHERE age >= 13 AND age <= 19")
+//
+//    // Alternatively, a DataFrame can be created for a JSON dataset represented by
+//    // an RDD[String] storing one JSON object per string.
+//    val anotherPeopleRDD = sc.parallelize(
+//      """{"name":"Yin","address":{"city":"Columbus","state":"Ohio"}}""" :: Nil)
+//    val anotherPeople = sqlContext.read.json(anotherPeopleRDD)
+//
+//
+
+    // sc is an existing SparkContext.
+//    val sqlContext = new org.apache.spark.sql.hive.HiveContext(sc)
+//
+//    sqlContext.sql("CREATE TABLE IF NOT EXISTS src (key INT, value STRING)")
+//    sqlContext.sql("LOAD DATA LOCAL INPATH 'examples/src/main/resources/kv1.txt' INTO TABLE src")
+//
+//    // Queries are expressed in HiveQL
+//    sqlContext.sql("FROM src SELECT key, value").collect().foreach(println)
+
+
+
+    val jdbcDF = sqlContext.read.format("jdbc").options(
+      Map("url" -> "jdbc:postgresql:dbserver",
+        "dbtable" -> "schema.tablename")).load()
+
+
+
+//    // In 1.3.x, in order for the grouping column "department" to show up,
+//    // it must be included explicitly as part of the agg function call.
+//    df.groupBy("department").agg($"department", max("age"), sum("expense"))
+//
+//    // In 1.4+, grouping column "department" is included automatically.
+//    df.groupBy("department").agg(max("age"), sum("expense"))
+//
+//    // Revert to 1.3 behavior (not retaining grouping column) by:
+//    sqlContext.setConf("spark.sql.retainGroupColumns", "false")
+//
+
+
+    sqlContext.udf.register("strLen", (s: String) => s.length())
+
+//    SET spark.sql.shuffle.partitions=10;
+//    SELECT page, count(*) c
+//      FROM logs_last_month_cached
+//      GROUP BY page ORDER BY c DESC LIMIT 10;
+
+
+//    CACHE TABLE logs_last_month;
+//    UNCACHE TABLE logs_last_month;
+
+
+
+    sc.stop()
+
+  }
+}
+
+/**
+  * Created by EX-ZHANGYONGTIAN001 on 2018-9-27.
+  */
+object Actor01 {
+
+  def main(args: Array[String]): Unit = {
+
+    //    actor {
+    //      var sum =0
+    //      loop {
+    //        receive{
+    //          case Data(bytes) => sum+=hash(bytes)
+    //          case GetSum(requester)=>requester ! sum
+    //        }
+    //      }
+    //    }
+    //
+
+
+  }
+
+}
+
+package com.pingan.lcloud.ifrs17.scala.learn
+
+/**
+  * Created by EX-ZHANGYONGTIAN001 on 2018-10-23.
+  */
+class BookKuaixue {
+
+
+}
+
+//class Account{
+//  val id = Account.newUniqueNumber()
+//  private var balance = 0.0
+//  def deposit(ammount:Double): Unit ={
+//    balance += ammount
+//  }
+//}
+//
+//
+//object Account{
+//  private var lastNumber =0
+//  def newUniqueNumber() = {
+//    lastNumber += 1;
+//    lastNumber
+//  }
+//}
+
+
+//abstract class UndoableAction(val description:String){
+//  def undo():Unit
+//  def redo():Unit
+//}
+//
+//
+//object DoNothingAction extends UndoableAction("Do nothing"){
+//  override def redo(): Unit = {}
+//  override def undo(): Unit = {}
+//}
+//
+//
+//class Account private (val id:Int,initialBalance:Double){
+//  private var balance = initialBalance
+//
+//}
+//
+//object Account{
+//  def apply(initialBalance:Double): Account = new Account(newUniqueNumber(),initialBalance)
+//    private var lastNumber =0
+//    def newUniqueNumber() = {
+//      lastNumber += 1;
+//      lastNumber
+//    }
+//}
+
+
+
+//TODO 类
+//  class Counter{
+//    private var value = 0
+//    def increment(): Unit ={
+//      value += 1
+//    }
+//    def current() = value
+//
+//
+//  }
+
+//  class Counter{
+//    private[this] var value = 0
+//    def increment(): Unit ={
+//      value += 1
+//    }
+//    def current() = value
+//
+//    def isLess(other:Counter) = value < other.value
+//
+//  }
+
+//  class Person{
+//    private var privateAge =0
+//    def age = privateAge
+//    def age_=(newValue:Int){
+//      if(newValue > privateAge) privateAge = newValue;
+//    }
+//  }
+//  class Person{
+//    @BeanProperty
+//    var name:String = _
+//  }
+
+//class Person{
+//  private var name = ""
+//  private var age =0
+//
+//  def this(name:String){//辅助构造器
+//    this()//调用主构造器
+//    this.name = name
+//  }
+//
+//  def this(name:String,age:Int){
+//    this(name)
+//    this.age = age
+//  }
+//
+//}
+
+//class Person(val name:String,val age:Int){
+//
+//}
+
+//class Person(val name:String,val age:Int){
+//  println("just constructed another person")
+//
+//  def description = name +" is "+ age+" year old "
+//}
+
+//class MyProg{
+//  //主构造器的一部分
+//  private val props = new Properties
+//  props.load(new FileReader("myprog.properties"))
+//}
+
+//class Person private (private val name:String = "",@BeanProperty val age:Int =0)
+
+//class NetWork{
+//
+//  class Member(val name:String){
+//    val contacts = new ArrayBuffer[Member]()
+//  }
+//
+//  private val members = new ArrayBuffer[Member]()
+//
+//  def join(name:String) = {
+//    val m = new Member(name)
+//    members +=
+//    m
+//  }
+//}
+//class Network{
+//  private val members = new ArrayBuffer[NetWork.Member]()
+//}
+//object NetWork{
+//  class Member(val name:String){
+//    val contacts = new ArrayBuffer[Member]()
+//
+//  }
+//}
+
+//class NetWork{
+//  class Member(val name:String){
+//    val contacts = new ArrayBuffer[NetWork#Member]()
+//  }
+//}
+
+//class Network(val name:String){
+//  outer=>
+//  class Member(val name:String){
+//    def description = name +" inside "+outer.name
+//  }
+//}
+//
+
+//class Employee(val name:String,var salary:Double){
+//  def this(){
+//    this("Join Q. Public",0.0)
+//  }
+//}
+//
+
+//object Accounts{
+//
+//  private var lastNumber =0
+//
+//  def
+//}
+
+//class Person (name:String,age:Int){
+//  println("just constructed another person")
+//  def description = name +" is "+ age+" year old "
+//}
+//
+//
+//class Employee extends Person{
+//  var salary = 0.0
+//  override val name=""
+//  override val age=2
+//
+//  override def toString: String = super.toString+"[salary="+salary+"]"
+//}
+
+//class Employee(name:String,age:Int,val salary:Double) extends Person(name,age)
+
+class Square(x:Int,y:Int,width:Int) extends java.awt.Rectangle(x,y,width,width)
+
+class Person(val name:String){
+  override def toString = getClass.getName+"[name="+name+"]"
+}
+
+class SecretAgent(codename:String) extends Person(codename) {
+  override val name = "secret"
+
+  override val toString = "secret"
+}
+
+//abstract class Person{
+//  def id:Int
+//}
+
+//class Student(override val id:Int) extends Person
+
+
+//abstract class Person(val name:String){
+//  def id:Int
+//}
+
+
+//class Employee(name:String) extends Person(name){
+//  def id = name.hashCode
+//}
+
+//abstract class Person {
+//  val id:Int
+//  var name:String
+//}
+
+//class Employee(val id:Int) extends Person {
+//  var name = ""
+//}
+
+
+class Creature{
+  val range:Int = 10
+  val env:Array[Int] = new Array[Int](range)
+}
+
+//class Ant extends Creature {
+//  override val range =2
+//}
+
+//提前定義
+class Ant extends {
+  override val range = 2
+} with Creature
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.pingan.lcloud.ifrs17.scala.learn
+
+import java.awt.Font
+import java.awt.datatransfer.SystemFlavorMap
+import java.io.{File, FileReader, IOException}
+import java.net.{MalformedURLException, URL}
+import java.text.MessageFormat
+import java.util
+import java.util.{Properties, Scanner}
+
+import org.apache.avro.SchemaBuilder.ArrayBuilder
+
+import scala.beans.BeanProperty
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
+
+/**
+  * Created by EX-ZHANGYONGTIAN001 on 2018-9-29.
+  */
+object BookKuaixueScala {
+
+  def main(args: Array[String]): Unit = {
+
+    //      val xmax,ymax =100
+    //      val greeting,message:String =null
+    //      1.to(10)
+    //    "Hello".intersect("world")
+    //
+    //    val answer = 8*5+2
+    //    1 to 10
+    ////    counter += 1
+    //
+    //    val x:BigInt = 1234567890
+    //
+    //    x * x * x
+    //
+    //    import scala.math._
+    //
+    //    BigInt.probablePrime(100,scala.util.Random)
+
+    //    "Hello".distinct
+    //
+    //    "Hello"(4)
+    //
+    //    "Hello".apply(4)
+    //
+    //    BigInt("123123") * BigInt("123123123")
+    //
+    //    println("Harry".patch(1,"ung",2))
+    //
+    //    var n = 0
+    //    var r = 0
+    //    if(n>0){
+    //      r=r*n
+    //      n -= 1
+    //    }
+
+    //    print("Answer:")
+    //    println(42)
+    //    printf("Hello,%s! You are %d years old.\n","Fred",42)
+
+
+    //TODO：循环
+    //    val name = readLine("Your name: ")
+    //    print("Your age:")
+    //
+    //    val age = readInt()
+    //
+    //    printf("Hello,%S! Next year,your will be %d.\n",name,age+1)
+
+
+    //    import scala.util.control.Breaks._
+    //
+    //    breakable{
+    //      for(i<-0 to 10){
+    //        if(true) break;
+    //      }
+    //    }
+    //
+    //    for(i<-1 to 3;j<- 1 to 3) print ((10*i+j)+" ")
+    //
+    //    for(i<-1 to 3;j<-1 to 3 if i!=j) print((10*i+j))+" "
+    //
+    //    for(i<-1 to 3;from =4-i;j<- from to 3) print((10*i+j)+" ")
+    //
+    //    for(i<- 1 to 10) yield i % 3
+    //
+    //    //生成(1,2,0,1,2,0,1,2,0,1)
+
+    //TODO:函数
+
+    //    def abs(x:Double) = if(x>=0) x else -x
+    //
+    //    def fac(n:Int):Int =if(n<=0) 1 else n * fac(n-1)
+    //
+    //
+    //    def decorate(str:String,left: String = "[",right: String="]") = left+str+right
+    //
+    //    decorate(left = "<<<",str = "Hello",right = ">>>")
+    //
+    //   decorate("Hello",right = "]<<<")
+
+
+    //TODO:变长参数
+    //   def sum(args:Int*) ={
+    //     var result = 0
+    //     for(arg<-args) result += arg
+    //     result
+    //   }
+    //
+    ////    val s = sum(1,4,9,16,25)
+    //
+    //    val s = sum(1 to 5:_*)
+    //
+    //    def recursiveSum(args:Int*):Int = {
+    //      if(args.length == 0) 0
+    //      else args.head + recursiveSum(args.tail:_*)
+    //    }
+    //
+    //    val str = MessageFormat.format("The answer to {0} is {1}","everything",42.asInstanceOf[AnyRef])
+    //
+    //
+    //    def box(s:String): Unit ={
+    //      val border = "-" * s.length + "--\n"
+    //
+    //      println(border+"|"+s+"|\n"+border)
+    //    }
+    //
+    //    lazy val words = scala.io.Source.fromFile("/usr/share/dict/words").mkString
+
+
+    //TODO:异常
+
+    //    throw new IllegalArgumentException("x should not be negative")
+
+    //    val x = 0
+
+    //    if(x>=0) {
+    //      sqrt(x)
+    //    } else throw new IllegalArgumentException("x should not be negative")
+
+    //    try{
+    //      process(new URL("http://horstmann.com/fred-tiny.gif"))
+    //    } catch {
+    //      case _:MalformedURLException => println("Bad URL:"+url)
+    //      case ex:IOException => ex.printStackTrace()
+    //    }
+
+
+    //    var in = new URL("http://horstmann.com/fred.gif").openStream()
+    //
+    //    try {
+    //      process(in)
+    //    } finally {
+    //      in.close()
+    //    }
+
+    //TODO:定长数组
+    //    val nums = new Array[Int](10)
+    //
+    //    val s = Array("Hello","World")
+    //
+    //    import scala.collection.mutable.ArrayBuffer
+    //
+    //    val b = ArrayBuffer[Int]()
+    //
+    //    b+=1
+    //
+    //    b += (1,2,3,4,5)
+    //
+    //    b ++= Array(8,13,21)
+    //
+    //    b.trimEnd(5)
+    //
+    //    b.insert(2,6)
+    //
+    //    b.insert(2,7,8,9)
+    //
+    //    b.remove(2)
+    //
+    //    b.remove(2,3)
+
+    //TODO:数组遍历
+    //    for(i<-0 until b.length){
+    //
+    //    }
+
+    //
+    //    0 until(b.length,2)
+    //
+    //    (0 until b.length).reverse
+    //
+
+    //     for(elem<-b){
+    //       println(elem)
+    //     }
+
+    //TODO:数组转换
+
+    //    val a = ArrayBuffer(2,3,5,7,11)
+    //    val result = for(elem<-a if elem % 2 == 0) yield  2* elem
+    //
+    //    a.filter(_%2==0).map(2*_)
+
+
+    //     var first = true
+    //     val indexes  = for(i<-0 until a.length if first || a(i) >= 0) yield  {
+    //         if(a(i)<0) first= false;i
+    //       }
+    //
+    //
+    //    for(j<-0 until indexes.length) a(j) = a(indexes(j))
+    //
+    //    a.trimEnd(a.length - indexes.length)
+
+
+    //  //TODO:定长数组
+    //
+    //    val nums = new Array[Int](10)
+    //
+    //    val a = new Array[String](10)
+    //
+    //    val s = Array("Hello","World")
+    //
+    //    s(0) = "Goodbye"
+    //
+    //    //TODO:变长数组
+    //    import scala.collection.mutable.ArrayBuffer
+    //
+    //    val b = ArrayBuffer[Int]()
+    //
+    //    b += 1
+    //
+    //    b+=(1,2,3,5)
+    //
+    //    b++=Array(8,13,21)
+    //
+    //    b.trimEnd(5)
+    //
+    //    //amortized constant time
+    //
+    //    b.insert(2,6)
+    //
+    //    b.insert(2,7,8,9)
+    //
+    //    b.remove(2)
+    //
+    //    b.remove(2,3)
+    //
+    //    b.toArray
+
+    //
+    //    val a = ArrayBuffer(-2,3,-5,7,11)
+    //
+    //    //删除除第一个负数之外的所有负数
+    //
+    //    //收集需要保留的下标
+    //    var first = true
+    //
+    //    val indexes =
+    //      for(i<-0 until a.length if first || a(i)>=0) yield {
+    //      if(a(i)<0) first = false;i
+    //    }
+    //
+    //    println(indexes)
+    //
+    //    println(a)
+    //
+    //    for (j<-0 until indexes.length) a(j) = a(indexes(j))
+    //
+    //    println(a)
+    //    a.trimEnd(a.length-indexes.length)
+    //    println(a)
+
+
+    //TDOO:排序
+
+    //    val b = ArrayBuffer(1,7,2,9)
+    //
+    ////    val bSorted = b.sorted(_ <  _)
+    //
+    //     val a = Array(1,7,2,9)
+    //
+    //    scala.util.Sorting.quickSort(a)
+    //
+    //    a.mkString(" and ")
+    //
+    //    a.mkString("<",",",">")
+
+
+
+    //TODO:多维数组
+    //
+    //    val matrix = Array.ofDim[Double](3,4)
+    //
+    ////    matrix(1)(2)
+    //
+    //    matrix(0)(1) = 42
+    //
+    //    val triangle  = new Array[Array[Int]](10)
+    //
+    //    for (i<-0 until triangle.length){
+    //      triangle(i) = new Array[Int](i+1)
+    //    }
+
+    //TODO:与java的互操作
+
+    //    import scala.collection.JavaConversions.bufferAsJavaList
+    //
+    //    import scala.collection.mutable.ArrayBuffer
+    //
+    //    val command = ArrayBuffer("ls","-al","/home/cay")
+    //
+    //    val pb = new ProcessBuilder(command)
+    //
+    //    //java到scala的转换
+    //    import scala.collection.JavaConversions.asScalaBuffer
+    //    import scala.collection.mutable.Buffer
+    //
+    //    val cmd:Buffer[String] = pb.command()
+    //
+    //    val flavors =SystemFlavorMap.getDefaultFlavorMap.asInstanceOf[SystemFlavorMap]
+
+    //TODO：映射
+
+    //    val scores = Map("Alice"->10,"Bob"->3,"Cindy"->8)
+
+    //    val scores = scala.collection.mutable.Map("Alice"->10,"Bob"->3,"Cindy"->8)
+
+    //    val scores = new mutable.HashMap[String,Int]()
+
+    //    val scores = Map(("Alice",10),("Bob",2),("Cindy",1))
+
+    //    val bobsScore = scores("Bob")
+
+    //    val bobsSocre = if(scores.contains("Bob")) scores("Bob") else 0
+
+    //    val bobsSocre = scores.getOrElse("Bob",0)
+    //
+    //    scores("Bob") = 10
+    //
+    //    scores += ("Bob"->10,"Fred"->7)
+    //
+    //    //移除某个kv
+    //    scores -= "Alice"
+    //
+    //    val newScores = scores + ("Bob"->10,"Fred"->7)
+
+    //    val scores = scala.collection.immutable.SortedMap("Alice"->10,"Fred"->7,"Bob"->3,"Cindy"->8)
+
+    //    val months = scala.collection.mutable.LinkedHashMap(
+    //      "January"->1,
+    //      "February"->2,
+    //      "March"->3,
+    //      "April"->4,
+    //      "May"->5
+    //    )
+
+    //与java的互操作
+
+    //    import scala.collection.JavaConversions.mapAsScalaMap
+    //
+    //    val scores:scala.collection.mutable.Map[String,Int] =  new util.TreeMap[String,Int]()
+    //
+    //    import scala.collection.JavaConversions.propertiesAsScalaMap
+    //
+    //    val props:scala.collection.Map[String,String] = System.getProperties
+    //
+    //    //把scala映射传递给预期java映射的方法 提供相反的隐式转换即可
+    //
+    //    import scala.collection.JavaConversions.mapAsJavaMap
+    //    import java.awt.font.TextAttribute._ //引入下面的映射会用到的键
+    //
+    //    val attrs = Map(FAMILY->"Serif",SIZE->12)
+    //
+    //    val font = new Font(attrs)//该方法预期一个java映射
+    //
+    //    //TODO：元组
+    //
+    //    val  t = (1,3.14,"Fred")
+    //
+    ////    val (first,second,third) = t
+    //
+    //    val (first,second,_)  = t
+    //
+    //    //返回满足某个条件和不满足某个条件的字符
+    //    "New York".partition(_.isUpper) //输出对偶("NY","ew ork")
+    //
+    //
+    //
+    //    //TODO:拉链操作
+    //
+    //    val symbols = Array("<","-",">")
+    //
+    //    val counts = Array(2,10,2)
+    //
+    //    val pairs = symbols.zip(counts)
+    //
+    //    Array(("<",2),("-",10),(">",2))
+    ////
+    ////    for((s,n)<-pairs){
+    ////      Console.print(s * n)
+    ////    }
+    //
+    ////    keys.zip(values).toMap
+    //
+    //
+    ////    val in = new Scanner((new File("myFile.txt")))
+    ////    while(in.hasNext()){
+    ////      in.next()
+    ////    }
+    //
+    ////    java.runtime.name
+    ////    sun.boot.library.path
+    ////    java.vm.version
+    ////    java.vm.vendor
+    ////    java.vendor.url
+    ////    path.separator
+    ////    java.vm.name
+    //
+    //
+    //
+    //    //TODO:类
+    //
+    ////    val fred = new Person
+    ////    fred.age=21
+    //
+    ////    val p1 = new Person()
+    ////    val p2 = new Person("Fred")
+    ////    val p3 = new Person("Fred",42)
+    //
+    ////    val chatter = new NetWork
+    ////    val fred = chatter.join("Fred")
+    ////    val wilma = chatter.join("Wilma")
+    ////    fred.contacts += wilma
+    //
+    ////    val myFace = new NetWork
+    ////    val barney = myFace.join("Barney")
+    ////    fred.contacts += barney //不行
+    //
+    //    //TODO:单例对象
+    ////    val actions = Map("open"->DoNothingAction,"save"->DoNothingAction)
+    //
+    ////    val acct = Account(1000.0)
+    //
+    //
+    ////    val p = new Person
+    ////
+    ////    if(p.isInstanceOf[Employee]){
+    ////      val s = p.asInstanceOf[Employee]
+    ////    }
+    ////
+    ////    if(p.getClass==classOf[Employee]){
+    ////
+    ////    }
+    ////
+    ////    p match {
+    ////      case s:Employee =>{
+    ////
+    ////      }
+    ////
+    ////      case _ =>{
+    ////
+    ////      }
+    ////    }
+    //
+    //    //超类的构造
+    //
+    //
+    //    //匿名子类
+    //    val alien = new Person("Fred"){
+    //      def greeting = "Greetings,Earthing!My name is Fred."
+    //    }
+    //
+    //    def meet(p:Person{def greeting:String}) {
+    //      println(p.name+"says:"+p.greeting)
+    //    }
+    //
+    ////    val fred = new Person{
+    ////        val id = 1729
+    ////        var name = "Fred"
+    ////    }
+
+
+  }
+
+  //  def printAny(x:Any): Unit ={
+  //    println(x)
+  //  }
+  //  def printUnit(x:Unit): Unit ={
+  //    println(x)
+  //  }
+  //  printAny("Hello")
+  //  printUnit("Hello")
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.pingan.lcloud.ifrs17.scala.learn
+
+/**
+  * Created by EX-ZHANGYONGTIAN001 on 2018-9-27.
+  */
+import scala.collection.mutable
+import scala.collection.mutable.Map
+class ChecksumAccumulator{
+  private var sum =0
+  def add(b:Byte){sum+=b}
+  def checksum():Int = ~(sum &0xFF) + 1
+}
+
+object ChecksumAccumulator {
+
+  private val cache = Map[String,Int]()
+
+  def calculate(s:String):Int =
+    if(cache.contains(s))
+      cache(s)
+    else{
+      val acc = new ChecksumAccumulator
+      for(c <- s)
+        acc.add(c.toByte)
+      val cs = acc.checksum()
+      cache += (s->cs)
+      cs
+    }
+}
+
+import ChecksumAccumulator.calculate
+
+//object FallWinterSpringSummber extends Application {
+//
+//  for (season<-List("fall","winter","spring")){
+//    println(calculate(season))
+//  }
+//}//package com.pingan.lcloud.ifrs17.scala.learn
+//
+//import org.apache.spark.sql.catalyst.expressions.{Cast, Divide, Literal, MakeDecimal, UnscaledValue}
+//import org.apache.spark.sql.catalyst.expressions.aggregate.{Average, Sum}
+//import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
+//import org.apache.spark.sql.catalyst.rules.Rule
+//import org.apache.spark.sql.types.{DecimalType, DoubleType}
+//
+///**
+//  * Created by EX-ZHANGYONGTIAN001 on 2018-11-27.
+//  */
+//object DecimalAggregates extends Rule[LogicalPlan] {
+//
+//  import org.apache.spark.sql.types.Decimal.MAX_LONG_DIGITS
+//
+//  //Double类型的最大小数位数量
+//  val MAX_DOUBLE_DIGITS = 15
+//
+//  override def apply(plan: LogicalPlan): LogicalPlan =
+//
+//    plan.transformAllExpressions {
+//
+//      case Sum(e@DecimalType.Expression(prec, scale))
+//
+//        if prec + 10 <= MAX_LONG_DIGITS =>
+//
+//        MakeDecimal(Sum(UnscaledValue(e)), prec + 10, scale)
+//
+//      //计算平均值时 因为有一次除法 为了不降低结果的精度 对输入的精度要求高于求和
+//      case Average(e@DecimalType.Expression(prec, scale))
+//        if prec + 4 <= MAX_DOUBLE_DIGITS =>
+//        Cast(
+//          Divide(
+//            Average(UnscaledValue(e)),
+//            Literal.create(math.pow(10.0, scale), DoubleType)),
+//          DecimalType(prec + 4, scale + 4)
+//        )
+//    }
+//}
+package com.pingan.lcloud.ifrs17.scala.learn
+
+import java.io._
+
+import scala.io.Source
+
+/**
+  * Created by EX-ZHANGYONGTIAN001 on 2018-10-11.
+  */
+object DeSerial {
+
+  def confRead(fileClassPath:String):Unit = {
+    val fis =  this.getClass.getResourceAsStream(fileClassPath)
+    val bytes = new Array[Byte](1024)
+    var n = 0
+    while (n != -1) {
+      n = fis.read(bytes)
+      if(n == -1)
+        return
+      val str = new String(bytes, 0, n)
+      //      println(str)
+    }
+  }
+
+  def main(args: Array[String]): Unit = {
+
+    val fileClassPath = "/dcs/order.csv"
+
+    //    confRead(fileClassPath)
+    //
+    //    val ois = new ObjectInputStream( this.getClass.getResourceAsStream(fileClassPath))
+
+    val dataPath =   this.getClass().getResource(fileClassPath).getPath
+    //    println(dataPath)
+
+    val orders = Source.fromFile(dataPath).getLines().toArray
+
+    orders.foreach(println)
+
+    //  val in = this.getClass.getResourceAsStream(fileClassPath);
+    //
+    //  val input = new FileInputStream(in)  ;    // 通过对象多态性，进行实例化
+    //    // 第3步、进行读操作
+    //    byte b[] = new byte[1024] ;        // 数组大小由文件决定
+    //    int len = 0 ;
+    //    int temp = 0 ;            // 接收每一个读取进来的数据
+    //    while((temp=input.read())!=-1){　　//这里先把字节读取出来，赋值给temp,如果temp不等于-1，表示还有内容，文件没有读完
+    //      b[len] = (byte)temp ;
+    //      len++ ;
+    //    }
+    //
+
+
+    //val  in= new BufferedReader(new InputStreamReader(fis))
+    //
+    //    var n = in.lines().count()
+    //    println(n)
+    //
+    //    while (n>0){
+    //      println( in.readLine())
+    //      n-=1
+    //    }
+
+
+    //    val ois = new ObjectInputStream(ins)
+    //    ois.readObject.asInstanceOf[T]
+
+    //    println(ois.readFields())
+
+  }
+
+
+}
+package com.pingan.lcloud.ifrs17.scala.learn
+
+import java.sql.Connection
+import java.util.{LinkedList, ResourceBundle}
+
+/**
+  * Created by EX-ZHANGYONGTIAN001 on 2018-12-18.
+  */
+object JdbcTest {
+
+
+  def main(args: Array[String]): Unit = {
+
+    val reader = ResourceBundle.getBundle("jdbc")
+    val max_connection = reader.getString("jeecg.max_connection") //连接池总数
+    val connection_num = reader.getString("jeecg.connection_num") //产生连接数
+    var current_num = 0 //当前连接池已产生的连接数
+    val pools = new LinkedList[Connection]() //连接池
+    val driver = reader.getString("jeecg.driver")
+    val url = reader.getString("jeecg.url")
+    val username = reader.getString("jeecg.username")
+    val password = reader.getString("jeecg.password")
+
+
+    println(driver)
+
+  }
+}
+package com.pingan.lcloud.ifrs17.scala.learn
+
+/**
+  * Created by EX-ZHANGYONGTIAN001 on 2018-9-27.
+  */
+import java.math.BigInteger
+import java.util
+
+import scala.collection.mutable
+
+object Scala01 {
+
+  def factorial(x:BigInt):BigInt =
+    if (x==0) 1 else x * factorial(x-1)
+
+
+  def main(args: Array[String]): Unit = {
+
+    args.foreach(arg=>println(arg))
+
+    //    scala pa.scala Concise is nice;
+
+
+    var captial = Map("US"->"Washington")
+
+    captial += ("Japan"->"Tokyo")
+
+
+    val name="zhangsan"
+    val nameHasUpperCase =name.exists(_.isUpper)
+
+    val x = new mutable.HashMap[Int,String]()
+
+    Console println 10
+
+    val greetStrings = new Array[String](3)
+
+    greetStrings.update(0,"Hello")
+    greetStrings.update(1,",")
+    greetStrings.update(2,"world!\n")
+
+    for (i<-0.to(2)){
+      print(greetStrings.apply(i))
+    }
+
+    val numNames = Array.apply("zero","one","two")
+
+    //    val oneTwoThree = List(1,2,3)
+    val oneTwoThree = 1::2::3::Nil
+
+    val oneTwo = List(1,2)
+    val threeFour = List(3,4)
+    //    val oneTwoThreeFour = oneTwo ::: threeFour
+    val oneTwoThreeFour =  threeFour.::(1)
+    println(oneTwoThreeFour)
+
+    //list............
+
+    val thrill = "Will"::"fill"::"until"::Nil
+
+    List("a","b") ::: List("c","d")
+
+    thrill(2)
+    thrill.count(s=>s.length == 4)
+    thrill.drop(2)
+    thrill.dropRight(2)
+    thrill.exists(s=>s=="until")
+    thrill.filter(s=>s.length==4)
+    thrill.forall(s=>s.endsWith("1"))
+    thrill.foreach(s=>println(s))
+    thrill.foreach(print)
+    thrill.head
+    thrill.init
+    thrill.isEmpty
+    thrill.last
+    thrill.length
+    thrill.map(s=>s+"y")
+    thrill.mkString(", ")
+    thrill.reverse
+
+    thrill.sortWith((s,t)=>{
+      s.charAt(0).toLower<t.charAt(0).toLower
+    })
+
+    thrill.tail
+
+
+    //使用元组
+    val pair = (99,"Luftballons")
+    println(pair._1)
+    println(pair._2)
+
+
+    ///////////////////////////////////
+    var jetSet = Set("Boeing","Airbus")
+    jetSet += "Lear"
+    println(jetSet.contains("Cessna"))
+
+
+    import scala.collection.mutable.Set
+
+    val movieSet = Set("Hitch","Poltergeist")
+    movieSet += "Shrek"
+    println(movieSet)
+
+
+    import  scala.collection.immutable.HashSet
+
+    val hashSet = HashSet("Tomatoes","Chilies")
+    println(hashSet+"Coriander")
+
+    import scala.collection.mutable.Map
+
+    val treasureMap = Map[Int,String]()
+
+    treasureMap += (1->"Go to isLand")
+    treasureMap += (2->"Find big X on ground")
+    treasureMap += (3->"Dig.")
+
+    println(treasureMap(2))
+
+    /////////////读取文件/////////////
+
+    //    import scala.io.Source
+    //
+    //    if(args.length>0){
+    //      for(line<-Source.fromFile(args(0)).getLines)
+    //        println(line.length)
+    //    }
+    //    else
+    //      Console.err.println("Please enter fileName")
+
+
+    //    val lines = Source.fromFile(args(0)).getLines().toList
+    //     var maxWidth =0
+    //    for(line<-lines){
+    //      maxWidth =maxWidth.max(widthOfLength(line))
+    //    }
+    //    val longestLine = lines.reduceLeft((a,b)=>if(a.length>b.length ) a else b)
+
+
+    //    println(" " * 1)
+
+    import scala.io.Source
+
+    def widthOfLength(s:String) = s.length.toString.length
+
+    //对文件的每行记录打印格式化的字符数量
+
+    if(args.length>0){
+      val lines = Source.fromFile(args(0)).getLines().toList
+
+      val longestLine = lines.reduceLeft((a,b)=>if(a.length>b.length ) a else b)
+
+      val maxWidth = widthOfLength(longestLine)
+
+      for(line<-lines){
+        val numSpaces = maxWidth
+        val padding = " " * numSpaces
+        print(padding+line.length+" | "+line)
+      }
+    }
+    else
+      Console.err.println("Please enter filename")
+
+  }
+
+  def factorial(x:BigInteger):BigInteger =
+    if(x==BigInteger.ZERO)
+      BigInteger.ONE
+    else
+      x.multiply(factorial(x.subtract(BigInteger.ONE)))
+
+  //  def g(): Unit ={
+  //    ""
+  //  }
+  //
+  //  def g() {
+  //    ""
+  //  }
+  //
+  //  def g() ={
+  //    ""
+  //  }
+
+
+}
+
+//class ChecksumAccumulator{
+//  private var sum =0
+//  def add(b:Byte):Unit = {
+//    sum += b
+//  }
+//  def checksum():Int = {
+//    return ~ (sum &0xFF) +1
+//  }
+//}
+//
+//
+//class ChecksumAccumulator{
+//  private var sum =0
+//  def add(b:Byte){sum+=b}
+//  def checksum():Int = ~(sum &0xFF) + 1
+//
+//}
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.pingan.lcloud.ifrs17.scala.learn
+
+import org.apache.spark.SparkContext
+
+
+/**
+  * Created by EX-ZHANGYONGTIAN001 on 2018-11-19.
+  */
+object SecondarySort {
+  def main(args: Array[String]): Unit = {
+    if (args.length < 1) {
+      System.err.println("Usage:SecondarySort <file>")
+      System.exit(1)
+    }
+    val inputPath = args(0)
+    System.out.println("args[0]:<file>=" + args(0))
+    val ctx = new SparkContext()
+    val lines = ctx.textFile(inputPath,1)
+    val pairs = lines.map(x=>{
+      val tokens = x.split(",")
+      //      println(tokens(0)+","+tokens(1)+","+tokens(2))
+      val timeValue =(tokens(1).toInt,tokens(2).toInt)
+      (tokens(0),timeValue)
+    })
+
+    val output = pairs.collect()
+
+    for(t<-output){
+      val timevalue = t._2
+      println(t._1+","+timevalue._1+","+timevalue._2)
+    }
+
+    val groups = pairs.groupByKey
+
+    println("==DEBUG1==")
+    val output2 = groups.collect()
+
+    for(t<-output2){
+      val list = t._2
+      println(t._1)
+      for(t2<-list){
+        println(t2._1+","+t2._2)
+      }
+      println("=========")
+    }
+
+    //在内存中对归约器值排序
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    ctx.stop()
+    System.exit(0)
+  }
+}
+package com.pingan.lcloud.ifrs17.scala.learn
+
+import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
+
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
+
+/**
+  * Created by EX-ZHANGYONGTIAN001 on 2018-12-27.
+  */
+object SparkPerformanceTest {
+
+
+    private def findTargetRanksIteratively(
+                                            sortedAggregatedValueColumnPairs : RDD[((Double, Int), Long)],
+                                            ranksLocations : Array[(Int, List[(Int, Long)])]): RDD[(Int, Double)] = {
+      sortedAggregatedValueColumnPairs.mapPartitionsWithIndex((partitionIndex : Int,
+                                                               aggregatedValueColumnPairs : Iterator[((Double, Int), Long)]) => {
+        val targetsInThisPart: List[(Int, Long)] = ranksLocations(partitionIndex)._2
+        if (targetsInThisPart.nonEmpty) {
+          FindTargetsSubRoutine.asIteratorToIteratorTransformation(
+            aggregatedValueColumnPairs,
+            targetsInThisPart)
+        } else {
+          Iterator.empty
+        }
+      })
+    }
+
+
+    def withArrayBuffer(valueColumnPairsIter: Iterator[((Double, Int), Long)],
+                        targetsInThisPart: List[(Int, Long)]): Iterator[(Int, Double)] = {
+      val columnsRelativeIndex: Predef.Map[Int, List[Long]] =
+        targetsInThisPart.groupBy(_._1).mapValues(_.map(_._2))
+      // The column indices of the pairs that are desired rank statistics that live in
+      // this partition.
+      val columnsInThisPart: List[Int] = targetsInThisPart.map(_._1).distinct
+      // A HashMap with the running totals of each column index. As we loop through
+      // the iterator, we will update the hashmap as we see elements of each
+      // column index.
+      val runningTotals: mutable.HashMap[Int, Long] = new mutable.HashMap()
+      runningTotals ++= columnsInThisPart.map(columnIndex => (columnIndex, 0L)).toMap
+      //we use an array buffer to build the resulting iterator
+      val result: ArrayBuffer[(Int, Double)] =
+        new scala.collection.mutable.ArrayBuffer()
+      valueColumnPairsIter.foreach {
+        case ((value, colIndex), count) =>
+          if (columnsInThisPart contains colIndex) {
+            val total = runningTotals(colIndex)
+            //the ranks that are contained by this element of the input iterator.
+            //get by filtering the
+            val ranksPresent = columnsRelativeIndex(colIndex)
+              .filter(index => (index <= count + total) && (index > total))
+            ranksPresent.foreach(r => result += ((colIndex, value)))
+            //update the running totals.
+            runningTotals.update(colIndex, total + count)
+          }
+      }
+      //convert
+      result.toIterator
+    }
+
+    }
+
+
+  def withArrayBuffer(valueColumnPairsIter: Iterator[((Double, Int), Long)],
+                      targetsInThisPart: List[(Int, Long)]): Iterator[(Int, Double)] = {
+    val columnsRelativeIndex: Predef.Map[Int, List[Long]] =
+      targetsInThisPart.groupBy(_._1).mapValues(_.map(_._2))
+    // The column indices of the pairs that are desired rank statistics that live in
+    // this partition.
+    val columnsInThisPart: List[Int] = targetsInThisPart.map(_._1).distinct
+    // A HashMap with the running totals of each column index. As we loop through
+    // the iterator, we will update the hashmap as we see elements of each
+    // column index.
+    val runningTotals: mutable.HashMap[Int, Long] = new mutable.HashMap()
+    runningTotals ++= columnsInThisPart.map(columnIndex => (columnIndex, 0L)).toMap
+    //we use an array buffer to build the resulting iterator
+    val result: ArrayBuffer[(Int, Double)] =
+      new scala.collection.mutable.ArrayBuffer()
+    valueColumnPairsIter.foreach {
+      case ((value, colIndex), count) =>
+        if (columnsInThisPart contains colIndex) {
+          val total = runningTotals(colIndex)
+          //the ranks that are contained by this element of the input iterator.
+          //get by filtering the
+          val ranksPresent = columnsRelativeIndex(colIndex)
+            .filter(index => (index <= count + total) && (index > total))
+          ranksPresent.foreach(r => result += ((colIndex, value)))
+          //update the running totals.
+          runningTotals.update(colIndex, total + count)
+        }
+    }
+    //convert
+    result.toIterator
+  }
+
+
+  def asIteratorToIteratorTransformation(
+                                          valueColumnPairsIter: Iterator[((Double, Int), Long)],
+                                          targetsInThisPart: List[(Int, Long)]): Iterator[(Int, Double)] = {
+    val columnsRelativeIndex = targetsInThisPart.groupBy(_._1).mapValues(_.map(_._2))
+    val columnsInThisPart = targetsInThisPart.map(_._1).distinct
+    val runningTotals: mutable.HashMap[Int, Long] = new mutable.HashMap()
+    runningTotals ++= columnsInThisPart.map(columnIndex => (columnIndex, 0L)).toMap
+    //filter out the pairs that don't have a column index that is in this part
+    val pairsWithRanksInThisPart = valueColumnPairsIter.filter {
+      case (((value, colIndex), count)) =>
+        columnsInThisPart contains colIndex
+    }
+    // map the valueColumn pairs to a list of (colIndex, value) pairs that correspond
+    // to one of the desired rank statistics on this partition.
+    pairsWithRanksInThisPart.flatMap {
+      case (((value, colIndex), count)) =>
+        val total = runningTotals(colIndex)
+        val ranksPresent: List[Long] = columnsRelativeIndex(colIndex)
+          .filter(index => (index <= count + total)
+            && (index > total))
+        val nextElems: Iterator[(Int, Double)] =
+          ranksPresent.map(r => (colIndex, value)).toIterator
+        //update the running totals
+        runningTotals.update(colIndex, total + count)
+        nextElems
+    }
+  }
+
+    private def findTargetRanksIteratively(
+                                            sortedAggregatedValueColumnPairs : RDD[((Double, Int), Long)],
+                                            ranksLocations : Array[(Int, List[(Int, Long)])]): RDD[(Int, Double)] = {
+      sortedAggregatedValueColumnPairs.mapPartitionsWithIndex((partitionIndex : Int,
+                                                               aggregatedValueColumnPairs : Iterator[((Double, Int), Long)]) => {
+        val targetsInThisPart: List[(Int, Long)] = ranksLocations(partitionIndex)._2
+        if (targetsInThisPart.nonEmpty) {
+          FindTargetsSubRoutine.asIteratorToIteratorTransformation(
+            aggregatedValueColumnPairs,
+            targetsInThisPart)
+        } else {
+          Iterator.empty
+        }
+      })
+    }
+
+    def findQuantilesWithCustomStorage(valPairs: RDD[((Double, Int), Long)],
+                                       colIndexList: List[Int],
+                                       targetRanks: List[Long],
+                                       storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK,
+                                       checkPoint: Boolean, directory: String = ""): Map[Int, Iterable[Double]] = {
+      val n = colIndexList.last + 1
+      val sorted = valPairs.sortByKey()
+      if (storageLevel != StorageLevel.NONE) {
+        sorted.persist(storageLevel)
+      }
+      if (checkPoint) {
+        sorted.sparkContext.setCheckpointDir(directory)
+        sorted.checkpoint()
+      }
+      val partitionColumnsFreq = getColumnsFreqPerPartition(sorted, n)
+      val ranksLocations = getRanksLocationsWithinEachPart(
+        targetRanks, partitionColumnsFreq, n)
+      val targetRanksValues = findTargetRanksIteratively(sorted, ranksLocations)
+      targetRanksValues.groupByKey().collectAsMap()
+    }
+
+
+}package com.pingan.lcloud.ifrs17.scala.learn
+
+import org.apache.log4j.{Level, Logger}
+import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.types.Metadata
+import org.apache.spark.{Logging, SparkConf, SparkContext}
+
+/**
+  * Created by EX-ZHANGYONGTIAN001 on 2018-11-26.
+  */
+object SparkSQLDemo extends Logging with Serializable {
+
+  def main(args: Array[String]): Unit = {
+
+    val startTime = System.currentTimeMillis
+
+    logError("=======================> 开始 <==========================")
+
+    val app = s"${this.getClass.getSimpleName}".filter(!_.equals('$'))
+
+    Logger.getLogger("org").setLevel(Level.ERROR)
+
+
+    val sparkConf = new SparkConf()
+      .setAppName(app)
+    val sc = new SparkContext(sparkConf)
+
+
+    sc.setLogLevel(Level.ERROR.toString)
+    ////////////////////////////////////////////////////
+
+    //    Seq.tabulate(1000){
+    //      i=>
+    //    }
+
+    //    _root_.
+
+    //FIXME
+
+    val sqlContext  = new SQLContext(sc)
+    import sqlContext.implicits._
+
+    sqlContext.setConf("spark.sql.dialect","hiveql")
+
+    //从其他数据源生成DataFrame
+    val df = sqlContext.read.json("examples/src/main/resources/people.json")
+
+
+    df.saveAsTable("people")
+    df.show()
+
+
+
+
+
+
+    logError("耗时：" + (System.currentTimeMillis - startTime) / 1000 + " 秒")
+    logError("=======================> 结束<==========================")
+
+    sc.stop()
+
+  }
+
+}
+package com.pingan.lcloud.ifrs17.scala.learn
+
+import com.pingan.lcloud.ifrs17.core.framework.comm.MPConstants
+import com.pingan.lcloud.ifrs17.core.framework.schema.BAS_PALA_POL_BEN_IND
+import scala.reflect.runtime.{universe => ru}
+import scala.collection.mutable
+
+/**
+  * Created by EX-ZHANGYONGTIAN001 on 2018-11-2.
+  */
+object Test {
+
+  def main(args: Array[String]): Unit = {
+
+        println( MPConstants.getClass.getName)
+
+        val clazz = Class.forName( MPConstants.getClass.getName)
+        val fields =  clazz.getDeclaredFields()
+        val map = new mutable.HashMap[String,String]()
+        fields.foreach(f=>{
+          f.setAccessible(true)
+          map.put(f.getName,f.getInt( clazz).toString)
+        })
+
+        map.foreach(println)
+
+        val ru = scala.reflect.runtime.universe
+        val m = ru.runtimeMirror(getClass.getClassLoader)
+        val p = Person(1, "Mike")
+        val nameTermSymb = ru.typeOf[Person].declaration(ru.newTermName("name")).asTerm
+        val im = m.reflect(p)
+        val nameFieldMirror = im.reflectField(nameTermSymb)
+        println(nameFieldMirror.get)
+
+
+
+        val clazz = Class.forName("com.testclass")                            //构造一个需要反射类的对象
+        clazz                                                                 //使用该对象去获取私有函数
+          .getDeclaredMethod(s"$函数名", classOf[String], classOf[String])     //并得到该函数入参的数据类型,如有多个入参,要声明多个classOf
+          .invoke(clazz.newInstance(), 入参1, 入参2)                           //激活该函数,传入入参
+          .asInstanceOf[String]                                               //最后结果强转下类型,scala默认是返回AnyRef类型
+
+
+        val clazz = Class.forName("com.testobject")
+        clazz
+          .getDeclaredMethod(s"$函数名", classOf[String], classOf[String])
+          .invoke(null, 入参1, 入参2)                                           //相当于调用java的静态成员,直接调用就行不需要再new加载
+          .asInstanceOf[String]
+
+
+
+        val classMirror = ru.runtimeMirror(getClass.getClassLoader)         //获取运行时类镜像
+        val classTest = ClassMirror.reflect(new com.testclass)              //获取需要反射的类对象
+        val methods = ru.typeOf[com.testclass]                              //构造获取方式的对象
+        val method = Methods.decl(ru.TermName(s"$函数名")).asMethod          //获取需要调用的函数
+        val result = classTest.reflectMethod(Method)(入参1, 入参2)           //反射调用函数,并传入入参
+        result.asInstanceOf[String]
+
+
+
+        val classMirror = ru.runtimeMirror(getClass.getClassLoader)         //获取运行时类镜像
+        val classTest = classMirror.staticModule( MPConstants.getClass.getName)          //获取需要反射object
+        val methods = classMirror.reflectModule(classTest)                  //构造获取方式的对象
+        val objMirror = classMirror.reflect(methods.instance)               //反射结果赋予对象
+        val haha = ""
+            val method = methods.symbol.typeSignature.member(ru.TypeNameTag(s"$haha")).asMethod  //反射调用函数
+
+       val method = methods.symbol.typeSignature.member(ru.TermName(s"$函数名")).asMethod  //反射调用函数
+        val result = objMirror.reflectMethod(method)(入参1, 入参2)           //最后带参数,执行这个反射调用的函数
+        result.asInstanceOf[String]
+
+        val m = ru.runtimeMirror(getClass.getClassLoader)
+        val objectC = ru.typeOf[MPConstants.type].termSymbol.asModule
+        val mm = m.reflectModule(objectC)
+        val obj = mm.instance
+
+
+  }
+}
+
+
 package org.dataalgorithms.chap23.scala
 
 import org.apache.spark.SparkConf

@@ -1,0 +1,829 @@
+#!/bin/sh
+source ExitCodeCheck.sh
+
+opts=$@
+
+getparam(){
+arg=$1
+echo $opts |xargs -n1 |cut -b 2- |awk -F'=' '{if($1=="'"$arg"'") print $2}'
+}
+
+#./SurplusSummaryJob.sh -hdp_queue=queue_1514_01
+
+IncStart=`getparam inc_start`
+IncEnd=`getparam inc_end`
+oracle_connection=`getparam jdbc_str`
+oracle_username=`getparam db_user`
+oracle_password=`getparam db_psw`
+dataName=`getparam db_sid`
+queueName=`getparam hdp_queue`
+hdfshostname=`getparam hdfs_host`;
+
+
+#Job名称
+job_name=$0
+
+#下载程序包和配置文件
+#rm -rf ${job_name}.jar;
+#rm -rf ${job_name};
+#mkdir ${job_name};
+#hadoop fs -get /apps/hduser1514/sx_core_safe/lrs/jar/${job_name}.jar .;
+#hadoop fs -get /apps/hduser1514/sx_core_safe/lrs/lib/* ./${job_name};
+
+
+
+#任务名取脚本名
+#job_name=$0
+
+JOB_HOME=/appcom/apps/hduser1508/zhangyongtian001/sparkjob
+cd $JOB_HOME
+
+
+/appcom/spark/bin/spark-submit  \
+--jars $JOB_HOME/lib/dom4j-1.6.1.jar \
+  --master yarn \
+  --deploy-mode cluster \
+  --executor-memory 20G \
+  --num-executors 20 \
+  --executor-cores 8 \
+  --driver-memory 2G \
+  --queue ${queueName} \
+   --conf spark.default.parallelism=320 \
+   --conf spark.yarn.executor.memoryoverhead=8G \
+   --conf spark.storage.memoryFraction=0.6 \
+   --conf spark.shuffle.memoryFraction=0.3 \
+   --conf spark.shuffle.file.buffer=64k  \
+   --conf spark.shuffle.consolidateFiles=true \
+   --conf spark.shuffle.io.maxRetries=10 \
+   --conf spark.shuffle.io.retryWait=30 \
+   --conf spark.locality.wait=10s \
+   --conf spark.akka.timeout=150s \
+   --conf spark.network.timeout=200s\
+   --conf spark.speculation=false \
+   --conf spark.broadcast.blockSize=4m \
+   --conf spark.files.fetchTimeout=360 \
+   --conf spark.network.timeout=360 \
+   --conf spark.cleaner.ttl=240000 \
+   --conf spark.kryoserializer.buffer.mb=10 \
+   --conf spark.reducer.maxSizeInFligth=12 \
+   --conf spark.sql.shuffle.partitions=320 \
+   --conf spark.sql.codegen=true \
+   --conf spark.sql.parquet.compression.codec=snappy \
+   --conf spark.sql.adaptive.enabled=true \
+   --conf spark.sql.broadcastTimeout=600 \
+   --conf spark.sql.autoBroadcastJoinThreshold=10485760 \
+   --conf spark.sql.inMemoryColumnarStorage.batchSize=10000 \
+   --conf spark.sql.files.maxPartitionBytes=134217728 \
+   --conf spark.sql.files.openCostInBytes=5242880  \
+   --conf "spark.executor.extraJavaOptions=-XX:+UseG1GC -XX:+UseCompressedStrings" \
+   --class com.pingan.lcloud.ifrs17.dcs.launcher.DcsIndExecutor \
+   lbdp_corepub_ifrs17_job-1.0.0.jar  \
+   env=prd  \
+   log.level=error \
+   PROC_DATE=`getparam PROC_DATE` \
+   SPCODE_SELECTION=1 \
+   src_version_num=`getparam src_version_num` \
+   res_version_num=`getparam res_version_num` \
+   res_hive_db=`getparam res_hive_db` \
+   out.hdfs.path=/apps-data/hduser1508/sx_core_safe/lar_dcs_result_ind
+
+
+exitCodeCheck $?
+#!/bin/sh
+source ExitCodeCheck.sh
+
+opts=$@
+
+getparam(){
+arg=$1
+echo $opts |xargs -n1 |cut -b 2- |awk -F'=' '{if($1=="'"$arg"'") print $2}'
+}
+
+#./SurplusSummaryJob.sh -hdp_queue=queue_1514_01
+
+IncStart=`getparam inc_start`
+IncEnd=`getparam inc_end`
+oracle_connection=`getparam jdbc_str`
+oracle_username=`getparam db_user`
+oracle_password=`getparam db_psw`
+dataName=`getparam db_sid`
+queueName=`getparam hdp_queue`
+hdfshostname=`getparam hdfs_host`;
+
+
+#Job名称
+job_name=$0
+
+#下载程序包和配置文件
+#rm -rf ${job_name}.jar;
+#rm -rf ${job_name};
+#mkdir ${job_name};
+#hadoop fs -get /apps/hduser1514/sx_core_safe/lrs/jar/${job_name}.jar .;
+#hadoop fs -get /apps/hduser1514/sx_core_safe/lrs/lib/* ./${job_name};
+
+
+
+#任务名取脚本名
+#job_name=$0
+
+JOB_HOME=/appcom/apps/hduser1508/zoubo162/sparkjob
+cd $JOB_HOME
+
+
+/appcom/spark/bin/spark-submit  \
+--jars $JOB_HOME/lib/dom4j-1.6.1.jar \
+  --master yarn \
+  --deploy-mode cluster \
+  --executor-memory 12G \
+  --num-executors 20 \
+  --executor-cores 6 \
+  --driver-memory 4G \
+  --queue ${queueName} \
+   --conf spark.default.parallelism=600 \
+   --conf spark.yarn.executor.memoryoverhead=4G \
+   --conf spark.storage.memoryFraction=0.6 \
+   --conf spark.shuffle.memoryFraction=0.3 \
+   --conf spark.shuffle.file.buffer=128k  \
+   --conf spark.shuffle.consolidateFiles=true \
+   --conf spark.shuffle.io.maxRetries=10 \
+   --conf spark.shuffle.io.retryWait=30 \
+   --conf spark.locality.wait=10s \
+   --conf spark.akka.timeout=180s \
+   --conf spark.speculation=false \
+   --conf spark.broadcast.blockSize=4m \
+   --conf spark.files.fetchTimeout=600 \
+   --conf spark.network.timeout=600 \
+   --conf spark.cleaner.ttl=240000 \
+   --conf spark.reducer.maxSizeInFligth=12 \
+   --conf spark.sql.shuffle.partitions=600 \
+   --conf spark.sql.codegen=true \
+   --conf spark.sql.parquet.compression.codec=snappy \
+   --conf spark.sql.adaptive.enabled=true \
+   --conf spark.sql.broadcastTimeout=600 \
+   --conf spark.sql.autoBroadcastJoinThreshold=2147483647 \
+   --conf spark.sql.inMemoryColumnarStorage.batchSize=10000 \
+   --conf spark.sql.files.maxPartitionBytes=134217728 \
+   --conf spark.sql.files.openCostInBytes=5242880  \
+   --conf spark.kryoserializer.buffer.max=512m \
+   --conf spark.kryoserializer.buffer=128k \
+   --conf "spark.executor.extraJavaOptions=-XX:+UseG1GC -XX:+UseCompressedStrings" \
+   --class com.pingan.lcloud.ifrs17.grouping.launcher.IndGroupingExecutor \
+   lbdp_corepub_ifrs17_job-1.0.0.jar \
+   env=prd  \
+   log.level=error \
+   p_end_date=`getparam p_end_date` \
+   p_proc_date=`getparam p_proc_date` \
+   src_version_num=`getparam src_version_num` \
+   res_version_num=`getparam res_version_num` \
+   res_hive_db=sx_hx_safe \
+   p_proc_month="20181127" \
+   partition_nums="600"
+exitCodeCheck $?
+use sx_core_safe;
+
+SET mapreduce.job.queuename=root.queue_sx80.1508_11;
+
+#!/bin/sh
+
+./MpIndJob.sh  \
+-inc_start=20181105 \
+-inc_end=20181105 \
+-jdbc_str=jdbc:oracle:thin:@d0lush0.dbdev.paic.com.cn:1526:d0lush0 \
+-db_user=Reinsdev \
+-db_psw=paic56789 \
+-db_sid=d0lush0 \
+-hdp_queue=root.queue_sx80.1508_11 \
+-hdfs_host=10.25.77.42 \
+-p_proc_date=20181105 \
+-src_version_num=20181105 \
+-res_version_num=20181105 \
+-res_hive_db=sx_hx_safe
+
+
+./DcsIndJob.sh  \
+-inc_start=20180801 \
+-inc_end=20180901 \
+-jdbc_str=jdbc:oracle:thin:@d0lush0.dbdev.paic.com.cn:1526:d0lush0 \
+-db_user=Reinsdev \
+-db_psw=paic56789 \
+-db_sid=d0lush0 \
+-hdp_queue=root.queue_sx80.1508_11 \
+-hdfs_host=10.25.77.42 \
+-src_version_num=20181102 \
+-res_version_num=20181102 \
+-res_hive_db=sx_hx_safe
+#!/bin/sh
+source ExitCodeCheck.sh
+
+opts=$@
+
+getparam(){
+arg=$1
+echo $opts |xargs -n1 |cut -b 2- |awk -F'=' '{if($1=="'"$arg"'") print $2}'
+}
+
+#./SurplusSummaryJob.sh -hdp_queue=queue_1514_01
+
+IncStart=`getparam inc_start`
+IncEnd=`getparam inc_end`
+oracle_connection=`getparam jdbc_str`
+oracle_username=`getparam db_user`
+oracle_password=`getparam db_psw`
+dataName=`getparam db_sid`
+queueName=`getparam hdp_queue`
+hdfshostname=`getparam hdfs_host`;
+
+
+#Job名称
+job_name=$0
+
+#下载程序包和配置文件
+#rm -rf ${job_name}.jar;
+#rm -rf ${job_name};
+#mkdir ${job_name};
+#hadoop fs -get /apps/hduser1514/sx_core_safe/lrs/jar/${job_name}.jar .;
+#hadoop fs -get /apps/hduser1514/sx_core_safe/lrs/lib/* ./${job_name};
+
+
+
+#任务名取脚本名
+#job_name=$0
+
+JOB_HOME=/appcom/apps/hduser1508/zhangyongtian001/sparkjob
+cd $JOB_HOME
+
+
+/appcom/spark/bin/spark-submit  \
+--jars $JOB_HOME/lib/dom4j-1.6.1.jar \
+  --master yarn \
+  --deploy-mode cluster \
+  --executor-memory 15G \
+  --num-executors 15 \
+  --executor-cores 5 \
+  --driver-memory 2G \
+  --queue ${queueName} \
+   --conf spark.default.parallelism=80 \
+   --conf spark.yarn.executor.memoryoverhead=4G \
+   --conf spark.storage.memoryFraction=0.6 \
+   --conf spark.shuffle.memoryFraction=0.3 \
+   --conf spark.shuffle.file.buffer=64k  \
+   --conf spark.shuffle.consolidateFiles=true \
+   --conf spark.shuffle.io.maxRetries=10 \
+   --conf spark.shuffle.io.retryWait=30 \
+   --conf spark.locality.wait=10s \
+   --conf spark.akka.timeout=150s \
+   --conf spark.network.timeout=200s\
+   --conf spark.speculation=false \
+   --conf spark.broadcast.blockSize=4m \
+   --conf spark.files.fetchTimeout=360 \
+   --conf spark.network.timeout=360 \
+   --conf spark.cleaner.ttl=240000 \
+   --conf spark.kryoserializer.buffer.mb=10 \
+   --conf spark.reducer.maxSizeInFligth=12 \
+   --conf spark.sql.shuffle.partitions=80 \
+   --conf spark.sql.codegen=true \
+   --conf spark.sql.parquet.compression.codec=snappy \
+   --conf spark.sql.adaptive.enabled=true \
+   --conf spark.sql.broadcastTimeout=600 \
+   --conf spark.sql.autoBroadcastJoinThreshold=10485760 \
+   --conf spark.sql.inMemoryColumnarStorage.batchSize=10000 \
+   --conf spark.sql.files.maxPartitionBytes=134217728 \
+   --conf spark.sql.files.openCostInBytes=5242880  \
+   --conf "spark.executor.extraJavaOptions=-XX:+UseG1GC -XX:+UseCompressedStrings" \
+   --class com.pingan.lcloud.ifrs17.mp.launcher.MPIndExecutor \
+   lbdp_corepub_ifrs17_job-1.0.0.jar \
+   env=prd  \
+   log.level=error \
+   p_proc_date=`getparam p_proc_date` \
+   src_version_num=`getparam src_version_num` \
+   res_version_num=`getparam res_version_num` \
+   res_hive_db=`getparam res_hive_db`
+
+exitCodeCheck $?
+#!/bin/sh
+source ExitCodeCheck.sh
+
+opts=$@
+
+getparam(){
+arg=$1
+echo $opts |xargs -n1 |cut -b 2- |awk -F'=' '{if($1=="'"$arg"'") print $2}'
+}
+
+#./SurplusSummaryJob.sh -hdp_queue=queue_1514_01
+
+IncStart=`getparam inc_start`
+IncEnd=`getparam inc_end`
+oracle_connection=`getparam jdbc_str`
+oracle_username=`getparam db_user`
+oracle_password=`getparam db_psw`
+dataName=`getparam db_sid`
+queueName=`getparam hdp_queue`
+hdfshostname=`getparam hdfs_host`;
+
+
+#Job名称
+job_name=$0
+
+#下载程序包和配置文件
+#rm -rf ${job_name}.jar;
+#rm -rf ${job_name};
+#mkdir ${job_name};
+#hadoop fs -get /apps/hduser1514/sx_core_safe/lrs/jar/${job_name}.jar .;
+#hadoop fs -get /apps/hduser1514/sx_core_safe/lrs/lib/* ./${job_name};
+
+
+
+#任务名取脚本名
+#job_name=$0
+
+JOB_HOME=/appcom/apps/hduser1508/zhangyongtian001/sparkjob
+cd $JOB_HOME
+
+
+/appcom/spark/bin/spark-submit  \
+--jars $JOB_HOME/lib/dom4j-1.6.1.jar,$JOB_HOME/lib/ojdbc6.jar \
+  --master yarn \
+  --deploy-mode client \
+  --executor-memory 1G \
+  --num-executors 1 \
+  --executor-cores 1 \
+  --driver-memory 1G \
+  --queue ${queueName} \
+   --conf spark.storage.memoryFraction=0.6 \
+   --conf spark.shuffle.memoryFraction=0.3 \
+   --conf spark.shuffle.file.buffer=64k  \
+   --conf spark.shuffle.consolidateFiles=true \
+   --conf spark.shuffle.io.maxRetries=10 \
+   --conf spark.shuffle.io.retryWait=30 \
+   --conf spark.locality.wait=10s \
+   --conf spark.akka.timeout=150s \
+   --conf spark.network.timeout=200s\
+   --conf spark.speculation=false \
+   --conf spark.broadcast.blockSize=4m \
+   --conf spark.files.fetchTimeout=360 \
+   --conf spark.network.timeout=360 \
+   --conf spark.cleaner.ttl=240000 \
+   --conf spark.kryoserializer.buffer.mb=10 \
+   --conf spark.reducer.maxSizeInFligth=12 \
+   --conf spark.sql.codegen=true \
+   --conf spark.sql.parquet.compression.codec=snappy \
+   --conf spark.sql.adaptive.enabled=true \
+   --conf spark.sql.broadcastTimeout=600 \
+   --conf spark.sql.autoBroadcastJoinThreshold=10485760 \
+   --conf spark.sql.inMemoryColumnarStorage.batchSize=10000 \
+   --conf spark.sql.files.maxPartitionBytes=134217728 \
+   --conf spark.sql.files.openCostInBytes=5242880  \
+   --conf "spark.executor.extraJavaOptions=-XX:+UseG1GC -XX:+UseCompressedStrings" \
+   --class com.pingan.lcloud.ifrs17.mp.launcher.MPIndExecutor \
+   lbdp_corepub_ifrs17_job-1.0.0.jar \
+   env=prd  \
+   log.level=error \
+   p_proc_date=`getparam p_proc_date` \
+   src_version_num=`getparam src_version_num` \
+   res_version_num=`getparam res_version_num` \
+   res_hive_db=`getparam res_hive_db`
+
+exitCodeCheck $?
+#!/bin/sh
+source ExitCodeCheck.sh
+
+if [ $# != 1 ] ; then
+echo "USAGE:$0 SQL"
+exit 1;
+fi
+
+
+
+opts=$@
+
+getparam(){
+arg=$1
+echo $opts |xargs -n1 |cut -b 2- |awk -F'=' '{if($1=="'"$arg"'") print $2}'
+}
+
+#./SurplusSummaryJob.sh -hdp_queue=queue_1514_01
+
+IncStart=`getparam inc_start`
+IncEnd=`getparam inc_end`
+oracle_connection=`getparam jdbc_str`
+oracle_username=`getparam db_user`
+oracle_password=`getparam db_psw`
+dataName=`getparam db_sid`
+queueName='root.queue_sx80.1508_11'
+hdfshostname=`getparam hdfs_host`;
+
+
+#Job名称
+job_name=$0
+
+#下载程序包和配置文件
+#rm -rf ${job_name}.jar;
+#rm -rf ${job_name};
+#mkdir ${job_name};
+#hadoop fs -get /apps/hduser1514/sx_core_safe/lrs/jar/${job_name}.jar .;
+#hadoop fs -get /apps/hduser1514/sx_core_safe/lrs/lib/* ./${job_name};
+
+
+
+#任务名取脚本名
+#job_name=$0
+
+#JOB_HOME=/appcom/apps/hduser1508/zhangyongtian001/sparkjob
+JOB_HOME=`pwd`
+cd $JOB_HOME
+
+
+/appcom/spark/bin/spark-submit  \
+--jars $JOB_HOME/lib/dom4j-1.6.1.jar \
+  --master yarn \
+  --deploy-mode cluster \
+  --executor-memory 10G \
+  --num-executors 15 \
+  --executor-cores 5 \
+  --driver-memory 500M \
+  --queue ${queueName} \
+   --conf spark.default.parallelism=2001 \
+   --conf spark.yarn.executor.memoryoverhead=4G \
+   --conf spark.storage.memoryFraction=0.6 \
+   --conf spark.shuffle.memoryFraction=0.3 \
+   --conf spark.shuffle.file.buffer=64k  \
+   --conf spark.shuffle.consolidateFiles=true \
+   --conf spark.shuffle.io.maxRetries=10 \
+   --conf spark.shuffle.io.retryWait=30 \
+   --conf spark.locality.wait=10s \
+   --conf spark.akka.timeout=150s \
+   --conf spark.network.timeout=200s\
+   --conf spark.speculation=true \
+   --conf spark.broadcast.blockSize=4m \
+   --conf spark.files.fetchTimeout=360 \
+   --conf spark.network.timeout=360 \
+   --conf spark.cleaner.ttl=240000 \
+   --conf spark.kryoserializer.buffer.mb=10 \
+   --conf spark.reducer.maxSizeInFligth=12 \
+   --conf spark.sql.shuffle.partitions=2001 \
+   --conf spark.sql.codegen=true \
+   --conf spark.sql.parquet.compression.codec=snappy \
+   --conf spark.sql.adaptive.enabled=true \
+   --conf spark.sql.broadcastTimeout=600 \
+   --conf spark.sql.autoBroadcastJoinThreshold=10485760 \
+   --conf spark.sql.inMemoryColumnarStorage.batchSize=10000 \
+   --conf spark.sql.files.maxPartitionBytes=134217728 \
+   --conf spark.sql.files.openCostInBytes=5242880  \
+   --conf "spark.executor.extraJavaOptions=-XX:+UseG1GC -XX:+UseCompressedStrings" \
+   --class com.pingan.lcloud.ifrs17.tool.SparkSQLExecute \
+   lbdp_corepub_ifrs17_job-1.0.0.jar \
+   prd  \
+   error \
+   'sx_core_safe' \
+   "$1"
+
+exitCodeCheck $?
+#!/bin/sh
+source ExitCodeCheck.sh
+
+opts=$@
+
+getparam(){
+arg=$1
+echo $opts |xargs -n1 |cut -b 2- |awk -F'=' '{if($1=="'"$arg"'") print $2}'
+}
+
+#./SurplusSummaryJob.sh -hdp_queue=queue_1514_01
+
+IncStart=`getparam inc_start`
+IncEnd=`getparam inc_end`
+oracle_connection=`getparam jdbc_str`
+oracle_username=`getparam db_user`
+oracle_password=`getparam db_psw`
+dataName=`getparam db_sid`
+queueName='root.queue_sx80.1508_11'
+hdfshostname=`getparam hdfs_host`;
+
+
+#Job名称
+job_name=$0
+
+#下载程序包和配置文件
+#rm -rf ${job_name}.jar;
+#rm -rf ${job_name};
+#mkdir ${job_name};
+#hadoop fs -get /apps/hduser1514/sx_hx_safe/lrs/jar/${job_name}.jar .;
+#hadoop fs -get /apps/hduser1514/sx_hx_safe/lrs/lib/* ./${job_name};
+
+#rm -rf lbdp_corepub_ifrs17_job-1.0.0.jar;
+#rm -rf ${job_name};
+#mkdir ${job_name};
+#hadoop fs -get /apps/hduser1514/sx_hx_safe/lrs/jar/${job_name}.jar .;
+#hadoop fs -get /apps/hduser1514/sx_hx_safe/lrs/lib/* ./${job_name};
+
+#hadoop fs -get  /apps/hduser1508/sx_hx_safe/ifrs17/spark/lbdp_corepub_ifrs17_job-1.0.0.jar  .;
+
+##任务名取脚本名
+#job_name=$0
+
+/appcom/spark/bin/spark-submit  \
+  --master yarn \
+  --deploy-mode cluster \
+  --executor-memory 20G \
+  --num-executors 20 \
+  --executor-cores 4 \
+  --driver-memory 2G \
+  --queue ${queueName} \
+   --conf spark.default.parallelism=200 \
+   --conf spark.yarn.executor.memoryoverhead=8G \
+   --conf spark.storage.memoryFraction=0.6 \
+   --conf spark.shuffle.memoryFraction=0.3 \
+   --conf spark.shuffle.file.buffer=64k  \
+   --conf spark.shuffle.consolidateFiles=true \
+   --conf spark.shuffle.io.maxRetries=10 \
+   --conf spark.shuffle.io.retryWait=30 \
+   --conf spark.locality.wait=10s \
+   --conf spark.akka.timeout=150s \
+   --conf spark.network.timeout=200s\
+   --conf spark.speculation=false \
+   --conf spark.broadcast.blockSize=4m \
+   --conf spark.files.fetchTimeout=360 \
+   --conf spark.network.timeout=360 \
+   --conf spark.cleaner.ttl=240000 \
+   --conf spark.kryoserializer.buffer.mb=10 \
+   --conf spark.reducer.maxSizeInFligth=12 \
+   --conf spark.sql.shuffle.partitions=200 \
+   --conf spark.sql.codegen=true \
+   --conf spark.sql.parquet.compression.codec=snappy \
+   --conf spark.sql.adaptive.enabled=true \
+   --conf spark.sql.broadcastTimeout=600 \
+   --conf spark.sql.autoBroadcastJoinThreshold=10485760 \
+   --conf spark.sql.inMemoryColumnarStorage.batchSize=10000 \
+   --conf spark.sql.files.maxPartitionBytes=134217728 \
+   --conf spark.sql.files.openCostInBytes=5242880  \
+   --conf "spark.executor.extraJavaOptions=-XX:+UseG1GC -XX:+UseCompressedStrings" \
+   --class com.pingan.lcloud.ifrs17.dcs.launcher.DcsIndExecutor \
+   lbdp_corepub_ifrs17_job-1.0.0.jar  \
+   env=prd  \
+   log.level=error \
+   PROC_DATE=20181231 \
+   SPCODE_SELECTION=1 \
+   src_version_num=1550036477173 \
+   res_version_num=20181231 \
+   res_hive_db=sx_hx_safe \
+   out.hdfs.path=/apps-data/hduser1508/sx_core_safe/lar_dcs_result_ind
+
+exitCodeCheck $?
+#!/bin/sh
+source ExitCodeCheck.sh
+
+opts=$@
+
+getparam(){
+arg=$1
+echo $opts |xargs -n1 |cut -b 2- |awk -F'=' '{if($1=="'"$arg"'") print $2}'
+}
+
+#./SurplusSummaryJob.sh -hdp_queue=queue_1514_01
+
+IncStart=`getparam inc_start`
+IncEnd=`getparam inc_end`
+oracle_connection=`getparam jdbc_str`
+oracle_username=`getparam db_user`
+oracle_password=`getparam db_psw`
+dataName=`getparam db_sid`
+queueName=`getparam hdp_queue`
+hdfshostname=`getparam hdfs_host`;
+
+
+#Job名称
+job_name=$0
+
+#下载程序包和配置文件
+#rm -rf ${job_name}.jar;
+#rm -rf ${job_name};
+#mkdir ${job_name};
+#hadoop fs -get /apps/hduser1514/sx_core_safe/lrs/jar/${job_name}.jar .;
+#hadoop fs -get /apps/hduser1514/sx_core_safe/lrs/lib/* ./${job_name};
+
+
+
+#任务名取脚本名
+#job_name=$0
+
+JOB_HOME=/appcom/apps/hduser1508/zhangyongtian001/sparkjob
+cd $JOB_HOME
+
+
+/appcom/spark/bin/spark-submit  \
+--jars $JOB_HOME/lib/dom4j-1.6.1.jar \
+  --master yarn \
+  --deploy-mode cluster \
+  --executor-memory 10G \
+  --num-executors 15 \
+  --executor-cores 5 \
+  --driver-memory 500M \
+  --queue ${queueName} \
+   --conf spark.default.parallelism=100 \
+   --conf spark.yarn.executor.memoryoverhead=4G \
+   --conf spark.storage.memoryFraction=0.6 \
+   --conf spark.shuffle.memoryFraction=0.3 \
+   --conf spark.shuffle.file.buffer=64k  \
+   --conf spark.shuffle.consolidateFiles=true \
+   --conf spark.shuffle.io.maxRetries=10 \
+   --conf spark.shuffle.io.retryWait=30 \
+   --conf spark.locality.wait=10s \
+   --conf spark.akka.timeout=150s \
+   --conf spark.network.timeout=200s\
+   --conf spark.speculation=true \
+   --conf spark.broadcast.blockSize=4m \
+   --conf spark.files.fetchTimeout=360 \
+   --conf spark.network.timeout=360 \
+   --conf spark.cleaner.ttl=240000 \
+   --conf spark.kryoserializer.buffer.mb=10 \
+   --conf spark.reducer.maxSizeInFligth=12 \
+   --conf spark.sql.shuffle.partitions=100 \
+   --conf spark.sql.codegen=true \
+   --conf spark.sql.parquet.compression.codec=snappy \
+   --conf spark.sql.adaptive.enabled=true \
+   --conf spark.sql.broadcastTimeout=600 \
+   --conf spark.sql.autoBroadcastJoinThreshold=10485760 \
+   --conf spark.sql.inMemoryColumnarStorage.batchSize=10000 \
+   --conf spark.sql.files.maxPartitionBytes=134217728 \
+   --conf spark.sql.files.openCostInBytes=5242880  \
+   --conf "spark.executor.extraJavaOptions=-XX:+UseG1GC -XX:+UseCompressedStrings" \
+   --class com.pingan.lcloud.ifrs17.mp.job.SqlConfJobTest \
+   lbdp_corepub_ifrs17_1_0_0_demo-1.0.0.jar \
+   env=prd  \
+   log.level=error \
+   VAL_DATE='2018-08-31 00:00:00' \
+   PROC_DATE='201' \
+   SPCODE_SELECTION=1 \
+    out.hdfs.path=/apps-data/hduser1508/sx_core_safe/lar_dcs_result_ind
+
+exitCodeCheck $?
+#!/bin/sh
+
+sql=$(cat <<!EOF
+
+    WITH is_code AS
+(SELECT plan_code,
+       max(CI_RIDER_PRIMARY_END) CI_RIDER_PRIMARY_END,
+       max(CI_RIDER_PAY_VALID) CI_RIDER_PAY_VALID,
+       max(PRIMARY_CI_RIDER1) PRIMARY_CI_RIDER1,
+       max(CI_RIDER1) CI_RIDER1,
+       max(PA_RUN_FLAG) PA_RUN_FLAG,
+       max(CI_RIDER_PAYMENT_CODE) CI_RIDER_PAYMENT_CODE,
+       MAX(LIFE_PRIMARY) LIFE_PRIMARY,
+       MAX(CI_RIDER) CI_RIDER
+   FROM (
+      SELECT plan_code,
+             CASE WHEN plan_location='CI_RIDER_PRIMARY_END' then 1 ELSE 0 END CI_RIDER_PRIMARY_END,
+             CASE WHEN plan_location = 'CI_RIDER_PAY_VALID' THEN 1 ELSE 0 END CI_RIDER_PAY_VALID,
+             CASE WHEN plan_location = 'PRIMARY_CI_RIDER1' THEN 1 ELSE 0 END PRIMARY_CI_RIDER1,
+             CASE WHEN plan_location = 'CI_RIDER1' THEN 1 ELSE 0 END CI_RIDER1,
+             CASE WHEN plan_location = 'PA_RUN_FLAG' THEN 1 ELSE 0 END PA_RUN_FLAG,
+             CASE WHEN plan_location = 'CI_RIDER_PAYMENT_CODE' THEN 1 ELSE 0 END CI_RIDER_PAYMENT_CODE,
+             CASE WHEN plan_location = 'LIFE_PRIMARY' THEN 1 ELSE 0 END LIFE_PRIMARY,
+             CASE WHEN plan_location = 'CI_RIDER' THEN 1 ELSE 0 END CI_RIDER
+        FROM bas_pala_pol_ben_plan_cfg t
+       WHERE folder_in = 'POL_BEN_MAIN'
+         AND file_in =  'EXEC783'
+         AND t.behavior = 'IN') haha
+       GROUP BY  plan_code),
+--v_plan_code_ci15.EXISTS(arr_pol_ben(idx).plan_code)
+ci15 AS(
+  SELECT polno FROM bas_lbs_pol_ben_actuary a
+  INNER JOIN is_code ic
+  ON a.plan_code=ic.plan_code AND ic.PRIMARY_CI_RIDER1=1
+  GROUP BY polno
+),
+--SELECT count(*) INTO v_count_ci15
+CI_RIDER1 AS(
+  SELECT a.polno,COUNT(1) v_count_ci15 FROM bas_lbs_pol_ben_actuary a
+  INNER JOIN ci15
+  ON a.polno=ci15.polno
+  INNER JOIN is_code ic
+  ON a.plan_code=ic.plan_code AND ic.CI_RIDER1=1
+  WHERE  a.ben_sts IN ('I', 'P', 'L', 'V', 'R', 'W', 'E', 'A', 'J', 'H', 'G', 'K', 'X')
+  AND eff_date < DATE'2018-9-1'
+  GROUP BY a.polno
+),
+c_pol_ben2 AS(
+SELECT  DISTINCT polno
+        FROM bas_lbs_pol_ben_actuary a
+        INNER JOIN is_code ic
+        ON a.plan_code=ic.plan_code
+       WHERE /*plan_code IN (SELECT plan_code
+                             FROM bas_pala_pol_ben_plan_cfg
+                            WHERE folder_in = 'POL_BEN_MAIN'
+                              AND file_in = 'EXEC783'
+                              AND plan_location = 'CI_RIDER'
+                              AND behavior = 'IN')*/
+         ic.CI_RIDER=1
+         AND ben_sts IN
+             ('I', 'P', 'L', 'V', 'R', 'W', 'E', 'A', 'J', 'H', 'G', 'K', 'X')
+         AND eff_date < DATE'2018-9-1'
+)
+
+SELECT  polno,
+        brno,
+        plan_type,
+        plan_code,
+        eff_date,
+        ben_sts,
+        units,
+        sum_ins,
+        matu_date,
+        ins_sex,
+        ins_age,
+        ins_prof,
+        jnt_sex,
+        jnt_age,
+        jnt_prof,
+        period,
+        prem_term,
+        prem_type,
+        ann_std_prem,
+        ann_substd_prem,
+        ann_prof_prem,
+        std_modal_prem,
+        tot_modal_prem,
+        pay_to_date,
+        payout_age,
+        payout_date,
+        ben_level,
+        policy_fee,
+        0 et,
+        deptno,
+        sum_ins sum_ins_org,
+        0 ci_rider,
+        sum_ins sum_ins_m,
+        0 sum_ins_r,
+        ann_std_prem ann_std_prem_m,
+        0 ann_std_prem_r,
+        std_modal_prem std_modal_prem_m,
+        0 std_modal_prem_r,
+        plan_code plan_code_m,
+        0 ann_std_prem_916,
+        0 std_modal_prem_916,
+        0 ann_std_prem_518,
+        0 std_modal_prem_518,
+        region_code
+FROM (
+SELECT  a.polno,
+        a.brno,
+        a.plan_type,
+        a.plan_code,
+        a.eff_date,
+        a.ben_sts,
+        a.units,
+        a.sum_ins,
+        a.matu_date,
+        a.ins_sex,
+        a.ins_age,
+        a.ins_prof,
+        a.jnt_sex,
+        a.jnt_age,
+        a.jnt_prof,
+        a.period,
+        a.prem_term,
+        a.prem_type,
+        a.ann_std_prem,
+        a.ann_substd_prem,
+        a.ann_prof_prem,
+        a.std_modal_prem,
+        a.tot_modal_prem,
+        a.pay_to_date,
+        a.payout_age,
+        a.payout_date,
+        a.ben_level,
+        a.deptno,
+        a.region_code,
+        ic.PA_RUN_FLAG,
+        CI_RIDER1.v_count_ci15,
+        b2.polno b2_polno,
+        -- 代码行2110 代码转换
+        CASE WHEN ic.PA_RUN_FLAG=1 THEN (CASE WHEN a.payout_type='H' THEN 2
+                                              WHEN a.payout_type='R' THEN 3 ELSE 0 END) ELSE policy_fee END policy_fee
+        FROM bas_lbs_pol_ben_actuary a
+        LEFT OUTER JOIN is_code ic
+        ON a.plan_code=ic.plan_code
+        LEFT OUTER JOIN CI_RIDER1
+        ON a.polno=CI_RIDER1.polno
+        LEFT OUTER JOIN c_pol_ben2 b2
+        ON a.polno=b2.polno
+       WHERE /*a.plan_code IN (SELECT plan_code
+                             FROM bas_pala_pol_ben_plan_cfg b
+                            WHERE folder_in = 'POL_BEN_MAIN'
+                              AND file_in = 'EXEC783'
+                              AND plan_location = 'LIFE_PRIMARY'
+                              AND behavior = 'IN')*/
+
+            ic.LIFE_PRIMARY=1
+         AND ben_sts IN
+             ('I', 'P', 'L', 'V', 'R', 'W', 'E', 'A', 'J', 'H', 'G', 'K')
+         AND period >= 1
+         AND eff_date < DATE'2018-9-1' ) hehe
+         WHERE b2_polno IS NOT NULL
+
+!EOF)
+
+sparksql.sh "$sql"
+

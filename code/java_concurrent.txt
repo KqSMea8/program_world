@@ -1,0 +1,738 @@
+package concurrency.lock;
+
+import java.util.concurrent.locks.StampedLock;
+
+public class StampedLockTest {
+
+    private double x, y;//内部定义表示坐标点
+    private final StampedLock s1 = new StampedLock();//定义了StampedLock锁,
+
+    void move(double deltaX, double deltaY) {
+        long stamp = s1.writeLock();//这里的含义和distanceFormOrigin方法中 s1.readLock()是类似的
+        try {
+            x += deltaX;
+            y += deltaY;
+        } finally {
+            s1.unlockWrite(stamp);//退出临界区,释放写锁
+        }
+    }
+
+    double distanceFormOrigin() {//只读方法
+        long stamp = s1.tryOptimisticRead();  //试图尝试一次乐观读 返回一个类似于时间戳的邮戳整数stamp 这个stamp就可以作为这一个所获取的凭证
+        double currentX = x, currentY = y;//读取x和y的值,这时候我们并不确定x和y是否是一致的
+        if (!s1.validate(stamp)) {//判断这个stamp是否在读过程发生期间被修改过,如果stamp没有被修改过,责任无这次读取时有效的,因此就可以直接return了,反之,如果stamp是不可用的,则意味着在读取的过程中,可能被其他线程改写了数据,因此,有可能出现脏读,如果如果出现这种情况,我们可以像CAS操作那样在一个死循环中一直使用乐观锁,知道成功为止
+            stamp = s1.readLock();//也可以升级锁的级别,这里我们升级乐观锁的级别,将乐观锁变为悲观锁, 如果当前对象正在被修改,则读锁的申请可能导致线程挂起.
+            try {
+                currentX = x;
+                currentY = y;
+            } finally {
+                s1.unlockRead(stamp);//退出临界区,释放读锁
+            }
+        }
+        return Math.sqrt(currentX * currentX + currentY * currentY);
+    }
+
+    public static void main(String[] args) {
+        new StampedLockTest().distanceFormOrigin();
+    }
+}
+
+package concurrency;
+
+import sun.awt.Mutex;
+
+import java.util.Random;
+import java.util.concurrent.Semaphore;
+
+public class SemaphoreApp {
+
+    public static void main(String[] args) {
+
+
+        final Semaphore available = new Semaphore(3);
+
+        // 匿名Runnable实例。定义线程运行程序。
+        Runnable limitedCall = new Runnable() {
+              // 最多可以发出3个"许可"
+            final Random rand = new Random();
+            int count = 0;
+
+            public void run() {
+                int time = rand.nextInt(15);
+                int num = count++;
+
+                try {
+                    available.acquire();    // 当前线程获取"许可"。若没有获取许可，则等待于此。
+                    System.out.println("Executing " + "long-running action for " + time + " seconds... #" + num);
+                    Thread.sleep(time * 1000);
+                    System.out.println("Done with #" + num + "!");
+                } catch (InterruptedException intEx) {
+                    intEx.printStackTrace();
+                } finally {
+                    available.release();     // 当前线程释放"许可"
+                }
+            }
+        };
+
+        for (int i = 0; i < 10; i++) {
+            new Thread(limitedCall).start();
+        }
+    }
+}
+package concurrency;
+
+
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinTask;
+import java.util.concurrent.RecursiveTask;
+
+public class RecursiveTaskTest extends RecursiveTask<Integer> {
+    private volatile static int count = 0;
+    private int start;
+    private int end;
+
+    public RecursiveTaskTest(int start, int end) {
+        this.start = start;
+        this.end = end;
+    }
+
+    public static final int threadhold = 2;
+
+    @Override
+    protected Integer compute() {
+        int sum = 0;
+        System.out.println("开启了一条线程单独干: " + count++);
+        // 如果任务足够小, 就直接执行
+        boolean canCompute = (end - start) <= threadhold;
+        if (canCompute) {
+            for (int i = start; i <= end; i++) {
+                sum += i;
+            }
+        } else {
+            //任务大于阈值, 分裂为2个任务
+            int middle = (start + end) / 2;
+            RecursiveTaskTest recursiveTaskTest1 = new RecursiveTaskTest(start, middle);
+            RecursiveTaskTest recursiveTaskTest2 = new RecursiveTaskTest(middle + 1, end);
+
+            // 开启线程
+//            recursiveTaskTest1.fork();
+//            recursiveTaskTest2.fork();
+            invokeAll(recursiveTaskTest1, recursiveTaskTest2);
+
+            Integer join1 = recursiveTaskTest1.join();
+            Integer join2 = recursiveTaskTest2.join();
+
+            // 结果合并
+//            sum = join1 + join2;
+            sum = join1;
+        }
+        return sum;
+    }
+
+
+    // 测试
+    public static void main(String[] args) throws ExecutionException, InterruptedException {
+        ForkJoinPool forkJoinPool = new ForkJoinPool();
+
+        RecursiveTaskTest recursiveTaskTest = new RecursiveTaskTest(1, 1000000);
+        ForkJoinTask<Integer> result = forkJoinPool.submit(recursiveTaskTest);
+        System.out.println(result.get());
+
+    }
+}
+
+package concurrency;
+
+import java.util.concurrent.*;
+
+public class ScheduledThreadPoolTest {
+
+    public static void main(String[] args) {
+
+//        ScheduledExecutorService poolExecutor = Executors.newSingleThreadScheduledExecutor();
+//        new ThreadPoolExecutor()
+        ScheduledExecutorService poolExecutor = Executors.newSingleThreadScheduledExecutor();
+
+        poolExecutor.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                System.out.println("==================================");
+            }
+        }, 1, 5, TimeUnit.SECONDS);
+
+//        poolExecutor.scheduleAtFixedRate(new Runnable() {//每隔一段时间打印系统时间，证明两者是互不影响的
+//
+//            @Override
+//
+//            public void run() {
+//
+//                System.out.println(System.nanoTime());
+//
+//            }
+//
+//        }, 1000, 2000, TimeUnit.MILLISECONDS);
+
+    }
+}
+
+package concurrency;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
+
+public class SemaphoreParkingCars {
+
+    private static final int NUMBER_OF_CARS = 30;
+    private static final int NUMBER_OF_PARKING_SLOT = 10;
+
+    public static void main(String[] args) {
+        Semaphore parkingSlot = new Semaphore(NUMBER_OF_PARKING_SLOT, true);    // "车位",采用FIFO,设置true。
+
+
+        ExecutorService service = Executors.newCachedThreadPool();    // 创建线程池。模拟30辆车"停车"。
+
+        for (int carNo = 1; carNo <= NUMBER_OF_CARS; carNo++) {
+            service.execute(new Car(parkingSlot, carNo));
+        }
+
+        sleep(3000);
+        service.shutdown();    // 关闭线程池。
+
+        // 输出剩余可以用的资源数。
+//        System.out.println(parkingSlot.availablePermits() + " 个停车位可以用!");
+    }
+
+    private static void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+}
+
+
+class Car implements Runnable {
+    private final Semaphore parkingSlot;
+    private int carNo;
+
+    public Car(Semaphore parkingSlot, int carNo) {
+        this.parkingSlot = parkingSlot;
+        this.carNo = carNo;
+    }
+
+    public void run() {
+        try {
+            parkingSlot.acquire();    // 车尝试获取"车位"
+            parking();
+            sleep(300);
+            leaving();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            parkingSlot.release();    // 释放"车位"
+            System.out.println(parkingSlot.availablePermits() + " 个停车位可以用!");
+        }
+    }
+
+    private void parking() {
+        System.out.println(String.format("%d号车泊车", carNo));
+    }
+
+    private void leaving() {
+        System.out.println(String.format("%d号车离开车位", carNo));
+    }
+
+    private static void sleep(long millis) {
+
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+}
+
+package concurrency;
+
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class CylicBarrierTest {
+
+    static CyclicBarrier c = new CyclicBarrier(2);
+
+    static ExecutorService pool = Executors.newFixedThreadPool(2);
+
+    public static void main(String args[]) {
+
+        pool.execute(new Runnable() {
+            public void run() {
+                System.out.println("this is A");
+                try {
+                    c.await();
+                    System.out.println("this is Aa");
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        pool.execute(new Runnable() {
+            public void run() {
+                System.out.println("this is B");
+                try {
+                    c.await();
+                    System.out.println("this is Bb");
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        pool.shutdown();
+    }
+
+}
+
+package concurrency;
+
+import java.util.Random;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingDeque;
+
+/**
+* 将Executor和BlockingQueue功能融合在一起，能够将Callable的任务提交给它来运行， 然后使用take()方法获得已经完毕的结果
+*
+* @author zhy
+*
+*/
+public class CompletionServiceDemo
+{
+
+    public static void main(String[] args) throws InterruptedException,
+            ExecutionException
+    {
+        /**
+         * 内部维护11个线程的线程池
+         */
+        ExecutorService exec = Executors.newFixedThreadPool(11);
+        /**
+         * 容量为10的堵塞队列
+         */
+        final BlockingQueue<Future<Integer>> queue = new LinkedBlockingDeque<Future<Integer>>(
+                10);
+        //实例化CompletionService
+        final CompletionService<Integer> completionService = new ExecutorCompletionService<Integer>(
+                exec, queue);
+
+        /**
+         * 模拟瞬间产生10个任务，且每一个任务运行时间不一致
+         */
+        for (int i = 0; i < 10; i++)
+        {
+            completionService.submit(new Callable<Integer>()
+            {
+                @Override
+                public Integer call() throws Exception
+                {
+                    int ran = new Random().nextInt(1000);
+                    Thread.sleep(ran);
+                    System.out.println(Thread.currentThread().getName()
+                            + " 歇息了 " + ran);
+                    return ran;
+                }
+            });
+        }
+
+        /**
+         * 马上输出结果
+         */
+        for (int i = 0; i < 10; i++)
+        {
+            try
+            {
+                //谁最先运行完毕，直接返回
+                Future<Integer> f = completionService.take();
+                System.out.println(f.get());
+            } catch (InterruptedException e)
+            {
+                e.printStackTrace();
+            } catch (ExecutionException e)
+            {
+                e.printStackTrace();
+            }
+        }
+
+        exec.shutdown();
+
+    }
+
+}
+
+package concurrency;
+
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+/**
+* <p>Title: ConditionTest</p>
+* <p>Description: </p>
+* <p>Copyright: Copyright (c) 2019</p>
+* <p>Company: 寿险总部核心系统开发部后端批处理系统开发团队再保精算开发组</p>
+*
+* @author EX-ZHANGYONGTIAN001
+* @version 1.0.0
+* @date 2019-3-13  10:24
+*/
+public class ConditionTest {
+
+
+    final Lock lock = new ReentrantLock();
+    final Condition condition = lock.newCondition();
+
+    public static void main(String[] args) {
+        // TODO Auto-generated method stub
+        ConditionTest test = new ConditionTest();
+        Producer producer = test.new Producer();
+        Consumer consumer = test.new Consumer();
+
+
+        consumer.start();
+        producer.start();
+    }
+
+    class Producer extends Thread {
+
+        @Override
+        public void run() {
+            produce();
+        }
+
+        private void produce() {
+            try {
+                lock.lock();
+                System.out.println("我拿到锁" + this.currentThread().getName());
+                condition.signalAll();
+                System.out.println("我发出了一个信号：" + this.currentThread().getName());
+            } finally {
+                lock.unlock();
+            }
+        }
+    }
+
+    class Consumer extends Thread {
+
+        @Override
+        public void run() {
+            consume();
+        }
+
+        private void consume() {
+
+            try {
+                lock.lock();
+                System.out.println("我在等一个新信号" + this.currentThread().getName());
+                condition.await();
+
+            } catch (InterruptedException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            } finally {
+                System.out.println("拿到一个信号" + this.currentThread().getName());
+                lock.unlock();
+            }
+
+        }
+    }
+
+}
+
+package concurrency;
+
+import java.util.concurrent.Exchanger;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+/**
+* <p>Title: ExchangeTest</p>
+* <p>Description: </p>
+* <p>Copyright: Copyright (c) 2019</p>
+* <p>Company: 寿险总部核心系统开发部后端批处理系统开发团队再保精算开发组</p>
+* * Exchanger（交换者），它是用于线程间的协作工具类，主要用于线程间数据的交换。它提供了一个同步点，在这个同步点，两个线程可以交换彼此的数据。下面看具体demo：
+*
+* @author EX-ZHANGYONGTIAN001
+* @version 1.0.0
+* @date 2019-3-12  17:03
+*/
+public class ExchangeTest {
+
+
+    private static final Exchanger<String> exgr = new Exchanger<String>();
+
+    private static ExecutorService pool = Executors.newFixedThreadPool(2);
+
+    public static void main(String args[]) {
+
+        pool.execute(new Runnable() {
+            public void run() {
+                String A = "银行流水A";
+                try {
+                    A = exgr.exchange(A);
+                    System.out.println("A 当前的值：" + A);
+                } catch (InterruptedException e) {
+
+                }
+            }
+        });
+
+        pool.execute(new Runnable() {
+            public void run() {
+                String B = "银行流水B";
+                try {
+                    B = exgr.exchange(B);
+                    System.out.println("B 当前的值：" + B);
+                } catch (InterruptedException e) {
+
+                }
+            }
+        });
+
+        pool.shutdown();
+
+    }
+} package concurrency;
+
+  import java.util.PriorityQueue;
+  import java.util.concurrent.locks.Condition;
+  import java.util.concurrent.locks.Lock;
+  import java.util.concurrent.locks.ReentrantLock;
+
+  /**
+  * <p>Title: ConditionTest2</p>
+  * <p>Description: </p>
+  * <p>Copyright: Copyright (c) 2019</p>
+  * <p>Company: 寿险总部核心系统开发部后端批处理系统开发团队再保精算开发组</p>
+  *
+  * @author EX-ZHANGYONGTIAN001
+  * @version 1.0.0
+  * @date 2019-3-13  10:35
+  */
+  public class ConditionTest2 {
+      private int queueSize = 10;
+      private PriorityQueue<Integer> queue = new PriorityQueue<Integer>(queueSize);
+      private Lock lock = new ReentrantLock();
+      private Condition notFull = lock.newCondition();
+      private Condition notEmpty = lock.newCondition();
+
+      public static void main(String[] args) throws InterruptedException {
+          ConditionTest2 test = new ConditionTest2();
+          Producer producer = test.new Producer();
+          Consumer consumer = test.new Consumer();
+          producer.start();
+          consumer.start();
+          Thread.sleep(0);
+          producer.interrupt();
+          consumer.interrupt();
+      }
+
+      class Consumer extends Thread {
+          @Override
+          public void run() {
+              consume();
+          }
+
+          volatile boolean flag = true;
+
+          private void consume() {
+              while (flag) {
+                  lock.lock();
+                  try {
+                      while (queue.size() == 0) {
+                          try {
+                              System.out.println("队列空，等待数据");
+                              notEmpty.await();
+                          } catch (InterruptedException e) {
+                              flag = false;
+                          }
+                      }
+                      queue.poll();                //每次移走队首元素
+                      notFull.signal();
+                      System.out.println("从队列取走一个元素，队列剩余" + queue.size() + "个元素");
+                  } finally {
+                      lock.unlock();
+                  }
+              }
+          }
+      }
+
+      class Producer extends Thread {
+          @Override
+          public void run() {
+              produce();
+          }
+
+          volatile boolean flag = true;
+
+          private void produce() {
+              while (flag) {
+                  lock.lock();
+                  try {
+                      while (queue.size() == queueSize) {
+                          try {
+                              System.out.println("队列满，等待有空余空间");
+                              notFull.await();
+                          } catch (InterruptedException e) {
+
+                              flag = false;
+                          }
+                      }
+                      queue.offer(1);        //每次插入一个元素
+                      notEmpty.signal();
+                      System.out.println("向队列取中插入一个元素，队列剩余空间：" + (queueSize - queue.size()));
+                  } finally {
+                      lock.unlock();
+                  }
+              }
+          }
+      }
+  }
+
+  package concurrency;
+
+  /**
+  * <p>Title: ExchangerDemo</p>
+  * <p>Description: </p>
+  * <p>Copyright: Copyright (c) 2019</p>
+  * <p>Company: 寿险总部核心系统开发部后端批处理系统开发团队再保精算开发组</p>
+  *
+  * Exchanger() 创建一个新的 Exchanger。
+  V exchange(V x) 等待另一个线程到达此交换点（除非当前线程被中断），然后将给定的对象传送给该线程，并接收该线程的对象。
+
+  V exchange(V x, long timeout, TimeUnit unit) 等待另一个线程到达此交换点（除非当前线程被中断，或者超出了指定的等待时间），然后将给定的对象传送给该线程，同时接收该线程的对象。
+  例：以下这个程序demo要做的事情就是生产者在交换前生产5个"生产者"，然后再与消费者交换5个数据，然后再生产5个"交换后生产者"，而消费者要在交换前消费5个"消费者"，然后再与生产者交换5个数据，然后再消费5个"交换后消费者"
+
+  * @author EX-ZHANGYONGTIAN001
+  * @version 1.0.0
+  * @date 2019-3-12  17:53
+  */
+
+  import java.util.ArrayList;
+  import java.util.Iterator;
+  import java.util.List;
+  import java.util.concurrent.Exchanger;
+
+  /**
+  * 两个线程间的数据交换
+  */
+  public class ExchangerDemo {
+      private static final Exchanger<List<String>> ex = new Exchanger<List<String>>();
+
+      private static void sleep(long millis) {
+          try {
+              Thread.sleep(millis);
+          } catch (InterruptedException e) {
+              e.printStackTrace();
+          }
+      }
+
+      /**
+       * 内部类，数据生成者
+       */
+      class DataProducer implements Runnable {
+          private List<String> list = new ArrayList<String>();
+
+          public void run() {
+              System.out.println("生产者开始生产数据");
+              for (int i = 1; i <= 5; i++) {
+                  System.out.println("生产了第" + i + "个数据，耗时1秒");
+                  list.add("生产者" + i);
+                  sleep(1000);
+              }
+              System.out.println("生产数据结束");
+              System.out.println("开始与消费者交换数据");
+
+              try {
+                  //将数据准备用于交换，并返回消费者的数据
+                  list = (List<String>) ex.exchange(list);
+              } catch (InterruptedException e) {
+                  e.printStackTrace();
+              }
+
+              System.out.println("结束与消费者交换数据");
+              System.out.println("生产者与消费者交换数据后，再生产数据");
+              for (int i = 6; i < 10; i++) {
+                  System.out.println("交换后生产了第" + i + "个数据，耗时1秒");
+                  list.add("交换后生产者" + i);
+                  sleep(1000);
+              }
+
+              System.out.println("遍历生产者交换后的数据");
+              for (Iterator<String> iterator = list.iterator(); iterator.hasNext(); ) {
+                  System.out.println(iterator.next());
+              }
+          }
+
+      }
+
+
+      /**
+       * 内部类，数据消费者
+       */
+      class DataConsumer implements Runnable {
+          private List<String> list = new ArrayList<String>();
+
+          public void run() {
+              System.out.println("消费者开始消费数据");
+              for (int i = 1; i <= 5; i++) {
+                  System.out.println("消费了第" + i + "个数据");
+                  // 消费者产生数据，后面交换的时候给生产者
+                  list.add("消费者" + i);
+              }
+
+              System.out.println("消费数据结束");
+              System.out.println("开始与生产者交换数据");
+              try {
+                  // 进行数据交换，返回生产者的数据
+                  list = (List<String>) ex.exchange(list);
+              } catch (InterruptedException e) {
+                  e.printStackTrace();
+              }
+
+              System.out.println("消费者与生产者交换数据后，再消费数据");
+              for (int i = 6; i < 10; i++) {
+                  System.out.println("交换后消费了第" + i + "个数据");
+                  list.add("交换后消费者" + i);
+                  sleep(1000);
+              }
+              sleep(1000);
+              System.out.println("开始遍历消费者交换后的数据");
+
+              for (Iterator<String> iterator = list.iterator(); iterator.hasNext(); ) {
+                  System.out.println(iterator.next());
+              }
+          }
+      }
+
+      // 主方法
+      public static void main(String args[]) {
+          ExchangerDemo et = new ExchangerDemo();
+          new Thread(et.new DataProducer()).start();
+          new Thread(et.new DataConsumer()).start();
+      }
+  }
+
