@@ -1,0 +1,98 @@
+#!/bin/bash
+#配置ES的安装目录 修改的地方1 脚本可以自己创建
+esServers='cdh01 cdh02'
+#启动所有的zk
+for es in $esServers
+do
+    ssh -T $es <<EOF
+    source ~/.bash_profile
+    elasticsearch -d
+EOF
+echo 从节点 $es 启动elasticsearch...[ done ]
+sleep 5
+done
+
+
+启动zk集群
+
+#!/bin/bash
+#配置ES的安装目录 修改的地方1 脚本可以自己创建
+esServers='cdh01 cdh02'
+#启动所有的zk
+for es in $esServers
+do
+    ssh -T $es <<EOF
+    source ~/.bash_profile
+    elasticsearch -d
+EOF
+echo 从节点 $es 启动elasticsearch...[ done ]
+sleep 5
+done
+[bigdata@cdh01 /home/bigdata/sh2]$cat starthadoop.sh
+#!/bin/bash
+#启动所有的hadoop
+slaveNode='cdh02'
+source ~/.bash_profile
+start-all.sh
+sleep 2
+#启动另一台机器的resourcemanager
+ssh -T $slaveNode <<EOF
+    source ~/.bash_profile
+    yarn-daemon.sh start resourcemanager
+EOF
+echo  $slaveNode 启动resourcemanager...[ done ]
+
+
+
+
+
+
+
+ 启动kafka集群
+
+#!/bin/bash
+kafkaServers='cdh01 cdh02 cdh03 cdh04 cdh05'
+#启动所有的kafka
+for kafka in $kafkaServers
+do
+    ssh -T $kafka <<EOF
+    source ~/.bash_profile
+    nohup kafka-server-start.sh /bigdata/kafka/config/server.properties 1>/dev/null 2>&1 &
+EOF
+echo 从节点 $kafka 启动kafka...[ done ]
+sleep 5
+done
+
+4 启动kibana
+
+#!/bin/bash
+d /bigdata/install5/kibana-6.5.4-linux-x86_64/
+nohup /bigdata/install5/kibana-6.5.4-linux-x86_64/bin/kibana &
+1
+2
+3
+5 启动hadoop集群
+
+#!/bin/bash
+#启动所有的hadoop
+slaveNode='cdh02'
+source ~/.bash_profile
+start-all.sh
+sleep 2
+#启动另一台机器的resourcemanager
+ssh -T $slaveNode <<EOF
+    source ~/.bash_profile
+    yarn-daemon.sh start resourcemanager
+EOF
+echo  $slaveNode 启动resourcemanager...[ done ]
+
+
+
+
+
+
+
+
+
+
+

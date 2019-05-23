@@ -1,0 +1,37 @@
+数据集
+
+hour.csv
+
+instant,dteday,season,yr,mnth,hr,holiday,weekday,workingday,weathersit,temp,atemp,hum,windspeed,casual,registered,cnt
+1,2011-01-01,1,0,1,0,0,6,0,1,0.24,0.2879,0.81,0,3,13,16
+此数据集包含的是从 2011 年 1 月 1 日到 2012 年 12 月 31 日期间每天每小时的骑车人数。骑车用户分成临时用户和注册用户，cnt 列是骑车用户数汇总列。你可以在上方看到前几行数据。
+实验说明
+
+将数据文件中每小时的骑车人数当做每10秒的使用人数使用，传入kafka中，由Spark实时读取并统计时间窗口中的使用人数，再传回kafka，界面实时展示时间窗口的统计结果
+python 读入数据集文件，并将使用人数字段每隔0.1s传入 kafka 队列a
+Spark 程序每1s 获取kafka队列消息，并统计时间窗口为1s内的使用人数，将返回结果放入 kafka 队列b
+由socket.io 构建的web 实时获取 队列b里的消息，并推送图表展示
+Kafka安装见之前的文章 Kafka安装
+Python操作Kafka见我之前写的文章 Python操作Kafka
+SparkSream实时处理见之前的文章 SparkSream流处理
+处理结果放回kafka 见 Scala 操作Kafka
+SparkStream 实时处理
+
+使用Spark Streaming + Kafka 实现有容错性的实时统计程序
+SparkStreaming项目（实时统计每个品类被点击的次数）
+
+Flask 搭建简易Web
+
+这篇博客对Flast总结的很好
+
+Flask快速入门，知识整理
+
+SocketIo文档
+
+Socket.io支持及时、双向、基于事件的交流，可在不同平台、浏览器、设备上工作，可靠性和速度稳定。最典型的应用场景如：
+
+实时分析：将数据推送到客户端，客户端表现为实时计数器、图表、日志客户。
+实时通讯：聊天应用
+二进制流传输：socket.io支持任何形式的二进制文件传输，例如图片、视频、音频等。
+文档合并：允许多个用户同时编辑一个文档，并能够看到每个用户做出的修改。
+Socket.io实际上是WebSocket的父集，Socket.io封装了WebSocket和轮询等方法，会根据情况选择方法来进行通讯。
