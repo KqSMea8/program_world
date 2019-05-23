@@ -1,3 +1,40 @@
+bitnei
+
+table
+
+alarm
+driving
+errpacket
+forward
+packet
+realinfo
+
+
+000765d9-4ce5-45d3-bd3c-5355e15f34cb {"vid":"000765d9-4ce5-45d3-bd3c-5355e15f34cb","stime":"20171204182925","type":"1","verify":"0"
+
+
+ 0000d218-44aa-4e15-be39-8f66c602218f_1510172312000_2
+ 0000d218-44aa-4e15-be39-8f66c602218f_151017231200 column=cf:type, timestamp=1510172312061, value=2
+ 0_2
+
+-----------------------------------------------------------------------------------------------------------------------
+
+AVC
+
+dim_date
+dim_hour
+dim_sn
+dim_apk
+fact_cnt
+
+dim_apk-dim_date-dim_hour-dim_sn-brand
+
+ sn + "\t" + apkPackage + "\t" + date + "\t" + hour + "\t" + launchCnt + "\t" + duration
+
+
+sn-power_on_day-power_on_time
+
+-------------------
 
 如果想及时了解Spark、Hadoop或者Hbase相关的文章，欢迎关注微信公共帐号：iteblog_hadoop
 

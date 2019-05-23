@@ -1,3 +1,1390 @@
+
+#!/usr/bin/env bash
+SPARK_REPORT_DETAIL_PATH=${SPARK_REPORT_PATH}/bin/detailjob
+
+function startJob(){
+  startDate=$1
+  endDate=$2
+  jobType=$3
+
+  if [ "$jobType" == "detail_charge_run" ] ;
+  then
+    source ${SPARK_REPORT_DETAIL_PATH}/charge_run_job.sh $startDate $endDate
+  elif [ "$jobType" == "detail_charge_run_output" ] ;
+  then
+   source ${SPARK_REPORT_DETAIL_PATH}/charge_run_output_job.sh $startDate $endDate
+  elif [ "$jobType" == "detailjob" ] ;
+  then
+    source ${SPARK_REPORT_DETAIL_PATH}/testdetailjob.sh $startDate $endDate
+    source ${SPARK_REPORT_DETAIL_PATH}/charge_run_job.sh $startDate $endDate
+  elif [ "$jobtype" == "detail_output" ] ;
+  then
+    source ${SPARK_REPORT_DETAIL_PATH}/detail_output_job.sh $startDate $endDate
+    source ${SPARK_REPORT_DETAIL_PATH}/charge_run_output_job.sh $startDate $endDate
+  else
+    source ${SPARK_REPORT_DETAIL_PATH}/testdetailjob.sh $startDate $endDate
+    source ${SPARK_REPORT_DETAIL_PATH}/charge_run_job.sh $startDate $endDate
+    source ${SPARK_REPORT_DETAIL_PATH}/detail_output_job.sh $startDate $endDate
+    source ${SPARK_REPORT_DETAIL_PATH}/charge_run_output_job.sh $startDate $endDate
+  fi
+}
+
+
+startDate="$(echo -e "$1" | tr -d '[:space:]')"
+
+if [ "${#startDate}" == "0" ] ;
+  then startDate=$(date -d'-1day' +%Y%m%d)
+  else startDate=$1
+fi
+
+
+endDate="$(echo -e "$2" | tr -d '[:space:]')"
+
+if [ "${#endDate}" == "0" ] ;
+  then endDate=$startDate
+  else endDate=$(date -d"$endDate" '+%Y%m%d' )
+fi
+
+jobtype=$3
+
+echo "$startDate,$endDate"
+
+
+startJob $startDate $endDate $jobtype
+
+==========================
+
+startJob() {
+      /opt/cloudera/parcels/SPARK2-2.1.0.cloudera2-1.cdh5.7.0.p0.171658/bin/spark2-submit\
+      --class com.bitnei.report.detail.DetailJob \
+      --name ${inputDate}-spark明细报表 \
+      --master yarn \
+      --deploy-mode client \
+      --executor-memory 6G \
+      --executor-cores 4 \
+      --supervise \
+      --queue spark \
+      --jars ${SPARK_REPORT_EXPORT_JARS} \
+      --driver-memory 3G \
+      --conf spark.yarn.executor.memoryoverhead=3G \
+      --files ${SPARK_REPORT_CONF} \
+      ${SPARK_REPORT_DAY_DETAIL_JAR} \
+      detail.compute=reportDetail \
+      currentInvalidateTime=10Min \
+      detail.table.partitionColumn=year-month-day \
+      realinfo.table.partitionValue=$partitionValue \
+      detail.table.partitionValue=$partitionValue
+}
+
+
+function batchProcess(){
+  curDate=$1
+  endDate=$2
+
+  while [[ "$curDate" -le "$endDate" ]] ; do
+    inputDate="$curDate-$curDate"
+    partitionValue=$( date -d"$curDate" '+%Y-%m-%d')
+
+    echo "begin execute $curDate"
+    startJob
+
+    sleep 1
+    curDate=$( date -d"$curDate +1day" '+%Y%m%d')
+  done
+}
+
+startDate="$(echo -e "$1" | tr -d '[:space:]')"
+
+if [ "${#startDate}" == "0" ] ;
+  then startDate=$(date -d'-1day' +%Y%m%d)
+  else startDate=$1
+fi
+
+
+endDate="$(echo -e "$2" | tr -d '[:space:]')"
+
+if [ "${#endDate}" == "0" ] ;
+  then endDate=$startDate
+  else endDate=$(date -d"$endDate" '+%Y%m%d' )
+fi
+
+echo "$startDate,$endDate"
+
+
+
+inputDate=$($SPARK_REPORT_PATH/bin/concatReportDate.sh $startDate $endDate)
+
+echo "the inpute date are $inputDate"
+batchProcess $startDate $endDate
+
+
+====================
+startJob() {
+      /opt/cloudera/parcels/SPARK2-2.1.0.cloudera2-1.cdh5.7.0.p0.171658/bin/spark2-submit\
+      --class com.bitnei.report.detail.DetailOutputJob \
+      --name ${inputDate}-spark日报表计算 \
+      --master yarn \
+      --deploy-mode client \
+      --executor-memory 2G \
+      --executor-cores 4 \
+      --num-executors 2 \
+      --queue spark \
+      --jars ${SPARK_REPORT_EXPORT_JARS} \
+      --driver-library-path /opt/cloudera/parcels/HADOOP_LZO-0.4.15-1.gplextras.p0.123/lib/hadoop/lib/native \
+      --driver-memory 1G \
+      --conf spark.executor.extraLibraryPath=/opt/cloudera/parcels/HADOOP_LZO-0.4.15-1.gplextras.p0.123/lib/hadoop/lib/native  \
+      --conf spark.shuffle.io.maxRetries=40 \
+      --conf "spark.executor.extraJavaOptions=-XX:+PrintGCDetails -XX:+PrintGCTimeStamps" \
+       --conf spark.default.parallelism=10 \
+      ${SPARK_REPORT_DAY_DETAIL_JAR} \
+      detail.table.partitionValue=$partitionValue \
+      input.table.name=detail \
+      report.date=$curDate-$curDate \
+      report.output=oracle \
+      removeBeforeExecute=true
+}
+
+
+
+function batchProcess(){
+  curDate=$1
+  endDate=$2
+
+  while [[ "$curDate" -le "$endDate" ]] ; do
+    inputDate="$curDate-$curDate"
+    partitionValue=$( date -d"$curDate" '+%Y-%m-%d')
+    echo "begin execute $curDate"
+    startJob
+
+    sleep 1
+    curDate=$( date -d"$curDate +1day" '+%Y%m%d')
+  done
+}
+
+startDate="$(echo -e "$1" | tr -d '[:space:]')"
+
+if [ "${#startDate}" == "0" ] ;
+  then startDate=$(date -d'-1day' +%Y%m%d)
+  else startDate=$1
+fi
+
+
+endDate="$(echo -e "$2" | tr -d '[:space:]')"
+
+if [ "${#endDate}" == "0" ] ;
+  then endDate=$startDate
+  else endDate=$(date -d"$endDate" '+%Y%m%d' )
+fi
+
+echo "$startDate,$endDate"
+
+
+batchProcess $startDate $endDate
+
+
+
+
+
+
+
+输入参数
+ #昨天的日期
+ dateDir=$(date +%Y/%m/%d --date '-1 day')
+ reportDate=$(date +%Y%m%d --date '-1 day')
+ #今天的日期
+ today=$(date +%Y/%m/%d)
+
+dateDir=2017/05/01
+reportDate=20170501
+
+param_job_hdfs=hdfs://nameservice1:8020
+param_input_directory=/vehicle/data/realinfo
+param_output_format=text
+
+detail.output.hdfs.enable=true \
+   report.date=${reportDate}-${reportDate} \
+   spark.deploy.local=false \
+   detail.output.format=${param_output_format} \
+   detail.input.format=text \
+    detail.output.path=${param_job_hdfs}/${param_job_dayreport_output_path} \
+    input.directory=${param_input_directory}
+
+
+	* 根据最近n天的文件大小预测当前文件大小和当前分区数。.
+
+	分区数=threshold*文件大小,其中0<threshold<1,threshold=用户预设的每一个文件大小的倒数
+        hadoopConfig.getLong("dfs.blocksize", 128 * 1024 * 1024)
+
+	  val w = 0.7D
+
+
+	    val currentFileSize = estimateCurrentFileSize(fs, path)
+    val parNum = Math.ceil(currentFileSize / getThreshold).toInt
+    if (parNum < 2) {
+      logWarning(s"the partition num is $parNum,the file size estimated  is ${path.length},the threshold size is $getThreshold , the current file size estimated is $currentFileSize")
+      8
+    } else parNum
+
+    if (path.size < 2) 0L
+    else {
+      val lastN = Utils.getChildFiles(fs, path(0)).foldLeft(0L)((a, b) => a + b._2)
+      val lastN_1 = Utils.getChildFiles(fs, path(1)).foldLeft(0L)((a, b) => a + b._2)
+
+      Math.ceil(lastN * w + lastN_1 * (1 - w)).toLong
+    }
+
+	 def getChildFiles(fs: FileSystem, directory: String): Array[(String, Long)] = {
+    val d = new Path(directory)
+
+    if (fs.exists(d)) {
+      val childFiles = fs.listStatus(d)
+      childFiles.map(file => {
+        (file.getPath.toString, file.getLen)
+      })
+    } else {
+      Array.empty
+    }
+  }
+
+
+    val sql =
+      s"""
+      SELECT CAST (VID AS String),
+             VIN,
+             TIME,
+             `2201` AS speed,
+             `2614` AS charge,
+             `2615` AS soc,
+             `2613` AS totalVoltage,
+             `2603` AS secondaryCellMaxVoltage,
+             `2606` AS secondaryCellMinVoltage,
+             `2304` AS engineTemp,
+             `2609` AS accuisitionPointMaxTemp,
+             `2612` AS accuisitionPointMinTemp,
+             `2202` AS mileage,
+             `2502` AS longitude,
+             `2503` AS latitude,
+             CAST(`2203` AS INT) AS peaking
+       FROM $inputTableName
+       WHERE vid IS NOT NULL AND $whereCondition
+    """.stripMargin
+
+             RealinfoModel(
+                          vid:String,
+                          vin:String,
+                          time:String,
+                            //year:String,
+                            //month:String,
+                            //day:String,
+                        //  ruleId:String="1",
+                        //速度
+                          speed:Option[Int]=None,
+                          //电流
+                          charge:Option[Int]=None,
+                          //soc
+                          soc:Option[Int]=None,
+                          //总电压
+                          totalVoltage:Option[Int]=None,
+                          //最大单体电压
+                          secondaryCellMaxVoltage:Option[Int]=None,
+                          secondaryCellMinVoltage:Option[Int]=None,
+
+                        //发电机温度
+                          engineTemp:Option[Int]=None,
+                          //最大采集温度
+                          accuisitionPointMaxTemp:Option[Int]=None,
+                          //最小采集温度
+                          accuisitionPointMinTemp:Option[Int]=None,
+
+                        //里程
+                          mileage:Option[Int]=None,
+                        //经度
+                          longitude:Option[Long]=None,
+                          //纬度
+                          latitude:Option[Long]=None,
+                          //挡位
+                          peaking:Option[Int]=None) {
+
+}
+
+   //按vid分组
+      val result = realinfoDs.groupByKey(_.vid)
+        // TODO:按vid分组
+        .flatMapGroups({ case (vid: String, rows: Iterator[RealinfoModel]) =>
+        val values = if (enableEmergency) {
+          rows.map(r => {
+            //TODO:解析时间为年月日
+            val srcDate = Utils.parsetDate(r.time).get
+            srcDate.setYear(emergencyYear)
+            srcDate.setMonth(emergencyMonth)
+            srcDate.setDate(emergencyDay)
+            val toDate = Utils.formatDate(srcDate)
+
+            //todo:转成日期字符串
+            r.copy(time = toDate)
+          }).toArray
+        } else {
+          rows.toArray
+        }
+
+        //TODO 对数据按照时间排序并去重
+        val sortedRows =
+
+        //TODO 按时间去重
+          Utils.strict[RealinfoModel, String](
+
+            //TODO 按时间排序
+            Utils.sortByDate(values, row => {
+              if (row.time.trim.isEmpty) {
+                logWarning(row.toString)
+                None
+              } else Some(row.time)
+            }),
+            row => Some(row.time)
+          )
+
+
+        val cmp: ReportDetailCompute = stateConf.getString("detail.compute") match {
+          //TODO 计算明细基础
+          case "reportDetail" => new DetailComputeBase()
+
+           //状态划分
+              val windows = stateConf.getString("chargeChange.enable") match {
+                case "true" =>
+                  val stateGenerator = new ChargeChangeGenerator(stateConf) {
+                    override type T = RealinfoModel
+
+                    override def getVid = (row: RealinfoModel) => row.vid
+
+                    override def getTime = row => row.time
+
+                    override def getCharge = row => row.charge.getOrElse(0)
+
+                    override def getSoc = row => row.soc.getOrElse(0)
+
+                    override def getSpeed = row => row.speed.getOrElse(0)
+
+                    override def getMileage = row => row.mileage.getOrElse(0)
+                  }
+
+
+                  val windows = stateGenerator.handle(sortedRows)
+                  windows
+                case _ =>
+                  val stateGenerator = new StateGeneratorBase(stateConf) {
+                    override type T = RealinfoModel
+
+                    override def getVid = (row: RealinfoModel) => row.vid
+
+                    override def getTime = row => row.time
+
+                    override def getCharge = row => row.charge.getOrElse(0)
+
+                    override def getSoc = row => row.soc.getOrElse(0)
+
+                    override def getSpeed = row => row.speed.getOrElse(0)
+
+                    override def getMileage = row => row.mileage.getOrElse(0)
+                  }
+
+
+                  val windows = stateGenerator.handle(sortedRows.filter(_.soc.nonEmpty))
+                  windows
+
+
+
+
+                 /**
+                  * 为了减少bug和便于后续维护，比如添加新的判断条件，这里全部采用函数式实现(尾递归)，最大化的减少变量的修改，便于程序推断。
+                  * */
+                  def handle(source: Seq[T]):List[Window[T]] = {
+                    val windows = new ListBuffer[Window[T]]()
+
+                    @tailrec
+                    def splitWindow(curIndex: Int, curState: String): List[Window[T]] = {
+                      def beginChargeStrict(i: Int): Boolean = {
+                        val speed =getSpeed(source(i))
+                        val charge = getCharge(source(i))
+                        charge < 0 && speed <= 50
+                      }
+
+                      if (curIndex < source.length) {
+                        //计算当日开始里程和结束里程
+                        startMielage=if(startMielage==0) getMileage(source(curIndex)) else startMielage
+                        if(getMileage(source(curIndex))!=0) endMileage=getMileage(source(curIndex))
+
+                        //如果当前状态是满电，那么上一个状态一定是充电。
+                        val (endIndex, state) = if (curState == Constant.ChargeState && beginFullCharge(source, curIndex)) {
+                          def append(v: T): FullChargeWindow[T] = {
+                            val fullChargeWindow = FullChargeWindow[T]()
+                            fullChargeWindow.append(v)
+                            windows.append(fullChargeWindow)
+                            fullChargeWindow
+                          }
+
+                          val fullChargeWindow = append(source(curIndex))
+
+                          (inFullCharge(source)(curIndex + 1, v => fullChargeWindow.append(v)), Constant.FullChargeState)
+                        } else if (beginChargeStrict(curIndex) && beginCharge(source, curIndex)) {
+                          def append(v: T): ChargeWindow[T] = {
+                            val chargeWindow = ChargeWindow[T]()
+                            windows.append(chargeWindow)
+                            chargeWindow.append(v)
+                            chargeWindow
+                          }
+
+
+                          val chargeWindow=append(source(curIndex))
+
+                          (inCharge(source)(curIndex + 1,v=>chargeWindow.append(v)), Constant.ChargeState)
+                        } else {
+                          val curMap =source(curIndex)
+                          val prevMap = if (curIndex>= 1) source(curIndex - 1) else curMap
+                          if (!online(curMap, prevMap)) {
+                            windows.append(TravelWindow().append(source(curIndex)))
+                          } else {
+                            onlineTime += getOnline(source, curIndex)
+                            windows.lastOption match {
+                              case Some(travelWindow: TravelWindow[T]) =>
+                                travelWindow.append(source(curIndex))
+                              case _ =>
+                                windows.append(TravelWindow().append(source(curIndex)))
+                            }
+                          }
+                          (curIndex + 1, Constant.TravelState)
+                        }
+
+                        setWindow(windows.last, state)
+                        splitWindow(endIndex, state)
+                      } else windows.toList
+                    }
+
+                    splitWindow(0, Constant.NoneState).filter(window => {
+                      window match {
+                        case travelWindow: TravelWindow[T] =>
+                          setWindow(travelWindow, Constant.TravelState)
+                          travelWindow.length >= 10
+                        case _ => true
+                      }
+                    })
+                  }
+
+
+class Window[T] extends scala.collection.mutable.ArrayBuffer[T]{
+  var onLineTime:Long=0
+  var chargeTime:Long=0
+  var fullChargeTime:Long=0
+  var startMileage:Int=0
+  var endMileage:Int=0
+
+  var beginIndexInSouce:Int=0
+  var endIndexInSource:Int=0
+
+  var reason:Reason=_
+
+
+  def getState:String="none"
+
+  def append(v:T):Window[T]={
+    super.append(v)
+    this
+  }
+}
+
+
+
+  /**
+    * 计算一辆车的每一个状态的明细报表
+    *
+    * @param windows :按照时间排序的状态集合。
+    * @return 返回每一个状态的计算结果。
+    **/
+  def computeAllStates(stateConf: StateConf, windows: List[Window[RealinfoModel]]): List[DetailModel] = {
+    val result = new ListBuffer[DetailModel]
+
+    val oneValidateRunTime = stateConf.getOption("OneValidateRunTime") match {
+      case Some(v) => TimeParser.parserAsMs(v).get
+      case None => 3 * 60 * 1000
+    }
+
+
+      @tailrec
+    def doGetResult(curIndex: Int, prevState: String, prevResult: Option[DetailModel], prevChargeResult: Option[DetailModel]): List[DetailModel] = {
+      if (curIndex < windows.length) {
+        val curWindow = windows(curIndex)
+        val (curResult, curState) = curWindow match {
+          case run: TravelWindow[RealinfoModel] =>
+            //如果当前状态的上一个状态是充电状态，那么将会使用这个状态来计算当前结果，否则不会使用。
+            val curResult = if (prevState == Constant.ChargeState) new RunDetailCompute(stateConf, curWindow, prevResult).compute()
+            else new RunDetailCompute(stateConf, curWindow, None).compute()
+            if (curResult.timeLeng >= oneValidateRunTime && curResult.accRunTime >= oneValidateRunTime && curResult.mileage > 0) {
+              result.append(curResult)
+              (Some(curResult), Constant.TravelState)
+            }else (prevResult, prevState)
+          case full: FullChargeWindow[RealinfoModel] =>
+            val curResult = new DetailCompute(stateConf, curWindow, None, None).compute()
+            result.append(curResult)
+            (Some(curResult), Constant.FullChargeState)
+          case e if e.isInstanceOf[ChargeWindow[RealinfoModel]] || e.isInstanceOf[ChargeChangeWindow[RealinfoModel]] =>
+            //如果存在上一个充电状态，那么将会使用这个充电状态的结果来计算当前结果，比如计算两次充个电时间间隔就需要使用上一个充电结果。
+            val curResult = if (prevChargeResult.isEmpty) new ChargeDetailCompute(stateConf, curWindow, None).compute()
+            else new ChargeDetailCompute(stateConf, curWindow, prevChargeResult).compute()
+            result.append(curResult)
+            (Some(curResult), Constant.ChargeState)
+          case _ =>
+            throw new RuntimeException
+        }
+
+        //如果当前状态是充电状态，那么需要更新充电状态
+        doGetResult(curIndex + 1, curState, curResult, if (curState == Constant.ChargeState) curResult else prevChargeResult)
+      } else {
+        result.toList
+      }
+    }
+
+    doGetResult(0, "", None, None)
+  }
+
+
+
+          //TODO 错误基础类
+          case "faultDetail" => new FaultDetailCompute()
+          case e => throw new RuntimeException(s"detail.compute=$e not support")
+        }
+
+        //明细计算
+        val detailsResult = cmp.compute(stateConf, sortedRows)
+        detailsResult
+      })
+
+override def compute(): DetailModel = {
+    val startTimeOption = Utils.parsetDate(window.head.time)
+    val (startTime: Long, startH: Int) = startTimeOption match {
+      case Some(startDate) =>
+        if (startDate.getMinutes == 0) (startDate.getTime, startDate.getHours)
+        else (startDate.getTime, startDate.getHours + 1)
+      case None =>
+        (0, -1)
+    }
+
+    val endTimeOption = Utils.parsetDate(window.last.time)
+    val (endTime: Long, endH: Int) = endTimeOption match {
+      case Some(endDate) =>
+        if (endDate.getMinutes == 0) (endDate.getTime, endDate.getHours)
+        else (endDate.getTime, endDate.getHours + 1)
+      case None =>
+        (0, -1)
+    }
+
+    val state = window.getState
+
+    val timeRange = endTime - startTime
+
+    //开始里程
+    var startMileage: Int = Int.MaxValue
+    //结束里程
+    var stopMileage: Int = 0
+    var maxSpeed: Int = 0
+    //最大总电压
+    var maxTotalVoltage: Int = 0
+    var minTotalVoltage: Int = Int.MaxValue
+
+    //最大总电流
+    var maxTotalEctriccurrent: Int = Int.MinValue
+    var minTotalEctriccurrent: Int = Int.MaxValue
+
+    //最大单体电压
+    var maxSecondaryVolatage: Int = 0
+    var minSecondaryVolatage: Int = Int.MaxValue
+
+    //最大采集温度
+    var maxAcquisitionPointTemp: Int = Int.MinValue
+    var minAcquisitionPointTemp: Int = Int.MaxValue
+
+    //最大发电机温度
+    var maxEngineTemp: Int = Int.MinValue
+    var minEngineTemp: Int = Int.MaxValue
+
+    //最大soc
+    var maxSoc: Int = 0
+    var minSoc: Int = Int.MaxValue
+
+    //总电流
+    var totalCharge: Double = 0
+
+    //开始经度
+    var startLongitude = 0L
+    //开始纬度
+    var startLatitude = 0L
+    var endLongitude = 0L
+    var endLatitude = 0L
+
+    //gps里程
+    var gpsMileageM = 0D
+
+    //开始soc
+    var startSoc = 0
+    var endSoc = 0
+
+
+    //上一条实时数据
+    var prevRealinfo: Option[RealinfoModel] = None
+    //充电量分布
+    val chargeDistributed = new PowerDistribution()
+    //上一条明细
+    var prevDetail: Option[RealinfoModel] = None
+
+    //累计无效行驶时长和当前无效行驶时长
+    var accInvalidateTime = 0
+    //无效行驶滑动窗口长度
+    var invalidateRunWindowSlidingNum = 0
+    //无效行驶滑动窗口持续时间
+    var invalidateRunWindowSlidingTime = 0
+    //连续里程窗口总元素个数
+    var continueMileageWindowTotalNum = 0
+
+
+    //快充最大时间窗口，默认为5分钟
+    var quickWindowMaxTime = stateConf.getOption("quickWindowMaxTime").map(TimeParser.parserAsMs(_).get).getOrElse((5 * 60 * 1000))
+    //快充窗口的滑动时间，最大为quickWindowMaxTime分钟。
+    var quickWindowSlidingTime = 0
+    var quickChargeSlidingNum = 0
+    var quickWindowMaxNum = 0
+    var quickThreshold = stateConf.getOption("quickThreshold").map(_.toInt).getOrElse(-200)
+
+    window.foreach(curRealinfo => {
+      val timeDfMs: Int = if (prevRealinfo.isEmpty) 0 else {
+        Utils.timeDiff(curRealinfo.time, prevRealinfo.get.time).toInt
+      }
+
+      val timeDfS = timeDfMs / 1000
+
+      //统计GPS里程
+      if (prevDetail.nonEmpty) {
+        val diffMileageM = getDistanceM(prevDetail.get.longitude, prevDetail.get.latitude, curRealinfo.latitude, curRealinfo.longitude, timeDfS)
+        gpsMileageM += diffMileageM
+        //当前有效
+        if (diffMileageM != 0) {
+          prevDetail = Some(curRealinfo)
+        }
+      }
+
+      //统计充电分布
+      chargeDistributed.add(prevRealinfo, Some(curRealinfo))
+
+      /** * 计算无效行驶时间
+        * 首先设置一个时间窗口，假设为10分钟，如果这十分钟内里程没有变化，并且速度为0和挡位为空的比例超过70%，那么认为这是无效行驶。
+        */
+      prevRealinfo match {
+        case Some(prev) =>
+          if (curRealinfo.mileage == prev.mileage) {
+            if ((curRealinfo.speed.nonEmpty && curRealinfo.speed.contains(0)) |
+              (curRealinfo.peaking.nonEmpty && curRealinfo.peaking.contains(0))) {
+              invalidateRunWindowSlidingNum += 1
+              invalidateRunWindowSlidingTime += timeDfMs
+            }
+
+            continueMileageWindowTotalNum += 1
+          } else {
+            if (invalidateRunWindowSlidingTime >= invalidateRunWindowMaxTime && (invalidateRunWindowSlidingNum >= continueMileageWindowTotalNum * invalidatePercent)) {
+              accInvalidateTime += invalidateRunWindowSlidingTime
+            }
+            invalidateRunWindowSlidingNum = 0
+            invalidateRunWindowSlidingTime = 0
+            continueMileageWindowTotalNum = 0
+          }
+        case _ =>
+      }
+
+      prevRealinfo = Some(curRealinfo)
+
+      if (startSoc == 0 && !curRealinfo.soc.contains(0)) startSoc = curRealinfo.soc.get
+      if (!curRealinfo.soc.contains(0)) endSoc = curRealinfo.soc.get
+
+
+      //计算快慢充
+      if (quickWindowSlidingTime < quickWindowMaxTime) {
+        quickWindowSlidingTime += timeDfMs
+        if (curRealinfo.charge.exists(_ < quickThreshold)) quickChargeSlidingNum += 1
+        quickWindowMaxNum += 1
+      }
+
+      //计算开始里程和结束里程
+      curRealinfo.mileage match {
+        case Some(mileage) if mileage != 0 =>
+          if (mileage < startMileage) startMileage = mileage
+          if (mileage > stopMileage) stopMileage = mileage
+        case _ =>
+      }
+
+
+      //计算最大速度
+      curRealinfo.speed match {
+        case Some(speed) => if (speed > maxSpeed) maxSpeed = speed
+        case None =>
+      }
+
+      //计算最大总电压和最小总电压
+      val voltage = curRealinfo.totalVoltage
+      voltage match {
+        case Some(totalVoltage) if totalVoltage != 0 =>
+          if (totalVoltage > maxTotalVoltage) maxTotalVoltage = totalVoltage
+          if (totalVoltage < minTotalVoltage) minTotalVoltage = totalVoltage
+
+        case _ =>
+      }
+
+
+      val current = curRealinfo.charge
+      current match {
+        case Some(totalEctriccurrent) =>
+          if (totalEctriccurrent > maxTotalEctriccurrent) maxTotalEctriccurrent = totalEctriccurrent
+          if (totalEctriccurrent < minTotalEctriccurrent) minTotalEctriccurrent = totalEctriccurrent
+        case None =>
+      }
+
+
+      curRealinfo.secondaryCellMaxVoltage match {
+        case Some(secondaryMaxVoltage) => if (secondaryMaxVoltage > maxSecondaryVolatage) maxSecondaryVolatage = secondaryMaxVoltage
+        case None =>
+      }
+
+      curRealinfo.secondaryCellMinVoltage match {
+        case Some(secondaryMinVoltage) if secondaryMinVoltage != 0 => if (secondaryMinVoltage < minSecondaryVolatage) minSecondaryVolatage = secondaryMinVoltage
+        case _ =>
+      }
+
+      curRealinfo.accuisitionPointMaxTemp match {
+        case Some(acquisitionMaxPointTemp) =>
+          if (acquisitionMaxPointTemp > maxAcquisitionPointTemp) maxAcquisitionPointTemp = acquisitionMaxPointTemp
+        case None =>
+      }
+
+
+      curRealinfo.accuisitionPointMinTemp match {
+        case Some(acquisitionMinPointTemp) =>
+          if (acquisitionMinPointTemp < minAcquisitionPointTemp) minAcquisitionPointTemp = acquisitionMinPointTemp
+        case None =>
+      }
+
+      curRealinfo.engineTemp match {
+        case Some(engineTemp) =>
+          if (engineTemp > maxEngineTemp) maxEngineTemp = engineTemp
+          if (engineTemp < minEngineTemp) minEngineTemp = engineTemp
+        case None =>
+      }
+
+
+      curRealinfo.soc match {
+        case Some(soc) =>
+          if (soc > maxSoc) maxSoc = soc
+          if (soc < minSoc) minSoc = soc
+        case None =>
+      }
+
+
+      voltage match {
+        case Some(totalVoltage) =>
+          current match {
+            case Some(totalCurrent) =>
+
+              val charge: Double = DataPrecision.totalCharge(totalCurrent, totalVoltage, timeDfS)
+              totalCharge += charge
+            case None =>
+          }
+        case None =>
+      }
+
+      if (startLongitude == 0L) startLongitude = curRealinfo.longitude.getOrElse(0L)
+      if (startLatitude == 0L) startLatitude = curRealinfo.latitude.getOrElse(0L)
+
+      if (curRealinfo.longitude.getOrElse(0L) != 0) endLongitude = curRealinfo.longitude.getOrElse(0L)
+      if (curRealinfo.latitude.getOrElse(0L) != 0) endLatitude = curRealinfo.latitude.getOrElse(0L)
+    })
+
+    if (invalidateRunWindowSlidingTime >= invalidateRunWindowMaxTime && (invalidateRunWindowSlidingNum >= continueMileageWindowTotalNum * invalidatePercent)) {
+      accInvalidateTime += invalidateRunWindowSlidingTime
+    }
+
+
+    //计算平均速度
+    def getAvgSpeed: Double = if (timeRange != 0) DataPrecision.mileage(stopMileage - startMileage) / DataPrecision.toHour(timeRange) else 0
+
+    //计算剔除无效行驶后的实际运行时间
+    val accRunTime = timeRange.toInt - accInvalidateTime
+
+    // val accRunTimeHour = accRunTime / (1000 * 3600).toDouble
+
+    //判断是否是快慢充
+    val isQuickCharge = quickChargeSlidingNum >= (
+      quickWindowMaxNum * stateConf.getOption("quick.percent").map(_.toDouble).getOrElse(0.7))
+
+    def getOrInvalidate(v: Int): Int = if (v == Int.MaxValue || v == Int.MinValue) InvalidateValue.Value else v
+
+
+    DetailModel(
+      vid = window.head.vid,
+      vin = window.head.vin,
+      category = state,
+      onlineTime = window.onLineTime.toInt,
+      startTime = startTime,
+      endTime = endTime,
+      timeLeng = timeRange,
+      accRunTime = timeRange.toInt - accInvalidateTime,
+      startMileageOfCurrentDay = window.startMileage,
+      endMileageOfCurrentDay = window.endMileage,
+      startMileage = if (startMileage == Int.MaxValue) 0 else startMileage,
+      stopMileage = stopMileage,
+      gpsMileage = (gpsMileageM * 100).toInt,
+      avgSpeed = getAvgSpeed,
+      maxSpeed = maxSpeed,
+
+      maxTotalVoltage = maxTotalVoltage,
+      minTotalVoltage = Utils.roundMin(minTotalVoltage),
+
+      maxTotalCurrent = maxTotalEctriccurrent,
+      minTotalCurrent = Utils.roundMin(minTotalEctriccurrent),
+      maxSecondaryVolatage = maxSecondaryVolatage,
+      minSecondaryVolatage = Utils.roundMin(minSecondaryVolatage),
+      maxAcquisitionPointTemp = if (maxAcquisitionPointTemp == Int.MinValue) None else Some(maxAcquisitionPointTemp),
+      minAcquisitionPointTemp = Utils.roundMin(minAcquisitionPointTemp),
+      maxEngineTemp = if (maxEngineTemp == Int.MinValue) None else Some(maxEngineTemp),
+      minEngineTemp = Utils.roundMin(minEngineTemp),
+      maxSoc = maxSoc,
+      minSoc = Utils.roundMin(minSoc),
+      startSoc = startSoc,
+      endSoc = endSoc,
+      startLongitude = startLongitude,
+      startLatitude = startLatitude,
+      endLongitude = endLongitude,
+      endLatitude = endLatitude,
+      totalCharge = totalCharge,
+      Math.abs(startTime - prevChargeResult.map(_.endTime).getOrElse(startTime)).toInt,
+      prevChargeResult.map(_.stopMileage).getOrElse(0),
+      prevResult.map(_.endTime).getOrElse(0),
+      prevResult.map(_.maxTotalCurrent).getOrElse(0),
+      isQuickCharge = isQuickCharge,
+      powerDistribution = chargeDistributed.getDistribution
+    )
+  }
+
+
+case class DetailModel(
+    vid:String,
+    vin:String,
+    category:String,
+    onlineTime:Int=0,
+    startTime:Long=0,
+    endTime:Long=0,
+    timeLeng:Long=0,
+
+    //实际行驶时间=timelenth-无效形式时间
+    accRunTime:Int=0,
+    //当日开始里程
+    startMileageOfCurrentDay:Int=0,
+   //当日结束里程
+    endMileageOfCurrentDay:Int=0,
+   //开始里程
+    startMileage:Int=0,
+   //结束里程
+    stopMileage:Int=Int.MaxValue,
+
+   //gps里程
+    gpsMileage: Int=0,
+  //平均速度
+    avgSpeed:Double=0,
+    maxSpeed:Int=0,
+
+  //极值数据
+    maxTotalVoltage:Int=0,
+    minTotalVoltage:Int=Int.MaxValue,
+  //最大总电流
+    maxTotalCurrent:Int=0,
+    minTotalCurrent:Int=Int.MaxValue,
+    //最大单体电压
+    maxSecondaryVolatage:Int=0,
+    minSecondaryVolatage:Int=Int.MaxValue,
+  //最大采集温度
+    maxAcquisitionPointTemp:Option[Int]=None,
+    minAcquisitionPointTemp:Int=Int.MaxValue,
+
+  //最大发电机温度
+    maxEngineTemp:Option[Int]=None,
+    minEngineTemp:Int=Int.MaxValue,
+
+  //最大soc
+    maxSoc:Int=0,
+    minSoc:Int=Int.MaxValue,
+
+  //开始soc
+    startSoc:Int=0,
+    endSoc:Int=0,
+
+   //开始经度
+    startLongitude:Long=0,
+
+    //开始纬度
+    startLatitude:Long=0,
+  //结束经度
+    endLongitude:Long=0,
+    //结束纬度
+    endLatitude:Long=0,
+
+    //总电流
+    totalCharge:Double=0,
+    //两次充电时间间隔
+    timeBetweenCharge:Int=0,
+  //上次充电结束里程
+    stopMileageOfPrevCharge:Int=0,
+  //上次充电结束时间
+    prevChargeStopTime:Long=0,
+    maxCurrentOfPrevCharge:Int=0,
+  //是否为快充
+    isQuickCharge:Boolean=false,
+  //充电量分布
+    powerDistribution:Array[Double])
+
+-----------------------------------------
+规则
+
+     vid = window.head.vid,
+
+     vin = window.head.vin,
+
+     category = state,//"none"
+
+     case class NoneWindow[T]() extends Window[T]{
+       override def getState = "none"
+     }
+     case class TravelWindow[T]() extends Window[T]{
+       override def getState = "run"
+     }
+     case class ChargeWindow[T]()extends  Window[T]{
+       override def getState = "charge"
+     }
+
+     case class FullChargeWindow[T]()extends  Window[T]{
+       override def getState = "fullcharge"
+     }
+
+     case class ForwardWindow[T]()extends Window[T]{
+       override def getState = "forward"
+     }
+
+     case class AlarmWindow[T]()extends  Window[T]{
+       override def getState = "alarm"
+     }
+     case class LoginWindow[T]()extends Window[T]
+     {
+       override def getState = "login"
+     }
+
+     case class ChargeChangeWindow[T](correct:Double)extends Window[T]{
+       override def getState = "chargechange"
+     }
+
+
+     onlineTime = window.onLineTime.toInt,
+
+-----------------------------------------------------------
+     startTime = startTime,
+
+    val startTimeOption = Utils.parsetDate(window.head.time)
+    val (startTime: Long, startH: Int) = startTimeOption match {
+      case Some(startDate) =>
+        if (startDate.getMinutes == 0) (startDate.getTime, startDate.getHours)
+        else (startDate.getTime, startDate.getHours + 1)
+      case None =>
+        (0, -1)
+    }
+
+------------------------------------------------------------
+
+     endTime = endTime,
+
+      val endTimeOption = Utils.parsetDate(window.last.time)
+      val (endTime: Long, endH: Int) = endTimeOption match {
+       case Some(endDate) =>
+         if (endDate.getMinutes == 0) (endDate.getTime, endDate.getHours)
+        else (endDate.getTime, endDate.getHours + 1)
+       case None =>
+         (0, -1)
+     }
+
+
+------------------------------------------------------------
+
+     timeLeng = timeRange,
+
+----------------------------------------------------------------------------
+  //计算剔除无效行驶后的实际运行时间
+     accRunTime = timeRange.toInt - accInvalidateTime,
+
+     prevRealinfo match {
+             case Some(prev) =>
+               if (curRealinfo.mileage == prev.mileage) {
+                 if ((curRealinfo.speed.nonEmpty && curRealinfo.speed.contains(0)) |
+                   (curRealinfo.peaking.nonEmpty && curRealinfo.peaking.contains(0))) {
+                   invalidateRunWindowSlidingNum += 1
+                   invalidateRunWindowSlidingTime += timeDfMs
+                 }
+
+                 continueMileageWindowTotalNum += 1
+               } else {
+                 if (invalidateRunWindowSlidingTime >= invalidateRunWindowMaxTime && (invalidateRunWindowSlidingNum >= continueMileageWindowTotalNum * invalidatePercent)) {
+                   accInvalidateTime += invalidateRunWindowSlidingTime
+                 }
+                 invalidateRunWindowSlidingNum = 0
+                 invalidateRunWindowSlidingTime = 0
+                 continueMileageWindowTotalNum = 0
+               }
+             case _ =>
+           }
+
+
+ if (invalidateRunWindowSlidingTime >= invalidateRunWindowMaxTime && (invalidateRunWindowSlidingNum >= continueMileageWindowTotalNum * invalidatePercent)) {
+      accInvalidateTime += invalidateRunWindowSlidingTime
+    }
+
+
+
+     startMileageOfCurrentDay = window.startMileage,
+
+     endMileageOfCurrentDay = window.endMileage,
+
+     startMileage = if (startMileage == Int.MaxValue) 0 else startMileage,
+
+           //计算开始里程和结束里程
+           curRealinfo.mileage match {
+             case Some(mileage) if mileage != 0 =>
+               if (mileage < startMileage) startMileage = mileage
+               if (mileage > stopMileage) stopMileage = mileage
+             case _ =>
+           }
+
+
+
+     stopMileage = stopMileage,
+
+       //计算开始里程和结束里程
+           curRealinfo.mileage match {
+             case Some(mileage) if mileage != 0 =>
+               if (mileage < startMileage) startMileage = mileage
+               if (mileage > stopMileage) stopMileage = mileage
+             case _ =>
+           }
+
+
+         //计算平均速度
+            def getAvgSpeed: Double = if (timeRange != 0) DataPrecision.mileage(stopMileage - startMileage) / DataPrecision.toHour(timeRange) else 0
+
+     gpsMileage = (gpsMileageM * 100).toInt,
+
+          //统计GPS里程
+           val timeDfMs: Int = if (prevRealinfo.isEmpty) 0 else {
+            Utils.timeDiff(curRealinfo.time, prevRealinfo.get.time).toInt
+          }
+
+          val timeDfS = timeDfMs / 1000
+
+          //统计GPS里程
+          if (prevDetail.nonEmpty) {
+            val diffMileageM = getDistanceM(prevDetail.get.longitude, prevDetail.get.latitude, curRealinfo.latitude, curRealinfo.longitude, timeDfS)
+            gpsMileageM += diffMileageM
+            //当前有效
+            if (diffMileageM != 0) {
+              prevDetail = Some(curRealinfo)
+            }
+          }
+
+         def getDistanceM(longitudeA: Option[Long], latitudeA: Option[Long], longitudeB: Option[Long], latitudeB: Option[Long], timeDfS: Long): Double = {
+            val diffMileage = if (latitudeA.nonEmpty && longitudeA.nonEmpty && latitudeB.nonEmpty && longitudeB.nonEmpty) {
+              GpsDistance.getDistance(
+                DataPrecision.latitude(longitudeA.get),
+                DataPrecision.latitude(latitudeA.get),
+                DataPrecision.latitude(latitudeB.get),
+                DataPrecision.latitude(longitudeB.get)
+              )
+            } else {
+              0D
+            }
+
+            val maxMileageStepM_S = stateConf.getOption("run.speed").map(_.toDouble).getOrElse(0.1) * 1000
+            //如果每秒行驶的距离大于run.speed，那么认为无效
+            val speedM_S = (diffMileage * 1000) / timeDfS
+            if (speedM_S >= maxMileageStepM_S || speedM_S <= 0) 0 else diffMileage
+          }
+
+
+     avgSpeed = getAvgSpeed,
+
+       //计算平均速度
+         def getAvgSpeed: Double = if (timeRange != 0) DataPrecision.mileage(stopMileage - startMileage) / DataPrecision.toHour(timeRange) else 0
+
+     maxSpeed = maxSpeed,
+
+     //计算最大速度
+           curRealinfo.speed match {
+             case Some(speed) => if (speed > maxSpeed) maxSpeed = speed
+             case None =>
+           }
+
+--------------------------------------------------------------------
+       maxTotalVoltage = maxTotalVoltage,
+
+        //计算最大总电压和最小总电压
+           val voltage = curRealinfo.totalVoltage
+           voltage match {
+             case Some(totalVoltage) if totalVoltage != 0 =>
+               if (totalVoltage > maxTotalVoltage) maxTotalVoltage = totalVoltage
+               if (totalVoltage < minTotalVoltage) minTotalVoltage = totalVoltage
+
+             case _ =>
+           }
+
+-------------------------------------------------------------------
+     minTotalVoltage = Utils.roundMin(minTotalVoltage),
+
+      //计算最大总电压和最小总电压
+           val voltage = curRealinfo.totalVoltage
+           voltage match {
+             case Some(totalVoltage) if totalVoltage != 0 =>
+               if (totalVoltage > maxTotalVoltage) maxTotalVoltage = totalVoltage
+               if (totalVoltage < minTotalVoltage) minTotalVoltage = totalVoltage
+
+             case _ =>
+           }
+
+-------------------------------------------------------------------
+
+     maxTotalCurrent = maxTotalEctriccurrent,
+
+       val current = curRealinfo.charge
+           current match {
+             case Some(totalEctriccurrent) =>
+               if (totalEctriccurrent > maxTotalEctriccurrent) maxTotalEctriccurrent = totalEctriccurrent
+               if (totalEctriccurrent < minTotalEctriccurrent) minTotalEctriccurrent = totalEctriccurrent
+             case None =>
+           }
+
+
+  ----------------------------------------------------------------------
+     minTotalCurrent = Utils.roundMin(minTotalEctriccurrent)
+
+       val current = curRealinfo.charge
+          current match {
+            case Some(totalEctriccurrent) =>
+              if (totalEctriccurrent > maxTotalEctriccurrent) maxTotalEctriccurrent = totalEctriccurrent
+              if (totalEctriccurrent < minTotalEctriccurrent) minTotalEctriccurrent = totalEctriccurrent
+            case None =>
+          }
+
+
+     minTotalCurrent = Utils.roundMin(minTotalEctriccurrent),
+
+     maxSecondaryVolatage = maxSecondaryVolatage,
+
+        curRealinfo.secondaryCellMaxVoltage match {
+             case Some(secondaryMaxVoltage) => if (secondaryMaxVoltage > maxSecondaryVolatage) maxSecondaryVolatage = secondaryMaxVoltage
+             case None =>
+           }
+
+--------------------------------------------------------------------------------------
+     minSecondaryVolatage = Utils.roundMin(minSecondaryVolatage),
+
+         curRealinfo.secondaryCellMinVoltage match {
+             case Some(secondaryMinVoltage) if secondaryMinVoltage != 0 => if (secondaryMinVoltage < minSecondaryVolatage) minSecondaryVolatage = secondaryMinVoltage
+             case _ =>
+           }
+
+     maxAcquisitionPointTemp = if (maxAcquisitionPointTemp == Int.MinValue) None else Some(maxAcquisitionPointTemp),
+
+      curRealinfo.accuisitionPointMaxTemp match {
+             case Some(acquisitionMaxPointTemp) =>
+               if (acquisitionMaxPointTemp > maxAcquisitionPointTemp) maxAcquisitionPointTemp = acquisitionMaxPointTemp
+             case None =>
+           }
+
+
+     minAcquisitionPointTemp = Utils.roundMin(minAcquisitionPointTemp),
+
+       curRealinfo.accuisitionPointMinTemp match {
+             case Some(acquisitionMinPointTemp) =>
+               if (acquisitionMinPointTemp < minAcquisitionPointTemp) minAcquisitionPointTemp = acquisitionMinPointTemp
+             case None =>
+           }
+
+
+     maxEngineTemp = if (maxEngineTemp == Int.MinValue) None else Some(maxEngineTemp),
+
+     curRealinfo.engineTemp match {
+             case Some(engineTemp) =>
+               if (engineTemp > maxEngineTemp) maxEngineTemp = engineTemp
+               if (engineTemp < minEngineTemp) minEngineTemp = engineTemp
+             case None =>
+           }
+
+
+     minEngineTemp = Utils.roundMin(minEngineTemp),
+
+      curRealinfo.engineTemp match {
+             case Some(engineTemp) =>
+               if (engineTemp > maxEngineTemp) maxEngineTemp = engineTemp
+               if (engineTemp < minEngineTemp) minEngineTemp = engineTemp
+             case None =>
+           }
+
+     maxSoc = maxSoc,
+
+     curRealinfo.soc match {
+             case Some(soc) =>
+               if (soc > maxSoc) maxSoc = soc
+               if (soc < minSoc) minSoc = soc
+             case None =>
+           }
+
+
+
+     minSoc = Utils.roundMin(minSoc),
+
+      curRealinfo.soc match {
+             case Some(soc) =>
+               if (soc > maxSoc) maxSoc = soc
+               if (soc < minSoc) minSoc = soc
+             case None =>
+           }
+
+
+
+     startSoc = startSoc,
+     if (startSoc == 0 && !curRealinfo.soc.contains(0)) startSoc = curRealinfo.soc.get
+
+
+     endSoc = endSoc,
+      if (!curRealinfo.soc.contains(0)) endSoc = curRealinfo.soc.get
+
+
+     startLongitude = startLongitude,
+      if (startLongitude == 0L) startLongitude = curRealinfo.longitude.getOrElse(0L)
+
+
+     startLatitude = startLatitude,
+     if (startLatitude == 0L) startLatitude = curRealinfo.latitude.getOrElse(0L)
+
+
+     endLongitude = endLongitude,
+
+      if (curRealinfo.longitude.getOrElse(0L) != 0) endLongitude = curRealinfo.longitude.getOrElse(0L)
+
+
+
+     endLatitude = endLatitude,
+     if (curRealinfo.latitude.getOrElse(0L) != 0) endLatitude = curRealinfo.latitude.getOrElse(0L)
+
+
+     totalCharge = totalCharge,
+
+       voltage match {
+             case Some(totalVoltage) =>
+               current match {
+                 case Some(totalCurrent) =>
+
+                   val charge: Double = DataPrecision.totalCharge(totalCurrent, totalVoltage, timeDfS)
+                   totalCharge += charge
+                 case None =>
+               }
+             case None =>
+           }
+
+    //两次充电时间间隔
+    timeBetweenCharge:Int=0,
+     Math.abs(startTime - prevChargeResult.map(_.endTime).getOrElse(startTime)).toInt
+
+ val curResult = if (prevChargeResult.isEmpty) new ChargeDetailCompute(stateConf, curWindow, None).compute()
+            else new ChargeDetailCompute(stateConf, curWindow, prevChargeResult).compute()
+
+
+
+     //上次充电结束里程
+      stopMileageOfPrevCharge:Int=0,
+     prevChargeResult.map(_.stopMileage).getOrElse(0)
+
+
+    //上次充电结束时间
+    prevChargeStopTime:Long=0,
+    maxCurrentOfPrevCharge:Int=0,
+     prevResult.map(_.endTime).getOrElse(0),
+
+
+    maxCurrentOfPrevCharge:Int=0,
+     prevResult.map(_.maxTotalCurrent).getOrElse(0),
+
+
+
+     //是否为快充
+    isQuickCharge:Boolean=false,
+     isQuickCharge = isQuickCharge,
+
+ val isQuickCharge = quickChargeSlidingNum >= (
+      quickWindowMaxNum * stateConf.getOption("quick.percent").map(_.toDouble).getOrElse(0.7))
+
+//计算快慢充
+      if (quickWindowSlidingTime < quickWindowMaxTime) {
+        quickWindowSlidingTime += timeDfMs
+        if (curRealinfo.charge.exists(_ < quickThreshold)) quickChargeSlidingNum += 1
+        quickWindowMaxNum += 1
+      }
+
+      //判断是否是快慢充
+          val isQuickCharge = quickChargeSlidingNum >= (
+            quickWindowMaxNum * stateConf.getOption("quick.percent").map(_.toDouble).getOrElse(0.7))
+
+---------------------------------------------
+
+
+     //充电量分布
+     powerDistribution = chargeDistributed.getDistribution
+
+    val chargeDistributed = new PowerDistribution()
+
+
+
+    class PowerDistribution() {
+      private val distributed: Array[Double] = Array.fill(48)(0D)
+
+      def add(prevChargeValue: Option[RealinfoModel], currentChargeValue: Option[RealinfoModel]): Unit = {
+        (prevChargeValue, currentChargeValue) match {
+          case (Some(prev), Some(curv)) =>
+            val curDate = Utils.parsetDate(curv.time).get
+            val curMinute = curDate.getHours * 60 + curDate.getMinutes + (if (curDate.getMinutes == 0) 0 else 1)
+            val timeDiffS= Utils.timeDiff(curv.time, prev.time).toInt / 1000
+            val charge = DataPrecision.totalCharge(curv.charge.getOrElse(0), curv.totalVoltage.getOrElse(0), timeDiffS)
+           val i=curMinute / 30
+            if(i<distributed.length) distributed(i) += charge
+          case _ =>
+        }
+      }
+
+
+
+      def add(distribution:Array[Double]): Unit = {
+        distribution.indices.foreach(index => {
+          if (index < distributed.length) distributed(index) += distribution(index)
+        })
+      }
+
+
+      def getDistribution: Array[Double] = this.distributed
+    }
+
+    object PowerDistribution{
+      def default: Array[Double] = Array.fill(48)(0D)
+    }
+
+
+
+
+
 #!/bin/sh
 source ExitCodeCheck.sh
 
@@ -37,6 +1424,92 @@ job_name=$0
 
 JOB_HOME=/appcom/apps/hduser1508/zhangyongtian001/sparkjob
 cd $JOB_HOME
+#!/usr/bin/env bash
+export SPARK_REPORT_PATH=/usr/local/sparkjob/bitnei
+export SPARK_REPORT_EXPORT_JAR_DIRECTORY=${SPARK_REPORT_PATH}/jars
+export SPARK_REPORT_CONF=$SPARK_REPORT_PATH/conf/conf.properties
+export SPARK_REPORT_LOG=$SPARK_REPORT_PATH/log
+
+
+export SPARK_REPORT_EXPORT_JARS=$(${SPARK_REPORT_PATH}/bin/getExportJars.sh)
+export SPARK_REPORT_PARQUET_JAR=$(ls $SPARK_REPORT_EXPORT_JAR_DIRECTORY/report-parquet*.jar)
+export SPARK_REPORT_DAY_DETAIL_JAR=$(ls $SPARK_REPORT_EXPORT_JAR_DIRECTORY/report-day-detail*.jar)
+export SPARK_REPORT_DAY_STATISTICS_JAR=$(ls $SPARK_REPORT_EXPORT_JAR_DIRECTORY/report-day-statistics*.jar)
+export SPARK_REPORT_DAY_MONTH_STATISTICS_JAR=$(ls $SPARK_REPORT_EXPORT_JAR_DIRECTORY/report-day-statistics*.jar)
+export SPARK_REPORT_TAXIS_JAR=$(ls $SPARK_REPORT_EXPORT_JAR_DIRECTORY/report-taxis*.jar)
+export SPARK_REPORT_OPERATION_JAR=$(ls $SPARK_REPORT_EXPORT_JAR_DIRECTORY/report-operation*.jar)
+export SPARK_REPORT_MILEAGE_CHECK_JAR=$(ls $SPARK_REPORT_EXPORT_JAR_DIRECTORY/report-mileage-check*.jar)
+
+
+export SPARK_REPORT_PARQUET_PATH=${SPARK_REPORT_PATH}/bin/parquet
+export SPARK_REPORT_DETAIL_PATH=${SPARK_REPORT_PATH}/bin/detailjob
+export SPARK_REPORT_DAYREPORT_PATH=${SPARK_REPORT_PATH}/bin/dayreport
+export SPARK_REPORT_OPERATION_INDEX=${SPARK_REPORT_PATH}/bin/operation
+
+
+function startJob(){
+  startDate=$1
+  endDate=$2
+  jobType=$3
+
+  if [ "$jobType" == "parquet" ] ;
+  then
+   source ${SPARK_REPORT_PARQUET_PATH}/parquet.sh $startDate $endDate
+  elif [ "$jobType" == "detail_charge_run" ] ;
+  then
+   source ${SPARK_REPORT_DETAIL_PATH}/detailjob.sh $startDate $endDate "detail_charge_run"
+  elif [ "$jobType" == "detail_charge_run_output" ] ;
+  then
+    source ${SPARK_REPORT_DETAIL_PATH}/detailjob.sh $startDate $endDate "detail_charge_run_output"
+  elif [ "$jobType" == "detail" ] ;
+  then
+    source ${SPARK_REPORT_DETAIL_PATH}/detailjob.sh $startDate $endDate
+  elif [ "$jobType" == "detailjob" ] ;
+  then
+    source ${SPARK_REPORT_DETAIL_PATH}/detailjob.sh $startDate $endDate "detailjob"
+  elif [ "$jobType" == "detail_output" ] ;
+  then
+    echo "begin execute $jobType"
+    source ${SPARK_REPORT_DETAIL_PATH}/detailjob.sh $startDate $endDate "detail_output"
+  elif [ "$jobType" == "day_category" ] ;
+  then
+    source ${SPARK_REPORT_DETAIL_PATH}/dayreport.sh $startDate $endDate "day_category"
+  elif [ "$jobType" == "dayreport" ] ;
+  then
+    source ${SPARK_REPORT_DAYREPORT_PATH}/dayreport.sh $startDate $endDate "dayreport"
+  elif [ "$jobType" == "dayreport_output" ] ;
+  then
+    source ${SPARK_REPORT_DAYREPORT_PATH}/dayreport.sh $startDate $endDate "dayreport_output"
+  else
+    source ${SPARK_REPORT_PARQUET_PATH}/parquet.sh $startDate $endDate
+    source ${SPARK_REPORT_DETAIL_PATH}/detailjob.sh $startDate $endDate
+    source ${SPARK_REPORT_DAYREPORT_PATH}/dayreport.sh $startDate $endDate
+    source ${SPARK_REPORT_OPERATION_INDEX}/operation_mileage.sh $startDate $endDate
+    source ${SPARK_REPORT_OPERATION_INDEX}/operation_detail.sh $startDate $endDate
+  fi
+}
+
+
+startDate="$(echo -e "$1" | tr -d '[:space:]')"
+
+if [ "${#startDate}" == "0" ] ;
+  then startDate=$(date -d'-1day' +%Y%m%d)
+  else startDate=$1
+fi
+
+
+endDate="$(echo -e "$2" | tr -d '[:space:]')"
+
+if [ "${#endDate}" == "0" ] ;
+  then endDate=$startDate
+  else endDate=$(date -d"$endDate" '+%Y%m%d' )
+fi
+
+echo "$startDate,$endDate"
+
+jobType=$3
+
+startJob $startDate $endDate $jobType
 
 
 /appcom/spark/bin/spark-submit  \

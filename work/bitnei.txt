@@ -1,0 +1,3843 @@
+电机功率
+1)提取行驶片段
+根据行驶状态对一辆车的历史数据进行切片，取出该车的行驶片段数据，形成矩阵A；
+2)计算实时功率
+使用A中的电机控制器输入电压（V）和电机控制器直流母线电流（A）两项数据计算实时功率（kW），形成列表B；
+
+3)筛除异常值
+删除列表B中所有的零值，然后对列表B进行分布统计，删除以外的异常值形成列表C；
+4)计算功率分布
+对C进行统计分布，统计0，1/4，1/2，3/4，1位置的功率值，输出功率分布情况与额定电机功率对比。
+续驶里程
+1)提取行驶片段
+根据行驶状态对一辆车的历史数据进行切片，取出该车的行驶片段数据，形成矩阵；
+2)统计SOC区间对应行驶里程
+统计中的行驶开始SOC，行驶结束SOC，行驶开始里程，行驶结束里程，汇总成矩阵B，B中每行代表一个行驶片段的数据；
+3)筛除异常值
+删除B矩阵中单次行驶里程（行驶结束里程-行驶开始里程）大于标称续驶里程的记录；
+4)计算续驶里程
+
+
+上线里程
+
+里程跳变扣除里程
+
+
+
+里程跳变扣除
+
+最大连续电流里程扣除
+
+最大连续电流窗口
+
+GPS跳变扣除里程
+
+
+有效里程
+ 有效里程=上线里程-里程跳变扣除里程-gps跳变扣除里程：
+
+里程核查检测
+1、基本检测：
+1.1行驶公里数初级检测：提取第一次接入平台时的有效公里数和最后一次发送的有效公里数，判断其接入平台后的里程是否够3万公里，若未达到3万公里，则不进行以下判断，直接判定为不合格。.
+1.2数据无效检测：车速、仪表里程、总电压、总电流、GPS经纬度、SOC值，6项数据中只要有任意一项数据缺失，则记为1.2故障。
+1.3数据异常检测：车速、仪表里程、总电压、总电流、GPS经纬度、SOC值，6项数据中只要有任意一项数据超过对应取值范围，则记为1.3故障。
+2、里程合理性检测条件：
+2.1上线里程检测：
+2.1.1上线里程检测：测评周期间内选取车辆数据第一帧和最后一帧有效数据的仪表里程作为车辆上线开始和结束的标记，上线里程计算公式如下：
+
+其中，L1为开始时仪表里程，L2为结束时仪表里程，L为上线里程；
+2.2位置及车速状态检测：
+2.2.1里程跳变检测：测评周期间内，车辆数据连续两帧差值大于阈值（一般为2公里），则扣除两帧数据间的里程。
+2.2.2 GPS里程检测：选取检测周期内（一般为一个月）数据作为GPS里程计算最小单位，计算GPS里程；若计算结果为负值，则GPS里程取0。
+2.2动力电池电流状态检测：
+2.2.1连续电流检测：测评周期内，电流 >= 10A时，连续3帧数据电流数据不能完全相同（可选取检测样本）；若发生此现象，则扣除3帧内发生的里程跳变。
+3、里程判定：
+3.1有效里程计算：有效里程计算公式为：
+
+其中，L0为上线里程，L1为里程跳变扣除里程，L2为GPS跳变扣除里程；若L1、L2小于0，则L1、L2取0。
+3.2里程核查认可里程判定：计算测评周期内的上线里程、GPS里程、有效里程。以上线里程为准，GPS里程或有效里程若与上线里程差值超过5%，则上线里程为min（GPS里程，有效里程，上线里程）。若GPS里程或有效里程与上线里程超值小于5%则按照上线里程进行判定。
+
+里程核查
+1、里程核查计算数据及流程：
+1.1 新能源汽车里程核查数据源
+里程核查数据源分为两类：第一类针对近两年未及时将数据上传到国家监测平台的车辆，由车辆所属车企提供；第二类车辆已经接入国家监控平台并实时监控的车辆，数据由国家监测平台提供。
+1.2 新能源汽车里程核查流程
+里程核查主要对车辆数据真实性、完整性进行检测，测评周期内车辆数据经过里程核查流程后会得到5个输出量，分别为：上线里程、数据无效率、数据异常率、GPS里程、有效里程。由这5个结果，对最终认定核查里程进行判定。里程核查基本计算流程如图1.1所示。
+
+图1-1 里程核查流程
+里程核查流程：
+（1）对符合GB32960车辆远程传输协议的车辆数据，进行数据协议解析。
+（2）从此次测评的原始数据池中检索第一帧和最后一帧有效数据，得到此次上线开始的仪表里程数值及结束的仪表里程数值。
+（3）对解析后数据依次进行无效检测和异常检测，得到车辆数据无效率、数据异常率。
+（4）对经过无效检测和异常检测过滤后的车辆数据池，进行GPS里程计算，得到车辆在测评周期内的GPS里程。
+（5）同时对过滤后的车辆数据池依次进行里程跳变检测、连续电流检测。计算得到里程跳变需扣除里程，连续电流检测需扣除里程。
+（6）计算有效里程。有效里程计算方式为上线里程减去里程跳变需扣除里程，连续电流检测需扣除里程。
+1.3 数据无效检测
+里程核查数据无效检测是对GP/T 32960.3中7.2.3.1整车数据及GP/T 32960.3中7.2.3.5车辆位置数据进行数据无效检测，具体检测形式为GP/T 32960.3中的0xff。
+1.4 数据异常检测
+里程核查数据异常检测是对GP/T 32960.3中7.2.3.1整车数据及GP/T 32960.3中7.2.3.5车辆位置数据进行数据异常检测，具体检测形式项目为：
+（1）车速∈[0,220)
+（2）里程∈[上线开始里程,上线结束里程]
+（3）总电压∈(0,1000]
+（4）总电流∈[-1000,+1000]
+（5）SOC∈[0,100]
+（6）经度∈(73,135)
+（6）纬度∈(4,53)
+1.5 里程跳变检测
+仪表里程跳变检测用于检测车辆在行驶过程中有无仪表里程的突变，对有突变超过阈值（一般为2）的里程进行标记并计算得出测评周期内因仪表里程跳变需扣除里程。
+1.6 电流连续检测
+连续电流检测主要用于对上传的新能源车辆动力电池数据是否真实进行检测，检测中若有总电流大于阈值（一般为10A）的情况下，连续3帧及以上总电流数值连续相同，需对这种现象进行标记。对于测评周期内总电流连续3帧相同现象频次大于阈值（一般为0.1%）的情况，将对应连续3帧数据内发生的里程跳变进行计算，得到测评周期内连续电流检测扣除里程。
+1.7 有效里程计算
+有效里程计算公式为：
+
+其中，L0为上线里程，L1为里程跳变扣除里程，L2为GPS跳变扣除里程；若L1、L2小于0，则L1、L2取0；
+1.8 核算里程
+对上述计算得到的上线里程、无效率、异常率、轨迹里程、有效里程进行判断；
+要求1.7.1到1.7.4四项，每一项的阈值都可调。
+1.7.1.无效率判断
+若数据无效率>A，则核算里程为0
+阈值A暂取100%
+1.7.2异常率判断
+若数据异常率>B，则核算里程为0
+阈值B暂取100%
+1.7.3上线里程与轨迹里程误差判断
+若上线里程与轨迹里程相对误差>=C，核算里程为min（上线里程，轨迹里程）
+若上线里程与轨迹里程相对误差<C，则核算里程为上线里程。
+阈值C暂取6%
+1.7.4上线里程与有效里程误差判断
+若上线里程与有效里程相对误差>=D，核算里程为min（上线里程，有效里程）
+若上线里程与有效里程相对误差<D，则核算里程为上线里程。
+阈值D暂取6%
+
+
+
+
+
+
+
+
+内部协议数据：逗号分隔的按行存储的键值对文本数据。内部协议数据的存储位置如表1所示。
+
+Parquet格式：以parquet存储的格式。
+
+Realinfo数据，也叫做实时数据,目前有内部协议和parquet格式两种存储方式。
+
+Alarm数据，也叫做报警数据，目前有内部协议和parquet格式两种存储方式。
+
+Forward数据，也叫做转发数据，目前有内部协议和parquet格式两种存储方式。
+
+Term，终端数据,目前有内部协议和parquet格式两种存储方式。
+
+Login，登陆数据,目前有内部协议和parquet格式两种存储方式。
+
+明细数据，每一辆车每一天的充电，行驶，慢电，换电集合，目前只有parquet格式。
+
+日报数据，每一辆车的每一天的充电，行驶，满电的统计指标，目前只有parquet格式。
+
+
+表 1数据存储说明
+数据	协议	路径
+realinfo数据	内部协议	/vehicle/data/realinfo
+	parquet	/spark/vehicle/data/realinfo
+alarm	内部协议	/vehicle/data/alarm
+	parquet	/spark/vehicle/data/alarm
+forward数据	内部协议	/vehicle/data/forward
+	parquet	/spark/vehicle/data/forward
+login	内部协议	/vehicle/data/login
+	parquet	/spark//vehicle/data/login
+term数据	内部协议	/vehicle/data/termstatus
+	parquet	/spark//vehicle/data/termstatus
+明细数据	内部协议	无
+	parquet	/spark/vehicle/result/detail
+日报表	内部协议	无
+	parquet	/spark/vehicle/result/dayreport
+里程核查	内部协议	无
+	parquet	/spark/vehicle/result/mileagecheck
+
+1.Parquet转换作业
+定义：Parquet转换作业 用于将内部协议数据 转换为parquet数据
+输入：某一天的内部协议数据。
+输出：parquet数据
+脚本：/usr/local/sparkjob/bin/parquet/parquet.sh
+2.明细报表作业
+定义：明细报表作业 读取 realinfo数据，然后根绝 3.状态判断逻辑来 生成每一辆车的每一天的所有充电，行驶，满电，换电集合。
+例如，计算京A1334 在2017-10-11的每一次充电的开始时间，结束时间，开始soc，结束soc。计算京A1334 2017-10-11的每一次行驶的开始时间，结束时间，行驶里程，最大速度等。
+
+输入：指定某一天的parquet格式的realinfo数据，也就是/spark/vehicle/data/realinfo下某一天的数据。
+输出：每一辆车在指定输入日期内的所有充电，行驶，满电集合，我们把充电，行驶，满电数据叫做明细数据。可以在/spark/vehicle/result/detail找到明细报表.
+脚本：/usr/local/sparkjob/bin/detailjob/detailjob.sh
+项目目录：DetailReport
+
+
+3.日报表作业
+定义：日报表作业读取明细数据，然后计算每一辆车的每一天的充电，行驶，满电，分类，报警的统计指标，例如，计算京A1334 2017-10-11的日充电总时长，日总充电量。或者计算京A1334 2017-10-11的日行驶时长，日行驶里程，日行驶最大速度等。
+输入：指定某一天的parquet格式的明细数据，也就是/spark/vehicle/result/detail中某一天的数据。
+输出：每一辆车的在指定输入日期中的充电，行驶，满电的统计指标，可以在/spark/vehicle/result/dayreport找到日报表。
+脚本：/usr/local/sparkjob/bin/dayreport/dayreport.sh
+项目目录：DayReport
+
+4.里程核查
+定义：里程核查用于计算每一辆车的每一个月的gps轨迹，月行驶里程，月行驶天数等信息，然后在大屏幕进行展示。
+输入：指定某一个月的parquet格式的realinfo数据，日报表数据。也就是/spark/vehicle/data/realinfo下某一个月的数据以及/spark/vehicle/result/dayreport下某一个月的数据。
+输出：每一辆车在指定月份的轨迹，月行驶里程，月行驶天数等信息。
+脚本：/usr/local/sparkjob/bin/mileagecheck/mileagecheck.sh和
+/usr/local/sparkjob/bin/mileagecheck/deadline.sh和
+项目目录：MileageCheck
+大屏里程核查
+算法整体流程
+算法输入：
+
+
+算法输出：输出n个轨迹窗口。
+对于任意的，满足如下2个条件：
+1.内任意两个相邻轨迹点  和 ，有。
+2.对于任意的和， 最后一个轨迹点和的第一个轨迹点的距离大于，.
+
+在地图上进行展示时，不同的表示不同的轨迹，同时窗口内不会出现不好看的斜线，此外该算法可以剔除所有位置的异常轨迹点，包括开始位置和结束位置处异常轨迹点。
+
+
+为了确保算法的输出结果在地图上展示时不会有距离太远的直线，算法需要剔除掉距离太远的异常值，算法需要生成一个个轨迹窗口，轨迹窗口内的点比较“内聚”，”内聚”保证了点不会太”密集”，同时不会”太远”，轨迹窗口间的点比较“松散”。
+
+但是"密集"，“直线”，”异常值“这些术语过于模糊，不同人有不同的理解，为了避免歧义，算法的输出结果一定要精确的描述，算法的输出一定是确定的，满足某个”性质“，
+这样在进行调试，推理的时候都很容易。例如，这个算法可以保证输出的轨迹窗口内任意两个点之间的距离都大于minL,小于maxL，没有任何例外，不会多一条，也不会少一条。
+
+轨迹窗口内的点不要太"密集"，也不要有距离太长的直线(异常值)，用精确的算法语言来说就是：
+轨迹窗口内任意两个相邻点之间的距离一定要>某个最小值，也就是>minL,这样保证了 轨迹窗口内的点不会太"密集"
+轨迹窗口任意两个相邻点之间的距离也一定要<某个最大值，也就是maxL,这样就保证了,轨迹窗口内不会有距离太长的直线，不会有”异常值”。
+
+
+
+首先使用算法1将序列X切分为k个轨迹窗口：
+
+该算法可以并行计算。
+
+
+使用算法2剔除异常轨迹窗口，生成有效轨迹窗口：
+
+此时的已经可以独立的在地图上展示。但是内的轨迹点可能太多，可以进一步的将那些重复轨迹点或者距离很近的轨迹点过滤掉。此时可以使用算法3来进行轨迹过滤和修正。该算法可以并行计算。
+
+使用算法3剔除邻近值并进行轨迹修正，生成修正轨迹窗口：
+
+
+该算法可以并行计算。
+
+使用算法3合并窗口：
+
+
+该算法不可以并行计算。
+
+算法1.轨迹窗口切分
+   轨迹窗口切分算法，用于将轨迹序列X切分为：，叫做轨迹窗口，同一个轨迹窗口内的任意两个相邻轨迹点距离 ，两个不同的相邻轨迹窗口，其距离大于。换句话说，轨迹窗口满足如下条件：
+1.内任意两个相邻轨迹点  和 ，有。
+2.对于任意的和， 最后一个轨迹点和的第一个轨迹点的距离大于，.
+
+轨迹窗口切分算法如下：
+
+
+
+算法2.生成有效轨迹窗口
+算法1将轨迹序列切分为轨迹窗口，其中有些轨迹窗口是无效的，我们需要将其剔除。算法剔除所有异常的轨迹窗口，然后返回m个有效轨迹窗口:.所谓异常轨迹窗口，就是指该轨迹窗口内的轨迹点数量太少了。例如，假设我们有两个轨迹窗口：和，如果只含有一个轨迹点，那么必定是异常值。
+
+
+生成有效轨迹窗口算法如下：
+
+
+
+算法3.相邻值过滤和轨迹修正
+相邻值过滤：相邻值过滤算法用于过滤掉那些距离太近的轨迹点，如果有些点距离很近，那么只保留其中一个进行展示。
+
+相邻值过滤算法将有效轨迹窗口修正为。相邻值过滤算法如下：
+
+
+
+
+
+
+轨迹修正:轨迹修正用于将轨迹进行平滑处理。可以使用卡尔曼滤波算法对轨迹点进行修正。如果时用卡尔曼过滤算法，那么这一步骤最好在相邻值过滤算法之前执行。
+
+算法4.轨迹窗口合并
+如果两个相邻的轨迹窗口距离很近，那么将他们合并到一个轨迹窗口内。我们使用数学归纳法进行归纳，该算法可以使用尾递归来实现。
+
+
+
+状态判断逻辑
+充电状态
+1.充电开始判断：电流 ＜ 0，速度＜＝0.5，连续10帧确认充电状态开始。
+2.充电结束判断：电流＞＝0（忽略速度判断）连续25帧，或车辆下线，或满电待机开始。
+3.充电状态开始后，期间不稳定数据（电流＞＝0或速度＞0.5，未连续25帧）也纳入充电状态统计。
+满电状态
+4.满电待机开始判断：充电结束后，且SOC＝＝100%，电流＝＝0，速度＜＝0.5，不要求连续多帧，统计为满电待机。
+5.满电待机结束判断： SOC＜100%，或电流！＝0，或速度＞0.5，连续10帧确认满电待机结束，或车辆下线。
+行驶状态
+6.行驶状态开始判断：车辆上线连续10帧不为充电状态的数据为车辆行驶。
+7.行驶状态结束判断：判断是否车辆下线或车辆转换为充电时为一次行驶结束。
+换电状态
+8.满足如下条件，认为是一个换电状态：A.换电后的soc整体趋势大于换电前的soc,B.换电后的soc整体趋势呈现递减趋势。
+
+报表schema
+  如果想要查看某一个报表的schema，也就是他具有哪些列，列的数据类型等信息，可以使用spark-shell来查看某一天的数据。例如，如果想要知道明细数据中包含那些数据项，可以启动spark-shell，然后执行如下sql：
+spark.sql(“select * from `/spark/vehicle/result/detail`).show.
+
+车辆能量消耗率
+1)提取车辆行驶数据
+2)将数据根据车辆行驶状态进行切片，切片为每两次充电间行驶数据，提取车辆的行驶数据，记录成一个矩阵A，矩阵包括起始SOC、终止SOC、起始里程、终止里程、起始时间、终止时间
+3)计算不同切片车辆能量消耗率
+
+4)在矩阵A中添加列为“车辆能量消耗率”，记录上述计算数值
+
+车辆快充倍率
+1)提取车辆每天上下线的行驶数据
+2)将数据根据充电状态进行切片，切片为两次行驶间充电数据，提取所有充电数据，记录成一个矩阵B，矩阵B包括起始时间、终止时间、起始SOC、终止SOC、充电电流峰值
+3)计算车辆快充倍率
+
+4)在矩阵B中添加一列，车辆快充倍率，可根据车辆快充倍率是否大于某一值（确定一下多大充电倍率为快充）判断是否为快充
+
+
+电池衰减算法
+用于区分3万公里后是异常减除电池容量还是正常的电池衰减；
+1)根据充电状态对一辆车所有数据进行切片,切片为每两次行驶内的充电数据，提取每段充电数据,记录成一个矩阵C,矩阵C包括起始充电SOC、终止充电SOC、起始里程、终止里程、起始时间、终止时间、每个切片的充电容量
+2)计算每个切片SOC差/切片的充电容量的值m
+
+3)建立矩阵，矩阵包括SOC差/切片的充电容量的值m、起始里程、终止里程、起始时间、终止时间
+4)计算m标准
+
+5)根据m标准判断m值是否为正常值，如出现连续的异常数据，可能存在异常衰减的情况
+
+
+轨迹相似
+一、数据预处理
+（1）导入数据（启动状态）：车辆GPS坐标、里程、速度。（GPS数据中经纬度为0的点去除）
+
+车辆编号	上线时间	下线时间	经度最大值	经度最小值	纬度最大值	纬度最小值	上线里程	下线里程	里程差值	速度 	此段行驶中心经纬度坐标	车辆行驶状态序列
+
+
+
+
+（2）根据经纬度中心坐标进行聚类,将中心坐标点靠近的轨迹归为一类；
+（3）在聚类后的类别中分别将里程差值相同的划为一类。
+二、车辆行驶状态判断
+（1）依据一中分类结果计算车辆转弯状态，每一类分别计算；
+（2）提取一条车辆GPS记录，第n+1帧-第n帧车辆GPS X坐标和Y坐标，分别记为dx和dy（地理坐标系）；
+（3）生成向量并作单位化处理；
+（4）利用向量叉乘判断左右转向：
+
+（5）若在第n帧存在且从第n帧开始后的6帧连续满足，则判断车辆发生转向行为，记录一次行驶状态改变；如果不满足上述条件，则判断车辆仍然保持原有状态，不记录车辆行驶状态：
+[1]向右侧行驶判断：n<0，行驶状态记为-1；
+[2]向左侧行驶弯判断：n>0，行驶状态记为1；
+将行驶状态结果记录在表格中；
+三、动态规整法判断轨迹相似度
+1）在表格中将不同车辆的行驶状态序列进行两条两条对比；
+2）生成序列距离矩阵M
+
+3）生成累计距离矩阵Mc
+
+生成矩阵Mc并以Mc矩阵中Mc（i，j）为两个序列之间得相似度判断两条序列得相似程度结果越大说明相似程度越低。设定小于某个阈值的两条轨迹为疑似相似轨迹。
+4）取速度数据中的第一条、四分之一分位点、二分之一分位点、四分之三分位点和最后一条进行对比，如果五个点中有m个相同则判断为相似轨迹。
+
+
+
+动态数据统计表
+1.分车型统计工作日电动车运行工况（2017年）
+定义：
+（1）工作日：指法定上班日期；（2）休息日：指周末和法定节假日；（3）早高峰：早上7:00-9:00；（4）晚高峰：下午5:00-7:00；
+表1.1 纯电动乘用车工作日运行工况统计表
+城市	日均行驶里程
+（km）	日均行驶时间
+（h）	平均车速（km/h）	百公里耗电
+（kWh/100km）	早高峰平均车速（km/h）	晚高峰平均车速（km/h）
+北京
+上海
+深圳
+广州
+成都
+西安
+郑州
+济南
+……
+车型类别包括：纯电动乘用车、私人乘用车。
+表1.2 纯电动城市客车工作日运行工况统计表
+城市	日均行驶里程
+（km）	日均行驶时间
+（h）	平均车速（km/h）	百公里耗电
+（kWh/100km）	早高峰平均车速（km/h）	晚高峰平均车速（km/h）
+北京
+上海
+深圳
+广州
+成都
+西安
+郑州
+济南
+……
+车型类别包括：纯电动城市客车、纯电动公交车、电动公交车、公交客车、城市公交车。
+表1.3 其他纯电动客车工作日运行工况统计表
+城市	日均行驶里程
+（km）	日均行驶时间
+（h）	平均车速（km/h）	百公里耗电
+（kWh/100km）	早高峰平均车速（km/h）	晚高峰平均车速（km/h）
+北京
+上海
+深圳
+广州
+成都
+西安
+郑州
+济南
+……
+车型类型包括：除纯电动城市客车、纯电动公交车、电动公交车、公交客车、城市公交车以外的其他纯电动客车。
+表1.4 纯电动物流配送车工作日运行工况统计表
+城市	日均行驶里程
+（km）	日均行驶时间
+（h）	平均车速（km/h）	百公里耗电
+（kWh/100km）	早高峰平均车速（km/h）	晚高峰平均车速（km/h）
+北京
+上海
+深圳
+广州
+成都
+西安
+郑州
+济南
+……
+车型类别包括：纯电动物流车、纯电动封闭货车、纯电动厢式运输车、纯电动仓栅式运输车、轻型厢式货车、轻型封闭货车、纯电动运输车、轻型物流车、邮政特种车
+
+2.分车型统计休息日电动车运行工况（2017年）
+定义：
+（1）工作日：指法定上班日期；（2）休息日：指周末和法定节假日；（3）早高峰：早上7:00-9:00；（4）晚高峰：下午5:00-7:00；
+表2.1 纯电动乘用车休息日运行工况统计表
+城市	日均行驶里程
+（km）	日均行驶时间
+（h）	平均车速（km/h）	百公里耗电
+（kWh/100km）	早高峰平均车速（km/h）	晚高峰平均车速（km/h）
+北京
+上海
+深圳
+广州
+成都
+西安
+郑州
+济南
+……
+车型类别包括：纯电动乘用车、私人乘用车。
+
+表2.2纯电动城市客车休息日运行工况统计表
+城市	日均行驶里程
+（km）	日均行驶时间
+（h）	平均车速（km/h）	百公里耗电
+（kWh/100km）	早高峰平均车速（km/h）	晚高峰平均车速（km/h）
+北京
+上海
+深圳
+广州
+成都
+西安
+郑州
+济南
+……
+车型类别包括：纯电动城市客车、纯电动公交车、电动公交车、公交客车、城市公交车。
+表2.3其他纯电动客车休息日运行工况统计表
+城市	日均行驶里程
+（km）	日均行驶时间
+（h）	平均车速（km/h）	百公里耗电
+（kWh/100km）	早高峰平均车速（km/h）	晚高峰平均车速（km/h）
+北京
+上海
+深圳
+广州
+成都
+西安
+郑州
+济南
+……
+车型类型包括：除纯电动城市客车、纯电动公交车、电动公交车、公交客车、城市公交车以外的其他纯电动客车。
+表2.4纯电动物流配送车休息日运行工况统计表
+城市	日均行驶里程
+（km）	日均行驶时间
+（h）	平均车速（km/h）	百公里耗电
+（kWh/100km）	早高峰平均车速（km/h）	晚高峰平均车速（km/h）
+北京
+上海
+深圳
+广州
+成都
+西安
+郑州
+济南
+……
+车型类别包括：纯电动物流车、纯电动封闭货车、纯电动厢式运输车、纯电动仓栅式运输车、轻型厢式货车、轻型封闭货车、纯电动运输车、轻型物流车、邮政特种车
+
+车辆停靠算法
+输入：车速、时间
+车辆停靠判断方法
+连续10帧车速为0，判断车辆处于停靠状态。
+
+轨迹相似度算法
+输入：GPS坐标点、时间
+轨迹相似判断方法：
+（1）取一段时间内的n辆汽车行驶数据；
+
+（2）按GPS坐标计算：第n+1帧-第n帧车辆GPS X坐标和Y坐标，分别记为dx和dy（地理坐标系）。
+1）生成向量并作单位化处理
+
+2）若在第n帧存在且从第n帧开始后的6帧连续满足，则判断车辆发生转向行为，记录一次行驶状态改变；如果不满足上述条件，则判断车辆仍然保持原有状态，不记录车辆行驶状态：
+[1]向右侧行驶判断：n<0，行驶状态记为-1；
+[2]向左侧行驶弯判断：n>0，行驶状态记为1；
+（3）形成矩阵
+	V（n）=
+其中，-1代表左转弯，1代表右转弯
+（4）根据V（n）中的同上下线时间段内行驶状态的相似程度判断该时间段内车辆行驶轨迹相似度。
+DWT动态时间规整法
+1）提取两辆车得行驶状态序列Sn1和Sn2；
+2）生成序列距离矩阵M
+
+3）生成累计距离矩阵Mc
+
+生成矩阵Mc并以Mc矩阵中Mc（i，j）为两个序列之间得相似度判断两条序列得相似程度结果越大说明相似程度越低。
+
+
+
+
+
+
+大屏幕行驶热力
+吉利定制版
+
+大屏幕行驶热力图是每天计算前一天的行驶热力图，然后将计算结果输出到数据库。web读取数据库进行展示。
+
+大屏幕行驶热力图的输入数据是/spark/vehicle/data/realinfo。数据项只有两个：经度和维度。输出结果包含如下几个数据项：
+经度
+维度
+区域ID
+权重
+省
+市
+区
+
+输出结果是RunHeatResult。
+
+行驶热力图的核心是GEO哈希，可以先熟悉下GEO哈希的思想然后在阅读源码。
+
+行驶热力图的入口类是：RunHeatJob。其计算流程如下：
+1.读取/spark/vehicle/data/realinfo数据，将其注册成realinfo表。
+2.计算每一个<经度，维度>的geo哈希值，得到geoHashDataSet。
+3.按照geo哈希值的前n位进行groupByKey，统计权重(也就是count)，得到weightDataSet<geohash,weight>。
+4.对weightDataSet追加区域信息。也就是将weightDataSet映射成<区域ID，经度，维度，权重>，得到weightWithAreaDataSet。
+
+如何将weightDataSet映射成weightWithAreaDataSet呢，也就是说，给定一个geo哈希值，如何找到其对应的区域。思路如下：首先维护一个区域表areaTable，该表存储了国内每一个区域的geo哈希值。该表需要提供一个叫做findAreaByGeoHash的方法，可以根据geo哈希值快速的找到其对应的区域。为了让areaTable可以根据geo哈希值快速的找到对应的区域，通常需要使用前缀树来实现areaTable。然而我们为了快速的简单的实现，没有使用前缀树，而是使用一个数组来存储areaTable。
+
+5.过滤掉weightWithAreaDataSet中区域ID为空的值。
+6.将步骤5的计算结果输出到HDFS和数据库veh_run_heat表。
+
+
+行驶热力图的入口类是：RunHeatJob。下面简要的看一下源码：
+
+首先，将areaTable进行广播。
+val geotable = geoHashTable
+val broadcastGeoHashTable = sparkSession.sparkContext.broadcast[Array[GeoHashEntry]](geotable)
+
+接下来，读取/spark/vehicle/data/realinfo中的经纬度，并过滤掉无效的经纬度：
+//对估计数据进行采样
+val sql =
+  s"""
+         SELECT
+           CAST(`2502` *0.000001 AS DOUBLE) AS longitude,
+           CAST(`2503` * 0.000001 AS DOUBLE) AS latitude
+           FROM realinfo WHERE year=$year AND month=$month AND day=$day
+           AND `2502` IS NOT NULL AND `2503` IS NOT NULL
+       """.stripMargin
+
+//过滤掉无效的轨迹点
+val coordDataSet = sparkSession.sql(sql)
+  .as[Coord]
+  .filter(coord => coord.longitude >= longitudeLow && coord.longitude <= longitudeHigh && coord.latitude >= latitudeLow && coord.latitude <= latitudeHigh)
+为了避免对全量数据执行计算，可以先对数据采样，然后对采样后的数据执行geo哈希计算。
+如果我们开启了coord.sample.enable标记，那么将对数据采样，否则将执行全量计算：
+val sampleDataSet = if (stateConf.getOption("coord.sample.enable").contains(true)) {
+  logInfo("enable sample......")
+  val fraction = stateConf.getOption("coord.sample.fraction").map(_.toDouble).getOrElse(0.3)
+  coordDataSet.sample(false, fraction)
+} else coordDataSet
+
+
+计算geo哈希值：
+//计算geo hash
+val geoHashDataSet = sampleDataSet.map(coord => GeoHash.encode(coord.longitude, coord.latitude, 12))
+计算权重：
+//计算weight
+val weightDataSet = geoHashDataSet.groupByKey(_.substring(0, geoHashPrecision)).count()
+
+添加区域信息：
+//格式化处理,添加区域信息
+val weightWithAreaDataSet = weightDataSet.map(geoHashAndWeight => {
+  val geoHash = geoHashAndWeight._1
+  val weight = geoHashAndWeight._2.toInt
+  val (lon, lat) = GeoHash.decode(geoHash)
+
+  val result = findAreaByGeoHash(broadcastGeoHashTable.value, geoHash) match {
+    case Some(range) =>
+      RunHeatResult(lon, lat, range.areaID, range.province, range.city, weight)
+    case None =>
+      logWarning(s"$lon,$lat,$geoHash,$weight")
+      RunHeatResult(lon, lat, "", "", "", weight)
+  }
+
+  result
+})
+
+
+过滤掉没有区域ID的点：
+//过滤掉没有区域的点
+val finalRunheat = weightWithAreaDataSet.filter(_.areaID.nonEmpty)
+  .repartition(stateConf.getOption("finalPartitionNum").map(_.toInt).getOrElse(15))
+
+最后将计算结果输出到HDFS和数据库。
+override def write[Product <: R](result: Dataset[R]): Unit = {
+  //输出到hdfs和数据库
+  val outputModels = stateConf.getOption("report.output").getOrElse("hdfs").split(',')
+  if (outputModels.length > 1) result.cache()
+  outputModels.foreach(outputModel => {
+    if (outputModel == "hdfs") {
+      SparkHelper.saveToPartition(sparkSession, stateConf, result.toDF(), runheatTableName)
+    } else if (outputModel == "oracle" || outputModel == "mysql") {
+      new RunHeatOutputManager(stateConf).delete(date)
+      result.foreachPartition(iter => {
+        new RunHeatOutputManager(stateConf).output(iter.toIterable)
+      })
+    }
+  })
+}
+
+申龙报表
+是在国家平台spark报表的基础之上做的定制版。定制实现在shenlong-report中。
+申龙报表最终计算结果包含如下数据项：
+充油量
+充气量（KG）()
+充气量（L）
+充氢量
+总充电量
+最大充电功率,KWH,
+电池总电量（kWh）
+车辆充满一次电能够行驶里程（公里）
+公式如下：
+车辆充满一次电能够行驶里程（公里）=电池总电量×0.8÷单位里程电耗
+单位里程电耗=总充电量÷总里程（km
+月均行驶里程
+月均行驶里程=总里程÷总月份
+总月份=末次上线时间-首次上线时间之间的月数
+百公里耗电量（kWh）
+百公里耗电量=(总充电量÷总里程) *100
+
+蓝色标记的是终端上传的数据项，我们可以直接获取而无须任何计算。
+红色的值是从数据库中查询的，也无须计算。
+其余的需要根据公式计算。
+
+该报表属于月报，也就是每月计算上月报表数据，然后存储shenlong_veh_month_report表中。
+
+综上所述，报表的输入数据源主要有两类：一类是直接从/spark/vehicle/data/realinfo中获取，这里面存的都是终端之间上传的数据，例如上面的充气量。另一类是数据库，例如最大充电功率。
+
+在代码中，InputModel表示输入数据，如下：
+ case class InputModel(
+                       //终端上传数据
+                       vid:String,
+                       //时间
+                       time:Long,
+                     //里程
+                       mileage:Option[Int],
+                       fuelingCharge:Option[Int],//充油量
+                       airinFlowKG:Option[Int],//充气量，KG
+                       airinFlowL:Option[Int],//充气量，L
+                       hydrogenKG:Option[Int],//充氢量
+                       totalCharge:Option[Int],//总充电量
+
+
+                       //查询数据库的静态数据
+                       firstOnlineTime:Option[Long],//首次上线时间
+                       firstOnlineMileage:Option[Double],//首次上线里程
+                       maxChargePower:Option[Double],//最大充电功率
+                       totalChargeOfCell:Option[Double],//电池总电量（kWh）
+                       socPercent:Option[Double]
+                     )
+
+
+输出结果是：
+case class DeclareResult(
+                          //终端上传数据
+                          vid:String,
+                          time:Long,
+                         //里程
+                          mileage:Int,
+                          fuelingCharge:Int,//充油量
+                          airinFlowKG:Int,//充气量，KG
+                          airinFlowL:Int,//充气量，L
+                          hydrogenKG:Int,//充氢量
+                          totalCharge:Int,//总充电量
+
+                          //查询数据库的静态数据
+                          maxChargePower:Double,//最大充电功率,KWH,
+                          totalChargeOfCell:Double,//电池总电量（kWh）
+
+                          //计算的数据
+                          rechargeMileage:Double,//车辆充满一次电能够行驶里程（公里）
+                          mileagePerMonth:Double,//月均行驶里程（km）
+                          chargeCon100KM:Double//百公里耗电量（kWh
+                        )
+
+
+
+接下来看一下具体的实现。
+
+首先，将/spark/vehicle/data/realinfo下面的数据注册成realinfo表，如下：
+SparkHelper.loadTable(sparkSession, stateConf, inputTableName)
+  .selectExpr(
+    "VID",
+    "TIME",
+    "`2202` AS mileage",
+    "CAST(`5001` * 0.5 AS DOUBLE ) AS fuelingCharge ",
+    "CAST(`5002` *0.5 AS DOUBLE ) AS airinFlowKG",
+    "CAST(`5003` *0.5 AS DOUBLE ) AS airinFlowL",
+    "CAST(`5004`* 0.01 AS DOUBLE ) AS hydrogenKG",
+    "CAST(`5005` *0.1 AS DOUBLE) AS totalCharge",
+    "year",
+    "month",
+    "day"
+  ).createOrReplaceTempView(s"temp_$inputTableName")
+sparkSession.sql(s"select * from temp_$inputTableName WHERE year=$year AND month=$month  AND vid is not null")
+
+接下来，从数据库中读取MAX_CHARGEPOWER(最大充电功率) ，SUM_BATTERYELE(电池总电量)，soc_surplus（soc比例，默认值0.8），FIRST_REG(首次上线时间)，START_MILEAGE（首次上线里程）
+
+
+def registeSysInfo(): Unit = {
+  val url = stateConf.getString(Constant.JdbcUrl)
+  val driver = stateConf.getString(Constant.JdbcDriver)
+  val user = stateConf.getString(Constant.JdbcUserName)
+  val password = stateConf.getString(Constant.JdbcPasswd)
+
+  val sql = if(stateConf.getOption("useSocPercent").contains("true")){
+      """
+           SELECT
+                SYS_VEH_MODEL.MAX_CHARGEPOWER AS maxChargePower,
+                SYS_VEH_MODEL.SUM_BATTERYELE AS totalChargeOfCell,
+                SYS_VEH_MODEL.soc_surplus AS socPercent,
+                SYS_VEHICLE.UUID AS VID,
+                SYS_VEHICLE.FIRST_REG AS firstOnlineTime,
+                SYS_VEHICLE.START_MILEAGE *10 AS firstOnlineMileage
+           FROM SYS_VEH_MODEL INNER JOIN SYS_VEHICLE ON SYS_VEHICLE.VEH_MODEL_ID=SYS_VEH_MODEL.ID
+        """.stripMargin
+    }else{
+      """
+           SELECT
+                SYS_VEH_MODEL.MAX_CHARGEPOWER AS maxChargePower,
+                SYS_VEH_MODEL.SUM_BATTERYELE AS totalChargeOfCell,
+                SYS_VEHICLE.UUID AS VID,
+                0.8 AS socPercent,
+                SYS_VEHICLE.FIRST_REG AS firstOnlineTime,
+                SYS_VEHICLE.START_MILEAGE *10 AS firstOnlineMileage
+           FROM SYS_VEH_MODEL INNER JOIN SYS_VEHICLE ON SYS_VEHICLE.VEH_MODEL_ID=SYS_VEH_MODEL.ID
+        """.stripMargin
+    }
+
+
+  SparkHelper.registerJdbcAsTempView(sqlContext, url, driver, user, password, "sys_info", sql, 5)
+}
+
+
+有了realinfo和sys_info数据，接下来就对他们执行join，拼接成InputModel，如下：
+sparkSession.sql(
+  s"""
+  SELECT
+    sys_info.VID,
+    dateToLong(sys_info.firstOnlineTime) AS firstOnlineTime,
+    CAST(sys_info.firstOnlineMileage AS INT),
+    CAST(sys_info.maxChargePower AS DOUBLE),
+    CAST(sys_info.totalChargeOfCell AS DOUBLE),
+    CAST(sys_info.socPercent AS DOUBLE),
+    dateStringToLong(realinfo.time) AS time,
+    realinfo.mileage,
+    CAST(realinfo.fuelingCharge AS INT),
+    CAST(realinfo.airinFlowKG AS INT),
+    CAST(realinfo.airinFlowL AS INT),
+    CAST (realinfo.hydrogenKG AS INT),
+    CAST(realinfo.totalCharge AS INT)
+  FROM  $inputTableName realinfo INNER JOIN  sys_info ON realinfo.vid=sys_info.vid
+  WHERE year=$year AND month=$month
+""".stripMargin)
+  .as[InputModel]
+
+
+拼接成InputModel之后，按照车辆VID聚合，然后对每一辆车执行计算。首先调用getResult获取<里程，充油量，充气量KG,充气量L，充氢量，总充电量，最大充电功率，电池总电量>
+val sortedValues = Utils.sortByDate2[InputModel](values.toArray, row => Some(row.time))
+
+val (mileage,
+fuelingCharge, //充油量
+airinFlowKG, //充气量，KG
+airinFlowL, //充气量，L
+hydrogenKG, //充氢量
+totalCharge, //总充电量
+maxChargePower,//最大充电功率
+totalChargeOfCell，//电池总电量
+) = getResult(sortedValues)
+
+
+getResult非常简单，就是获取sortedValues中每一个数据项的最后一帧有效数据即可。
+
+有了上面这个几个数据项之后，就可以计算车辆充满一次电能够行驶里程（公里),月均行驶里程,百公里耗电量（kWh）了。
+
+
+最后将计算结果输出到HDFS和数据库中：
+
+  override def write[Product <: DeclareResult](result: Dataset[DeclareResult]) = {
+    val ouputModels = stateConf.getString("report.output").split(',')
+
+    ouputModels.foreach(_ match {
+      case "hdfs" =>
+        SparkHelper.saveToPartition(sparkSession, stateConf, result.toDF, outputTableName)
+      case m if m == "mysql" || m == "oracle" =>
+        result.repartition(10).foreachPartition(values => {
+          val declareDb = new DeclareResultModelManager(stateConf)
+          declareDb.output(values.toIterable)
+        })
+    })
+  }
+}
+
+停车热力图
+停车热力spark作业部署说明
+
+1.上传ZIP压缩包至服务器执行路径，解压
+
+目录说明：
+bin 执行的程序和脚本
+conf 配置文件
+data 测试数据
+doc部署说明
+jars 依赖的jar包
+
+unzip ParkingHeat-1.0.0.zip
+
+
+2.上传充电站位置数据到HDFS
+充电站位置数据路径，需要手动上传到HDFS上
+hadoop fs -put data/beijing-charge-station-baidu.csv HDFS路径
+
+
+3.修改bin/parkingheat-job-prd.sh，指定JOB_HOME目录为解压后的执行目录
+
+
+
+
+
+
+
+4.在bin/parkingheat-job-prd.sh中参数配置
+
+Log.level：spark日志输出级别（默认：info 其他如：error,debug）
+Input.date：输入数据的日期，格式如20171120 在脚本执行时指定
+input.park_radius 停车判定半径（单位：米）
+input.min_duration 停车判定时长（单位：秒）
+input.max_distance 停车判定GeoHash值范围（单位：米）
+input.park_range 充电站热力统计距离（单位：米）
+以上参数默认即可
+
+input.station.data.path
+充电站位置数据路径，需要手动上传到HDFS上，并在该参数上指定路径（上一步）
+output 输出目标 格式如：hdfs,hbase  测试建议写hdfs
+output.format 输出数据的格式 如：text 其他如json,parquet等
+output.hdfs.path 输出数据的路径,如：/spark/vehicle/result/parkingheat
+
+
+
+5.配置spark计算资源 （根据环境资源情况，以下是生成环境的资源配置，测试环境需调整）
+
+
+6. 提交运行
+
+ sh bin/parkingheat-job-prd.sh 20171120（输出数据的日期）
+
+ 停车热力图部署说明
+
+1.在parkingheat-job-prd.sh中参数配置 （默认即可）
+ 以下参数生产环境下建议默认
+Log.level
+output 输出目标 格式如：hdfs,hbase  测试建议写hdfs
+output.format 输出数据的格式 如：text 其他如json,parquet等
+output.hdfs.path 输出数据的路径,如：'/spark/vehicle/result/parkingheat'
+
+
+
+2.配置spark计算资源
+
+
+
+
+3.指定jar包存放路径
+默认为/usr/local/sparkjob/zyt/parkingheat/ParkingHeat-1.1.0.jar
+
+
+
+ 4. 提交运行
+
+ sh parkingheat-job-prd.sh 20171102（输出数据的日期）
+
+
+
+<充电-行驶-充电>闭包
+在<<里程核查算法修改>>文档中，包含三个算法:车辆能量消耗率，车辆快充倍率，电池衰减算法。这三个算法共同特点：要么寻找两次充电之间的行驶，要么寻找两次行驶之间的充电。我们把这种模式叫做一个closed(闭包)。
+
+现在，我们有两种闭包：
+
+<充电-行驶-充电>闭包，描述的是两次充电及其之间的所有行驶。<充电-行驶-充电>闭包简记为crc，其中c是充电单次charge的简写，r是行驶run的简写。
+<行驶-充电-行驶>，描述的是两次行驶及其之间的充电。简记为rcr。
+
+可以设计一个通用算法，将所有的crc闭包和rcr闭包找到，然后在对每一个crc或者rcr闭包执行单独的计算。
+
+为了设计这个算法，现在将问题进行抽象化描述。抽象化描述的好处是可以用简洁，严谨的符号语言对问题进行描述，便于转换成实际的代码。
+
+我们首先定义一个序列D，序列的元素可以是充电，也可以是行驶，序列按照时间排序。
+序列中的每一个元素都有两个属性：t，s。其中t是时间，s是状态,s=r表示这是一个行驶状态，s=c,表示这是一个充电状态。
+
+其中t是时间。
+
+下面我们分别定义rcr闭包和crc闭包。
+rcr闭包是D的一个子序列，我们记为,这个子序列的第一个元素和最后一个元素是行驶，中间的所有元素是充电。crc的定义类似，如下：
+
+
+根据上述定义，很容易设计一个算法找到所有的rcr和crc。现在，我们设计findRCR算法来找到所有的RCR集合，如下：
+
+
+
+算法中的start表示闭包的开始元素，end表示结束元素。rcrSet表示所有的crc集合。
+初始的时候，start和end等于-1，表示还没有找到一个有效的闭包，crcSet设置为空集。
+算法从0开始遍历D序列。如果第i个元素的状态是行驶并且第i+1个元素的状态是充电，那么我们暂时将start设置为i，表示我们可能找到了一个rcr闭包的开始元素。如果第i个元素的状态是充电而第i+1个元素是行驶，那么i+1是闭包的结束元素。
+
+如果start和end都不等于-1，说明我们已经找到了一个有效的rcr闭包，那么可以将这个rcr闭包加入到rcrSet中，然后在将start和end重新设置为-1，寻找下一个闭包。
+
+最后，遍历到|D|-1元素时，算法结束。返回rcrSet。
+
+事实上，正如定义所示，crc和rcr的算法本质是一样的。在实际实现scala代码时，我们将crc和rcr算法融合成了一个算法。
+
+在下面的实现中，foreachRCR用于遍历details集合中的每一个RCR闭包，用户可以使用f来处理这个RCR闭包。这是函数式编程的一个经典思维方式：将通用逻辑设计为函数的参数。例如scala中数组的foreach，map等函数都是这种设计思想。
+
+类似的，foreachCRC用于遍历details中的每一个CRC闭包。
+
+核心是foreachClosed。ForeachClosed的逻辑和上面的findCRC逻辑一样。
+object Algorithms {
+//一个小的测试用例，用于查找所有的crc闭包。
+  def main(args: Array[String]): Unit = {
+    val values=Array(
+//第1个闭包开始位置
+      DetailModel("",0,0,0,0,0,0,0,0,Constant.ChargeState),
+      DetailModel("",0,0,0,0,0,0,0,0,Constant.TravelState),
+      DetailModel("",0,0,0,0,0,0,0,0,Constant.ChargeState),
+//第以个闭包结束位置
+//第二个闭包开始位置
+      DetailModel("",0,0,0,0,0,0,0,0,Constant.TravelState),
+      DetailModel("",0,0,0,0,0,0,0,0,Constant.TravelState),
+      DetailModel("",0,0,0,0,0,0,0,0,Constant.TravelState),
+      DetailModel("",0,0,0,0,0,0,0,0,Constant.ChargeState),
+//第二个闭包结束位置
+下面这几个不属于任何闭包
+      DetailModel("",0,0,0,0,0,0,0,0,Constant.ChargeState),
+      DetailModel("",0,0,0,0,0,0,0,0,Constant.ChargeState),
+      DetailModel("",0,0,0,0,0,0,0,0,Constant.TravelState)
+    )
+
+    Algorithms.foreachCRC(values,(s,e)=>{
+      println(s"$s,$e")
+
+      (s to e).foreach(i=>values(i).toString)
+    })
+  }
+  //遍历每一个RCR闭包。
+  //每一个RCR闭包长度至少为3.
+  def foreachRCR[T <: Detail](details: Seq[T], f: (Int, Int) => Unit): Unit = {
+    foreachClosed(Constant.TravelState, Constant.ChargeState)(details, f)
+  }
+
+  //遍历每一个CRC闭包。
+  //每一个CRC闭包长度至少为3.
+  def foreachCRC[T <: Detail](details: Seq[T], f: (Int, Int) => Unit): Unit = {
+    foreachClosed(Constant.ChargeState, Constant.TravelState)(details, f)
+  }
+
+
+  /**
+    * @param closed 闭包开始和结束元素的状态。
+    * @param mid 闭包中间元素的状态
+    * @param details 输入集合。
+    * @param f 一个用于处理闭包的函数。 第一个参数是闭包开始下标，第二个参数是闭包结束下标
+    *
+    * 在details序列中查找闭包(closed)，闭包是detail的一个子序列，这个子序列满足如下条件：
+    * 1.闭包的第一个元素和最后一个的状态相同。
+    * 2.闭包的中间元素状态相同
+    * 例如(充电，行驶，行驶，行驶，充电)就是一个闭包，这个闭包我们叫做crc闭包。c是充电的意思，r是行驶的意思。
+    * 再比如，(行驶，充电，行驶)也是一个闭包,z这个闭包叫做rcr.
+    * 事实上，（行驶，行驶，行驶）也是一个闭包，只不过这个闭包中的所有detail的状态都是行驶。
+    * */
+  def foreachClosed[T <: Detail](closed: String, mid: String)(details: Seq[T], f: (Int, Int) => Unit): Unit = {
+    if (details.size < 3) {
+      //do nothing
+    } else {
+      //闭包开始索引
+      var start = -1
+      //闭包结束索引
+      var end = -1
+
+      var i = 0
+
+      while (i < details.size - 1) {
+        if (details(i).state == closed && details(i + 1).state == mid) {
+          start = i
+        } else if (details(i).state == mid && details(i + 1).state == closed) {
+          end = i+1
+        }
+
+        //如果有闭包开始索引和结束索引，那么[start,end]内的所有数据形成了一个闭包。
+        //然后调用f来处理这个闭包。
+        if (start != -1 && end != -1) {
+          f(start, end)
+
+          start= -1
+          end= -1
+        }
+        i += 1
+      }
+    }
+  }
+}
+
+
+现在，我们来看一下如何利用上面的算法实现车辆能量消耗率的计算。
+
+
+车辆能量消耗率算法中，会计算两次充电行驶间的soc差值，里程差值。有了foreachCRC算法，可以轻易的实现这个逻辑：在computeCRC中，我们调用foreachCRC来对每一个两次充电之间的行驶进行计算，参考注释。
+
+//计算(充电，行驶，充电)闭包值
+def computeCrc(sortedDetails:Array[DetailModel]):Array[ClosedResult]= {
+  val powerConsumptionResult = new ArrayBuffer[ClosedResult]()
+
+  //遍历每个(充电-行驶-充电)闭包
+  Algorithms.foreachCRC(sortedDetails, (start, end) => {
+    //闭包内第一个行驶
+    val firstRun = sortedDetails(start + 1)
+    //闭包内最后一个行驶
+    val lastRun = sortedDetails(end - 1)
+    //闭包soc差值
+    val socDiff = lastRun.endSoc - firstRun.startSoc
+    //闭包里程差值
+    val mileageDiff = lastRun.stopMileage - firstRun.startMileage
+    //最大峰值电流
+    val (maxTotalCurrent, minTotalCurrent) = getMaxAndMinTotalCurrent(sortedDetails, start, end)
+
+    //车辆能量消耗率
+    val powerConsumption = socDiff * firstRun.standendPower / mileageDiff
+    powerConsumptionResult.append(
+      ClosedResult(
+        vid = firstRun.vid,
+        startTime = sortedDetails(start).startTime,
+        endTime = sortedDetails(end).endTime,
+        closedType = "crc",
+        socDiff = socDiff,
+        mileageDiff = mileageDiff,
+        powerConsumption = powerConsumption,
+        maxTotalCurrent = maxTotalCurrent,
+        minTotalCurrent = minTotalCurrent,
+        quickChargeFactor = 0,
+        m = 0))
+  })
+  powerConsumptionResult.toArray
+}
+骗补督查
+动力电池系统一致性核查
+（1）有车缺电：该情况下，车辆无电池系统，不具备上线运行和数据传输的能力。后续的补贴申报，可按照上线运行后的时间进行确认，而非车辆销售和开票时间。同时，以国家监管平台动力电池溯源系统为依据，实现动力电池的全周期静态信息（包括电池系统编码、厂家、能量、容量、生产日期、批次等）与车辆信息的强关联管理，做到车辆和电池可追溯、可对比，直接杜绝车辆提前上牌的情况。
+
+
+核算的算法：赵洋补充
+检测1：对车辆上线运行时间、数据传输进行检测，对无上线时间或无数据上传的车辆进行标记。
+检测2：对未通过检测1的车辆，进行进一步的全周期静态信息追溯，若信息异常则标记报警。
+（2）动力电池系统容量不一致：国家监管平台可实时监管车辆的SOC状态和行驶里程情况，两参数与动力电池系统的容量和能量直接相关。根据车辆静态信息（标称容量、能量、电压等）和监管平台内的动态信息（SOC状态、行驶里程以及充电、运行过程数据）进行对比核查，即可判定车辆实际容量与标称值的一致性，可对问题车辆进行筛选。
+
+
+核算的算法：赵洋补充
+检测1：计算车辆在充电阶段SOC从60%上升到80%的动力电池容量和能量。折合计算出动力电池总容量与总能量，与标称值进行对比。对相对误差超过阈值的车辆进行标记报警。
+车辆运行情况核查
+（1）车辆闲置和里程核查
+两项内容可合并处理。
+里程核查：公共领域新能源汽车以监管系统中GPS数据为对照依据，对上报的仪表里程进行核查对比，合理误差范围内的，仪表里程被认可，误差较大的，以GPS里程进行里程认可。
+恶意的空驶情况筛查：按照车辆使用性质进行行驶过程合理性的判断，例如，高速公路或主干道的频繁非正常往返行驶、公交车未按规定停靠站行驶、大量车辆集中时间段行驶或集中同一线路行驶等，杜绝集中突击的车辆空车行驶。
+核算的算法：赵洋补充，增加空驶识别及闲置率
+检测1：对车辆上线里程、轨迹里程、有效里程进行计算，对三个里程之间误差较大的车辆进行标记。
+检测2：对行驶轨迹大量集中在较小区域的车辆进行标记。
+检测3：对车辆连续行驶过程中的轨迹重复现象进行标记。
+检测4：对车辆连续行驶时长进行检测，若不符合该车辆类型的行驶特征（如公交车连续行驶不停靠，长途客车连续往返等现象），则进行标记。
+
+
+
+
+（2）行驶3万公里后的闲置问题：
+车辆的行驶情况应与其使用领域（公交、出租、物流、商务班车等）直接相关，行驶规律性较强。行驶3万公里后，车辆是否依然按照原有规律进行行驶，可依据国家
+监管平台的历史轨迹和里程统计数进行核查。
+
+
+
+一车多终端
+
+空驶
+
+
+车辆类型
+
+
+    原有车辆类别为73种(附件：原车辆类别名)，重新变更为12种
+
+        工程特种车,
+        公路客车,
+        公务乘用车,
+        私人乘用车,租赁乘用车,公交客车,通勤客车,旅游客车,出租乘用车,物流特种车,邮政特种车,环卫特种车
+
+    其中商用车分为：工程特种车,公路客车,公交客车,通勤客车,旅游客车,物流特种车,邮政特种车,环卫特种车
+        乘用车分为：公务乘用车,私人乘用车,租赁乘用车,出租乘用车
+       具体受影响车辆为数据库中历史车辆约八万辆左右，详情为附件内容，已经过数据分析部处理重新归类，请各部门人员做相应调整，以免造成平台不稳定或异常，历史车辆类别变更将在近期执行，如有问题请及时回复。
+
+
+1. 标称参数静态核验（新做）  依赖中机数据   20号之内提供数据光盘
+
+
+2. 动态历史数据核验（包含动力电池一致性核验）（新做）（本期依赖电池溯源的静态数据忽略）
+     1、    续航里程（soc 80-60），
+             车辆能量消耗率(文字描述提供，？？？)，
+             车辆快充倍率(文字描述提供，???)。 需要检测动态数据是否和标称参数一致
+
+
+3. 里程核查（已完成，仅做改版，杨晓飞反馈车辆多了查不了）
+              更新轨迹里程计算方法，增加对跳变的过滤；
+              提供新的核算里程的流程说明；（时间：16日下班前提供算法）
+
+
+（数据拆分）
+4. 恶意空驶报警（新做）（对象：每次单车的空驶行为明细）
+       提供车辆停靠算法(缺，暂有佘博士版本)、轨迹相似度算法（缺）
+
+
+5. 三万公里后行驶规律分析（闲置）(按2w，和3w分别计算)（能量利用率及有效续驶里程，对比事前数据（20000 - 30000后（算两次），日均行驶里程、行驶时间，周上线，均值，方差），闲置车辆】）闲置的判断条件？（缺，建议按天）
+
+
+6. 三万公里前后行驶规律分析(电池容量、衰减，也表现在里程上)(按2w，和3w分别计算)需要提供路网数据，用于标识道路等级（2018年3月20日之内提供）提供动态计算车辆动力电池容量和能量的算法；提供电池衰减算法，用于区分3万公里后是异常减除电池容量还是正常的电池衰减；动态计算续航里程算法
+
+
+7. （命名：）对于一车多终端嫌疑的车辆进行重新核验，对两次重新核验后仍认定为存在一车多终端车辆，对行驶时间、行驶轨迹、涵盖车辆范围进行整合并上报。（对象：空跑车组，多少辆，VIN码在明细里，生产企业，运营企业）
+
+8. （命名：合格车辆导出）将无恶意空驶、无30000公里后闲置、无更换电池、无一车多终端嫌疑车辆统计后进行上报。
+
+
+
+动态计算续航里程算法
+
+
+
+
+
+动态计算车辆动力电池容量和能量的算法
+
+
+
+电机功率
+1)提取行驶片段
+根据行驶状态对一辆车的历史数据进行切片，取出该车的行驶片段数据，形成矩阵A；
+2)计算实时功率
+使用A中的电机控制器输入电压（V）和电机控制器直流母线电流（A）两项数据计算实时功率（kW），形成列表B；
+
+3)筛除异常值
+删除列表B中所有的零值，然后对列表B进行分布统计，删除以外的异常值形成列表C；
+4)计算功率分布
+对C进行统计分布，统计0，1/4，1/2，3/4，1位置的功率值，输出功率分布情况与额定电机功率对比。
+续驶里程
+1)提取行驶片段
+根据行驶状态对一辆车的历史数据进行切片，取出该车的行驶片段数据，形成矩阵；
+2)统计SOC区间对应行驶里程
+统计中的行驶开始SOC，行驶结束SOC，行驶开始里程，行驶结束里程，汇总成矩阵B，B中每行代表一个行驶片段的数据；
+3)筛除异常值
+删除B矩阵中单次行驶里程（行驶结束里程-行驶开始里程）大于标称续驶里程的记录；
+4)计算续驶里程
+
+
+车辆停靠算法
+
+
+
+
+
+轨迹相似度
+
+
+轨迹里程算法
+
+里程核查（已完成，仅做改版，杨晓飞反馈车辆多了查不了）
+
+更新轨迹里程计算方法，增加对跳变的过滤；
+
+
+里程核查
+
+
+
+
+
+
+
+明细报表
+trait AutoPartition extends Logging{
+  /**
+    *   @param path 最近n天的文件路径，其中path[i]的时间大于path[i+1]
+    *   @return 返回当前分区数的预测值
+    * */
+  def getPartitionNum(fs:FileSystem,path:Array[String]): Int = {
+    /**
+      * 1.使用加权移动平均值算法来预测当前的文件大小
+      * 2.当前分区数应该是文件大小的一个函数，且随着文件大小的增加，分区数也应该增加
+      * 分区数=threshold*文件大小,其中0<threshold<1,threshold=用户预设的每一个文件大小的倒数
+      */
+    val currentFileSize = estimateCurrentFileSize(fs, path)
+    val parNum = Math.ceil(currentFileSize / getThreshold).toInt
+    if (parNum < 2) {
+      logWarning(s"the partition num is $parNum,the file size estimated  is ${path.length},the threshold size is $getThreshold , the current file size estimated is $currentFileSize")
+      8
+    } else parNum
+  }
+
+
+
+ def getChildFiles(fs: FileSystem, directory: String): Array[(String, Long)] = {
+      val d = new Path(directory)
+
+      if (fs.exists(d)) {
+        val childFiles = fs.listStatus(d)
+        childFiles.map(file => {
+          (file.getPath.toString, file.getLen)
+        })
+      } else {
+        Array.empty
+      }
+    }
+
+
+
+  /**
+    * 使用指数移动平均值来预测当前文件大小，这里的权重设置为0.7
+    * */
+  def estimateCurrentFileSize(fs:FileSystem,path:Array[String]):Long= {
+    val w = 0.7D
+
+    if (path.size < 2) 0L
+    else {
+      val lastN = Utils.getChildFiles(fs, path(0)).foldLeft(0L)((a, b) => a + b._2)
+      val lastN_1 = Utils.getChildFiles(fs, path(1)).foldLeft(0L)((a, b) => a + b._2)
+
+      Math.ceil(lastN * w + lastN_1 * (1 - w)).toLong
+    }
+  }
+
+  def getThreshold: Long
+}
+
+
+
+
+override def getThreshold: Long = Utils.getParquetThreshold(stateConf, hadoopConfiguration)
+
+  def getParquetThreshold(stateConf: StateConf, hadoopConfig: Configuration): Long = {
+    val defaultThreshold = hadoopConfig.getLong("dfs.blocksize", 128 * 1024 * 1024)
+
+    stateConf.getOption("parquet.threshold").map(_.toLong) match {
+      case Some(threshold: Long) => Math.max(defaultThreshold, threshold)
+      case _ => defaultThreshold
+    }
+  }
+
+
+
+
+#!/bin/bash
+startJob() {
+    /usr/local/spark/bin/spark-submit \
+      --class com.bitnei.report.dayreport.DayReport \
+      --name ${reportDate}-spark日报表计算 \
+      --master yarn \
+      --deploy-mode client \
+      --executor-memory 3G \
+      --executor-cores 2 \
+      --queue spark \
+      --jars /opt/cloudera/parcels/HADOOP_LZO-0.4.15-1.gplextras.p0.123/lib/hadoop/lib/hadoop-lzo.jar \
+      --driver-library-path /opt/cloudera/parcels/HADOOP_LZO-0.4.15-1.gplextras.p0.123/lib/hadoop/lib/native \
+      --driver-memory 1G \
+      --conf spark.executor.extraLibraryPath=/opt/cloudera/parcels/HADOOP_LZO-0.4.15-1.gplextras.p0.123/lib/hadoop/lib/native  \
+      --conf spark.shuffle.io.maxRetries=40 \
+      --conf "spark.shuffle.io.retryWait=5s" \
+      --conf "spark.shuffle.consolidateFiels=true" \
+      --conf "spark.shuffle.file.buffer=64k" \
+      --conf "spark.executor.heartbeatInterval=5s" \
+      --conf "spark.reducer.maxSizeInFlight=1m" \
+      --conf "spark.executor.cores=32" \
+      --conf spark.network.timeout=300s \
+      --conf "spark.executor.extraJavaOptions=-XX:+PrintGCDetails -XX:+PrintGCTimeStamps" \
+      /usr/local/sparkjob/statecompute/spark-dayreport-1.0-SNAPSHOT.jar \
+      dayreport.output.hdfs.enable=true \
+	  state.reportdate=${reportDate} \
+      spark.deploy.local=false \
+      state.output.database.enable=false \
+      state.database.remove.enable=true \
+      dayreport.validatecompute.enable=true \
+      state.table.charge.dayreport=veh_dayreport_chargestate \
+      state.table.fullcharge.dayreport=VEH_DAYREPORT_FULLSTATE \
+      state.table.travel.dayreport=VEH_DAYREPORT_RUNSTATE \
+      state.table.category.dayreport=veh_dayreport_category \
+      state.table.alarm.report=veh_dayreport_alarm \
+      state.table.validate.report=veh_dayreport_datastat \
+	  dayerport.output.format=txt \
+	  dayreport.realinfo.input.path=${param_job_realinfo_path} \
+	  dayreport.realinfo.input.format=${parquet} \
+	  dayreport.realinfo.output.path=${param_job_realinfo_output_path} \
+	  dayreport.alarm.input.path=${param_job_alarm_path} \
+	  dayreport.alarm.input.format=${parquet} \
+	  dayerport.alarm.output.path=${param_job_alarm_output_path} \
+	  forward.input.path=${param_job_forward_path} \
+	  login.input.path=${param_job_login_path} \
+      term.input.path=${param_job_term_path} \
+      dayreport.validate.output.path=${param_job_hdfs}/${param_job_validate_output_path}
+}
+
+
+ #参数-----------------------------------------------------------------
+ #昨天的日期
+ dateDir=$(date +%Y/%m/%d --date '-1 day')
+ reportDate=$(date +%Y-%m-%d --date '-1 day')
+ #今天的日期
+ today=$(date +%Y/%m/%d)
+
+
+dateDir=2017/03/19
+reportDate=2017-03-19
+
+param_job_hdfs=hdfs://nameservice1:8020
+
+#日报表输出路径
+param_job_realinfo_output_path=/tmp/vehicle/result/day/${dateDir}
+param_job_alarm_output_path=/tmp/vehicle/result/alarm/${dateDir}
+param_job_validate_output_path=/tmp/vehicle/result/validate/${dateDir}
+
+#checkpoint 路径
+param_job_checkpoint_path=${param_job_hdfs}/tmp/checkpoint
+
+#输入路径
+param_job_realinfo_path=${param_job_hdfs}/tmp/vehicle/result/day/realinfo/${dateDir}
+param_job_alarm_path=${param_job_hdfs}/vehicle/data/alarm/${dateDir}
+param_job_forward_path=${param_job_hdfs}/vehicle/data/forward/${dateDir}
+param_job_login_path=${param_job_hdfs}/vehicle/data/login/${dateDir}
+param_job_term_path=${param_job_hdfs}/vehicle/data/term/${dateDir}
+
+echo "开始删除日报表输出路径..."
+hadoop fs -rmr -skipTrash  ${param_job_realinfo_output_path}
+hadoop fs -rmr -skipTrash ${param_job_alarm_output_path}
+hadoop fs -rmr -skipTrash ${param_job_validate_output_path}
+ #执行job
+  startJob
+
+-------------------
+输入参数：
+  dayreport.output.hdfs.enable=true \
+  state.reportdate=${reportDate} \
+  spark.deploy.local=false \
+  state.output.database.enable=false \
+  state.database.remove.enable=true \
+  dayreport.validatecompute.enable=true \
+  state.table.charge.dayreport=veh_dayreport_chargestate \
+  state.table.fullcharge.dayreport=VEH_DAYREPORT_FULLSTATE \
+  state.table.travel.dayreport=VEH_DAYREPORT_RUNSTATE \
+  state.table.category.dayreport=veh_dayreport_category \
+  state.table.alarm.report=veh_dayreport_alarm \
+  state.table.validate.report=veh_dayreport_datastat \
+  dayerport.output.format=txt \
+  dayreport.realinfo.input.path=${param_job_realinfo_path} \
+  dayreport.realinfo.input.format=${parquet} \
+  dayreport.realinfo.output.path=${param_job_realinfo_output_path} \
+  dayreport.alarm.input.path=${param_job_alarm_path} \
+  dayreport.alarm.input.format=${parquet} \
+  dayerport.alarm.output.path=${param_job_alarm_output_path} \
+  forward.input.path=${param_job_forward_path} \
+  login.input.path=${param_job_login_path} \
+  term.input.path=${param_job_term_path} \
+  dayreport.validate.output.path=${param_job_hdfs}/${param_job_validate_output_path}
+
+
+
+ val whereCondition = SqlHelper.buildWhereConditionBasePartitionColumn(
+      SparkHelper.getTableInfo(stateConf, inputTableName),
+      (partitionColumnName, partitionColumnValue) => s"$partitionColumnName=${partitionColumnValue}"
+    ).get
+
+    val input = sparkSession.sql(s"SELECT *  FROM $inputTableName WHERE vid IS NOT NULL AND $whereCondition")
+
+
+
+    //TODO:按VID分组
+  val result=getInputTable().as[DetailModel]
+      .groupByKey(_.vid)
+      .flatMapGroups({ case (vid: String, rows: Iterator[DetailModel]) =>
+
+        val details = rows.toArray
+
+        val reportDate = details.head.startTime
+
+        val onlineTime= details.head.onlineTime
+
+        //计算充电日报表
+        val chargeDayReportResult = compute(vid, Constant.ChargeState, reportDate,onlineTime, 0, 0, details.filter(_.category == Constant.ChargeState))
+
+      def compute(vid:String,category:String,reportDate:Long,onlineTime:Int,chargeTime:Int,fullChargeTime:Int,detailValues: Array[DetailModel]): DayReportResult = {
+        if (detailValues.nonEmpty) {
+          val foldMonid = new ArrayUndoMonidFoldable
+
+          //计算日报表
+          val dayreport = foldMonid.foldLeft(detailValues, new DayReportResultFoldMonoid(vid, category, reportDate, chargeTime, fullChargeTime))
+
+          //计算日报表中的分布信息：比如充电开始时间分布，soc分布等
+          distribution(detailValues, dayreport)
+
+        } else {
+
+          DayReportResult.zero(vid=vid, category=category, reportDate=reportDate,onlineTime = onlineTime,chargeTime=chargeTime,fullChargeTime=fullChargeTime)
+
+        }
+      }
+
+
+        //计算满电日报表
+        val fullChargeDayReportResult = compute(vid, Constant.FullChargeState, reportDate, onlineTime,0, 0, details.filter(_.category == Constant.FullChargeState))
+
+          def compute(vid:String,category:String,reportDate:Long,onlineTime:Int,chargeTime:Int,fullChargeTime:Int,detailValues: Array[DetailModel]): DayReportResult = {
+            if (detailValues.nonEmpty) {
+              val foldMonid = new ArrayUndoMonidFoldable
+              //计算日报表
+              val dayreport = foldMonid.foldLeft(detailValues, new DayReportResultFoldMonoid(vid, category, reportDate, chargeTime, fullChargeTime))
+              //计算日报表中的分布信息：比如充电开始时间分布，soc分布等
+              distribution(detailValues, dayreport)
+            } else {
+              DayReportResult.zero(vid=vid, category=category, reportDate=reportDate,onlineTime = onlineTime,chargeTime=chargeTime,fullChargeTime=fullChargeTime)
+            }
+          }
+
+
+
+        //计算行驶日报表
+        val runDayReportResult = compute(vid,
+          Constant.TravelState,
+          reportDate,
+          onlineTime,
+          chargeDayReportResult.timeLeng.toInt,
+          fullChargeDayReportResult.timeLeng.toInt,
+          details.filter(_.category == Constant.TravelState)
+        )
+
+
+        //计算百公里耗电量
+        val c = chargeDayReportResult.setChargePer100Km(
+          if (runDayReportResult.totalMileage > 0)
+            chargeDayReportResult.totalCharge / runDayReportResult.totalMileage * 1000
+          else 0)
+
+        Array(c, fullChargeDayReportResult, runDayReportResult)
+      })
+
+       result.repartition(stateConf.getOption("finalPartitionNum").map(_.toInt).getOrElse(5))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+轨迹相似度
+
+
+https://github.com/qzq2514/SystemOfTrace
+
+https://github.com/YdLj/Path
+
+https://www.zhihu.com/question/27213170?sort=created
+
+
+
+输入
+
+与车企对接，实现对车企的监管职能；
+
+与国家平台对接，实现国标要求的三级监管平台机制。
+
+1. 数据来源类别：车载终端直连、企业监控平台、地方监管平台和离线历史补发，每种类别需要在数据库字典表预先定义；
+
+2. 接入网关处理：
+
+2.1 终端直连，接入类别为静态配置的值，平台ID为空；
+
+2.2 平台接入，根据平台登入的账号和Oracle中相关记录匹配，获取当前账号的接入类别和平台ID，后续解析的消息中插入接入类别和平台ID的标识。
+
+2.3 历史补发，包括在线转发和离线硬盘方式，接入类别为统一的固定值，根据平台登入的账号动态从Oracle获取平台ID。
+
+3. 实时计算：故障预警和车辆状态需要区分接入类别，1）避免冗余接入的数据产生叠加，2）多种接入需要对比分析。
+
+4. 存储服务：在redis和hbase键中包含接入类别，避免冗余接入的数据产生覆盖问题；增加来源平台ID的列，提供给查询接口检索。
+
+5. 数据挖掘：Spark在分析过程中，对数据进行分组KEY需要包含接入类别，区分多种冗余接入数据。
+
+
+6. 接口服务：客户端查询数据需要提供具体的接入类别参数或查询所有接入类别，以多线程并发方式从redis或hbase检索数据返回给客户端。
+
+
+
+
+
+输出
+
+大屏
+
+
+
+节能减排
+
+充电热力图
+
+节能减排分布图
+
+特征统计
+
+故障统计 故障追溯
+
+分时租赁
+
+月报
+
+乘用车运行
+
+商用车运行
+
+环卫车运行
+
+
+车辆里程核查
+
+行驶轨迹图
+
+能耗监测图
+
+
+SOC
+
+整车
+
+运行模式
+
+电机状态
+
+电机转速
+
+可充电蓄能装置电压数据
+
+
+
+驱动机
+
+整车
+
+发动机
+
+燃料电池
+
+报警
+
+定位
+
+
+极值
+
+车辆登入 登出
+
+车辆信息
+
+自定义数据项
+
+
+电子围栏
+
+车速
+
+里程
+
+档位
+
+制动状态
+
+驱动状态
+
+预留
+
+加速器行程值
+
+制动报表行程值
+
+空降设定温度
+
+整车数据预警
+
+运行模式
+
+DC-DC状态
+
+
+
+
+对应的三级架构管理体系宏观展示界面、全国数据分布界面、地方区域数据展示界面、企业数据展示界面
+
+入网车辆统计总数、累计运行里程、节能减排统计、当前抽检车辆总计宏观数据
+
+全国新能源汽车平均指数（安全性指数、经济型指数、可靠性指数、环境适用性指数）
+
+企业入网信息界面提供生产企业的总注册个数，过检企业个数及过检车型总数的数据进行展示,并针对车型进行分类统计，且针对企业的全国分布情况及接入情况进行汇总及分类展示
+
+
+企业入网信息界面提供生产企业的总注册个数，
+过检企业个数及过检车型总数的数据进行展示,
+
+并针对车型进行分类统计，且针对企业的全国分布情况及接入情况进行汇总及分类展示。
+
+
+
+企业的累计销售全国区域分布统计情况、平均指数计算情况、
+
+实时运营状况（包括当前在线车辆数、当前在线率、当前故障车辆数、当前充电车辆数），
+
+静态信息统计（包括车辆总数量、累计行驶里程、累计耗电量、累计碳排量）
+
+车型分类占比的信息展示。
+
+
+
+全部地图展示界面提供了全国的录入车辆数、监控车辆数、车辆在线数、累计行驶里程、累计节油量、累计碳排量、累计耗电量信息统计展示，并可查看各个省、直辖市的区域车辆数。
+
+
+通过全国地图界面点击区域可链接到区域展示界面，可展示省、直辖市内的录入车辆数、监控车辆数、车辆在线数、累计行驶里程、累计节油量、累计碳排量、累计耗电量信息统计展示，并可查看省、直辖市下各个区县的车辆数。
+
+
+
+平台提供面向接入平台的全方位信息展示功能，可以在一个统一的操作界面上，集中查看接入平台的全部信息，并支持历史信息的钻取及可视化。
+
+
+区域平台展示功能包括全国地方政府平台的建设及接入情况，并针对区域平台挺节能减排、充电热力图、节能减排分布图、车辆里程核查、行驶轨迹图、能耗监测图等功能，及特征统计、故障统计、乘用车运行等统计分析图表功能。
+
+
+
+
+平台提供面向车辆的全方位信息展示功能，可以在一个统一的操作界面上，集中查看车辆的全部信息，并支持历史信息的钻取及可视化。
+区域平台节能减排界面提供节能减排统计信息包括累计行驶里程、累计节油量、累计碳减排、累计耗电量及车辆聚合点地图展示。
+
+车辆的整车数据、驱动电机、发动机、燃料电池、报警、定位、极值、登入登出、单体温度、单体电压、速度、soc、位置等详细信息的展示。
+
+
+
+
+系统提供历史轨迹功能实现对车辆制定的时间范围内进行历史轨迹的数据追溯，提供快进、暂停、回退并且可按照指定的行驶行为进行回放，回放轨迹提供针对故障点进行标注功能。
+
+
+
+
+平台提供面向车辆的全生命周期的展示功能，可根据车牌号码进行快速检索，系统汇总展示车辆的仪表总里程、核查里程、总行驶次数、总上线市场、累计充电次数、充电量总计、地方补贴、国家补贴等汇总数据，并可以在一个时间线上，展示车辆从零部件采购环节的电池、电池、电控数据，生产环节的所在地及生产企业信息、销售环节的销售及发票信息、使用环节的充电、行驶统计数据、报废等相关信息形成车辆的全生命周期的信息展示功能。
+
+
+（7）平台提供对于全部数据的快速检索和查看能力，并提供对于基础数据的维护能力。可以维护的基础数据包括厂商信息、接入平台信息。
+系统对接入平台部分进行信息录入及管理，包括平台的委托单位、组织机构代码、企业平台运营商、建设方式、建设单位、搭建地址、公司地址、联系人、联系方式、平台接入账户名、密码等相关信息进行管理，并实现对接入平台的快速检索与详细信息的查看。
+
+（8）平台提供资料备案信息的维护和查看功能，包括车辆静态信息备案、安全事故处理机制备案、应急预案与救援方案备案、安全事故调查机制备案。
+
+Ø 系统提供车辆静态信息管理功能
+车辆基本信息包括规约、车辆类型、车型公告号、公告批次、推广批次、车重、车型总长、车型总宽、车型总高、额定载客量、车辆类别、车辆批次、终端类型、终端厂商、驱动方式、车辆状态、录入日期等信息管理。
+电机信息包括电机控制器型号、电机位置、电机数量、电机名称、电机型号、电机功率等信息的管理。
+电池信息包括电池厂商、电池编码、电池型号、外形、尺寸、标称电压、额定容量、额定质量、模块个数、单体个数。
+生产信息包括车架号、生产下线时间、ICCID、生产所在地等信息管理。
+销售信息包括车牌号、车辆合格证、车辆行驶证信息、发票信息、运营单位、
+
+
+Ø 安全事故调查机制备案
+系统提供针对安全事故应急预案、救援方案备案信息管理功能，系统针对保存厂商的安全负责人信息、主要部件信息、各类事故场景下的救援行动指导、打开车辆指导方法及事故情况下禁止操作的事项提示等信息的备案。
+
+
+图8-X：应急预案信息
+
+
+图8-X：应急预案信息-2
+
+
+图8-X：应急预案信息-3
+
+
+可针对指定批次的车辆进行里程统计（包括累计运营里程、运营天数、日均运营里程、最新仪表里程、最新车辆装填、里程差、日均运营市场、GPS核算里程），
+
+运营状况统计（包括统计区间、未运用日期、运营异常日期、统计区间天数、未运营天数、异常运营天数），
+
+在线情况统计（累计在网天数、暂停上线天数、首次上线时间、末次上线时间、首次上线仪表里程、末次上线仪表里程）
+
+最新实时状态数据的数据追溯功能
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1.术语 对项目中常用的一些的对象做了一个定义，从而方便后续沟通
+
+2.作业对目前平台内主要的核心作业做了一个介绍，包括作业的用于，输入/输出数据，脚本位置
+
+3.状态判断逻辑介绍了充电/满电/行驶/换电的判断逻辑。4报表schema描述了如何查看核心报表的schema，比如包含了哪些列，列的类型
+
+1，术语
+内部协议数据：逗号分隔的按行存储的键值对文本数据。内部协议数据的存储位置如表1所示。
+
+Parquet格式：以parquet存储的格式。
+
+Realinfo数据，也叫做实时数据,目前有内部协议和parquet格式两种存储方式。
+
+Alarm数据，也叫做报警数据，目前有内部协议和parquet格式两种存储方式。
+
+Forward数据，也叫做转发数据，目前有内部协议和parquet格式两种存储方式。
+
+Term，终端数据,目前有内部协议和parquet格式两种存储方式。
+
+Login，登陆数据,目前有内部协议和parquet格式两种存储方式。
+
+单车明细数据，单车单天的充电，行驶，慢电，换电集合，目前只有parquet格式。
+
+单车日报数据，单车单天的充电，行驶，满电的统计指标，目前只有parquet格式。
+
+
+表 1数据存储说明
+
+数据 协议 路径
+realinfo数据 内部协议 /vehicle/data/realinfo
+ parquet /spark/vehicle/data/realinfo
+alarm 内部协议 /vehicle/data/alarm
+ parquet /spark/vehicle/data/alarm
+forward数据 内部协议 /vehicle/data/forward
+ parquet /spark/vehicle/data/forward
+login 内部协议 /vehicle/data/login
+ parquet /spark//vehicle/data/login
+term数据 内部协议 /vehicle/data/termstatus
+ parquet /spark//vehicle/data/termstatus
+单车明细数据 内部协议 无
+ parquet /spark/vehicle/result/detail
+单车日报表 内部协议 无
+ parquet /spark/vehicle/result/dayreport
+里程核查 内部协议 无
+ parquet /spark/vehicle/result/mileagecheck
+
+2，作业
+1. Parquet转换作业
+定义：Parquet转换作业 用于将内部协议数据 转换为parquet数据。目前parquet转换作业只转换realinfo，forward，termstatus，login，alarm这4类数据。
+
+输入：某一天的内部协议数据。
+
+输出：parquet数据
+
+l 脚本：/usr/local/sparkjob/bin/parquet/parquet.sh
+
+2. 单车明细报表作业
+l 定义：单车明细报表作业 读取parquet格式的 realinfo数据，然后根绝 3.状态判断逻辑来  来计算单车单天的所有充电，行驶，满电，换电集合。单车明细报表作业是一个基础作业，几乎所有后续挖掘都会用到该作业的计算结果，比如单车日报表，出租车周报/月报/年报。
+
+例如，计算京A1334 在2017-10-11的每一次充电的开始时间，结束时间，开始soc，结束soc。计算京A1334 2017-10-11的每一次行驶的开始时间，结束时间，行驶里程，最大速度等。
+
+l 输入：指定某一天的parquet格式的realinfo数据，也就是/spark/vehicle/data/realinfo下某一天的数据。
+
+l 输出：每一辆车在指定输入日期内的所有充电，行驶，满电集合，我们把充电，行驶，满电数据叫做单车明细数据。可以在/spark/vehicle/result/detail找到单车明细报表.
+
+l 脚本：/usr/local/sparkjob/bin/detailjob/detailjob.sh
+l 项目目录：DetailReport
+
+
+3. 单车日报表作业
+l 定义：单车日报表作业 读取单车明细数据，然后单车单天的充电，行驶，满电，分类，报警统计指标，例如，计算京A1334 2017-10-11的日充电总时长，日总充电量。或者计算京A1334 2017-10-11的日行驶时长，日行驶里程，日行驶最大速度等。
+
+l 输入：指定某一天的parquet格式的单车明细数据，也就是/spark/vehicle/result/detail中某一天的数据。
+
+l 输出：每一辆车的在指定输入日期中的充电，行驶，满电的统计指标，可以在/spark/vehicle/result/dayreport找到日报表。
+
+l 脚本：/usr/local/sparkjob/bin/dayreport/dayreport.sh
+
+l 项目目录：DayReport
+
+4. 里程核查作业
+l 定义：里程核查作业 用于计算单车单月的gps轨迹，月行驶里程，月行驶天数等信息，然后将计算结果写入到hbase，进行大屏幕展示。
+
+l 输入：指定单月的parquet格式的realinfo数据，单月日报表数据。也就是/spark/vehicle/data/realinfo下某一个月的数据以及/spark/vehicle/result/dayreport下某一个月的数据。
+
+l 输出：单车在指定月份的gps轨迹，月行驶里程，月行驶天数等信息。
+
+l 脚本：/usr/local/sparkjob/bin/mileagecheck/mileagecheck.sh和
+/usr/local/sparkjob/bin/mileagecheck/deadline.sh
+
+l 项目目录：MileageCheck
+
+5. 出租车周报，月报，年报作业
+l 定义：出租车周报，月报，年报作业 用于计算单车/单周/单月/单年的明细数据，并将明细数据写入到oracle数据库，供前端自动化周报/月报/年报使用。
+
+l 输入：指定单周/单月/单年的parquet格式的单车明细数据。也就是/spark/vehicle/result/detail下某一周/月/年的数据。
+
+输出：输出结果存储在如下目录：
+
+/spark/vehicle/result/taxisweek
+/spark/vehicle/result/taxismonth
+/spark/vehicle/result/taxisyear。
+
+脚本：/usr/local/sparkjob/bin/taxis/taxis.sh
+
+项目目录：TaxisReport
+
+===================================================================================
+
+状态判断逻辑
+
+l 充电状态
+
+1.充电开始判断：电流 ＜ 0，速度＜＝0.5，连续10帧确认充电状态开始。
+2.充电结束判断：电流＞＝0（忽略速度判断）连续25帧，或车辆下线，或满电待机开始
+
+
+3.充电状态开始后，期间不稳定数据（电流＞＝0或速度＞0.5，未连续25帧）也纳入充电状态统计
+
+
+l 满电状态
+4.满电待机开始判断：充电结束后，且SOC＝＝100%，电流＝＝0，速度＜＝0.5，不要求连续多帧，统计为满电待机。
+5.满电待机结束判断： SOC＜100%，或电流！＝0，或速度＞0.5，连续10帧确认满电待机结束，或车辆下线。
+l 行驶状态
+6.行驶状态开始判断：车辆上线连续10帧不为充电状态的数据为车辆行驶。
+7.行驶状态结束判断：判断是否车辆下线或车辆转换为充电时为一次行驶结束。
+l 换电状态
+8.满足如下条件，认为是一个换电状态：A.换电后的soc整体趋势大于换电前的soc,B.换电后的soc整体趋势呈现递减趋势。
+
+4. 报表schema
+  如果想要查看某一个报表的schema，也就是他具有哪些列，列的数据类型等信息，可以使用spark-shell来查看某一天的数据。例如，如果想要知道明细数据中包含那些数据项，可以启动spark-shell，然后执行如下sql：
+
+spark.sql(“select * from `/spark/vehicle/result/detail`).show
+
+===================================================================================
+
+运营指标查询
+
+算法描述
+1.计算上线里程
+
+2计算里程跳变扣除里程
+2.1 里程跳变扣除里程
+
+
+
+2.2里程跳变扣除算法
+
+
+2.3最大连续电流里程扣除算法
+
+2.3.1 最大连续电流窗口检测
+
+1.3计算GPS跳变扣除里程
+
+
+1.4计算有效里程
+ 有效里程=上线里程-里程跳变扣除里程-gps跳变扣除里程：
+
+
+---------------------
+
+电动汽车里程核查检测算法（201710）：
+1、基本检测：
+1.1行驶公里数初级检测：提取第一次接入平台时的有效公里数和最后一次发送的有效公里数，判断其接入平台后的里程是否够3万公里，若未达到3万公里，则不进行以下判断，直接判定为不合格。
+
+1.2数据无效检测：车速、仪表里程、总电压、总电流、GPS经纬度、SOC值，6项数据中只要有任意一项数据缺失，则记为1.2故障。
+
+1.3数据异常检测：车速、仪表里程、总电压、总电流、GPS经纬度、SOC值，6项数据中只要有任意一项数据超过对应取值范围，则记为1.3故障。
+
+2、里程合理性检测条件：
+
+2.1上线里程检测：
+
+2.1.1上线里程检测：测评周期间内选取车辆数据第一帧和最后一帧有效数据的仪表里程作为车辆上线开始和结束的标记，上线里程计算公式如下：
+
+其中，L1为开始时仪表里程，L2为结束时仪表里程，L为上线里程；
+
+2.2位置及车速状态检测：
+
+2.2.1里程跳变检测：测评周期间内，车辆数据连续两帧差值大于阈值（一般为2公里），则扣除两帧数据间的里程。
+
+2.2.2 GPS里程检测：选取检测周期内（一般为一个月）数据作为GPS里程计算最小单位，计算GPS里程；若计算结果为负值，则GPS里程取0。
+
+2.2动力电池电流状态检测：
+
+2.2.1连续电流检测：测评周期内，电流 >= 10A时，连续3帧数据电流数据不能完全相同（可选取检测样本）；若发生此现象，则扣除3帧内发生的里程跳变。
+
+3、里程判定：
+
+3.1有效里程计算：有效里程计算公式为：
+
+其中，L0为上线里程，L1为里程跳变扣除里程，L2为GPS跳变扣除里程；若L1、L2小于0，则L1、L2取0。
+3.2里程核查认可里程判定：计算测评周期内的上线里程、GPS里程、有效里程。以上线里程为准，GPS里程或有效里程若与上线里程差值超过5%，则上线里程为min（GPS里程，有效里程，上线里程）。若GPS里程或有效里程与上线里程超值小于5%则按照上线里程进行判定。
+
+==================
+
+电动汽车里程核查流程：
+
+1、里程核查计算数据及流程：
+1.1 新能源汽车里程核查数据源
+里程核查数据源分为两类：第一类针对近两年未及时将数据上传到国家监测平台的车辆，由车辆所属车企提供；第二类车辆已经接入国家监控平台并实时监控的车辆，数据由国家监测平台提供。
+1.2 新能源汽车里程核查流程
+里程核查主要对车辆数据真实性、完整性进行检测，测评周期内车辆数据经过里程核查流程后会得到5个输出量，分别为：上线里程、数据无效率、数据异常率、GPS里程、有效里程。由这5个结果，对最终认定核查里程进行判定。里程核查基本计算流程如图1.1所示。
+
+图1-1 里程核查流程
+里程核查流程：
+（1）对符合GB32960车辆远程传输协议的车辆数据，进行数据协议解析。
+（2）从此次测评的原始数据池中检索第一帧和最后一帧有效数据，得到此次上线开始的仪表里程数值及结束的仪表里程数值。
+（3）对解析后数据依次进行无效检测和异常检测，得到车辆数据无效率、数据异常率。
+（4）对经过无效检测和异常检测过滤后的车辆数据池，进行GPS里程计算，得到车辆在测评周期内的GPS里程。
+（5）同时对过滤后的车辆数据池依次进行里程跳变检测、连续电流检测。计算得到里程跳变需扣除里程，连续电流检测需扣除里程。
+（6）计算有效里程。有效里程计算方式为上线里程减去里程跳变需扣除里程，连续电流检测需扣除里程。
+1.3 数据无效检测
+里程核查数据无效检测是对GP/T 32960.3中7.2.3.1整车数据及GP/T 32960.3中7.2.3.5车辆位置数据进行数据无效检测，具体检测形式为GP/T 32960.3中的0xff。
+1.4 数据异常检测
+里程核查数据异常检测是对GP/T 32960.3中7.2.3.1整车数据及GP/T 32960.3中7.2.3.5车辆位置数据进行数据异常检测，具体检测形式项目为：
+（1）车速∈[0,220)
+（2）里程∈[上线开始里程,上线结束里程]
+（3）总电压∈(0,1000]
+（4）总电流∈[-1000,+1000]
+（5）SOC∈[0,100]
+（6）经度∈(73,135)
+（6）纬度∈(4,53)
+1.5 里程跳变检测
+仪表里程跳变检测用于检测车辆在行驶过程中有无仪表里程的突变，对有突变超过阈值（一般为2）的里程进行标记并计算得出测评周期内因仪表里程跳变需扣除里程。
+1.6 电流连续检测
+连续电流检测主要用于对上传的新能源车辆动力电池数据是否真实进行检测，检测中若有总电流大于阈值（一般为10A）的情况下，连续3帧及以上总电流数值连续相同，需对这种现象进行标记。对于测评周期内总电流连续3帧相同现象频次大于阈值（一般为0.1%）的情况，将对应连续3帧数据内发生的里程跳变进行计算，得到测评周期内连续电流检测扣除里程。
+1.7 有效里程计算
+有效里程计算公式为：
+
+其中，L0为上线里程，L1为里程跳变扣除里程，L2为GPS跳变扣除里程；若L1、L2小于0，则L1、L2取0；
+1.8 核算里程
+对上述计算得到的上线里程、无效率、异常率、轨迹里程、有效里程进行判断；
+要求1.7.1到1.7.4四项，每一项的阈值都可调。
+1.7.1.无效率判断
+若数据无效率>A，则核算里程为0
+阈值A暂取100%
+1.7.2异常率判断
+若数据异常率>B，则核算里程为0
+阈值B暂取100%
+1.7.3上线里程与轨迹里程误差判断
+若上线里程与轨迹里程相对误差>=C，核算里程为min（上线里程，轨迹里程）
+若上线里程与轨迹里程相对误差<C，则核算里程为上线里程。
+阈值C暂取6%
+1.7.4上线里程与有效里程误差判断
+若上线里程与有效里程相对误差>=D，核算里程为min（上线里程，有效里程）
+若上线里程与有效里程相对误差<D，则核算里程为上线里程。
+阈值D暂取6%
+
+==================================
+
+
+大屏幕里程核查-轨迹算法
+
+
+算法整体流程
+算法输入：
+
+
+算法输出：输出n个轨迹窗口。
+对于任意的，满足如下2个条件：
+1.内任意两个相邻轨迹点  和 ，有。
+2.对于任意的和， 最后一个轨迹点和的第一个轨迹点的距离大于，.
+
+在地图上进行展示时，不同的表示不同的轨迹，同时窗口内不会出现不好看的斜线，此外该算法可以剔除所有位置的异常轨迹点，包括开始位置和结束位置处异常轨迹点。
+
+
+为了确保算法的输出结果在地图上展示时不会有距离太远的直线，算法需要剔除掉距离太远的异常值，算法需要生成一个个轨迹窗口，轨迹窗口内的点比较“内聚”，”内聚”保证了点不会太”密集”，同时不会”太远”，轨迹窗口间的点比较“松散”。
+
+但是"密集"，“直线”，”异常值“这些术语过于模糊，不同人有不同的理解，为了避免歧义，算法的输出结果一定要精确的描述，算法的输出一定是确定的，满足某个”性质“，
+这样在进行调试，推理的时候都很容易。例如，这个算法可以保证输出的轨迹窗口内任意两个点之间的距离都大于minL,小于maxL，没有任何例外，不会多一条，也不会少一条。
+
+轨迹窗口内的点不要太"密集"，也不要有距离太长的直线(异常值)，用精确的算法语言来说就是：
+轨迹窗口内任意两个相邻点之间的距离一定要>某个最小值，也就是>minL,这样保证了 轨迹窗口内的点不会太"密集"
+轨迹窗口任意两个相邻点之间的距离也一定要<某个最大值，也就是maxL,这样就保证了,轨迹窗口内不会有距离太长的直线，不会有”异常值”。
+
+
+
+首先使用算法1将序列X切分为k个轨迹窗口：
+
+该算法可以并行计算。
+
+
+使用算法2剔除异常轨迹窗口，生成有效轨迹窗口：
+
+此时的已经可以独立的在地图上展示。但是内的轨迹点可能太多，可以进一步的将那些重复轨迹点或者距离很近的轨迹点过滤掉。此时可以使用算法3来进行轨迹过滤和修正。该算法可以并行计算。
+
+使用算法3剔除邻近值并进行轨迹修正，生成修正轨迹窗口：
+
+
+该算法可以并行计算。
+
+使用算法3合并窗口：
+
+
+该算法不可以并行计算。
+
+算法1.轨迹窗口切分
+   轨迹窗口切分算法，用于将轨迹序列X切分为：，叫做轨迹窗口，同一个轨迹窗口内的任意两个相邻轨迹点距离 ，两个不同的相邻轨迹窗口，其距离大于。换句话说，轨迹窗口满足如下条件：
+1.内任意两个相邻轨迹点  和 ，有。
+2.对于任意的和， 最后一个轨迹点和的第一个轨迹点的距离大于，.
+
+轨迹窗口切分算法如下：
+
+
+
+算法2.生成有效轨迹窗口
+算法1将轨迹序列切分为轨迹窗口，其中有些轨迹窗口是无效的，我们需要将其剔除。算法剔除所有异常的轨迹窗口，然后返回m个有效轨迹窗口:.所谓异常轨迹窗口，就是指该轨迹窗口内的轨迹点数量太少了。例如，假设我们有两个轨迹窗口：和，如果只含有一个轨迹点，那么必定是异常值。
+
+
+生成有效轨迹窗口算法如下：
+
+
+
+算法3.相邻值过滤和轨迹修正
+相邻值过滤：相邻值过滤算法用于过滤掉那些距离太近的轨迹点，如果有些点距离很近，那么只保留其中一个进行展示。
+
+相邻值过滤算法将有效轨迹窗口修正为。相邻值过滤算法如下：
+
+
+
+
+
+
+轨迹修正:轨迹修正用于将轨迹进行平滑处理。可以使用卡尔曼滤波算法对轨迹点进行修正。如果时用卡尔曼过滤算法，那么这一步骤最好在相邻值过滤算法之前执行。
+
+算法4.轨迹窗口合并
+如果两个相邻的轨迹窗口距离很近，那么将他们合并到一个轨迹窗口内。我们使用数学归纳法进行归纳，该算法可以使用尾递归来实现。
+
+
+===========
+
+里程核查算法
+
+
+ 提供“车辆能量消耗率、车辆快充倍率”说明；
+车辆能量消耗率:
+1)提取车辆行驶数据
+2)将数据根据车辆行驶状态进行切片，切片为每两次充电间行驶数据，提取车辆的行驶数据，记录成一个矩阵A，矩阵包括起始SOC、终止SOC、起始里程、终止里程、起始时间、终止时间
+3)计算不同切片车辆能量消耗率
+
+4)在矩阵A中添加列为“车辆能量消耗率”，记录上述计算数值
+
+
+
+
+车辆快充倍率:
+1)提取车辆每天上下线的行驶数据
+2)将数据根据充电状态进行切片，切片为两次行驶间充电数据，提取所有充电数据，记录成一个矩阵B，矩阵B包括起始时间、终止时间、起始SOC、终止SOC、充电电流峰值
+3)计算车辆快充倍率
+
+4)在矩阵B中添加一列，车辆快充倍率，可根据车辆快充倍率是否大于1判断是否为快充
+
+
+
+7. 提供电池衰减算法，用于区分3万公里后是异常减除电池容量还是正常的电池衰减；
+1)根据充电状态对一辆车所有数据进行切片,切片为每两次行驶内的充电数据，提取每段充电数据,记录成一个矩阵C,矩阵C包括起始充电SOC、终止充电SOC、起始里程、终止里程、起始时间、终止时间、每个切片的充电容量
+2)计算每个切片SOC差/切片的充电容量的值m
+
+3)建立矩阵，矩阵包括SOC差/切片的充电容量的值m、起始里程、终止里程、起始时间、终止时间
+4)计算m标准
+
+5)根据m标准判断m值是否为正常值，如出现连续的异常数据，可能存在异常衰减的情况
+
+
+======================
+
+地域分布
+
+稽查指标
+
+
+电机功率
+1)提取行驶片段
+根据行驶状态对一辆车的历史数据进行切片，取出该车的行驶片段数据，形成矩阵A；
+2)计算实时功率
+使用A中的电机控制器输入电压（V）和电机控制器直流母线电流（A）两项数据计算实时功率（kW），形成列表B；
+
+3)筛除异常值
+删除列表B中所有的零值，然后对列表B进行分布统计，删除以外的异常值形成列表C；
+
+4)计算功率分布
+对C进行统计分布，统计0，1/4，1/2，3/4，1位置的功率值，输出功率分布情况与额定电机功率对比。
+
+
+续驶里程
+1)提取行驶片段
+根据行驶状态对一辆车的历史数据进行切片，取出该车的行驶片段数据，形成矩阵；
+2)统计SOC区间对应行驶里程
+统计中的行驶开始SOC，行驶结束SOC，行驶开始里程，行驶结束里程，汇总成矩阵B，B中每行代表一个行驶片段的数据；
+
+
+3)筛除异常值
+删除B矩阵中单次行驶里程（行驶结束里程-行驶开始里程）大于标称续驶里程的记录；
+4)计算续驶里程
+
+===================
+
+里程核查算法
+
+
+4. 提供“车辆能量消耗率、车辆快充倍率”说明；
+车辆能量消耗率:
+1)提取车辆行驶数据
+2)将数据根据车辆行驶状态进行切片，切片为每两次充电间行驶数据，提取车辆的行驶数据，记录成一个矩阵A，矩阵包括起始SOC、终止SOC、起始里程、终止里程、起始时间、终止时间
+3)计算不同切片车辆能量消耗率
+
+4)在矩阵A中添加列为“车辆能量消耗率”，记录上述计算数值
+
+车辆快充倍率:
+1)提取车辆每天上下线的行驶数据
+2)将数据根据充电状态进行切片，切片为两次行驶间充电数据，提取所有充电数据，记录成一个矩阵B，矩阵B包括起始时间、终止时间、起始SOC、终止SOC、充电电流峰值
+3)计算车辆快充倍率
+
+4)在矩阵B中添加一列，车辆快充倍率，可根据车辆快充倍率是否大于某一值（确定一下多大充电倍率为快充）判断是否为快充
+
+
+7. 提供电池衰减算法，用于区分3万公里后是异常减除电池容量还是正常的电池衰减；
+
+
+1)根据充电状态对一辆车所有数据进行切片,切片为每两次行驶内的充电数据，提取每段充电数据,记录成一个矩阵C,矩阵C包括起始充电SOC、终止充电SOC、起始里程、终止里程、起始时间、终止时间、每个切片的充电容量
+
+
+2)计算每个切片SOC差/切片的充电容量的值m
+
+3)建立矩阵，矩阵包括SOC差/切片的充电容量的值m、起始里程、终止里程、起始时间、终止时间
+
+
+4)计算m标准
+
+5)根据m标准判断m值是否为正常值，如出现连续的异常数据，可能存在异常衰减的情况
+
+
+轨迹相似判断方法：
+一、数据预处理
+（1）导入数据（启动状态）：车辆GPS坐标、里程、速度。（GPS数据中经纬度为0的点去除）
+车辆编号	上线时间	下线时间	经度最大值	经度最小值	纬度最大值	纬度最小值	上线里程	下线里程	里程差值	速度 	此段行驶中心经纬度坐标	车辆行驶状态序列
+（2）根据经纬度中心坐标进行聚类,将中心坐标点靠近的轨迹归为一类；
+（3）在聚类后的类别中分别将里程差值相同的划为一类。
+
+二、车辆行驶状态判断
+（1）依据一中分类结果计算车辆转弯状态，每一类分别计算；
+（2）提取一条车辆GPS记录，第n+1帧-第n帧车辆GPS X坐标和Y坐标，分别记为dx和dy（地理坐标系）；
+（3）生成向量并作单位化处理；
+（4）利用向量叉乘判断左右转向：
+（5）若在第n帧存在且从第n帧开始后的6帧连续满足，则判断车辆发生转向行为，记录一次行驶状态改变；如果不满足上述条件，则判断车辆仍然保持原有状态，不记录车辆行驶状态：
+[1]向右侧行驶判断：n<0，行驶状态记为-1；
+[2]向左侧行驶弯判断：n>0，行驶状态记为1；
+将行驶状态结果记录在表格中；
+
+
+三、动态规整法判断轨迹相似度
+1）在表格中将不同车辆的行驶状态序列进行两条两条对比；
+2）生成序列距离矩阵M
+3）生成累计距离矩阵Mc
+生成矩阵Mc并以Mc矩阵中Mc（i，j）为两个序列之间得相似度判断两条序列得相似程度结果越大说明相似程度越低。设定小于某个阈值的两条轨迹为疑似相似轨迹。
+4）取速度数据中的第一条、四分之一分位点、二分之一分位点、四分之三分位点和最后一条进行对比，如果五个点中有m个相同则判断为相似轨迹。
+
+
+骗补
+
+山西临汾上百电动大巴空跑俩月疑骗补，公司称为磨合电瓶
+
+（原标题：山西临汾上百电动大巴空跑俩月疑骗补，公司称为磨合电瓶）
+上百辆大巴车，每天上午八点到下午五点半，在路上来来回回的跑，一跑就是两个月，而车内除司机外再无任何人。
+发生在山西省临汾市的这桩奇事，引起了当地居民的广泛关注。近日，接获爆料的北京时间记者调查发现，这些大巴车都是电动汽车，空驶或只为增加行驶里程，获取国家补贴。如该公司顺利通过审核，每辆电动大巴最高可获取国家补贴50万元。
+运管部门：不属非法运营，无权查处
+12月10日，山西省临汾市一个自媒体发布消息称，连日来，每天从早上八点到下午五点半，临汾市滨河路上有上百辆大巴车，从马务桥出发，沿滨河路一直往洪洞方向，当到达位于洪洞南营村牌楼口，随及掉头往临汾方向返回，来来回回地跑，但车内除了司机再无任何人。
+无独有偶，此前当地另一自媒体亦曾发布消息称，在临汾市襄汾县有一个新能源大型客车车队格外引人注意。该车队一行几十辆新能源大客车每天穿梭在路上，从临汾到襄汾，再从襄汾到临汾，一辆接一辆，似乎在执行什么任务，但车上除了司机外没有一个人，车辆却增加到了上百辆。该自媒体称，自从襄汾县百汇立交桥通车之后，这批车开始开进市区、洪洞。经常到了吃饭时间，一波又一波的车停下来，司机在一起吃饭，吃完继续“空跑”。
+12月11日，家住临汾市滨河路附近的当地居民李某枫告诉北京时间记者，他曾多次看到这些空驶的大巴车，但是今天没有出来跑。随后，记者从当地自媒体发布的视频中看到，空驶许久的大巴车已有一部分被拖车拖走。
+当地居民和自媒体的说法也得到了官方的证实。12月11日下午，临汾市襄汾县道路运输管理所客运管理办公室的沈主任告诉北京时间记者，这些大巴车都是新能源客车，数量超过100辆，大约从今年国庆节后就开始在路上空跑，他们发现后，在临汾市运管局主持下约谈了车辆所有者临汾市新宇旅游有限公司。
+沈主任说，从该公司提交的材料来看，所有的车均证照齐全，其中有60辆车办理了道路运输许可证，其余车辆没有办理，但由于车辆只是空驶，并不载人运营，不属于非法营运，客运办也无权查处，只能建议该公司加强监管，减少安全隐患。“自从我们约谈以后，就不往襄汾跑了”，沈主任回忆。
+大巴公司：组织车辆空驶，是为磨合电瓶
+数量如此之多的大巴车不载客空跑，一跑就是这么久，究竟是为什么呢?12月11日下午，临汾市新宇旅游有限公司的郝经理及多位员工告诉记者，这些车确实是该公司所有，购买于2016年，全部是电动大巴，但数量不到100辆，该公司组织车辆在路上空驶，只是为了磨合电瓶。郝经理称，如今进入冬季，这些车没了运输任务，但车如果长时间闲置不使用，就会出现故障，为了保持车况良好，只得让车在路上空驶。
+当记者咨询这些车是否对外出租或出手时，该公司一名女性员工表示，车是公司买来的，不会对外转售，也不接受远距离长时间租赁，仅可接受临汾市区周边一两天的短期租赁，而且必须使用公司配备的司机。该员工称，这么做的员工是，电动大巴续航里程有限，外地不具备充电条件，因此无法满足远距离长时间租赁的条件。
+省市经信委：是否属骗补，正调查核实
+在当地自媒体发布的消息中，临汾市新宇旅游有限公司一位实习司机曾透露，电动大巴每天在路上空驶为了增加车的实际行驶公里数，以达到国家补贴款的要求;而前述襄汾县客运办沈主任亦表示，大巴空跑或只为获取财政补贴。
+事实是否如上所述，记者向山西省、临汾市主管新能源汽车发展的有关部门进行了核实。
+12月11日下午，临汾市财政局建设处一位不愿具名的男士表示，新能源汽车要想获得国家补贴，必须达到一定的行驶里程。随后，记者查询财政部等四部委于2016年12月29日发布的《关于调整新能源汽车推广应用财政补贴政策的通知》(财建[2016]958号)发现，其中明确规定：“非个人用户购买的新能源汽车申请补贴，累计行驶里程须达到3万公里(作业类专用车除外)，补贴标准和技术要求按照车辆获得行驶证年度执行。”
+随后，记者从山西省新能源汽车推广中心获悉，临汾市新宇旅游有限公司所购买的电动大巴分别由沃特玛和开沃两个厂家生产，总数有几百辆之多，申请新能源汽车财政补贴的材料已由前述两个生产厂家上报，但由于行驶里程未达到3万公里，部分车辆不具备《道路运输许可证》，而被退回申请，待这些要求具备，即可申领补贴。
+按照2016年度财政部和山西省有关新能源汽车补贴标准，结合该公司自述车辆续航里程状况等，记者估算得出，如顺利通过审核，每辆电动大巴可获取财政补助50万元，100辆电动大巴可获取5000万元财政补助。
+但据此前公开报道，由于新能源汽车产量远超预期，财政部等有关部部门将大幅下调新能源汽车财政补贴标准，下降幅度可能达到50%以上，这或许是临汾市新宇旅游有限公司电动大巴空驶，以尽快获得补贴的原因。
+当日下午，山西省经信委和临汾市经信委均向记者表示，已经注意到有关临汾市新宇旅游有限公司电动大巴空驶以骗取补贴的舆情信息，目前正在进行调查核实。
+（原标题：骗取国家补贴?临汾上百电动大巴空跑俩月引质疑）
+
+
+
+定义：Parquet转换作业 用于将内部协议数据 转换为parquet数据
+输入：某一天的内部协议数据。
+输出：parquet数据
+脚本：/usr/local/sparkjob/bin/parquet/parquet.sh
+
+  如果想要查看某一个报表的schema，也就是他具有哪些列，列的数据类型等信息，可以使用spark-shell来查看某一天的数据。例如，如果想要知道明细数据中包含那些数据项，可以启动spark-shell，然后执行如下sql：
+spark.sql(“select * from `/spark/vehicle/result/detail`).show.
+
+
+
+============================
+原始报文
+
+realinfo:
+
+VID	a3ccf6c3-7a3e-4b0f-b576-f09a37c870d2
+TIME	2.01711E+13
+2201	0
+2614	0
+2615	98
+2613	6253
+2603	3637
+2606	3604
+2609	21
+2612	20
+2202	88620
+2502	104213035
+2503	30819862
+VIN	LGHC4V1DXHE201191
+MESSAGETYPE	REALTIME
+ISFILTER	0
+2912	0
+2608	15
+VTYPE	402882d25b6b922b015b7150ab590e37
+2607	1
+2002	1
+2604	1
+2003	MTozNjM0XzM2MzNfMzYzNl8zNjM0XzM2MzRfMzYzN18zNjM0XzM2MzRfMzYzN18zNjM2XzM2MzdfMzYzNl8zNjM2XzM2MzZfMzYzNl8zNjM0XzM2MzdfMzYzNl8zNjM2XzM2MzZfMzYzNl8zNjM2XzM2MzZfMzYzN18zNjM2XzM2MzZfMzYzNF8zNjM0XzM2MzZfMzYzNl8zNjM3XzM2MzdfMzYzN18zNjM0XzM2MzdfMzYzNl8zNjM3XzM2MzRfMzYzN18zNjM0XzM2MzdfMzYzN18zNjM2XzM2MzZfMzYzNF8zNjM3XzM2MjhfMzYzNF8zNjMxXzM2MzNfMzYzNF8zNjM2XzM2MzNfMzYzNF8zNjM0XzM2MzdfMzYzNl8zNjM0XzM2MjRfMzYzNl8zNjM2XzM2MzZfMzYzNF8zNjM2XzM2MjhfMzYzN18zNjM2XzM2MzdfMzYzNF8zNjA0XzM2MzdfMzYzNl8zNjM2XzM2MzRfMzYzNF8zNjM0XzM2MzNfMzYzNF8zNjM3XzM2MzdfMzYzNl8zNjM3XzM2MzdfMzYzNF8zNjM2XzM2MzNfMzYzMV8zNjMxXzM2MzRfMzYzNF8zNjMzXzM2MzNfMzYzM18zNjMzXzM2MzRfMzYzM18zNjM2XzM2MzRfMzYzNF8zNjM2XzM2MzZfMzYzNl8zNjM2XzM2MzNfMzYyNV8zNjM2XzM2MzZfMzYzNF8zNjM2XzM2MzdfMzYzNl8zNjM3XzM2MzRfMzYzNl8zNjM0XzM2MzZfMzYzNF8zNjMzXzM2MzZfMzYzNF8zNjM0XzM2MzRfMzYzNl8zNjMzXzM2MzNfMzYzMV8zNjM0XzM2MTlfMzYzN18zNjMzXzM2MzRfMzYzNl8zNjM0XzM2MjhfMzYzNl8zNjM0XzM2MzRfMzYzNF8zNjM0XzM2MzZfMzYzNl8zNjM0XzM2MzZfMzYzNl8zNjM2XzM2MzNfMzYzNF8zNjMzXzM2MzRfMzYzNF8zNjM3XzM2MzRfMzYzNl8zNjE5XzM2MzNfMzYzNl8zNjM0XzM2MzRfMzYzNF8zNjMxXzM2MzNfMzYzM18zNjMxXzM2MzNfMzYzNF8zNjM3XzM2MzZfMzYzNl8zNjMzXzM2MzdfMzYzNF8zNjM0
+2605	70
+2602	6
+2601	1
+2910	0
+2911	0
+2209	0
+2208	0
+2103	MToyMF8yMF8yMF8yMF8yMF8yMF8yMF8yMF8yMF8yMF8yMF8yMF8yMF8yMF8yMV8yMA==
+2101	16
+2102	1
+2203	0
+2501	0
+2901	0
+2902	0
+2903	1
+2904	0
+2905	0
+2906	1
+2907	0
+2617	49994
+2611	1
+2808	0
+2804	0
+2610	1
+10002	1
+10005	1.50957E+12
+10003	0
+10004	0
+2909	0
+2301	3
+2001	172
+2000	2.01711E+13
+2204	0
+2205	0
+3201	2
+2213	1
+2214	1
+2307	1
+2308	MjMwOToxLDIzMTA6MywyMzAyOjY2LDIzMDM6MTk5OTksMjMxMToyMDAwMCwyMzA0OjY4LDIzMDU6MjkwLDIzMDY6OTg0OA==
+2701	128
+2702	AAIAQA0EMTEzMTAyATExMTMxMDkBMjExMzExMAEyMTE1MTA3ATEOAAX//wAAAA8AAhEEEAAIAAAIfP///wERAAMAXf8=
+3801	36
+2913	0
+2914	0
+2915	0
+2916	0
+2917	0
+2918	0
+2919	0
+2930	0
+2920	1
+2921	0
+2923	0
+????????????????????????????????
+
+1026	平台登入时间	yymmdd-hhmmss
+1027	平台登入流水号	下级平台每登入一次，登入流水号自动加 1，从 1 开始循环累加，最大值为 65531，循环周期为天
+1028	平台用户名	平台登陆用户名
+1029	平台密码	平台登陆密码
+1030	加密规则	0x01：数据不加密；0x02：数据经过 RSA 算法加密；0x03:数据经过 AES128位算法加密；“0xFE”表示异常，“0xFF”表示无效，其他预留	平台登出时间	yymmdd-hhmmss  平台登出流水号	登出流水号与当次登入流水号相同
+
+1025	车辆登入时间	yymmdd-hhmmss
+
+1020	车辆登入流水号	车载终端每登入一次，登入流水号自动加 1，从 1 开始循环累加，最大值为 65531，循环周期为天
+
+1021	ICCID	SIM 卡 ICCID 号（ICCID 应为终端从 SIM 卡获取的值，不应人为填写或修改）
+
+1022	可充电储能子系统个数	可充电储能子系统数 n，有效值范围：0～250
+1023	可充电储能系统编码长度	可充电储能系统编码长度 m，有效范围：0～50，“0”表示不上传该编码
+1024	可充电储能系统编码	可充电储能系统编码宜为终端从车辆获取的值
+
+
+1031	登出时间	yymmdd-hhmmss
+1033	登出流水号	登出流水号与当次登入流水号相同
+
+
+2000	数据采集时间	yymmdd-hhmmss
+3201	车辆状态	0x01：启动状态；0x02：熄火；0x03：其他状态；“0xFE”表示异常，“0xFF”表示无效
+2301	充电状态	0x01：停车充电；0x02：行驶充电；0x03：未充电状态；0x04：充电完成；“0xFE”表示异常，“0xFF”表示无效
+2213	运行模式	0x01: 纯电；0x02：混动；0x03：燃油；0xFE 表示异常；0xFF 表示无效
+
+2201	车速	有效值范围：0～2200（表示 0 km/h～220 km/h），最小计量单元：0.1km/h，“0xFF,0xFE”表示异常，“0xFF,0xFF”表示无效
+
+2202	里程	有效值范围：0～9999999（表示 0km～999999.9km），最小计量单元：0.1km。“0xFF, 0xFF, 0xFF,0xFE”表示异常，“0xFF,0xFF,0xFF,0xFF”表示无效
+
+2613	总电压	有效值范围：0～10000（表示 0V～1000V），最小计量单元：0.1V，“0xFF,0xFE”表示异常，“0xFF,0xFF”表示无效
+
+2614	总电流	有效值范围： 0～20000（偏移量 1000A，表示-1000A～+1000A），最小计量单元：0.1A，“0xFF,0xFE”表示异常，“0xFF,0xFF”表示无效
+
+2615	SOC	有效值范围：0～100（表示 0%～100%），最小计量单元：1%，“0xFE”表示异常，“0xFF”表示无效
+
+2214	DC-DC状态 直流开关电源	0x01：工作；0x02：断开，“0xFE”表示异常，“0xFF”表示无效
+
+2203	挡位	挡位定义见附录 A.1
+
+2617	绝缘电阻	有效范围 0～60000（表示 0KΩ～60000KΩ），最小计量单元：1KΩ
+
+2307	驱动电机个数	有效值 1～253
+
+2308	驱动电机列表
+
+2309	驱动电机序号	驱动电机顺序号，有效值范围 1～253
+
+2310	驱动电机状态	0x01：耗电；0x02：发电；0x03：关闭状态；0x04：准备状态“0xFE”表示异常，“0xFF”表示无效
+
+2302	驱动电机控制器温度
+有效值范围：0～250 （数值偏移量 40℃，表示-40℃～+210℃），最小计量单元：1℃，“0xFE”表示异常，“0xFF”表示无效
+
+2303	驱动电机转速	有效值范围：0～65531（数值偏移量20000 表示-20000 r/min～45531r/min），
+最小计量单元：1r/min，“0xFF,0xFE”表示异常，“0xFF,0xFF”表示无效
+
+2311	驱动电机转矩	有效值范围：0～65531（数值偏移量 20000 表示-2000N*m～4553.1N*m），
+最小计量单元：0.1N*m，“0xFF,0xFE”表示异常，“0xFF,0xFF”表示无效
+
+2304	驱动电机温度	有效值范围：0～250 （数值偏移量 40℃，表示-40℃～+210℃），最小计量单元：1℃，“0xFE”表示异常，“0xFF”表示无效
+
+2305	电机控制器输入电压	有效值范围：0～60000（表示 0V～6000V），最小计量单元：0.1V，“0xFF,0xFE”表示异常，“0xFF,0xFF”表示无效
+
+2306	电机控制器直流母线电流	有效值范围： 0～20000（数值偏移量 1000A，表示-1000A～+1000A），最小计量单元：0.1A，“0xFF,0xFE”表示异常，“0xFF,0xFF”表示无效
+
+2110	燃料电池电压	有效值范围：0～20000（表示 0V～2000V），最小计量单元：0.1V，“0xFF,0xFE”表示异常，“0xFF,0xFF”表示无效
+
+2111	燃料电池电流	有效值范围： 0～20000（表示 0A～+2000A），最小计量单元：0.1A，“0xFF,0xFE”表示异常，“0xFF,0xFF”表示无效
+
+2112	燃料消耗率	有效值范围：0～60000（表示 0kg/100km～600kg/100km），最小计量单元：0.01kg/100km，“0xFF,0xFE”表示异常，“0xFF,0xFF”表示无效
+
+2113	燃料电池温度探针总数	N 个燃料电池温度探针，有效值范围：0～65531，“0xFF,0xFE”表示异常，“0xFF,0xFF”表示无效
+
+2114	燃料电池温度值	有效值范围：0～240（数值偏移量 40℃，表示-40℃～+200℃），最小计量单元：1℃
+
+2115	氢系统中最高温度	有效值范围：0～2400（偏移量 40℃，表示-40℃～200℃），最小计量单元：0.1℃，“0xFF,0xFE”表示异常，“0xFF,0xFF”表示无效
+
+2116	氢系统中 最高温度探针号	有效值范围：1～252，“0xFE”表示异常，“0xFF”表示无效
+
+2117	氢气最高浓度	有效值范围：0～60000（表示 0ppm～50000ppm），最小计量单元：1ppm，“0xFF,0xFE”表示异常，“0xFF,0xFF”表示无效
+
+2118	氢气 最高浓度传感器代号	有效值范围：1～252，“0xFE”表示异常，“0xFF”表示无效
+
+2119	氢气最高压力	有效值范围：0～1000（表示 0MPa～100MPa），最小计量单元：0.1MPa
+
+2120	氢气最高压力传感器代号	有效值范围：1～252，“0xFE”表示异常，“0xFF”表示无效
+
+2121	高压DC-DC状态	 0x01：工作；0x02：断开；“0xFE”表示异常，“0xFF”表示无效
+
+2401	发动机状态	0x01：启动；0x02：关闭，“0xFE”表示异常，“0xFF”表示无效
+
+2411	曲轴转速	有效范围：0～60000(表示 0rpm～60000rpm)，最小计量单元：1rpm，“0xFF,0xFE”表示异常，“0xFF,0xFF”表示无效
+
+2413	燃料消耗率	有效值范围：0～60000（表示 0L/100km～600L/100km），最小计量单元：0.01L/100km，“0xFF,0xFE”表示异常，“0xFF,0xFF”表示无效
+
+2501	定位状态	状态位定义见GB32960表 15
+
+2502	经度	以度为单位的纬度值乘以 10 的 6 次方，精确到百万分之一度
+
+2503	纬度	以度为单位的纬度值乘以 10 的 6 次方，精确到百万分之一度
+
+2601	最高电压电池子系统号	有效值范围：1～250，“0xFE”表示异常，“0xFF”表示无效
+
+2602	最高电压电池单体代号	有效值范围：1～250，“0xFE”表示异常，“0xFF”表示无效
+
+2603	电池单体电压最高值   	有效值范围：0～15000（表示 0V～15V），最小计量单元：0.001V，“0xFF,0xFE”表示异常，“0xFF,0xFF”表示无效
+
+2604	最低电压电池子系统号	有效值范围：1～250，“0xFE”表示异常，“0xFF”表示无效
+
+2605	最低电压电池单体代号	有效值范围：1～250，“0xFE”表示异常，“0xFF”表示无效
+
+2606	电低单体电压最高值 	有效值范围：0～15000（表示 0V～15V），最小计量单元：0.001V，“0xFF,0xFE”表示异常，“0xFF,0xFF”表示无效
+
+2607	最高温度子系统号	    有效值范围：1～250，“0xFE”表示异常，“0xFF”表示无效
+
+2608	最高温度探针号	    有效值范围：1～250，“0xFE”表示异常，“0xFF”表示无效
+
+2609	最高温度值	        有效值范围：0～250（数值偏移量 40℃，表示-40℃～+210℃），最小计量单元：1℃，“0xFE”表示异常，“0xFF”表示无效
+2610	最低温度子系统号	    有效值范围：1～250，“0xFE”表示异常，“0xFF”表示无效
+
+2611	最低温度探针号	    有效值范围：1～250，“0xFE”表示异常，“0xFF”表示无效
+
+2612	最低温度值	        有效值范围：0～250（数值偏移量 40℃，表示-40℃～+210℃），最小计量单元：1℃，“0xFE”表示异常，“0xFF”表示无效
+
+
+2920	最高报警等级	为当前发生的故障中的最高等级值，有效值范围：0～3，“0”表示无故障；“1”表示 1 级故障，指代不影响车辆正常行驶的故障；“2”表示 2 级故障，指代影响车辆性能，需驾驶员限制行驶的故障；“3”表示 3 级故障，为最高级别故障，指代驾驶员应立即停车处理或请求救援的故障；具体等级对应的故障内容由厂商自行定义；“0xFE”表示异常，“0xFF”表示无效
+
+3801	通用报警标志	通用报警标志位定义见表 18
+
+2921	可充电储能装置故障总数N1 N1 个可充电储能装置故障，有效值范围：0～252，“0xFE”表示异常，“0xFF”表示无效
+
+2922	可充电储能装置故障代码列表	扩展性数据，由厂商自行定义，可充电储能装置故障个数等于可充电储能装置故障总数 N1
+
+2804	驱动电机故障总数N2	N2 个驱动电机故障，有效值范围：0～252，“0xFE”表示异常，“0xFF”表示无效
+
+2805	驱动电机故障代码列表	 厂商自行定义，驱动电机故障个数等于驱动电机故障总数 N2
+
+2923	发动机故障总数N3	N3 个驱动电机故障，有效值范围：0～252，“0xFE”表示异常，“0xFF”表示无效
+
+2924	发动机故障代码列表	厂商自行定义，发动机故障个数等于驱动电机故障总数 N3
+
+2808	其他故障总数N4	N4 个其他故障，有效值范围：0～252，“0xFE”表示异常，“0xFF”表示无效
+
+2809	其他故障代码列表	厂商自行定义，故障个数等于故障总数 N4
+
+2001	单体电池总数	N 个电池单体，有效值范围：1～65531，“0xFF,0xFE”表示异常，“0xFF,0xFF”表示无效
+
+2002	单体电池包总数	N 个可充电储能子系统，有效值范围：1～250，“0xFE”表示异常，“0xFF”表示无效
+
+2003	单体电池电压值列表	有效值范围：0～60000（表示 0V～60.000V），最小计量单元：0.001V ，单体电池电压个数等于本帧单体电池总数 m ，“0xFF,0xFE”表示异常，“0xFF,0xFF”表示无效
+
+2101	单体电池温度探针总数	N 个温度探针，有效值范围：1～65531，“0xFF,0xFE”表示异常，“0xFF,0xFF”表示无效
+
+2102	单体电池包总数	N 个可充电储能装置，有效值范围：1～250，“0xFE”表示异常，“0xFF”表示无效
+
+2103	单体电池温度值列表	有效值范围：0～250 （数值偏移量 40℃，表示-40℃～+210℃），最小计量单元：1℃，“0xFE”表示异常，“0xFF”表示无效
+
+
+
+====================
+
+
+
+
+
+
+==================================
+车辆动态数据稽查系统
+
+
+设置每页条数，翻页后，重置查询，列表页码未重置。
+
+
+
+动态数据核验，导出表页签名称错误。
+
+3、动态数据核验导出表，字段错误；
+电机功率（kw）结果、电机功率（kw）中机，数据未导出。
+
+
+
+比对常数只设置上限（下限），比对常数结果错误。
+
+
+动态数据核验档案，导出列表，字段“是否发放补贴”无数据。
+
+导入查询，比对常数，报错。
+
+
+7、动态数据核验，导入查询，关闭功能模块后，未清理导入文件。
+
+8、动态数据核验，导入查询后，导出，未按照查询结果导出，导出全部数据。
+
+9、核验档案，列表查看，全屏后查看，显示错位。
+
+
+10、核验档案，他人分享档案存为私有，查询人应保存用户名；且进行排序。
+
+截止时间查询条件，不包含设置当前日期（合格车辆导出查询时间问题相同）。
+
+
+=============================
+电池
+
+电机
+
+整车控制器
+
+燃料
+
+续航里程
+
+最高车速
+
+能量消耗
+
+快充倍率
+
+停靠点
+
+日均
+
+周
+
+停车时间
+
+均值
+
+方差
+
+闲置时间
+
+上线里程
+
+运营里程
+
+恶意空驶
+
+轨迹
+
+多车匹配
+
+一车多终端
+
+续航里程（soc 80-60），
+
+车辆能量消耗率(文字描述提供，？？？)，
+
+车辆快充倍率(文字描述提供，???)。 需要检测动态数据是否和标称参数一致
+
+
+=====================
+
+新能源国家监测与管理中心
+
+
+
+查询
+名称：
+类别：
+查询  重置
+增加  编辑  删除
+
+名称
+值
+类别
+排序
+备注
+
+注册
+注册
+数据项类别
+1
+
+远程升级
+1
+国标终端控制
+1
+国标终端控制
+
+本地储存时间周期
+1
+国标终端参数
+1
+
++
+1
+算术运算符
+1
+
+远程升级
+1
+地标终端控制
+2
+
+-
+2
+算术运算符
+2
+
+正常上报时间周期
+2
+国标终端参数
+2
+
+终端关机
+2
+国标终端控制
+2
+国标终端控制
+
+实时数据-单体蓄电池电压数据
+实时数据-单体蓄电池电压数据
+数据项类别
+2
+
+实时数据-单体蓄电池温度数据
+实时数据-单体蓄电池温度数据
+数据项类别
+3
+
+终端复位
+3
+国标终端控制
+3
+国标终端控制
+
+*
+3
+算术运算符
+3
+
+报警上报时间周期
+3
+国标终端参数
+3
+
+终端关机
+2
+地标终端控制
+3
+
+终端恢复出厂设置
+4
+国标终端控制
+4
+国标终端控制
+
+管理平台域名
+4
+国标终端参数
+4
+
+实时数据-整车数据
+实时数据-整车数据
+数据项类别
+4
+
+/
+4
+算术运算符
+4
+
+终端复位
+3
+地标终端控制
+4
+
+终端恢复出厂设置
+4
+地标终端控制
+5
+
+断开数据通信链路
+5
+国标终端控制
+5
+国标终端控制
+
+管理平台端口
+5
+国标终端参数
+5
+
+实时数据-汽车电动部分数据
+实时数据-汽车电动部分数据
+数据项类别
+5
+
+硬件版本
+6
+国标终端参数
+6
+
+终端报警/预警
+6
+国标终端控制
+6
+国标终端控制
+
+实时数据-汽车发动机部分数据
+实时数据-汽车发动机部分数据
+数据项类别
+6
+
+断开数据通信链路
+5
+地标终端控制
+6
+
+固件版本
+7
+国标终端参数
+7
+
+开启抽样监测链路
+7
+国标终端控制
+7
+国标终端控制
+
+实时数据-定位数据
+实时数据-定位数据
+数据项类别
+7
+
+终端心跳发送周期
+8
+国标终端参数
+8
+
+实时数据-极值数据
+实时数据-极值数据
+数据项类别
+8
+
+终端应答超时时间
+9
+国标终端参数
+9
+
+实时数据-用户自定义数据
+实时数据-用户自定义数据
+数据项类别
+9
+
+平台应答超时时间
+10
+国标终端参数
+10
+
+实时数据-告警数据
+实时数据-告警数据
+数据项类别
+10
+
+车载终端状态
+车载终端状态
+数据项类别
+11
+
+车辆状态
+车辆状态
+数据项类别
+12
+
+系统预留
+系统预留数据项
+数据项类别
+13
+
+登入时间间隔
+14
+国标终端参数
+14
+
+车辆登入
+车辆登入
+数据项类别
+14
+国标专有类别
+
+公共平台域名
+15
+国标终端参数
+15
+
+车辆登出
+车辆登出
+数据项类别
+15
+国标专有类别
+
+平台登入
+平台登入
+数据项类别
+16
+国标专用类别
+
+公共平台端口
+16
+国标终端参数
+16
+
+是否处于抽样检测
+17
+国标终端参数
+17
+
+实时数据-燃料电池数据
+实时数据-燃料电池数据
+数据项类别
+17
+国标专用类别
+
+车辆类别
+车辆类别
+车辆类别
+
+分时租赁
+789001
+车辆类别
+0
+分时租赁
+
+私人用车
+789002
+车辆类别
+0
+
+物流车
+wuliu
+车辆类别
+4
+
+轻型物流车
+0
+车辆类别
+百公里耗电(度),百公里耗油(升),120,40
+
+纯电动物流车
+5
+车辆类别
+
+公交客车
+111801
+车辆类别
+101
+客车
+
+通勤客车
+111802
+车辆类别
+102
+客车
+
+旅游客车
+111803
+车辆类别
+103
+客车
+
+公路客车
+111804
+车辆类别
+104
+客车
+
+公务乘用车
+111805
+车辆类别
+105
+乘用车
+
+出租乘用车
+111806
+车辆类别
+106
+乘用车
+
+租赁乘用车
+111807
+车辆类别
+107
+乘用车
+
+私人乘用车
+111808
+车辆类别
+108
+特种车
+
+邮政特种车
+111809
+车辆类别
+109
+特种车
+
+物流特种车
+111810
+车辆类别
+110
+特种车
+
+环卫特种车
+111811
+车辆类别
+111
+特种车
+
+工程特种车
+111812
+车辆类别
+112
+特种车
+
+出租车
+出租车
+车辆类别
+
+测试
+100
+车辆类别
+100
+啊啊
+
+电动出租车
+F
+车辆类别
+百公里耗电(度),百公里耗油(升),20,10
+
+环卫车
+环卫车
+车辆类别
+
+2T电动环卫车
+2T
+车辆类别
+百公里耗电(度),百公里耗油(升),20,10
+
+3T电动环卫车
+3T
+车辆类别
+百公里耗电(度),百公里耗油(升),20,10
+
+纯电动桶装垃圾运输车
+42
+车辆类别
+
+纯电动清洗车
+46
+车辆类别
+
+纯电动自装卸式垃圾车
+49
+车辆类别
+
+电动环卫车
+58
+车辆类别
+
+纯电动自卸式垃圾车
+45
+车辆类别
+
+纯电动洗扫车
+48
+车辆类别
+
+纯电动扫路车
+44
+车辆类别
+
+纯电动路面养护车
+47
+车辆类别
+
+纯电动车厢可卸式垃圾车
+57
+车辆类别
+
+租赁
+租赁
+车辆类别
+
+租赁客车
+zulinke
+车辆类别
+2
+
+租赁电动车
+ZuLin
+车辆类别
+百公里耗电(度),百公里耗油(升),20,10
+
+公交车
+公交车
+车辆类别
+
+混合动力公交车
+12123
+车辆类别
+3
+
+电动公交车
+P
+车辆类别
+百公里耗电(度),百公里耗油(升),120,40
+
+城市公交车
+234
+车辆类别
+百公里耗电(度),百公里耗油(升),120,40
+
+商务车
+商务车
+车辆类别
+
+纯电动客车(中客)
+32
+车辆类别
+
+纯电动客车
+1
+车辆类别
+百公里耗电(度),百公里耗油(升),120,40
+
+纯电动城市客车
+6
+车辆类别
+纯电动城市客车
+
+通勤租赁电动客车
+TQC
+车辆类别
+百公里耗电(度),百公里耗油(升),20,10
+
+轻型厢式货车
+HC
+车辆类别
+百公里耗电(度),百公里耗油(升),120,40
+
+纯电动运输车
+2
+车辆类别
+百公里耗电(度),百公里耗油(升),120,40
+
+纯电动封闭货车
+61
+车辆类别
+
+商务班车
+123
+车辆类别
+
+轻型非载货专项作业车
+41
+车辆类别
+
+纯电动售货车
+54
+车辆类别
+
+纯电动城市物流
+63
+车辆类别
+
+纯电动流动服务车
+4
+车辆类别
+
+纯电动乘用车
+纯电动乘用车
+车辆类别
+
+纯电动专用车
+52
+车辆类别
+
+纯电厢式货车
+77
+车辆类别
+
+纯电动厢式运输车
+55
+车辆类别
+
+通勤租赁混合动力客车
+7
+车辆类别
+
+纯电动仓栅式运输车
+40
+车辆类别
+
+插电式混合动力乘用车
+62
+车辆类别
+
+纯电动轿车
+43
+车辆类别
+
+纯电动多用途乘用车
+56
+车辆类别
+
+轻型封闭货车
+59
+车辆类别
+
+插电式混动车
+60
+车辆类别
+
+商务旅游车
+64
+车辆类别
+
+插电式混合动力客车
+3
+车辆类别
+
+纯电动电源车
+51
+车辆类别
+
+混合动力城市客车
+20
+车辆类别
+
+纯电动旅游车
+8
+车辆类别
+
+纯电动特种车
+33
+车辆类别
+
+混合动力旅游车
+9
+车辆类别
+
+纯电动厢式货车
+53
+车辆类别
+
+退役车辆
+TY
+车辆类别
+
+民航
+民航
+车辆类别
+
+客梯车
+客梯车
+车辆类别
+
+牵引车
+牵引车
+车辆类别
+
+传送车
+传送车
+车辆类别
+
+摆渡车
+摆渡车
+车辆类别
+
+测试车辆
+T
+车辆类别
+车辆测试专用类别
+
+乘用车
+车辆类别
+
+私人
+11
+车辆类别
+
+电动私家车
+Si_Jia
+车辆类别
+百公里耗电(度),百公里耗油(升),20,10
+
+本地存储周期
+1
+地标终端参数
+
+介于(<=V <)
+7
+关系运算符
+
+介于(< V=<)
+8
+关系运算符
+
+介于(<=V=<)
+9
+关系运算符
+
+正常上报时间周期
+2
+地标终端参数
+
+报警上报时间周期
+3
+地标终端参数
+
+管理平台IP
+4
+地标终端参数
+
+管理平台端口
+5
+地标终端参数
+
+硬件版本
+6
+地标终端参数
+
+平台应答超时时间
+10
+地标终端参数
+
+德尔福
+德尔福
+电池厂商
+
+埃克塞德
+埃克塞德
+电池厂商
+
+铅酸蓄电池
+铅酸蓄电池
+电池类型
+
+锂离子电池
+锂离子电池
+电池类型
+
+镍氢电池
+镍氢电池
+电池类型
+
+铅晶蓄电池
+铅晶蓄电池
+电池类型
+
+锌空电池
+锌空电池
+电池类型
+
+燃料电池
+燃料电池
+电池类型
+
+大于
+4
+关系运算符
+
+大于等于
+5
+关系运算符
+
+瓦尔塔
+VARTA
+电池厂商
+
+等于
+1
+关系运算符
+
+终端心跳发送周期
+8
+地标终端参数
+
+介于(< V <)
+6
+关系运算符
+
+小于
+2
+关系运算符
+
+小于等于
+3
+关系运算符
+
+终端应答超时时间
+9
+地标终端参数
+
+软件版本
+7
+地标终端参数
+
+太阳能电池
+3
+电池类型
+
+太阳能电池
+太阳能电池
+电池厂商
+
+=========
+新能源国家监测与管理平台
+内部--研发and大数据
+ 个人中心 系统设置 主题中心
+导航
+基础资料
+用户权限
+用户管理
+车组管理
+角色管理
+单位管理
+单位类型
+
+    1234
+    政府部门
+    3002
+    科研单位
+    0001
+    汽车厂商
+    0006
+    出租车公司
+    0005
+    环卫集团
+    1115
+    运营单位
+    1005
+    销售公司
+    1004
+    公交公司
+    1003
+    保洁公司
+    1002
+    企业自用
+
+
+
+
+车辆资料
+车辆档案
+ICCID变更记录
+车辆管理
+车辆类别
+车辆类型
+终端类型
+存放地点
+负责人信息
+车辆运行情况核查
+系统设置
+操作日志
+模块配置
+销售区域配置
+字典管理
+车辆监控
+单车监控
+    驱动电机数据整车数据发动机数据燃料电池数据报警数据定位数据极值数据车辆登入/登出车辆信息自定义数据项
+    报文日期	-	数据有效性	有效
+    驱动电机个数	-	-	--
+    电机转速	-  r/min	电机温度	-  ℃
+    电机电压	-  V	电机母线电流	-  A
+    驱动电机控制器温度	-  ℃	驱动电机序号	-
+    驱动电机状态	-	驱动电机转矩	-
+
+统计概览
+轨迹回放
+单车监控
+车辆在线
+报文分析
+    地标解析  国标解析  数据项  报文导出
+    车牌
+    VIN
+    规约类型
+    服务器接收时间
+    报文时间
+    类型
+    校验
+    报文长度
+    原始报文
+
+远程设置
+明细数据查询
+故障管理
+故障规则
+故障处理
+数据交换
+交换数据设置
+数据转发
+数据接入
+售后服务
+报表统计
+日报表
+单车日报表
+    车牌
+    VIN
+    汽车厂商
+    车辆类型
+    销售区域
+    报表日期
+    日上线总时长(h)
+    日总行驶时间(h)
+    日行驶次数
+    日总行驶里程
+    日均单次行驶时间(h)
+    日均单次行驶里程(km)
+    日均行驶速度(km/h)
+    单次运行最长行驶时间(h)
+    单次运行最短行驶时间(h)
+    单次运行最大行驶里程(km)
+    日最大行驶速度(km/h)
+    行驶状态最高总电压(v)
+    行驶状态最低总电压(v)
+    行驶状态最高总电流(A)
+    行驶状态最低总电流(A)
+    行驶状态最高SOC%
+    行驶状态最低SOC%
+    行驶状态单体最高总电压(v)
+    行驶状态单体最低总电压(v)
+    行驶状态采集点最高温度(°C)
+    行驶状态采集点最低温度(°C)
+    行驶状态发动机最高温度(°C)
+    行驶状态发动机最低温度(°C)
+
+日统计报表
+    行驶状态信息统计
+    车辆类别
+    运营单位
+    车辆厂商
+    终端厂商
+    存放地点
+    车辆类型
+    终端类型
+    销售区域
+    录入车辆数（辆）
+    新录入车辆数
+    可监控车辆数（辆）
+    新增注册车辆数（辆）
+    未监控车辆数（辆）
+    监控比例（%）
+    上线车辆数（辆）
+    上线车辆无效数（辆）
+    上线比例(%)
+    上线无效比例(%)
+    日上线总时间(h)
+    日总行驶时间(h)
+    日行驶次数
+    单次运行最长行驶时间(h)
+    单次运行最短行驶时间(h)
+    日均单次行驶时间(h)
+    车辆日均行驶时间(h)
+    日总行驶里程(Km)
+    车辆日均总行驶里程(Km)
+    单次运行最大行驶里程(Km)
+    日最大行驶速度(Km/h)
+    日均行驶速度(Km/h)
+    行驶状态最高总电压(V)
+    行驶状态最低总电压(V)
+    行驶状态最高总电流(A)
+    行驶状态最低总电流(A)
+    行驶状态最高SOC(%)
+    行驶状态最低SOC(%)
+    行驶状态单体最高总电压(V)
+    行驶状态单体最低总电压(V)
+    行驶状态采集点最高温度(°C)
+    行驶状态采集点最低温度(°C)
+    行驶状态电机工作最高温度(°C)
+    行驶状态电机工作最低温度(°C)
+
+周报表
+    车辆类别
+    运营单位
+    车辆厂商
+    终端厂商
+    存放地点
+    车辆类型
+    终端类型
+    销售区域
+    录入车辆数（辆）
+    新录入车辆数
+    可监控车辆数（辆）
+    新增注册车辆数（辆）
+    未监控车辆数（辆）
+    监控比例（%）
+    上线车辆数（辆）
+    上线车辆无效数（辆）
+    上线比例(%)
+    上线无效比例(%)
+    日上线总时间(h)
+    日总行驶时间(h)
+    日行驶次数
+    单次运行最长行驶时间(h)
+    单次运行最短行驶时间(h)
+    日均单次行驶时间(h)
+    车辆日均行驶时间(h)
+    日总行驶里程(Km)
+    车辆日均总行驶里程(Km)
+    单次运行最大行驶里程(Km)
+    日最大行驶速度(Km/h)
+    日均行驶速度(Km/h)
+    行驶状态最高总电压(V)
+    行驶状态最低总电压(V)
+    行驶状态最高总电流(A)
+    行驶状态最低总电流(A)
+    行驶状态最高SOC(%)
+    行驶状态最低SOC(%)
+    行驶状态单体最高总电压(V)
+    行驶状态单体最低总电压(V)
+    行驶状态采集点最高温度(°C)
+    行驶状态采集点最低温度(°C)
+    行驶状态电机工作最高温度(°C)
+    行驶状态电机工作最低温度(°C)
+
+
+月报表
+季度报表
+年度报表
+
+车牌导出
+
+录入日期查询
+
+首次上线查询
+
+故障数据追溯
+    充电数据追溯
+        车牌
+        报表日期
+        VIN
+        充电开始时间
+        充电结束时间
+        充电时长（小时）
+        充电位置经度
+        充电位置纬度
+        充电开始SOC
+        充电结束SOC
+        充电量（度）
+        最大充电电流
+
+
+    行驶数据追溯
+租赁
+租赁公司管理
+站点管理
+充电枪类型管理
+租赁车辆管理
+充电枪管理
+平台推送
+
+
+=======================
+realinfo实时数据
+VID	a3ccf6c3-7a3e-4b0f-b576-f09a37c870d2
+TIME	2.01711E+13
+2201	0
+2614	0
+2615	98
+2613	6253
+2603	3637
+2606	3604
+2609	21
+2612	20
+2202	88620
+2502	104213035
+2503	30819862
+VIN	LGHC4V1DXHE201191
+MESSAGETYPE	REALTIME
+ISFILTER	0
+2912	0
+2608	15
+VTYPE	402882d25b6b922b015b7150ab590e37
+2607	1
+2002	1
+2604	1
+2003	MTozNjM0XzM2MzNfMzYzNl8zNjM0XzM2MzRfMzYzN18zNjM0XzM2MzRfMzYzN18zNjM2XzM2MzdfMzYzNl8zNjM2XzM2MzZfMzYzNl8zNjM0XzM2MzdfMzYzNl8zNjM2XzM2MzZfMzYzNl8zNjM2XzM2MzZfMzYzN18zNjM2XzM2MzZfMzYzNF8zNjM0XzM2MzZfMzYzNl8zNjM3XzM2MzdfMzYzN18zNjM0XzM2MzdfMzYzNl8zNjM3XzM2MzRfMzYzN18zNjM0XzM2MzdfMzYzN18zNjM2XzM2MzZfMzYzNF8zNjM3XzM2MjhfMzYzNF8zNjMxXzM2MzNfMzYzNF8zNjM2XzM2MzNfMzYzNF8zNjM0XzM2MzdfMzYzNl8zNjM0XzM2MjRfMzYzNl8zNjM2XzM2MzZfMzYzNF8zNjM2XzM2MjhfMzYzN18zNjM2XzM2MzdfMzYzNF8zNjA0XzM2MzdfMzYzNl8zNjM2XzM2MzRfMzYzNF8zNjM0XzM2MzNfMzYzNF8zNjM3XzM2MzdfMzYzNl8zNjM3XzM2MzdfMzYzNF8zNjM2XzM2MzNfMzYzMV8zNjMxXzM2MzRfMzYzNF8zNjMzXzM2MzNfMzYzM18zNjMzXzM2MzRfMzYzM18zNjM2XzM2MzRfMzYzNF8zNjM2XzM2MzZfMzYzNl8zNjM2XzM2MzNfMzYyNV8zNjM2XzM2MzZfMzYzNF8zNjM2XzM2MzdfMzYzNl8zNjM3XzM2MzRfMzYzNl8zNjM0XzM2MzZfMzYzNF8zNjMzXzM2MzZfMzYzNF8zNjM0XzM2MzRfMzYzNl8zNjMzXzM2MzNfMzYzMV8zNjM0XzM2MTlfMzYzN18zNjMzXzM2MzRfMzYzNl8zNjM0XzM2MjhfMzYzNl8zNjM0XzM2MzRfMzYzNF8zNjM0XzM2MzZfMzYzNl8zNjM0XzM2MzZfMzYzNl8zNjM2XzM2MzNfMzYzNF8zNjMzXzM2MzRfMzYzNF8zNjM3XzM2MzRfMzYzNl8zNjE5XzM2MzNfMzYzNl8zNjM0XzM2MzRfMzYzNF8zNjMxXzM2MzNfMzYzM18zNjMxXzM2MzNfMzYzNF8zNjM3XzM2MzZfMzYzNl8zNjMzXzM2MzdfMzYzNF8zNjM0
+2605	70
+2602	6
+2601	1
+2910	0
+2911	0
+2209	0
+2208	0
+2103	MToyMF8yMF8yMF8yMF8yMF8yMF8yMF8yMF8yMF8yMF8yMF8yMF8yMF8yMF8yMV8yMA==
+2101	16
+2102	1
+2203	0
+2501	0
+2901	0
+2902	0
+2903	1
+2904	0
+2905	0
+2906	1
+2907	0
+2617	49994
+2611	1
+2808	0
+2804	0
+2610	1
+10002	1
+10005	1.50957E+12
+10003	0
+10004	0
+2909	0
+2301	3
+2001	172
+2000	2.01711E+13
+2204	0
+2205	0
+3201	2
+2213	1
+2214	1
+2307	1
+2308	MjMwOToxLDIzMTA6MywyMzAyOjY2LDIzMDM6MTk5OTksMjMxMToyMDAwMCwyMzA0OjY4LDIzMDU6MjkwLDIzMDY6OTg0OA==
+2701	128
+2702	AAIAQA0EMTEzMTAyATExMTMxMDkBMjExMzExMAEyMTE1MTA3ATEOAAX//wAAAA8AAhEEEAAIAAAIfP///wERAAMAXf8=
+3801	36
+2913	0
+2914	0
+2915	0
+2916	0
+2917	0
+2918	0
+2919	0
+2930	0
+2920	1
+2921	0
+2923	0
+--------------------------------------------------------------------
+明细
+vid:010a0660-338d-407b-9cee-84b7dfeba355
+vin:LNBSCC3F5GR693951
+category:charge
+onlineTime:3584000
+startTime:1509552001000
+endTime:1509555585000
+timeLeng:3584000
+accRunTime:0
+startMileageOfCurrentDay:45710
+endMileageOfCurrentDay:45710
+startMileage:45710
+stopMileage:45710
+gpsMileage:0
+avgSpeed:0.0
+maxSpeed:0
+maxTotalVoltage:3743
+minTotalVoltage:3478
+maxTotalCurrent:-160
+minTotalCurrent:-600
+maxSecondaryVolatage:4120
+minSecondaryVolatage:3800
+maxAcquisitionPointTemp:22
+minAcquisitionPointTemp:16
+maxEngineTemp:0
+minEngineTemp:0
+maxSoc:88
+minSoc:51
+startSoc:51
+endSoc:88
+startLongitude:116385863
+startLatitude:39831173
+endLongitude:116385747
+endLatitude:39831086
+totalCharge:12.505316638888875
+timeBetweenCharge:0
+stopMileageOfPrevCharge:0
+prevChargeStopTime:0
+maxCurrentOfPrevCharge:0
+isQuickCharge:true
+powerDistribution:[12505.316638888893,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]}
+------------------------
+日报表
+
+vid:186e024c-28b6-4634-86f3-82f50afe8c1f,
+category:run,
+reportDate:1504281600000,
+onlineTime:3584000,
+timeLeng:3584000,
+accRunTime:0,
+maxTime:3584000,
+minTime:3584000,
+startMileage:45710,
+stopMileage:45710,
+maxMileage:0,
+totalMileage:0,
+maxSpeed:0,
+maxTotalVoltage:3743,
+minTotalVoltage:3478,
+maxTotalEctriccurrent:-160,
+minTotalEctriccurrent:-600,
+maxSecondaryVolatage:4120,
+minSecondaryVolatage:3800,
+maxAcquisitionPointTemp:22,
+minAcquisitionPointTemp:16,
+maxEngineTemp:0,
+minEngineTemp:0,
+maxSoc:88,
+minSoc:51,
+startSoc:-1,
+totalCharge:12.505316638888875,
+maxCharge:12.505316638888875,
+times:1,
+chargeTime:3584000,
+fullChargeTime:3584000,
+chargePer100Km:37.89489890572386,
+chargeSocDistribution:[0,0,0,0,0,1,0,0,0,0],
+chargeTimeRangeDistribution:[1,0,0,0,0,0,0,0,0,0,0,0],
+runTimeRangeDistribution:[0,0,0,0,0,0,0,0,0,0,0,0],
+runTimeLengthDistribution:[0,0,0,0,0,0,0,0,0,0,0,0,0],
+runMileageDistribution:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+chargeTimeLengthDistribution:[0,1,0,0,0,0,0,0,0,0,0,0,0]
+------------------
+每日运行指标查询
+
+operationIndex
+
+{"vid":"e4e2af57-15fe-4ad6-ac92-57f453e55c79",
+"vin":"L6T78Y4W2HN023994",
+"checkMileage":36.0,
+"checkMileagePath":4,
+"firstValidateMileage":10883.0,
+"lastValidateMileage":10919.0,
+"firstTimeWithValidateMileage":1513293947000,
+"lastTimeWithValidateMileage":1513338350000,
+"onlineMileage":36.0,
+"validateMileage":36.0,
+"totalGpsRepeationNum":0,
+"gpsMileage":35.8259473390008,
+"onlineMileageAndValidateMileageRelativeError":0.0,
+"onlineMileageAndGPSMileageRelativeError":0.004834796138866714,
+"stepMileageThreshold":2.0,
+"stepWindowNum":0,
+"stepNum":0,
+"stepMileage":0.0,
+"continueCurrentStepMileage":0.0,
+"continueCurrentStepMileageNum":0,
+"continueCurrentWindowThreshold":10.0,
+"continueCurrentWindowMinLength":4,
+"stepMileageDetail":[],
+"continueCurrentStepMileageDetail":[],
+"checkMileageThreshold":{"A":1.0,"B":1.0,"C":0.6,"D":0.6},
+"counter":{"totalCount":494,"speedEmptyCount":7,"mileageEmptyCount":7,"voltageEmptyCount":7,"currentEmptyCount":7,"socEmptyCount":7,
+"longitudeEmptyCount":7,
+"latitudeEmptyCount":7,
+"flameoutCount":0,
+"emptyCount":7,
+"nonEmptyCount":487,
+"speedExceptionCount":0,
+"mileageExceptionCount":1,
+"voltageExceptionCount":0,
+"currentExceptionCount":0,
+"socExceptionCount":0,
+"longitudeExceptionCount":1,
+"latitudeExceptionCount":1,
+"exceptionCount":2,
+"nonExceptionCount":485,
+"okPercent":0.9817813765182186}}
+
+
+-----------
+
+里程核查
+
+vid	fe4998cb-b4a3-4e96-9081-6a6a3cfe2178
+vin	LZYTDGAW5G1066162
+date	201709
+mielage	2504.8
+hours	171.42
+days	29
+coords	坐标集合
+
+{"vid":"01e2868d-e308-4209-ac9f-9bec6314ac0c"
+"vin":"LA9CA8N02GBBFC423"
+"date":"201711"
+"mielage":277.1
+"hours":15.45
+"days":4
+"coords":[[0.0
+0.0]
+[0.0
+0.0]
+[0.0
+0.0]
+[0.0
+0.0]
+[0.0
+0.0]
+[0.0
+0.0]
+[0.0
+0.0]
+[0.0
+0.0]
+[0.0
+0.0]
+[0.0
+0.0]
+[116.94775
+40.19252^C5]
+[116.947264
+40.192395]
+[116.946898
+
+========================
+table
+
+alarm
+driving
+errpacket
+forward
+packet
+realinfo
+
+
+000765d9-4ce5-45d3-bd3c-5355e15f34cb {"vid":"000765d9-4ce5-45d3-bd3c-5355e15f34cb","stime":"20171204182925","type":"1","verify":"0"
+
+
+ 0000d218-44aa-4e15-be39-8f66c602218f_1510172312000_2
+ 0000d218-44aa-4e15-be39-8f66c602218f_151017231200 column=cf:type, timestamp=1510172312061, value=2
+ 0_2
+
+
+类别
+车牌
+VIN
+发送时间
+接收时间
+上传时间
+状态
+响应消息
+
+
+
+    本次追加3家车企数据：
+    郑州宇通客车股份有限公司： /data/dfs/dfs02/cqsj/zzytkc
+    郑州宇通重工有限公司：        /data/dfs/dfs00/cqsj1/zzytzg/180425
+    福田欧辉：                            /data/dfs/dfs00/cqsj1/ftoh/180425
+
+    新增1家车企数据：
+    吉利四川：                            /data/dfs/dfs00/cqsj/jlsc
+
+
+
+
+
+
+
+
+
+
