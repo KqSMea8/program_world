@@ -1,0 +1,3247 @@
+01日志上传
+
+爬虫 EPG节目表单
+
+//Start spider
+OOSpider.create(Site.me(), clazzMap.get(key)).addUrl(urlMap.get(key)).addPipeline(new MultiPagePipeline()).addPipeline(new ConsolePipeline()).runAsync();
+
+ OOSpider ooSpider = OOSpider.create(Site.me().setSleepTime(0), BaiduNews.class);
+        //single download
+        BaiduNews baike = ooSpider.<BaiduNews>get("http://news.baidu" +
+                ".com/ns?tn=news&cl=2&rn=20&ct=1&fr=bks0000&ie=utf-8&word=httpclient");
+        System.out.println(baike);
+
+        ooSpider.close();
+
+            OOSpider.create(Site.me().addStartUrl("http://w.alpha.dp/").setSleepTime(0), DianpingFtlDataScanner.class)
+                        .thread(5).run();
+
+
+
+ OOSpider.create(Site.me().addStartUrl("https://github.com/explore").setSleepTime(0).setRetryTimes(3),
+                new JsonFilePageModelPipeline(), GithubRepo.class)
+                .scheduler(new FileCacheQueueScheduler("/data/webmagic/cache/")).thread(15).run();
+
+
+                    OOSpider.create(Site.me().addStartUrl("http://flashsword20.iteye.com/blog"), IteyeBlog.class).run();
+
+
+OOSpider.create(Site.me().setDomain("www.jokeji.cn").setCharset("gbk").setSleepTime(100).setTimeOut(3000)
+        .setUserAgent("Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; WOW64; Trident/6.0)")
+        , new ConsolePageModelPipeline(), JokejiModel.class).addUrl("http://www.jokeji.cn/").thread(2)
+        .scheduler(new RedisScheduler("127.0.0.1"))
+        .run();
+
+
+Spider thread = OOSpider.create(Site.me().addStartUrl("http://www.36kr.com/").setSleepTime(0), new PageModelPipeline() {
+    @Override
+    public void process(Object o, Task task) {
+
+    }
+}, Kr36NewsModel.class).thread(20);
+thread.start();
+SpiderMonitor spiderMonitor = SpiderMonitor.instance();
+spiderMonitor.register(thread);
+
+
+OOSpider.create(Site.me(), News163.class).addUrl("http://news.163.com/13/0802/05/958I1E330001124J_2.html")
+        .scheduler(new RedisScheduler("localhost")).addPipeline(new MultiPagePipeline()).addPipeline(new ConsolePipeline()).run();
+
+OOSpider.create(Site.me().addStartUrl("http://www.oschina.net/question/567527_120597"), OschinaAnswer.class).run();
+
+
+OOSpider.create(Site.me()
+        .setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.101 Safari/537.36").addStartUrl("http://my.oschina.net/flashsword/blog")
+        .setSleepTime(0)
+        .setRetryTimes(3)
+        ,new PageModelPipeline() {
+    		@Override
+   		 public void process(Object o, Task task) {
+
+    }
+}, OschinaBlog.class).thread(10).run();
+
+
+OOSpider.create(Site.me(), new ConsolePageModelPipeline(), QQMeishi.class).addUrl("http://meishi.qq.com/beijing/c/all").thread(4).run();
+
+
+Spider.create(new SinaBlogProcessor()).addUrl("http://blog.sina.com.cn/s/articlelist_1487828712_0_1.html")
+        .run();
+
+--------------------
+
+日志传输
+
+
+厂商 日志文件 日志日期 大小 问题说明
+COOCAA aowei_PlayerControl 2017/5/19
+COOCAA aowei_SkySetting 2017/5/19
+COOCAA aowei_SkyTv 2017/5/19
+COOCAA aowei_appStatus 2017/5/19
+COOCAA aowei_deviceinfo 2017/5/19
+COOCAA aowei_search_result_item_clicked 2017/5/19
+CH deviceInfo.txt 2017/5/19
+CH film.txt 2017/5/19
+CH heartbeats.txt 2017/5/19
+CH launcher.txt 2017/5/19
+CH remote.txt 2017/5/19
+CH tencent.txt 2017/5/19
+CH usagestatistics.txt 2017/5/19
+CH livebroadcast.txt 2017/5/19
+KONKA activity.log 2017/5/19
+KONKA distinct_total.log 2017/5/19
+KONKA duration.log 2017/5/19
+KONKA epg.log 2017/5/19
+KONKA tv_logo.log 2017/5/19
+
+rsync 增量同步
+
+
+FTP 交互脚本传输
+
+send "get $FTP_FILE_HEARTBEATS $DATA_ORGIN_HEARTBEATS \r"
+expect {
+ "Fail*" { send "get $FTP_FILE_HEARTBEATS $DATA_ORGIN_HEARTBEATS \r"  }
+ "*226"     { send_user "download successful !\r"}
+}
+
+==============
+
+
+send "get $FTP_FILE_LAUNCHER $DATA_ORGIN_LAUNCHER \r"
+expect {
+ "Fail*" { send "get $FTP_FILE_LAUNCHER $DATA_ORGIN_LAUNCHER \r"  }
+ "*226"     { send_user "download successful !\r"}
+}
+send "get $FTP_FILE_REMOTE $DATA_ORGIN_REMOTE \r"
+expect {
+ "Fail*" { send "get $FTP_FILE_REMOTE $DATA_ORGIN_REMOTE \r"  }
+ "*226"     { send_user "download successful !\r"}
+}
+send "get $FTP_FILE_TENCENT $DATA_ORGIN_TENCENT \r"
+expect {
+ "Fail*" { send "get $FTP_FILE_TENCENT $DATA_ORGIN_TENCENT \r"  }
+ "*226"     { send_user "download successful !\r"}
+}
+
+send "get $FTP_FILE_TENCENT_FILM $DATA_ORGIN_TENCENT_FILM  \r"
+expect {
+ "Fail*" { send "get $FTP_FILE_TENCENT_FILM $DATA_ORGIN_TENCENT_FILM \r"  }
+ "*226"     { send_user "download successful !\r"}
+}
+
+===========
+send "get $FTP_FILE_LIVEBROADCAST $DATA_ORGIN_LIVEBROADCAST \r"
+expect {
+ "Fail*" { send "get $FTP_FILE_LIVEBROADCAST $DATA_ORGIN_LIVEBROADCAST \r"  }
+ "*226"     { send_user "download successful !\r"}
+}
+
+
+===========
+
+send "get $FTP_FILE_USAGESTATISTICS $DATA_ORGIN_USAGESTATISTICS \r"
+expect {
+ "Fail*" { send "get $FTP_FILE_USAGESTATISTICS $DATA_ORGIN_USAGESTATISTICS \r"  }
+ "*226"     { send_user "download successful !\r"}
+}
+
+send "get $FTP_FILE_DEVICEINFO $DATA_ORGIN_DEVICEINFO \r"
+expect {
+ "Fail*" { send "get $FTP_FILE_DEVICEINFO $DATA_ORGIN_DEVICEINFO \r"  }
+ "*226"     { send_user "download successful !\r"}
+}
+
+
+heartbeats
+
+launcher
+remote
+tencent
+film
+============
+
+FTP_FILE_LIVEBROADCAST
+DATA_ORGIN_USAGESTATISTICS
+DATA_ORGIN_DEVICEINFO
+
+
+
+
+
+----------------
+
+日志格式
+
+酷开
+
+旧平台数据格式
+
+
+数据及字段说明,有疑问请联系luyao@coocaa.com
+
+aowei_appStatus20161018_X:
+终端ip,日志包,mac,日志名,时间戳,app包名,启动时间,退出时间,存活时间,logtime（日志产生时间，部分老机器没有这个字段）,省,市,机型,机芯
+(PS:文件名后缀1,2,3个文件分别按时间1-8,8-16,16-24划分,下同)
+
+aowei_search_result_item_clicked20161018_X:
+终端ip,日志包,mac,日志名,时间戳,视频源(公司),搜索点击结果名字,logtime（日志产生时间，部分老机器没有这个字段）,省,市,机型,机芯
+
+aowei_SkySetting20161018_X：
+终端ip,日志包,mac,日志名,时间戳,Item(设置下具体修改项，例如：Item=声音模式，Value=电影),ClickModuleName(具体点击的是设置里边六大模块哪个模块),StartApp_pkgName(设置里边启动了其他app，具体app的包名和className),Value(修改项的具体值),logtime（日志产生时间，部分老机器没有这个字段）,省,市,机型,机芯
+(PS:文件名后缀1,2个文件分别按时间1-12,12-24划分,下同)
+
+aowei_SkyTv20161018_X:
+终端ip,日志包,mac,日志名,时间戳,当前通道,频道名,当前频道播放时长,用户开机时的TV通道,logtime（日志产生时间，部分老机器没有这个字段）,省,市,机型,机芯
+
+aowei_PlayerControl20161018_X:
+终端ip,日志包,mac,日志名,时间戳,资源id,资源名称,操作方式,time(如果action是stop 则time为播放时长,否则没有time),logtime（日志产生时间，部分老机器没有这个字段）,省,市,机型,机芯
+
+aowei_deviceinfo20161111: （每日开机终端信息）
+mac,省,市,机型,机芯,尺寸,牌照
+
+新平台数据
+
+114.138.62.144	VIDEO_PLAYER	bcec23e0a271	PlayerControl	1500394702124		《楚乔传》花絮 偷吃的赵丽颖	Start		2017-07-19 00:18:21	贵州省	未匹配	G6	9R52
+
+﻿
+数据及字段说明,有疑问请联系luyao@coocaa.com
+
+aowei_SkyTv20170720:
+ip,日志包名,加密后mac,日志名,时间戳,当前通道,频道名,当前频道播放时长,用户开机时的TV通道,logtime（日志产生时间，部分老机器没有这个字段）,省,市,机型,机芯
+
+aowei_SkySetting20170720：
+ip,日志包名,加密后mac,日志名,时间戳,Item(设置下具体修改项，例如：Item=声音模式，Value=电影),ClickModuleName(具体点击的是设置里边六大模块哪个模块),StartApp_pkgName(设置里边启动了其他app，具体app的包名和className),Value(修改项的具体值),logtime（日志产生时间，部分老机器没有这个字段）,省,市,机型,机芯
+
+aowei_appStatus20170720_X:
+ip,日志包名,加密后mac,日志名,时间戳,app包名,启动时间,退出时间,存活时间,logtime（日志产生时间，部分老机器没有这个字段）,省,市,机型,机芯
+
+aowei_search_result_item_clicked20170720:
+ip,日志包名,加密后mac,日志名,时间戳,视频源(公司),搜索点击结果名字,logtime（日志产生时间，部分老机器没有这个字段）,省,市,机型,机芯
+
+aowei_PlayerControl20170720:
+加密后mac,影片名,开始时间，结束时间，播放时长,省,市,机型,机芯
+
+aowei_deviceinfo20170720.txt
+加密后的mac，省，市，机型，机芯，尺寸，视频源
+
+
+
+
+
+
+_yinhe_204446001 20170417择天记第4集 Start   江苏省 苏州市 E6000 9R08
+_yinhe_204446001 20170417择天记第4集 Resume 1.49323E+12  江苏省 苏州市 E6000 9R08
+ 20151116早上一起做运动（1） Start  2017/4/27 2:12 广西壮族自治区 南宁市 K 8S61
+奥维各位同事好，我们这边接下来所做的开发如下：
+
+1.根据贵方邮件里的条件新筛选出150万台机器，原150台机器的数据不再提供。
+ w   2017年3月之前激活的终端
+ w   品牌分布：酷开15%，创维85%
+ w   Launcher视频媒体分布：爱奇艺70%、腾讯30%
+ w   地区、尺寸、型号以随时分布为主，尽量与整体实际分布相近
+
+2.提供数据日志项与原先一样，包括：
+频道、系统设置、应用启动、用户搜索结果、播放、终端活跃。（开机时长日志没有）
+ 如新日志与原日志字段不一样，届时会双方商讨
+
+3.为避免用户隐私泄漏，设备唯一id mac会做加密处理
+@顾晓阳 @张永甜 奥维 @龚琴
+
+=======================
+乐视：
+
+/home/cronjob/tracker-shell/put2hdfs_letv_upload.sh
+
+>>
+
+ /home/cronjob/logs/put2hdfs_letv_upload.log
+
+
+====================
+TCL
+
+rsync -avz --port=11873  XXXXX(您那边的文件路径)  TCL@117.122.192.50::TCL
+
+密码是:TCL_0228
+
+BI数据格式
+
+数据包括了：基本信息，开关机日志信息，应用日志信息3部分。所有信息以 “；”分隔。所有时间格式为：yyyy-MM-dd HH:mm:ss
+
+基本信息：属性=值  （例：IPAddress=120.210.175.188 ）
+IPAddress Clienttype dnum macline macwifi license
+IP 设别类型 设备序列号 有线mac 无线mac 牌照
+
+
+开关机日志信息： 包名，{1=开机时间，2=关机时间}
+包名为：com.tcl.TVBasicBehavior 和 com.tcl.tv 的为开关机日志信息
+例：com.tcl.TVBasicBehavior,{1=2017-08-27 12:07:51,2=2017-08-27 12:27:37}
+
+应用日志信息： 包名，{1=启动时间，2=关闭时间}
+除com.tcl.TVBasicBehavior 和 com.tcl.tv 包名外的为应用启动关闭信息
+例：com.ktcp.video,{1=2017-08-27 19:32:42,2=2017-08-27 20:52:26}
+完整一条记录例子：
+IPAddress=36.149.39.28;Clienttype=9631d13665480c3a8e6caf026ff9cb57;dnum=370e3f3b9b80c44903b94d58b9d64b20;macline=56d7edeca67625b05cd4fc3504d098df;macwifi=765a39e4a0028a97f9985ff1aa8cefcd;license=tencent;com.tcl.TVBasicBehavior,{1=2017-08-27 08:14:03,2=2017-08-27 09:19:54};com.tcl.TVBasicBehavior,{1=2017-08-27 12:10:31,2=2017-08-27 14:11:13};com.tcl.TVBasicBehavior,{1=2017-08-27 14:52:35,2=2017-08-27 15:13:27};com.tcl.TVBasicBehavior,{1=2017-08-27 19:04:17,2=2017-08-27 20:01:36};com.ktcp.video,{1=2017-08-27 08:17:03,2=2017-08-27 09:19:54};com.ktcp.video,{1=2017-08-27 12:15:03,2=2017-08-27 14:11:13};com.ktcp.video,{1=2017-08-27 14:52:40,2=2017-08-27 15:13:27};com.ktcp.video,{1=2017-08-27 19:04:34,2=2017-08-27 20:04:37}
+
+
+sql("select count(1) from hr.tracker_oc_fact_tcl  where power_on_day = '2017-09-11' ").show
++-------+
+|    _c0|
++-------+
+|2836846|
+
+ sql("select count(1) from hr.tracker_oc_fact_tcl  where power_on_day = '2017-09-11' ").show
++-------+
+|    _c0|
++-------+
+|2841957|
++-------+
+
+
+
+
+scala> sql("select count(1) from hr.tracker_apk_fact_tcl  where dim_date = '2017-09-11' ").show
++-------+
+|    _c0|
++-------+
+|1492047|
++-------+
+
+scala> sql("select count(1) from hr.tracker_apk_fact_tcl  where dim_date = '2017-09-11' ").show
++-------+
+|    _c0|
++-------+
+|1519534|
++-------+
+
+
+============================================
+
+ch-live
+
+
+序号 字段 描述
+1 create_time 指纹创建时间
+2 status_code 状态码，1000为正常识别，3000未识别
+3 source 数据来源品牌，比如：长虹，TCL
+4 duration 本次识别耗费时长
+5 channel_code 频道code
+6 channel_name 频道名称
+7 result_type 结果类型，21为云端识别，11为终端识别
+8 time_diff 信源时差
+9 inputsource_type 信源类型
+10 dnum
+11 client_ip 终端IP
+12 api_version API版本
+13 mac 有线mac
+14 w_mac 无线mac
+15 device_id 设备ID
+16 client_type 终端类型
+17 product_code 销售机型
+18 terminal_version 终端程序版本
+  分隔符“,”
+
+-----------------------------------------------------
+ch 长虹
+
+4.1.3台标识别结果上报
+
+功能：接收终端上报的台标识别结果
+
+ HTTP请求方式|接口URL
+POST http://livemonitor.huan.tv/api/v1/client/report
+
+请求参数
+
+请求参数说明
+无请求参数，但是http request body中需有请求json字符串。
+
+请求json参数说明
+参数名	类型	是否必须	描述
+inputsource_type	string	是	信源类型
+如：DTV、ATV、HDMI、AV
+channel_name	string	否	频道名称
+注：在DTV模式下有能会获取到当前频道
+channel_code	string	否	频道code
+注：在DTV模式下有能会获取到当前频道
+dnum	string	是	设备序列号
+device_id	string	是	设备ID如：06275e830dc64221a92ac18c00cd7b2437ec8c9c
+mac	string	是	TV终端网卡Mac值
+如：00-10-20-30-40-50
+w_mac	string	否	TV终端无线网卡Mac值
+如：00-10-20-30-40-50
+create_time	string	是	终端识别频道的时间
+api_version	string	是	协议版本
+source	string	是	数据来源品牌，比如：CH、TCL
+terminal_version	string	是	直播识别apk终端版本
+product_code	string	是	销售机型
+result_type	string	是	结果类型，21为云端识别，11为终端识别
+client_type	string	是	设备机型编码
+如：TCL-CN-MS901-V7600A-3D
+响应json字段说明
+参数名	类型	Url Encoded	描述
+status_code	uint	否	状态吗
+请求json示例
+{
+	"inputsource_type":"",
+	"channel_name":"中央1套综合频道",
+“channel_code”:”cctv1”,
+"dnum":"",
+"device_id":"",
+"mac ":"",
+"w_mac ":"",
+“api_version”:"1.0",
+“source”:"CH",
+"client_type":"xxx",
+" result_type":"11",
+“terminal_version”:"1.0",
+“product_code”:"xxx"
+}
+响应json示例
+示例1：直接返回结果并有识别结果。
+{
+    "result":
+        {
+            "status_code": 1000,
+        }
+
+}
+5.异常码
+类别	异常码	异常描述	备注
+API
+	1000	success	成功后，返回此异常码
+	1001	input parameter error	参数错误
+	1002	system error	系统错误
+	1003	black fingerprint	图片类型的指纹黑屏
+	1004	image detail info missing	图像细节信息缺失
+	3000	unknown channel	未识别出频道
+	3001	client fp length error	客户端上报的指纹长度错误
+	3002	server fp length error	云端指纹长度错误
+
+
+
+
+1 设备数据
+1.1 概述
+   设备数据包含了设备主要的需要采集的数据，subClass为deviceInfo。
+1.2 协议
+   “设备数据上报协议”：
+reportType:normal|saveType:append|sort:systemInfo|subClass:deviceInfo
+|reportInfo:JiXin=ZLM60HiS2;ProductName=60Q2C;Mac=
+9cB6D0041E3D;SwVersion=ZLM60HiS2-V1000.01;BarCode=
+0011001101;Location.province=四川省;Location.city=绵阳
+市;Location.district=高新区;Location.street=绵兴东路35
+号; Location.longitude=xxx；Location.latitude=xxx；
+App.com.changhong.test1=0.0.1;App.com.changhong.test2=
+1.1.1;App.com.changhong.test3=1.0.1
+   协议字段说明：
+   公共字段就不做解释了，只说明reportInfo内容中的字段含义：
+   1.2.1 JiXin：机芯名称
+   1.2.2 ProductName：机型名称
+   1.2.3 Mac：MAC地址
+   1.2.4 SwVersion：整机软件版本号
+   1.2.5 BarCode：条形码
+   1.2.6 Location：地理位置信息
+        Location.province：省
+        Location.city：市
+   		Location.district：区
+        Location.street：街
+Location.longitude：经度
+Location.latitude：维度
+   1.2.7 packageName=versionName
+      Location字段后面跟着一组“应用包名=应用版本号”。应用列表的使用场景：通	  过判断某个应用的版本，来判断该机器是否搭载虹领巾等。
+
+3 应用使用数据
+3.1 概述
+应用使用数据指的是终端设备中已安装应用的基本使用数据，包括使用次数、时长等信息，subClass为usagestatistics。
+3.2 协议
+“应用使用数据上报协议”
+reportType:action|saveType:append|sort:systemInfo|subClass: usagestatistics
+|reportInfo:package=XXX;version=0.0.1;count=XXX;duration=XXX
+协议字段说明
+4.2.1 package：应用包名
+4.2.2 versionName：应用版本号
+4.2.3 count：应用使用次数
+4.2.4 duration：应用使用时长
+
+1 Launcher
+1.1 概述
+这里主要采集Launcher的用户使用行为，Launcher的subClass为launcher。
+1.2 协议
+  	1.2.1 “Launcher启动数据上报协议”（action：startLauncher）
+reportType:normal|saveType:append|sort:CH_APP|subClass:launcher
+|reportInfo:version=APK版本号;action=startLauncher
+协议字段说明：
+version：Launcher的版本号（versionName）
+action：startLauncher 表示启动Launcher。
+1.2.2 “Launcher使用时长数据上报协议”（action：lifetime）
+reportType:normal|saveType:append|sort:CH_APP|subClass:launcher
+|reportInfo:version=APK版本号;action=lifetime;duration=3（秒）
+协议字段说明：
+version：Launcher的版本号（versionName）
+action：lifetime 表示该上传Launcher使用时长
+duration：Launcher的使用时长
+1.2.3 “Launcher门户浏览数据上报协议”（action：viewPortal）
+reportType:normal|saveType:append|sort:CH_APP|subClass:launcher
+|reportInfo:version= 版本号;action=viewPortal;portalName=门户名字
+协议字段说明：
+version：Launcher的版本号（versionName）
+action：viewPortal表示门户浏览行为
+portalName：浏览的门户名称
+1.2.4 “Launcher海报点击数据上报协议”（action：clickPoster）
+reportType:normal|saveType:append|sort:CH_APP|subClass:launcher
+|reportInfo:version=APK版本号;action=clickPoster;name=海报名;
+id=海报id(URL);type=类型（数据类型）;properties=内容属性;
+portalName=门户名;blockSize=整体大小;posterLocation=单个海报位置;
+posterSize=单个海报大小;showType=呈现方式（海报类型）;
+txt=文字信息;superscript=角标
+协议字段说明：
+version：Launcher的版本号（versionName）
+action：clickPoster表示用户点击海报
+name：海报名称
+id：海报URL
+type：数据类型
+properties：内容属性
+portalName：门户名称
+blockSize：整体大小
+posterLocation：单个海报位置
+posterSize：单个海报大小
+showType：呈现方式
+txt：文字信息
+superScript：角标
+
+-------------
+
+ 9 腾讯客户端
+ 9.1 概述
+      腾讯视频信息采集，其subClass为tencent。
+ 9.2 协议
+ 	9.2.1 进入点播详情页协议
+reportType:action|saveType:append|sort:tencent|subClass:tencent|reportInfo:	version=1.0.0;vid=xxx;action=Enter;cid=40fwk52430oftca;Page=Detail_Page
+ 	9.2.2 点播开播协议
+reportType:action|saveType:append|sort:tencent|subClass:tencent|reportInfo:	version=1.0.0;vid=xxx;action=Start;Page=Video_VOD
+ 	9.2.3 点播退出协议
+reportType:action|saveType:append|sort:tencent|subClass:tencent|reportInfo:	version=1.0.0;vid=xxx;action=Quit;Page=Video_VOD
+9.2.4 添加收藏协议
+reportType:action|saveType:append|sort:tencent|subClass:tencent|reportInfo:	version=1.0.0;vid=xxx;action=add;cid=40fwk52430oftca;action=add;
+Page=Video_Fav
+9.2.5 删除收藏协议
+reportType:action|saveType:append|sort:tencent|subClass:tencent|reportInfo:	version=1.0.0;vid=xxx;action=rm;cid=40fwk52430oftca;action=rm;
+Page=Video_Fav
+9.2.6 影片搜索，用户进行搜索时
+reportType:action|saveType:append|sort:tencent|subClass:tencent|
+reportInfo:version=1.0.0;action=query;query=JMO;qresult=1;
+Page=Video_Search
+ 	9.2.7 播放腾讯特有的网络直播。NBA和演唱会，开始播放时协议
+reportType:action|saveType:append|sort:tencent|subClass:tencent|
+reportInfo:version=1.0.0;vid=xxx;action=Start;Page=Video_LB
+ 	9.2.8 播放腾讯特有的网络直播。NBA和演唱会，退出播放时协议
+reportType:action|saveType:append|sort:tencent|subClass:tencent|
+reportInfo:version=1.0.0;vid=xxx;action=Quit;Page=Video_LB
+ 	9.2.9 用户购买收费影片内容成功后协议
+reportType:action|saveType:append|sort:tencent|subClass:tencent|
+reportInfo:version=1.0.0;action=buy;vid=x002088g7jq;Page=Video_Buy
+ 	9.2.10 用户切换浏览目录/分类的时候
+reportType:action|saveType:append|sort:tencent|subClass:tencent|
+reportInfo:version=1.0.0;uid=BB23BB1565A1C26E9B1467EDE874186A;
+Page=Video_Cat
+ 	9.2.11 VIP会员登录APP的时候
+reportType:action|saveType:append|sort:tencent|subClass:tencent|reportInfo:	version=1.0.0;action=uvip;uid=BB23BB1565A1C26E9B1467EDE874186A;
+Page=Video_UVip
+
+
+{"d1":"40r6lETxNXU","name":"初音岛Ⅰ第一季","title":"初音岛Ⅰ_003","video_id":"40r6lETxNXU","cover_id":"0e5vbeoe011lsdk","update_time":"2017-04-05 21:33:17","categorys":"动漫"}{"Mac":"00:00:00:00:00:00","Data":["reportType:action|saveType:append|sort:tencent|subClass:tencent|reportInfo:Page=Detail_Page;version=1.9.0.2169.925;cid=fd7wc830c0q11qb;action=Enter;time=201704271138|time:2017-04-27 11:38:58","reportType:action|saveType:append|sort:tencent|subClass:tencent|reportInfo:Page=Detail_Page;version=1.9.0.2169.925;cid=g7jpq0qd0k8xdca;action=Enter;time=201704271137|time:2017-04-27 11:37:27"]} 1
+
+
+长虹的film
+2）表中：video_id即vid; cover_id即cid;name即name,title即title;update-time即update-time
+3）title和vid是一一对应关系。
+4）Name是节目名称，title是到集的名称。
+3）Name和cid是一一对应关系，title和vid是一一对应关系。
+
+
+=================
+
+康佳
+
+  ● tv_logo.txt
+
+一行代表一条数据，数据字段之间以‘|’分隔，如下：
+MAK1517WC032958H2YH1|171.94.168.247|LED49R6610U_1BOM|rtd2995d|49|北京卫视|2016-08-22 00:01:15
+
+MAK1517WC032958H2YH1 串号
+171.94.168.247 IP
+LED49R6610U_1BOM 机型
+rtd2995d 平台
+49 尺寸
+北京卫视 观看电视台
+2016-08-22 00:01:15 时间
+
+
+activity.txt
+一行代表一条数据，数据字段之间以‘|’分隔，如下：
+MDJ1532W00137832YDP1|111.19.73.87|LED49T60U_1BOM|rtd2995d|49|999900|com.ktcp.launcher|com.ktcp.launcher.LauncherMainActivity|2016-07-14|19|1|41
+
+MDJ1532W00137832YDP1  串号
+111.19.73.87  IP
+LED49T60U_1BOM  机型
+rtd2995d 平台
+49 尺寸
+999900 地域代码
+com.ktcp.launcher 包名
+com.ktcp.launcher.LauncherMainActivity activity名称
+2016-07-14 日期
+19 整点
+1 使用次数
+41 停留时长
+
+
+id	dim_apk	dim_hour	dim_date	dim_sn	fact_fact	fact_duration
+	apk package	时	日期	终端唯一码	启动次数	时长	区域码
+
+
+  ●
+      ○ distinct_total.txt
+一行代表一条数据，数据字段之间以‘|’分隔，如下
+LNU1442WD026360ELSC4|124.166.244.143|LED55X9600UF_4BOM|rtd2995d|55|140400|2014-10-17|2016-07-30
+
+LNU1442WD026360ELSC4 串号
+124.166.244.143 IP
+LED55X9600UF_4BOM 机型
+rtd2995d |平台
+55 尺寸
+140400 地域代码
+2014-10-17 生产时间
+2016-07-30 激活时间
+
+  ●
+      ○ duration.txt
+一行代表一条数据，数据字段之间以‘|’分隔，如下：
+LWR1415YD0019292UU51|116.207.89.124|LED42K70U_1BOM|rtd2995d|42|421000|2016-07-12 23:05:42|65|2016-07-15 04:22:31
+
+LWR1415YD0019292UU51 串号
+116.207.89.124  IP
+LED42K70U_1BOM  机型
+rtd2995d 平台
+42 尺寸
+421000 地域代码
+2016-07-12 23:05:42 开机时间
+65 开机时长（单位：分钟）
+2016-07-15 04:22:31  记录创建时间
+
+
+
+MAK1452K50223998HLE3 122.241.192.129 LED49R6610U_3BOM rtd2995d 49 功夫瑜伽 CIBN 2017/3/27 21:39
+LZX1438W9021452MMYH1 106.114.23.150 LED55R6610U_1BOM rtd2995d 55 功夫瑜伽 CIBN 2017/3/28 0:13
+LZF1439W1037718HWYH1 14.219.119.181 LED42R6610AU_1BOM rtd2995d 42 海底总动员2 ISMARTV 2017/3/27 21:10
+LZX1517W9019105OXJV1 117.37.56.109 LED55R6610U_1BOM rtd2995d 55 星球大战外传:侠盗一号 CIBN 2017/3/28 0:20
+
+=======================================================
+
+日志统计（发邮件）
+
+ /bin/bash  /home/cronjob/view/log-send-mail.sh
+guxiaoyang@avc-mr.com
+
+
+hadoop fs -ls -R -h  /user/hdfs/rsync/COOCAA/20170430
+
+hadoop fs -du -s -h /user/hdfs/rsync/COOCAA/201704*/
+
+
+hadoop fs -du -h $CH_PATH/`date -d @${i} +%Y-%m-%d`   | awk '{print $5","$1$2}' | grep '^[/]'  | sed 's/\//,/g'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+本地测试->yarn client->cronjob +  yarn cluster
+
+
+历史数据清洗问题
+
+  =问题===========
+直播数据
+2.2 G    6.7 G   /user/hive/warehouse/hr.db/tracker_live_fact_partition/date=2017-08-15
+2.3 G    6.8 G   /user/hive/warehouse/hr.db/tracker_live_fact_partition/date=2017-08-16
+
+2.5 G    7.4 G   /user/hive/warehouse/hr.db/tracker_live_fact_partition/date=2017-08-17
+2.5 G    7.6 G   /user/hive/warehouse/hr.db/tracker_live_fact_partition/date=2017-08-18
+2.4 G    7.1 G   /user/hive/warehouse/hr.db/tracker_live_fact_partition/date=2017-08-19
+2.3 G    6.8 G   /user/hive/warehouse/hr.db/tracker_live_fact_partition/date=2017-08-20
+2.1 G    6.3 G   /user/hive/warehouse/hr.db/tracker_live_fact_partition/date=2017-08-21
+2.1 G    6.2 G   /user/hive/warehouse/hr.db/tracker_live_fact_partition/date=2017-08-22
+2.0 G    6.1 G   /user/hive/warehouse/hr.db/tracker_live_fact_partition/date=2017-08-23
+1.9 G    5.7 G   /user/hive/warehouse/hr.db/tracker_live_fact_partition/date=2017-08-24
+1.8 G    5.3 G   /user/hive/warehouse/hr.db/tracker_live_fact_partition/date=2017-08-25
+1.8 G    5.3 G   /user/hive/warehouse/hr.db/tracker_live_fact_partition/date=2017-08-26
+1.3 G    4.0 G   /user/hive/warehouse/hr.db/tracker_live_fact_partition/date=2017-08-27
+
+1.1 G    3.3 G   /user/hive/warehouse/hr.db/tracker_live_fact_partition/date=2017-08-28
+
+820.4 M  2.4 G   /user/hive/warehouse/hr.db/tracker_live_fact_partition/date=2017-08-31
+1.1 G    3.3 G   /user/hive/warehouse/hr.db/tracker_live_fact_partition/date=2017-09-05
+3.9 G    11.6 G  /user/hive/warehouse/hr.db/tracker_live_fact_partition/date=2017-09-11
+3.9 G    11.6 G  /user/hive/warehouse/hr.db/tracker_live_fact_partition/date=2017-09-11
+
+
+数据缺失
+2.1 G    6.4 G   /user/hive/warehouse/hr.db/tracker_live_fact_partition/date=2017-08-12
+2.0 G    5.9 G   /user/hive/warehouse/hr.db/tracker_live_fact_partition/date=2017-08-14
+957.8 M  2.8 G   /user/hive/warehouse/hr.db/tracker_live_fact_partition/date=2017-08-29
+
+
+应用数据
+
+
+#长虹剧集的数据
+6.9 M    20.6 M  /user/hive/warehouse/hr.db/tracker_player_fact_ch/date=2017-08-22 日志缺失
+
+
+clean-epg
+
+clean-partition-play
+
+clean-crawler-searchIndex
+
+=============
+
+资源分配
+
+每天的清洗任务
+	任务分解
+	oc
+
+	live
+
+	apk
+
+	play
+
+	...
+
+
+临时清洗任务
+
+	历史清洗任务 （参数形式）
+		任务分解
+		oc
+
+		live
+
+		apk
+
+		play
+
+		...
+
+
+	历史导入分区表（参数形式）
+		任务分解
+		oc
+
+		live
+
+		apk
+
+		play
+
+		...
+
+
+结果检查
+   hadoop fs -du -h /user/hive/warehouse/hr.db/tracker_oc_fact_partition
+   hadoop fs -du -h /user/hive/warehouse/hr.db/tracker_live_fact_partition
+   hadoop fs -du -h /user/hive/warehouse/hr.db/tracker_apk_fact_partition
+hadoop fs -du -h  /user/hive/warehouse/hr.db/tracker_player_fact_ch
+
+ 程序
+	daily
+	his
+	test
+
+====================
+
+TCL
+
+TCL开关机日志清洗规则：
+	1、读取近三天的日志
+	2、提取sn(取有线mac，如果没有取无线mac)、取com.tcl.TVBasicBehavior和com.tcl.tv包名的开始时间和结束时间 作为开关机的开始和结束时间
+	3、排除近三天日期之外的数据
+	4、分时(时长和次数细分到小时)，时长单位改成分钟
+	5、写入hive表
+
+旧规则:
+记录数：4400214
+终端数：499632
+累计时长：170209185
+
+
+新规则:
+记录数：3588326
+终端数：499632
+累计时长：133121645
+
+lftp aowei:9xHo7280QBw=@123.125.36.171:65000
+
+
+
+=========================
+酷开
+
+
+
+
+=================================
+长虹
+
+长虹新规则数据测试需求文档
+一、需求背景：
+目前长虹的数据核对已结束，调整新规则后对我们前端已展示数据会造成以下影响:
+1、TV总览：开机时长偏低；
+2、点播分析：各应用的日活、每终端时长偏低；
+3、以及由这两个问题可能衍生的其他数据影响，如从逻辑上需要保证直播端和点播端的时长相加小于开机时长等。
+    鉴于此，我们在正式使用新规则前需要对数据进行一段时间观察，并适当调整后期的推总逻辑等。
+
+二、目的：
+保证长虹按新的清洗规则处理后，前端数据逻辑不出问题 。
+
+三、需求描述：
+第一步，在测试表中按新规则清洗7月的长虹开关机和应用日志
+注意事项：
+1、新建测试表进行清洗，不能影响目前前端跑的数
+2、新规则：同永甜与长虹技术确认的最终规则（具体规则请技术同事配合整理文档）
+（1）开关机：按过滤只有一条心跳的终端的结果（见下图红框框）
+
+
+
+（2）应用：按过滤次数时长的结果（见下图红框框）
+
+
+
+
+第二步：提供新清洗规则下的开机、各应用结果数据表
+注意：以下数据计算，都是基于固定样本库的数据，而不是长虹全量数据
+（1）开机的数据表
+数据维度：分日、周、月；分地区（全国、各省份)；分智能电视、ott端的终端数、次数、时长、每终端时长、开机率等指标数据，具体指标见下表。
+日期维度：7月份，2017.07.01-2017.7.31
+数据源：第一步中的测试表
+具体输出数据表的格式如下：
+
+
+
+（2）应用数据表
+数据维度：分日、周、月；分地区（全国、各省份)；9家APK的终端数、次数和时长等数据，具体指标见下表。
+日期维度：7月份，2017.07.01-2017.7.31
+Apk：银河奇异果、云视听极光、CIBN环球影视、芒果TV、CIBN微视听、云视听·泰捷、CIBN聚体育、CIBN聚精彩、CIBN悦厅TV
+数据源：第一步中的测试表
+具体输出数据表的格式如下：
+
+
+具体输出数据表可见附件Excel文件“长虹测试结果数据表”
+
+新规则-验证-apk
+apk
+应用名称改为包名
+SELECT t.date, 'CH' AS brand,ai.appname, COUNT(DISTINCT t.dim_sn), SUM(t.dura)
+	, SUM(t.u_cnt)
+FROM (SELECT tp.date, tp.dim_sn, tp.dim_apk, SUM(tp.fact_duration) / 3600 AS dura, SUM(tp.fact_cnt) AS u_cnt
+	FROM hr.tracker_apk_fact_partition tp
+	WHERE date IN (
+			'2017-06-12',
+			'2017-06-13',
+			'2017-06-14',
+			'2017-06-15',
+			'2017-06-16',
+			'2017-06-17',
+			'2017-06-18'
+		)
+		AND key LIKE '%CH'
+	GROUP BY tp.date, tp.dim_apk, tp.dim_sn
+	) t
+JOIN hr.apkinfo ai ON t.dim_apk = ai.packagename
+WHERE t.u_cnt > 0
+	AND t.u_cnt <= 10
+	AND t.dura > 0
+	AND t.dura <= 8
+GROUP BY t.date,ai.appname
+
+cat  /home/cronjob/zyt/out  | grep -E "银河·奇异果|腾讯视频TV端|CIBN环球影视|芒果TV|电视猫视频|CIBN微视听|云视听泰捷"
+
+总记录数量
+SELECT t.date, 'CH' AS brand, COUNT(1)
+FROM (SELECT tp.date, tp.dim_sn, tp.dim_apk, SUM(tp.fact_duration) / 3600 AS dura, SUM(tp.fact_cnt) AS u_cnt
+	FROM hr.tracker_apk_fact_partition tp
+	WHERE date IN (
+			'2017-06-12',
+			'2017-06-13',
+			'2017-06-14',
+			'2017-06-15',
+			'2017-06-16',
+			'2017-06-17',
+			'2017-06-18'
+		)
+		AND key LIKE '%CH'
+	GROUP BY tp.date, tp.dim_apk, tp.dim_sn
+	) t
+GROUP BY t.date
+
+[2017-06-12,CH,2139953]
+[2017-06-13,CH,2119455]
+[2017-06-14,CH,2094925]
+[2017-06-15,CH,1977795]
+[2017-06-16,CH,2131190]
+[2017-06-17,CH,2413753]
+[2017-06-18,CH,2462892]
+
+剩余的记录数
+SELECT t.date, 'CH' AS brand,count(1)
+FROM (SELECT tp.date, tp.dim_sn, tp.dim_apk, SUM(tp.fact_duration) / 3600 AS dura, SUM(tp.fact_cnt) AS u_cnt
+	FROM hr.tracker_apk_fact_partition tp
+	WHERE date IN (
+			'2017-06-12',
+			'2017-06-13',
+			'2017-06-14',
+			'2017-06-15',
+			'2017-06-16',
+			'2017-06-17',
+			'2017-06-18'
+		)
+		AND key LIKE '%CH'
+	GROUP BY tp.date, tp.dim_apk, tp.dim_sn
+	) t
+WHERE t.u_cnt > 0
+	AND t.u_cnt <= 10
+	AND t.dura > 0
+	AND t.dura <= 8
+GROUP BY t.date
+
+
+mysql
+
+SELECT * FROM `DataCleanCHApkCnt` WHERE dateType = 'monthly'
+
+
+
+----------
+开关机
+
+sql("select date,count(distinct sn) as acnt,sum(power_on_length) as power_on_length,sum(cnt) as cnt from hr.tracker_oc_fact_partition    where key like '%CH%' and date = '2017-07-02' group by date").show
+|2017-07-02 |2004492|7.6062168E8|4808872.0|
+
+
+sql("select power_on_day,count(distinct sn) as acnt,sum(power_on_length) as power_on_length,sum(cnt) as cnt  from hr.tracker_oc_fact_ch where power_on_day = '2017-07-02'  group by power_on_day").show
+
+|power_on_day|   acnt|power_on_length|      cnt|
++------------+-------+---------------+---------+
+|  2017-07-02|2015847|    1.7118084E7|4997280.0|
++------------+-------+---------------+---------+
+
+
+
+sql("select date,sum(terminal_cnt) from hr.tracker_tv_overview_partition where date = '2017-07-02' and brand = 'CH' and  behavior_type ='智能电视开机'  group by date").show
+1489821
+
+sql("select distinct power_on_day from hr.tracker_oc_fact_ch").show(40)
+===============================================================================
+(00:6c:fd:6a:0c:8e,MutableList())
+(d8:47:10:a5:5c:f6,MutableList(HeartResultByMinute(2017-06-12 20:34:52,20,0,1)))
+(d8:47:10:a7:82:c3,MutableList(
+HeartResultByMinute(2017-06-12 07:59:59,7,0,1),
+HeartResultByMinute(2017-06-12 07:59:59,8,43,0),
+HeartResultByMinute(2017-06-12 10:16:51,10,24,1),
+HeartResultByMinute(2017-06-12 12:12:20,12,47,1),
+HeartResultByMinute(2017-06-12 12:12:20,13,9,0),
+HeartResultByMinute(2017-06-12 13:36:47,13,0,1),
+HeartResultByMinute(2017-06-12 15:03:29,15,29,1)))
+
+
+
+OCFactPartition(CH,d8:47:10:a5:5c:f6,2017-06-12,20,0,1,2017-06-12)
+OCFactPartition(CH,d8:47:10:a7:82:c3,2017-06-12,7,0,1,2017-06-12)
+OCFactPartition(CH,d8:47:10:a7:82:c3,2017-06-12,8,43,0,2017-06-12)
+OCFactPartition(CH,d8:47:10:a7:82:c3,2017-06-12,10,24,1,2017-06-12)
+OCFactPartition(CH,d8:47:10:a7:82:c3,2017-06-12,12,47,1,2017-06-12)
+OCFactPartition(CH,d8:47:10:a7:82:c3,2017-06-12,13,9,0,2017-06-12)
+OCFactPartition(CH,d8:47:10:a7:82:c3,2017-06-12,13,0,1,2017-06-12)
+OCFactPartition(CH,d8:47:10:a7:82:c3,2017-06-12,15,29,1,2017-06-12)
+
+
+
+OCFactPartition(d8:47:10:a7:82:c32017-06-1210CH,d8:47:10:a7:82:c3,2017-06-12,10,24,1,2017-06-12)
+OCFactPartition(d8:47:10:a5:5c:f62017-06-1221CH,d8:47:10:a5:5c:f6,2017-06-12,21,4,0,2017-06-12)
+OCFactPartition(d8:47:10:a7:82:c32017-06-1221CH,d8:47:10:a7:82:c3,2017-06-12,21,2,0,2017-06-12)
+OCFactPartition(d8:47:10:a7:82:c32017-06-1215CH,d8:47:10:a7:82:c3,2017-06-12,15,10,1,2017-06-12)
+OCFactPartition(d8:47:10:a5:5c:f62017-06-1220CH,d8:47:10:a5:5c:f6,2017-06-12,20,2,1,2017-06-12)
+OCFactPartition(d8:47:10:a7:82:c32017-06-128CH,d8:47:10:a7:82:c3,2017-06-12,8,10,1,2017-06-12)
+OCFactPartition(d8:47:10:a7:82:c32017-06-127CH,d8:47:10:a7:82:c3,2017-06-12,7,2,1,2017-06-12)
+OCFactPartition(d8:47:10:a7:82:c32017-06-1213CH,d8:47:10:a7:82:c3,2017-06-12,13,12,1,2017-06-12)
+OCFactPartition(00:6c:fd:6a:0c:8e2017-06-1211CH,00:6c:fd:6a:0c:8e,2017-06-12,11,2,1,2017-06-12)
+
+d8:47:10:a7:82:c3
+d8:47:10:a5:5c:f6
+
+
+d8:47:10:a7:82:c3
+00:6c:fd:6a:0c:8e
+d8:47:10:a5:5c:f6
+
+
+
+d8:47:10:a7:82:c3
+d8:47:10:a5:5c:f6
+18:99:f5:52:ac:c1
+98:2f:3c:32:b8:fe
+
+
+18:99:f5:52:ac:c1
+98:2f:3c:32:b8:fe
+d8:47:10:a7:82:c3
+d8:47:10:a5:5c:f6
+
+
+2017-07-02@DataCleanCHPowerOn01 start....
+1941648
+2017-07-02@DataCleanCHPowerOn01 end....
+
+
+
+
+
+2375202
+
+
+===============
+康佳
+
+
+开关机
+日志示例：
+MFU1519W0005438OGXX1|123.125.1.24|LED48U60_1BOM|mst628|48|110000|2017-09-16 22:15:43|19|2017-09-18 03:00:08 MCD1519K4016022ACXX2|112.24.219.29|LED32M2600B_2BOM|mst628|32|331000|2017-09-16 20:44:35|89|2017-09-18 03:00:08 MCD1529K4048862WNXX2|39.188.144.60|LED32M2600B_2BOM|mst628|32|330000|2017-09-17 15:52:36|17|2017-09-18 03:00:08
+
+清洗日志： duration.log
+1、 首先过滤掉一些非法的数据
+2、 取当天日志对应的最近三天的数据
+3、 根据厂商日志字段说明分析得到 sn（串号）、开机时间、开机时长（分钟）
+4、 根据开机时间和开机时长分析，分时（将时长和次数拆分到小时粒度），得到某个终端某天某个小时的时长和次数
+5、 数据写入hbase
+
+
+直播
+日志示例：
+MEC1516K30016092MXX1|183.198.10.42|LED49M70A_1BOM|mst628|49|山东卫视|2017-09-17 00:00:05 MCQ1532W5022497N6XX1|219.153.91.125|LED40M2600B_1BOM|mst628|40|CCTV-4|2017-09-17 00:00:05 MCD1530K3036829ACXX2|183.39.178.54|LED32M2600B_2BOM|mst628|32|CCTV-15|2017-09-17 00:00:06
+
+清洗日志： tv_logo.log
+1、 首先过滤掉一些非法的数据
+2、 取当天日志对应的最近三天的数据
+3、 根据厂商日志字段说明分析得到频道、sn、时间，
+4、 根据终端唯一标识和日期分组，按时间排序
+5、 根据630秒的数据发送平均时间间隔，对数据按分钟粒度划分时长和次数，计算出分钟内的次数时长
+异常情况处理的规则如下：d
+如果时间间隔大于630秒 end时间就延长5分钟
+如果只有一条数据 就算这条数据的剩余分钟数
+6、根据映射表将频道字段标准化
+7、数据写入hbase
+
+
+
+应用
+日志示例：
+MPW1712WC0213945DXX2|222.86.24.195|LED60R6000U_2BOM|mstar6a638|60|520100|com.konka.kksystemui|com.konka.kksystemui.historyWatch.HistoryWatchActivity|2017-09-16|14|1|4
+MGA1649W5019129N8XX3|115.226.62.203|A48F_3BOM|mstar6a638|48|330600|com.konka.ie|com.konka.ie.plugin.MyProxyActivity|2017-08-29|19|1|53
+MUG1639Z1008879XXXX1|36.102.208.113|S50U_1BOM|mstar6a638|50|330000|com.konka.multimedia|com.konka.multimedia.view.photo.PhotoPlayerActivity|2017-08-22|17|1|3600
+清洗日志： activity.log
+1、 首先过滤掉一些非法的数据
+2、 取当天日志对应的最近三天的数据
+3、 根据厂商日志字段说明分析得到 sn（串号）、包名、日期、小时、次数、时长
+4、 数据写入hbase
+
+===================================
+
+酷开
+
+应用
+
+清洗日志：aowei_appStatus
+1.3.1.1 过滤异常和com.tianci.tv包名的数据
+1.3.1.2 理清启动时间 退出时间和时长的顺序
+1.3.1.3 根据牌照修改com.tianci.movieplatform包名
+1.3.1.4 取近三天的数据
+1.3.1.5 分时
+1.3.1.6 汇总次数和时长
+1.3.1.7 数据写入hbase，key是sn+apk+日期+小时+CC ： tracker_apk_active_fact
+
+
+
+酷开apk清洗规则：
+	1、提取
+	2、过滤异常和com.tianci.tv包名的数据
+	3、理清启动时间 退出时间和时长的顺序
+	4、根据拍照修改com.tianci.movieplatform包名
+	5、取近三天的数据
+	6、分时
+	7、汇总次数和时长
+	8、写入分区表
+
+到剧：
+清洗日志：aowei_PlayerControl
+1.3.2.1、提取过滤
+1.3.2.2、配对：
+1.3.2..2.1 根据sn和资源名称，start和stop时间排序配对，配对不成功的，当成无效资源。
+1.3.2..2.2 Start和stop不在一个整点的情况，以配对的start记录整点时间。
+1.3.2..2.3 Start出现的次数记录VV，stop的时长记录为时长
+1.3.2..2.4 如果有多个start、stop配对成功取时间间隔最小的那对
+1.3.2.3、过滤包含关键词的剧
+1.3.2.4、通过资源名称 关联内容库 获取剧的类型、awcid、年份、集数等信息：
+1.3.2.4.1 剧名转换：数字转换、去版本、去书名号、去特殊符号
+1.3.2.4.2 匹配顺序：电影、电视剧、动画片、综艺；
+		原始名称、标准名称；
+ 1.3.2.4.3 判断标准：
+		电影： 【电影名称】【版本】 //不包含集数和第
+		电视剧：8位数字/空 书名号 数字 去符号 版本 集数
+		动画片：数字 名称 版本 集数 无关字段
+		综艺 8位数字 书名号 去空格 版本 期数
+1.3.2.5、统计不匹配的数据并保存
+1.3.2.6、分时
+1.3.2.7、汇总次数和时长
+1.3.2.8 数据写入hbase，key是sn+title+集数+日期+小时+CC： tracker_player_active_fact
+
+
+
+酷开到剧清洗规则：
+	1、提取过滤
+	2、配对：
+		根据sn和资源名称，start和stop时间排序配对，配对不成功的，当成无效资源。
+		Start和stop不在一个整点的情况，以配对的start记录整点时间。
+		Start出现的次数记录VV，stop的时长记录为时长
+		如果有多个start、stop配对成功取时间间隔最小的那对
+	3、过滤包含关键词的剧
+	4、通过资源名称 关联内容库 获取剧的类型、awcid、年份、集数等信息：
+		剧名转换：数字转换、去版本、去书名号、去特殊符号
+		匹配顺序：
+			电影、电视剧、动画片、综艺；
+			原始名称、标准名称；
+		判断标准：
+			电影： 【电影名称】【版本】 //不包含集数和第
+			电视剧：8位数字/空 书名号 数字 去符号 版本 集数
+			动画片：数字 名称 版本 集数 无关字段
+			综艺 8位数字 书名号 去空格 版本 期数
+	5、统计不匹配的数据并保存
+	6、分时
+	7、汇总次数和时长
+	8、写入分区表
+
+验证：
+
+select count(1),dim_date from hr.tracker_player_fact where key like '%CC' group by dim_date
+
+===============================================================
+
+新数据格式
+
+电影匹配执行时间1
+综艺匹配执行时间7
+电影匹配执行时间0
+动画片匹配执行时间5
+电视剧匹配执行时间4
+电视剧匹配执行时间0
+
+
+---------------
+
+分区表
+
+推总
+
+分省*系数
+
+查询直播次数时长推总中有31省市之外的日期
+
+select distinct lp.date from
+(
+select distinct dim_sn,date from hr.tracker_total_live_fact_partition
+) lp
+join hr.live_terminal t
+on lp.dim_sn = t.sn
+left join hr.tracker_total_dim_ratio_fst df
+on t.province = df.province
+where df.ratio is null
+
+where date='2017-04-01'
+过滤掉2017.04直播次数时长推总多余省份（31个 省市之外的）的数据
+
+ month(date) = 6
+
+[2017-04-01]
+[2017-04-02]
+[2017-04-03]
+[2017-04-04]
+[2017-04-05]
+[2017-04-06]
+[2017-04-07]
+[2017-04-08]
+[2017-04-09]
+[2017-03-01]
+[2017-03-02]
+[2017-03-03]
+[2017-03-04]
+[2017-03-05]
+[2017-03-06]
+[2017-03-07]
+[2017-03-08]
+[2017-03-09]
+[2017-02-01]
+[2017-02-02]
+[2017-02-03]
+[2017-02-04]
+[2017-02-05]
+[2017-02-06]
+[2017-02-07]
+[2017-02-08]
+[2017-02-09]
+[2017-01-01]
+[2017-01-02]
+[2017-01-03]
+[2017-01-04]
+[2017-04-10]
+[2017-01-05]
+[2017-01-06]
+[2017-04-12]
+[2017-01-07]
+[2017-04-13]
+[2017-01-08]
+[2017-01-09]
+[2017-03-10]
+[2017-03-11]
+[2017-03-12]
+[2017-03-13]
+[2017-03-14]
+[2017-03-15]
+[2017-03-16]
+[2017-03-17]
+[2017-03-18]
+[2017-03-19]
+[2017-02-10]
+[2017-02-11]
+[2017-02-12]
+[2017-02-13]
+[2017-02-14]
+[2017-02-15]
+[2017-02-16]
+[2017-02-17]
+[2017-02-18]
+[2017-02-19]
+[2017-01-10]
+[2017-01-11]
+[2017-01-12]
+[2017-01-13]
+[2017-01-14]
+[2017-01-15]
+[2017-01-16]
+[2017-01-17]
+[2017-01-18]
+[2017-01-19]
+[2017-03-20]
+[2017-03-21]
+[2017-03-22]
+[2017-03-23]
+[2017-03-24]
+[2017-03-25]
+[2017-03-26]
+[2017-03-27]
+[2017-03-28]
+[2017-02-20]
+[2017-03-29]
+[2017-02-21]
+[2017-02-22]
+[2017-02-23]
+[2017-02-24]
+[2017-02-25]
+[2017-02-26]
+[2017-02-27]
+[2017-02-28]
+[2017-01-20]
+[2017-01-21]
+[2017-01-22]
+[2017-01-23]
+[2017-01-24]
+[2017-01-25]
+[2017-01-26]
+[2017-01-27]
+[2017-01-28]
+[2017-01-29]
+[2017-03-30]
+[2017-03-31]
+[2017-01-30]
+[2017-01-31]
+
+
+推总前：
+SELECT DISTINCT t.province FROM (SELECT DISTINCT dim_sn FROM hr.tracker_live_fact_partition WHERE date = '2017-05-08' and dim_channel='厦门卫视' ) lp JOIN hr.live_terminal t ON lp.dim_sn = t.sn
+
+[其他]
+[江西省]
+[贵州省]
+[unknown]
+[陕西省]
+[内蒙古自治区]
+[广西壮族自治区]
+[安徽省]
+[西藏自治区]
+[黑龙江省]
+[河北省]
+[湖南省]
+[福建省]
+[江苏省]
+[浙江省]
+[辽宁省]
+[天津市]
+[甘肃省]
+[北京市]
+[海南省]
+[云南省]
+[上海市]
+[山西省]
+[湖北省]
+[重庆市]
+[山东省]
+[四川省]
+[吉林省]
+[河南省]
+[广东省]
+
+推总过程中：
+ SELECT DISTINCT t.province FROM (SELECT DISTINCT dim_sn FROM hr.tracker_live_fact_partition WHERE date = '2017-05-08' and dim_channel='厦门卫视') lp
+JOIN hr.live_terminal t
+ON lp.dim_sn = t.sn
+join
+(select * from hr.tracker_total_dim_ratio_fst where date ='2017-05-07')  ratio
+on
+ (ratio.brand = t .brand and ratio.province=t .province)
+
+
+ SELECT  lp.*  FROM (SELECT DISTINCT dim_sn FROM hr.tracker_total_live_fact_partition WHERE date = '2017-05-08' ) lp
+JOIN hr.live_terminal t
+ON lp.dim_sn = t.sn
+join
+(select * from hr.tracker_total_dim_ratio_fst where date ='2017-05-07')  ratio
+on
+ (ratio.brand = t .brand and ratio.province=t .province)
+
+
+
+
+select
+count(distinct sn)
+from
+ (select * from hr.tracker_total_dim_ratio_fst where date =date_sub('2017-05-08',1))  ratio
+join
+ (select sn,brand,province from hr.live_terminal) terminal
+on
+ (ratio.brand = terminal.brand and ratio.province=terminal.province)
+
+
+[江西省]
+[贵州省]
+[陕西省]
+[内蒙古自治区]
+[广西壮族自治区]
+[安徽省]
+[西藏自治区]
+[黑龙江省]
+[河北省]
+[湖南省]
+[福建省]
+[江苏省]
+[浙江省]
+[辽宁省]
+[天津市]
+[甘肃省]
+[北京市]
+[海南省]
+[云南省]
+[上海市]
+[山西省]
+[湖北省]
+[重庆市]
+[山东省]
+[四川省]
+[吉林省]
+[河南省]
+[广东省]
+
+
+=======================
+推总后-原始表
+ SELECT DISTINCT t.province FROM (SELECT DISTINCT dim_sn FROM hr.tracker_total_live_fact WHERE dim_date = '2017-05-08' and dim_channel='厦门卫视'
+) lp JOIN hr.live_terminal t ON lp.dim_sn = t.sn
+
+[江西省]
+[贵州省]
+[新疆维吾尔自治区]
+[陕西省]
+[内蒙古自治区]
+[广西壮族自治区]
+[安徽省]
+[西藏自治区]
+[黑龙江省]
+[河北省]
+[湖南省]
+[福建省]
+[江苏省]
+[浙江省]
+[辽宁省]
+[天津市]
+[甘肃省]
+[北京市]
+[海南省]
+[云南省]
+[上海市]
+[山西省]
+[湖北省]
+[重庆市]
+[山东省]
+[四川省]
+[吉林省]
+[河南省]
+[广东省]
+
+
+
+
+
+======================
+
+推总后-分区表：
+ SELECT DISTINCT t.province FROM (SELECT DISTINCT dim_sn FROM hr.tracker_total_live_fact_partition WHERE date= '2017-05-08' and dim_channel='厦门卫视') lp JOIN hr.live_terminal t ON lp.dim_sn = t.sn
+
+删除数据
+SELECT DISTINCT lp.key FROM (SELECT dim_sn, key FROM hr.tracker_total_live_fact_partition WHERE date = '2017-05-08' AND dim_channel = '厦门卫视' ) lp JOIN hr.live_terminal t ON lp.dim_sn = t.sn WHERE t.province = '新疆维吾尔自治区'
+
+
+[江西省]
+[贵州省]
+[新疆维吾尔自治区]
+[陕西省]
+[内蒙古自治区]
+[广西壮族自治区]
+[安徽省]
+[西藏自治区]
+[黑龙江省]
+[河北省]
+[湖南省]
+[福建省]
+[江苏省]
+[浙江省]
+[辽宁省]
+[天津市]
+[甘肃省]
+[北京市]
+[海南省]
+[云南省]
+[上海市]
+[山西省]
+[湖北省]
+[重庆市]
+[山东省]
+[四川省]
+[吉林省]
+[河南省]
+[广东省]
+
+
+==================================================================================
+系数
+
+licenseration
+tracker_total_dim_ratio_adjust_license
+tracker_total_dim_ratio_fst
+tracker_total_dim_ratio_oc_fst
+tracker_total_dim_ratio_overviewott
+tracker_total_dim_ratio_sec
+tracker_total_dim_ratio_sec2
+tracker_total_dim_ratio_adjust
+
+2017-05-16 更新的
+
+
+系数：当天-1=今天-5
+
+==============
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+${coord:formatTime(coord:nominalTime(),'yyyy-MM-dd')}
+
+日
+---------------------------
+日期：当天=今天-4
+系数：当天-1=今天-5
+vbox_tv_eara_daily
+
+
+
+
+
+
+
+
+
+
+
+周
+--------------------------
+日期：这周四（周的终端数 周四才出来）
+跑上一周的七天的数
+系数： 上一周的周一
+代表日期：上一周有数据的第一天
+
+
+
+
+
+
+月
+-------------------------
+日期：这月的5号（跑上一月的数）
+系数：上一个月 1号
+代表日期：上一个月有数据的第一天
+
+
+
+
+
+
+
+
+
+TV总览
+整体趋势
+地区分布
+排行榜
+
+OTT分析
+应用总排行
+各应用使用分析
+
+分时
+
+
+直播分析
+
+收视规模
+收视活跃度
+
+聚集分析
+电视剧
+电影
+综艺
+少儿
+
+
+======================
+
+　　
+　　根据奥维云网自主开发的OTT大数据平台TV Video Compass_TVC显示：
+　　
+　　日均活跃终端数：开年以来，中国智能电视日均活跃终端数稳中有升，4月份日均活跃终端数已达4896万台。预计5月份中国智能电视日均活跃终端数将有望突破5千万台。
+　　
+　　日均开机率：受节假日影响，4月日均开机率为46.1%，相比 3月份的44.4%，有所回升。
+　　
+　　4月OTT大屏日均累积开机次数为9738万次，创今年以来新高。这意味着OTT大屏每天可为广告主提供接近1亿次的开机广告曝光机会。
+　　
+　　4月OTT大屏日均每终端开机时长4.9小时，与3月持平，用户已经养成稳定的智能电视观看习惯；
+　　
+　　受智能电视终端总数增加和用户重回客厅影响，4月日均累积开机时长为2.44亿小时，相比3月有所回升。统计终端重合
+
+
+样本取3月份的数
+
+--用户画像剧集去重终端数	 （点播）	1
+
+--用户画像应用与剧集重叠的去重终端数		1
+
+--用户画像总去重终端数		2
+
+--用户画像中开关机去重终端数		2
+
+用户画像直播去重终端数		2
+
+用户画像应用去重终端数		2
+
+--用户画像直播与开关机重叠的去重终端数		2
+
+--用户画像直播与应用重叠的去重终端数		2
+
+--直播与剧集重叠终端数
+
+第三部分：OTT分析-视频媒体分析
+
+1.1新增终端（A）
+展示内容：分月全国新增用户数
+筛选日期条件：月
+筛选地区条件：全国
+指标说明：
+² 新增终端：apk新增+launcher新增
+其中
+Apk新增： 近三个月内，第一次使用指定应用的终端数
+   Or维护应用装机库，统计每月新装机的终端数
+Launcher新增：根据每月新增销售数据和launcher端应用的月活率计算
+
+近三个月：统计月中使用目标视频媒介的终端中，往前推第一个月、第二月、第三个月都未使用过该目标视频媒介的终端数量
+动态样本库期间：统计apk新增不考虑每月新增的样本
+需考虑推总，根据品牌+省份+牌照字段乘系数
+计算时间：每月第一天，计算上月的新增终端数量
+
+1.3活跃终端构成（A）
+筛选日期条件：周度（自然周）
+筛选地区条件：全国
+展示内容：uv，累计使用时长、每终端使用时长
+指标说明：
+² 非连续活跃终端：统计周使用过目标视频媒介的终端中，统计周往前推一周未使用过的终端数量
+² 连续一周活跃：统计周使用过目标视频媒介的终端中，统计周往前推第一周使用过，往前推第二周未使用的终端数量
+² 连续两周活跃：统计周使用过目标视频媒介的终端中，统计周往前推第一周、第二周均使用过，往前推第三周未使用的终端数量
+² 连续三周活跃：统计周使用过目标视频媒介的终端中，统计周往前推第一周、第二周、第三周均使用过，往前推第四周未使用的终端数量
+² 连续四周及以上活跃：统计周使用过目标视频媒介的终端中，统计周往前推第一周、第二周、第三周、第四周均使用过的终端数量
+占比：分母为以上五个指标数据相加（推总后）
+
+需考虑推总，根据品牌+省份+牌照字段乘系数
+计算时间：每个自然周的周一，计算前一个自然周的以上指标
+
+
+1.4沉默终端（A）
+筛选日期条件：月
+筛选地区条件：全国
+² 沉默终端数：统计月往前推一个月内，对目标视频媒介无使用行为的终端数量
+            Or维护应用装机库，针对装机的终端，统计一个月中无使用行为的数量
+² 沉默终端比例：统计月目标视频媒介沉默终端与目标视频媒介累计装机终端数的比率
+
+需考虑推总，根据品牌+省份+牌照字段乘系数
+计算时间：每个自然周的一，计算前一个自然周的以上指标
+
+
+1.2留存终端（新增终端中留存情况）（B）
+月度留存【先以芒果TV 样本数据 计算下 看数据量大小，确定是否保留该模块；如果确认要做，后期还需考虑launcher的月留存如何计算？】
+筛选日期条件：月
+筛选地区条件：全国
+指标说明：
+² N月留存终端数量：统计月新增终端，在统计月后第N月，仍继续使用目标视频媒介的终端数量
+N月留存率：某自然月新增用户，在该月后第N个自然月中使用过应用的用户比例。该自然月后第N个自然月中使用过应用的用户/该自然月新增用户。
+
+1.5使用间隔（暂时不做）
+
+筛选日期条件：日
+筛选地区条件：全国、分省
+首次使用：统计日第一次使用目标APK的终端数
+1天：统计日使用目标APK的终端中，与最近一次使用时间的间隔为1天
+X天：统计日使用目标APK的终端中，与最近一次使用时间的间隔为X天
+使用间隔选项：（待讨论）
+首次使用
+1天
+2天
+3天
+4天
+5天
+6天
+7天
+8-14天
+15-21天
+22-28天
+29-30天
+30天以上
+
+
+
+
+友盟
+使用间隔：同一用户相邻两次启动间隔的时间长度。在固定的查询时段内，若用户A仅在第2天、第3天、第7天启动过应用，则“1天”和“4天”的计数分别加1；若用户B仅在第4天启动过三次应用，则“0-24h”的计数加2；若用户C仅第10天启动过一次应用，则“首次”的计数加1
+首次：在固定的查询时段内只启动过一次的用户记为首次
+
+Talkingdate
+使用的间隔明细：
+首次使用
+1小时内
+1-24小时
+1-2周
+2天
+3天
+4天
+5-7日
+2周-1月
+使用间隔指两次相邻启动的开始时间之差。
+首次使用指用户新增后第一次打开使用应用的这次行为。
+
+
+次数在这个使用间隔区间的启动次数。
+比例这个使用间隔区间占全部启动的比例。
+
+
+1.6回流终端数（与使用间隔同）(暂时不做)
+【讨论做月度的回流  可与月度沉默用户 做对比  20170330  与龚琴】
+7日回流：统计日使用过目标APK的终端中，上一次使用日期与当日间隔8-14天
+14日回流：统计日使用过目标APK的终端中，上一次使用日期与当日间隔15-30天
+30日回流：统计日使用过目标APK的终端中，上一次使用日期与当日间隔30天以上
+
+=====================================
+
+地区分布：
+
+日 周 月
+
+
+=========
+统计终端重合
+
+
+样本取3月份的数
+
+--用户画像剧集去重终端数	 （点播）	1
+
+
+
+sdk streaming
+
+messageType
+
+//编译日期
+
+//产品?
+
+
+//发布的版本号
+
+//设备名称
+
+
+//设备描述
+
+
+//节目播放时长
+
+//播放开始时间
+
+  //节目类型 0 非影视类 1电影 3电视剧 4综艺
+
+      //节目来源 0:taotv,1:huasu,2:taotvjuhe,4:sohu,5:qiyi,7:youku,9:youku_charge,10:golive(全球播),11:mango(芒果)
+
+       //节目结束时间
+
+           //节目名称
+
+             //包名
+
+               //节目集数
+
+
+
+case class ApkOpen(mac: String, actions: mutable.MutableList[ApkOpenItem]) {
+}
+
+case class ApkOpenItem(apk: String, duration: String, count: String, date: String)
+
+case class ApkOpenResultByHour(apk: String, date: String, hour: String, duration: Int, cnt: Int)
+
+
+
+case class TVWatching(sn: String, date: String, area: String, actions: mutable.MutableList[TVWatchedItem]) {
+}
+
+case class TVWatchedItem(tv: String, date: String, startTime: String, endTime: String)
+
+case class TVWatchedResultByMinute(tv: String, date: String, startTime: String, endTime: String,
+                                   hour: String, minute: String, duration: Int, cnt: Int)
+
+
+case class Heart(sn: String, actions: mutable.MutableList[HeartItem]) {
+}
+
+case class HeartItem(mac: String, timestamp: String)
+
+case class HeartResultByMinute(date: String, hour: String, duration: Int, cnt: Int)
+
+
+
+case class Playing(vid: String,awcid:String,categorys:String,title: String, mac: String, date: String, actions: mutable.MutableList[PlayerItem]) {
+}
+
+case class PlayerItem(name: String, action: String, time: String, title: String, tt: String)
+
+case class PlayerResultByHour(title: String, part: String, hour: String, duration: Int, vv: Int, start: String, end: String)
+
+
+  case class ApkOpen(mac: String, actions: mutable.MutableList[ApkOpenItem]) {
+    }
+
+    case class ApkOpenItem(apk: String, duration: String, count: String, date: String)
+
+    case class ApkOpenResultByHour(apk: String, date: String, hour: String, duration: Int, cnt: Int)
+
+ case class  Epg(channel:String, tv_date:String, start_end:String, time_range:String, pg_type:String, pg:String, tv_hour:String, tv_min:String)
+
+
+  case class snTime(sn: String, durantion: Int, cnt: Int) extends Serializable
+
+  case class snOCTImeRow(key: String, sn: String, length: String, cnt: String, date: String, hour: String)
+
+  case class playData(key: String, sn: String, originalName: String, standardName: String, awcid: String, part: String, vv: String, duration: String, year: String, model: String, crowd: String, region: String, date: String, hour: String, apk: String)
+
+  case class apkData(key: String, sn: String, apk: String, cnt: String, duration: String, date: String, hour: String)
+
+
+
+date: String,
+                       hour: String,
+                       messagetype: Int,
+                       build_date: String,
+                       product: String,
+                       version_release: String,
+                       name: String,
+                       description: String,
+                       model: String,
+                       restarttime: String,
+                       duration: String,
+                       programstart: String,
+                       programtype: String,
+                       provider: String,
+                       programend: String,
+                       programname: String,
+                       package_name: String,
+                       order: String,
+                       ipmac: String,
+                       province: String,
+                       city: String
+
+
+     case class RestdayChannelDistCnt(
+                                         sn: String,
+                                         stat_date: String,
+                                         period: String,
+                                         channel: String,
+                                         cnt: String,
+                                         cluster_id: String
+                                       )
+
+第三部分：OTT分析-视频媒体分析
+
+1.1新增终端（A）
+展示内容：分月全国新增用户数
+筛选日期条件：月
+筛选地区条件：全国
+指标说明：
+² 新增终端：apk新增+launcher新增
+其中
+Apk新增： 近三个月内，第一次使用指定应用的终端数
+   Or维护应用装机库，统计每月新装机的终端数
+Launcher新增：根据每月新增销售数据和launcher端应用的月活率计算
+
+近三个月：统计月中使用目标视频媒介的终端中，往前推第一个月、第二月、第三个月都未使用过该目标视频媒介的终端数量
+动态样本库期间：统计apk新增不考虑每月新增的样本
+需考虑推总，根据品牌+省份+牌照字段乘系数
+计算时间：每月第一天，计算上月的新增终端数量
+
+1.3活跃终端构成（A）
+筛选日期条件：周度（自然周）
+筛选地区条件：全国
+展示内容：uv，累计使用时长、每终端使用时长
+指标说明：
+² 非连续活跃终端：统计周使用过目标视频媒介的终端中，统计周往前推一周未使用过的终端数量
+² 连续一周活跃：统计周使用过目标视频媒介的终端中，统计周往前推第一周使用过，往前推第二周未使用的终端数量
+² 连续两周活跃：统计周使用过目标视频媒介的终端中，统计周往前推第一周、第二周均使用过，往前推第三周未使用的终端数量
+² 连续三周活跃：统计周使用过目标视频媒介的终端中，统计周往前推第一周、第二周、第三周均使用过，往前推第四周未使用的终端数量
+² 连续四周及以上活跃：统计周使用过目标视频媒介的终端中，统计周往前推第一周、第二周、第三周、第四周均使用过的终端数量
+占比：分母为以上五个指标数据相加（推总后）
+
+需考虑推总，根据品牌+省份+牌照字段乘系数
+计算时间：每个自然周的周一，计算前一个自然周的以上指标
+
+
+1.4沉默终端（A）
+筛选日期条件：月
+筛选地区条件：全国
+² 沉默终端数：统计月往前推一个月内，对目标视频媒介无使用行为的终端数量
+            Or维护应用装机库，针对装机的终端，统计一个月中无使用行为的数量
+² 沉默终端比例：统计月目标视频媒介沉默终端与目标视频媒介累计装机终端数的比率
+
+需考虑推总，根据品牌+省份+牌照字段乘系数
+计算时间：每个自然周的一，计算前一个自然周的以上指标
+
+
+1.2留存终端（新增终端中留存情况）（B）
+月度留存【先以芒果TV 样本数据 计算下 看数据量大小，确定是否保留该模块；如果确认要做，后期还需考虑launcher的月留存如何计算？】
+筛选日期条件：月
+筛选地区条件：全国
+指标说明：
+² N月留存终端数量：统计月新增终端，在统计月后第N月，仍继续使用目标视频媒介的终端数量
+N月留存率：某自然月新增用户，在该月后第N个自然月中使用过应用的用户比例。该自然月后第N个自然月中使用过应用的用户/该自然月新增用户。
+
+1.5使用间隔（暂时不做）
+
+筛选日期条件：日
+筛选地区条件：全国、分省
+首次使用：统计日第一次使用目标APK的终端数
+1天：统计日使用目标APK的终端中，与最近一次使用时间的间隔为1天
+X天：统计日使用目标APK的终端中，与最近一次使用时间的间隔为X天
+使用间隔选项：（待讨论）
+首次使用
+1天
+2天
+3天
+4天
+5天
+6天
+7天
+8-14天
+15-21天
+22-28天
+29-30天
+30天以上
+
+
+
+
+友盟
+使用间隔：同一用户相邻两次启动间隔的时间长度。在固定的查询时段内，若用户A仅在第2天、第3天、第7天启动过应用，则“1天”和“4天”的计数分别加1；若用户B仅在第4天启动过三次应用，则“0-24h”的计数加2；若用户C仅第10天启动过一次应用，则“首次”的计数加1
+首次：在固定的查询时段内只启动过一次的用户记为首次
+
+Talkingdate
+使用的间隔明细：
+首次使用
+1小时内
+1-24小时
+1-2周
+2天
+3天
+4天
+5-7日
+2周-1月
+使用间隔指两次相邻启动的开始时间之差。
+首次使用指用户新增后第一次打开使用应用的这次行为。
+
+
+次数在这个使用间隔区间的启动次数。
+比例这个使用间隔区间占全部启动的比例。
+
+
+1.6回流终端数（与使用间隔同）(暂时不做)
+【讨论做月度的回流  可与月度沉默用户 做对比  20170330  与龚琴】
+7日回流：统计日使用过目标APK的终端中，上一次使用日期与当日间隔8-14天
+14日回流：统计日使用过目标APK的终端中，上一次使用日期与当日间隔15-30天
+30日回流：统计日使用过目标APK的终端中，上一次使用日期与当日间隔30天以上
+
+=====================================
+
+地区分布：
+
+日 周 月
+
+
+=========
+统计终端重合
+
+
+样本取3月份的数
+
+--用户画像剧集去重终端数	 （点播）	1
+
+
+
+========================================================
+
+标注样本数据的需求
+
+
+数据需求：
+对700份标注样本，按照家庭结构分类做特征向量中二、三模块的特征分析，类似聚类结果的那个需求，最后输出7张表。具体对应关系如下表1和表2所示。
+表1 家庭结构具体分类
+家庭结构分类 类
+单身 1
+二人世界 2
+夫妻+小孩 3
+夫妻+老人 4
+三代同堂 5
+
+表2  hive中的user_family_compose和表1对应关系
+家庭构成 是否有小孩 是否有老人 对应表1的类
+0,0,0,0,0,1 0 1 4
+0,0,0,0,0,1 1 0 3
+0,0,0,0,0,1 1 1 5
+0,0,0,0,1,0 0 1 4
+0,0,0,0,1,0 1 0 3
+0,0,0,0,1,0 1 1 5
+0,0,0,1,0,0 0 1 4
+0,0,0,1,0,0 1 0 3
+0,0,0,1,0,0 1 1 5
+0,0,1,0,0,0 0 1 4
+0,0,1,0,0,0 1 0 3
+0,1,0,0,0,0 0 0 2
+1,0,0,0,0,0 0 0 1
+
+具体需求举例：
+
+1.工作日开机时间分布：
+<0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23 >24维
+需求：
+（1）表格形式
+工作日开机时间分布 类1  类n
+ 数量 占比 数量 占比
+0 =类1中工作日开机时间为0的频数 =类1中工作日开机时间为0的频数/类1中所有开机时间的总频数
+
+2.休息日开机时间分布
+<0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23 >24维
+需求：
+（1）表格形式
+休息日开机时间分布 类1  类n
+ 数量 占比 数量 数量
+
+3.工作日频道分布：
+<CCTV-1,CCTV-2,CCTV-3,CCTV-4,CCTV-5,CCTV-6,CCTV-7,CCTV-8,CCTV-9,CCTV-10,CCTV-11,CCTV-12,CCTV-13,CCTV-14,CCTV-15,安徽卫视,北京卫视,重庆卫视,甘肃卫视,广东卫视,广西卫视,贵州卫视,河北卫视,河南卫视,黑龙江卫视,湖北卫视,湖南卫视,吉林卫视,江苏卫视,江西卫视,辽宁卫视,旅游卫视,内蒙古卫视,宁夏卫视,青海卫视,厦门卫视,山东卫视,山西卫视,陕西卫视,上海东方卫视,深圳卫视,四川卫视,天津卫视,西藏卫视,新疆卫视,云南卫视,浙江卫视，其他频道，银河·奇异果，腾讯视频TV端，CIBN环球影视，芒果TV，电视猫视频，其它apk> 54维
+（1）表格
+工作日频道分布 类1  类n
+ 数量 占比 数量 数量
+CCTV-1
+CCTV-2
+CCTV-3
+CCTV-4
+CCTV-5
+CCTV-6
+CCTV-7
+CCTV-8
+CCTV-9
+CCTV-10
+CCTV-11
+CCTV-12
+CCTV-13
+CCTV-14
+CCTV-15
+安徽卫视
+北京卫视
+重庆卫视
+甘肃卫视
+广东卫视
+广西卫视
+贵州卫视
+河北卫视
+河南卫视
+黑龙江卫视
+湖北卫视
+湖南卫视
+吉林卫视
+江苏卫视
+江西卫视
+辽宁卫视
+旅游卫视
+内蒙古卫视
+宁夏卫视
+青海卫视
+厦门卫视
+山东卫视
+山西卫视
+陕西卫视
+上海东方卫视
+深圳卫视
+四川卫视
+天津卫视
+西藏卫视
+新疆卫视
+云南卫视
+浙江卫视
+其他频道
+银河·奇异果
+腾讯视频TV端
+CIBN环球影视
+芒果TV
+电视猫视频
+其它apk
+
+
+4.休息日频道分布：
+<CCTV-1,CCTV-2,CCTV-3,CCTV-4,CCTV-5,CCTV-6,CCTV-7,CCTV-8,CCTV-9,CCTV-10,CCTV-11,CCTV-12,CCTV-13,CCTV-14,CCTV-15,安徽卫视,北京卫视,重庆卫视,甘肃卫视,广东卫视,广西卫视,贵州卫视,河北卫视,河南卫视,黑龙江卫视,湖北卫视,湖南卫视,吉林卫视,江苏卫视,江西卫视,辽宁卫视,旅游卫视,内蒙古卫视,宁夏卫视,青海卫视,厦门卫视,山东卫视,山西卫视,陕西卫视,上海东方卫视,深圳卫视,四川卫视,天津卫视,西藏卫视,新疆卫视,云南卫视,浙江卫视，其它频道，银河·奇异果，腾讯视频TV端，CIBN环球影视，芒果TV，电视猫视频，其它apk>54维
+（1）表格
+休息日频道分布 类1  类n
+ 数量 占比 数量 数量
+CCTV-1
+CCTV-2
+CCTV-3
+CCTV-4
+CCTV-5
+CCTV-6
+CCTV-7
+CCTV-8
+CCTV-9
+CCTV-10
+CCTV-11
+CCTV-12
+CCTV-13
+CCTV-14
+CCTV-15
+安徽卫视
+北京卫视
+重庆卫视
+甘肃卫视
+广东卫视
+广西卫视
+贵州卫视
+河北卫视
+河南卫视
+黑龙江卫视
+湖北卫视
+湖南卫视
+吉林卫视
+江苏卫视
+江西卫视
+辽宁卫视
+旅游卫视
+内蒙古卫视
+宁夏卫视
+青海卫视
+厦门卫视
+山东卫视
+山西卫视
+陕西卫视
+上海东方卫视
+深圳卫视
+四川卫视
+天津卫视
+西藏卫视
+新疆卫视
+云南卫视
+浙江卫视
+其他频道
+银河·奇异果
+腾讯视频TV端
+CIBN环球影视
+芒果TV
+电视猫视频
+其它apk
+
+5.观看过的节目题材分布
+需要表格和直方图
+<电视剧-爱情,电视剧-穿越,电视剧-传记,电视剧-传奇,电视剧-动作,电视剧-都市,电视剧-儿童,电视剧-犯罪,电视剧-访谈,电视剧-宫廷,电视剧-古代,电视剧-故事,电视剧-纪实,电视剧-家庭,电视剧-惊悚,电视剧-剧情,电视剧-军事,电视剧-科幻,电视剧-恐怖,电视剧-栏目剧,电视剧-历史,电视剧-励志,电视剧-伦理,电视剧-冒险,电视剧-美食,电视剧-魔幻,电视剧-年代,电视剧-农村,电视剧-偶像,电视剧-奇幻,电视剧-青春校园,电视剧-情感,电视剧-情景剧,电视剧-人物,电视剧-商战,电视剧-少儿,电视剧-社会,电视剧-神话,电视剧-时尚,电视剧-网剧,电视剧-文化,电视剧-武侠,电视剧-喜剧,电视剧-悬疑,电视剧-医院,电视剧-音乐,电视剧-战争,电视剧-侦探,电视剧-政治,电视剧-其它,电影-爱情,电影-悲剧,电影-穿越,电影-传记,电影-动画,电影-动作,电影-都市,电影-儿童,电影-犯罪,电影-粉丝电影,电影-复仇,电影-歌舞,电影-公益,电影-宫廷,电影-古代,电影-黑色电影,电影-纪实,电影-家庭,电影-惊悚,电影-竞技,电影-剧情,电影-科幻,电影-恐怖,电影-历史,电影-励志,电影-伦理,电影-冒险,电影-魔幻,电影-农村,电影-偶像,电影-奇幻,电影-青春校园,电影-情感,电影-情色,电影-热血,电影-人物,电影-商战,电影-少儿,电影-社会,电影-神话,电影-时尚,电影-探索,电影-同性,电影-推理,电影-网络大电影,电影-微电影,电影-文化,电影-文艺,电影-武侠,电影-西部,电影-喜剧,电影-悬疑,电影-音乐,电影-运动,电影-灾难,电影-战争,电影-侦探,电影-真人,电影-职场,电影-自然,电影-其它,动画片-爱情,动画片-百合,动画片-宠物,动画片-穿越,动画片-催泪,动画片-耽美,动画片-电影,动画片-动画,动画片-动作,动画片-都市,动画片-古代,动画片-故事,动画片-鬼畜,动画片-后宫,动画片-僵尸,动画片-教育,动画片-惊悚,动画片-竞技,动画片-剧情,动画片-卡通,动画片-科幻,动画片-恐怖,动画片-励志,动画片-猎奇,动画片-萝莉,动画片-漫画改编,动画片-冒险,动画片-美漫,动画片-美男,动画片-美少女,动画片-美食,动画片-萌系,动画片-魔幻,动画片-男性向,动画片-女性向,动画片-偶像,动画片-奇幻,动画片-亲子,动画片-青春校园,动画片-轻小说改编,动画片-情感,动画片-热血,动画片-忍者,动画片-少儿,动画片-社会,动画片-神话,动画片-生活,动画片-同人,动画片-推理,动画片-脱口秀,动画片-微电影,动画片-未来,动画片-文艺,动画片-武侠,动画片-舞蹈,动画片-吸血鬼,动画片-喜剧,动画片-小清新,动画片-修仙,动画片-悬疑,动画片-养成,动画片-音乐,动画片-英雄,动画片-游戏,动画片-御姐,动画片-运动,动画片-宅男,动画片-战争,动画片-侦探,动画片-真人,动画片-治愈,动画片-中二,动画片-重口味,动画片-其它,综艺-爱情,综艺-财经,综艺-动作,综艺-犯罪,综艺-访谈,综艺-歌舞,综艺-婚恋,综艺-纪实,综艺-家庭,综艺-家装,综艺-教育,综艺-惊悚,综艺-竞技,综艺-军情,综艺-科幻,综艺-恐怖,综艺-栏目剧,综艺-历史文化,综艺-伦理,综艺-旅游,综艺-美食,综艺-明星,综艺-偶像,综艺-奇幻,综艺-亲子,综艺-情感,综艺-曲艺,综艺-人物,综艺-少儿,综艺-社会,综艺-生活,综艺-时尚,综艺-脱口秀,综艺-晚会,综艺-文化,综艺-舞蹈,综艺-喜剧,综艺-悬疑,综艺-选秀,综艺-养生,综艺-音乐,综艺-游戏,综艺-娱乐资讯,综艺-运动,综艺-早教,综艺-战争,综艺-侦探,综艺-真人秀,综艺-职场,综艺-其它> 235维
+
+（1）表格
+观看过的节目题材分布 类1  类n
+ 数量 占比 数量 数量
+电视剧-爱情
+电视剧-穿越
+电视剧-传记
+电视剧-传奇
+电视剧-动作
+电视剧-都市
+电视剧-儿童
+电视剧-犯罪
+电视剧-访谈
+电视剧-宫廷
+电视剧-古代
+电视剧-故事
+电视剧-纪实
+电视剧-家庭
+电视剧-惊悚
+电视剧-剧情
+电视剧-军事
+电视剧-科幻
+电视剧-恐怖
+电视剧-栏目剧
+电视剧-历史
+电视剧-励志
+电视剧-伦理
+电视剧-冒险
+电视剧-美食
+电视剧-魔幻
+电视剧-年代
+电视剧-农村
+电视剧-偶像
+电视剧-其它
+电视剧-奇幻
+电视剧-青春校园
+电视剧-情感
+电视剧-情景剧
+电视剧-人物
+电视剧-商战
+电视剧-少儿
+电视剧-社会
+电视剧-神话
+电视剧-时尚
+电视剧-网剧
+电视剧-文化
+电视剧-武侠
+电视剧-喜剧
+电视剧-悬疑
+电视剧-医院
+电视剧-音乐
+电视剧-战争
+电视剧-侦探
+电视剧-政治
+电影-爱情
+电影-悲剧
+电影-穿越
+电影-传记
+电影-动画
+电影-动作
+电影-都市
+电影-儿童
+电影-犯罪
+电影-粉丝电影
+电影-复仇
+电影-歌舞
+电影-公益
+电影-宫廷
+电影-古代
+电影-黑色电影
+电影-纪实
+电影-家庭
+电影-惊悚
+电影-竞技
+电影-剧情
+电影-科幻
+电影-恐怖
+电影-历史
+电影-励志
+电影-伦理
+电影-冒险
+电影-魔幻
+电影-农村
+电影-偶像
+电影-其它
+电影-奇幻
+电影-青春校园
+电影-情感
+电影-情色
+电影-热血
+电影-人物
+电影-商战
+电影-少儿
+电影-社会
+电影-神话
+电影-时尚
+电影-探索
+电影-同性
+电影-推理
+电影-网络大电影
+电影-微电影
+电影-文化
+电影-文艺
+电影-武侠
+电影-西部
+电影-喜剧
+电影-悬疑
+电影-音乐
+电影-运动
+电影-灾难
+电影-战争
+电影-侦探
+电影-真人
+电影-职场
+电影-自然
+动画片-爱情
+动画片-百合
+动画片-宠物
+动画片-穿越
+动画片-催泪
+动画片-耽美
+动画片-电影
+动画片-动画
+动画片-动作
+动画片-都市
+动画片-古代
+动画片-故事
+动画片-鬼畜
+动画片-后宫
+动画片-僵尸
+动画片-教育
+动画片-惊悚
+动画片-竞技
+动画片-剧情
+动画片-卡通
+动画片-科幻
+动画片-恐怖
+动画片-励志
+动画片-猎奇
+动画片-萝莉
+动画片-漫画改编
+动画片-冒险
+动画片-美漫
+动画片-美男
+动画片-美少女
+动画片-美食
+动画片-萌系
+动画片-魔幻
+动画片-男性向
+动画片-女性向
+动画片-偶像
+动画片-其它
+动画片-奇幻
+动画片-亲子
+动画片-青春校园
+动画片-轻小说改编
+动画片-情感
+动画片-热血
+动画片-忍者
+动画片-少儿
+动画片-社会
+动画片-神话
+动画片-生活
+动画片-同人
+动画片-推理
+动画片-脱口秀
+动画片-微电影
+动画片-未来
+动画片-文艺
+动画片-武侠
+动画片-舞蹈
+动画片-吸血鬼
+动画片-喜剧
+动画片-小清新
+动画片-修仙
+动画片-悬疑
+动画片-养成
+动画片-音乐
+动画片-英雄
+动画片-游戏
+动画片-御姐
+动画片-运动
+动画片-宅男
+动画片-战争
+动画片-侦探
+动画片-真人
+动画片-治愈
+动画片-中二
+动画片-重口味
+综艺-爱情
+综艺-财经
+综艺-动作
+综艺-犯罪
+综艺-访谈
+综艺-歌舞
+综艺-婚恋
+综艺-纪实
+综艺-家庭
+综艺-家装
+综艺-教育
+综艺-惊悚
+综艺-竞技
+综艺-军情
+综艺-科幻
+综艺-恐怖
+综艺-栏目剧
+综艺-历史文化
+综艺-伦理
+综艺-旅游
+综艺-美食
+综艺-明星
+综艺-偶像
+综艺-其它
+综艺-奇幻
+综艺-亲子
+综艺-情感
+综艺-曲艺
+综艺-人物
+综艺-少儿
+综艺-社会
+综艺-生活
+综艺-时尚
+综艺-脱口秀
+综艺-晚会
+综艺-文化
+综艺-舞蹈
+综艺-喜剧
+综艺-悬疑
+综艺-选秀
+综艺-养生
+综艺-音乐
+综艺-游戏
+综艺-娱乐资讯
+综艺-运动
+综艺-早教
+综艺-战争
+综艺-侦探
+综艺-真人秀
+综艺-职场
+
+6.观看过的节目年份分布
+<1988,1989,1990,1991,1992,1993,1994,1995,1996,1997,1998,1999,2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017 >30维
+需要表格和直方图
+（1）表格形式
+观看过的节目年份分布  类1  类2  类n
+  数量 占比 数量 占比 数量 占比
+1988
+1989
+1990
+1991
+1992
+1993
+1994
+1995
+1996
+1997
+1998
+1999
+2000
+2001
+2002
+2003
+2004
+2005
+2006
+2007
+2008
+2009
+2010
+2011
+2012
+2013
+2014
+2015
+2016
+2017
+
+7.观看过的产地分布
+<电视剧-中国大陆, 电视剧-港台, 电视剧-欧美, 电视剧-日韩, 电视剧-其它, 电影-中国大陆, 电影-港台, 电影-欧美, 电影-日韩, 电影-其它, 综艺-中国大陆, 综艺-港台, 综艺-欧美, 综艺-日韩, 综艺-其它, 少儿-中国大陆, 少儿-港台, 少儿-欧美, 少儿-日本, 少儿-韩国, 少儿-其它>  21维
+需要表格和直方图。
+（1）表格
+观看过的产地分布 类1  类n
+ 数量 占比 数量 数量
+电视剧-中国大陆
+电视剧-港台
+电视剧-欧美
+电视剧-日韩
+电视剧-其它
+电影-中国大陆
+电影-港台
+电影-欧美
+电影-日韩
+电影-其它
+综艺-中国大陆
+综艺-港台
+综艺-欧美
+综艺-日韩
+综艺-其它
+少儿-中国大陆
+少儿-港台
+少儿-欧美
+少儿-日本
+少儿-韩国
+少儿-其它
+------------------------------------------------------------
+
+家庭构成标签(1)
+
+
+分类标签设计
+
+标签名称 标签维度 取值规则 备注
+家庭构成 6维 对应家庭构成取1，其他取0
+是否有小孩 1维 有小孩取1，无小孩取0
+是否有老人 1维 有老人取1，无老人取0
+
+需求解读
+表格式：
+终端 家庭组成 是否有小孩 是否有老人
+终端1 <……0,1,……> <1> <1>
+终端2
+终端3
+
+
+向量维度说明：
+家庭组成：<一口人，二口人，三口人，四口人，五口人，六口人及以上>，6维
+是否有小孩： 1维,是记为1，否记为0
+是否有老人：1维,是记为1，否记为0
+
+
+--TSV表
+DROP TABLE  hr.user_family_compose;
+CREATE TABLE hr.user_family_compose(sn string,member_num string, has_child string,has_old string)
+     ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+    WITH SERDEPROPERTIES (
+    "separatorChar" = "\t",
+      "quoteChar"     = "'",
+   "escapeChar"    = "\\"
+     )
+STORED AS TEXTFILE;
+
+
+load data inpath '/user/hdfs/rsync/userdata/family_compose.txt' into table hr.user_family_compose ;
+
+load data inpath '/user/hdfs/rsync/userdata/family_compose.txt' overwrite into table hr.user_family_compose ;
+
+--TSV表
+DROP TABLE  hr.user_family_compose_cluster;
+CREATE TABLE hr.user_family_compose_cluster(member_num string, has_child string,has_old string,cluster_id string)
+     ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+    WITH SERDEPROPERTIES (
+    "separatorChar" = "\t",
+      "quoteChar"     = "'",
+   "escapeChar"    = "\\"
+     )
+STORED AS TEXTFILE;
+
+load data inpath '/user/hdfs/rsync/userdata/user_family_compose_cluster.txt' into table hr.user_family_compose_cluster;
+
+------------
+CREATE TABLE `hr`.`terminal_size_price` (brand string,model string,size string,price string)
+ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+WITH SERDEPROPERTIES (
+        "separatorChar" = ",",
+        "quoteChar"     = "'",
+        "escapeChar"    = "\\"
+     )
+STORED AS TEXTFILE;
+
+load data  inpath '/user/hdfs/rsync/userdata/terminal-price.csv' into table terminal_size_price;
+
+load data inpath '/user/hdfs/rsync/userdata/terminal-price.csv' into table hr.terminal_size_price;
+
+---------------------------------------
+sql("SELECT COUNT(1) FROM hr.user_family_compose2 ufc LEFT JOIN hr.terminal tr ON ufc.sn = tr.sn WHERE tr.brand IS NULL").collect
+549
+
+计算这2000多份问卷MAC地址和我们数据库的匹配情况，给出匹配数量。
+MAC地址中存在缺失冒号的情况，需要注意，处理流程和600份的类似。
+字母为大写的统一转换成小写
+将附件中的2000多份问卷的家庭构成的数据上传，和之前的600份合并并做出区分。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ● 算法+评估
+      ○ 类别实验：4、8、12、16
+          ■ 初始点选取方式1：spark默认
+          ■ 初始点选取方式2：根据标注样本
+      ○ 指标1：
+          ■ 紧凑程度定义：每个样本点到所在簇中心的距离，求和
+      ○ 指标2：
+          ■ 现有指标
+          ■ 聚类结果把标注样本分解的情况
+  ● 三个大环节
+      ○ 前期数据处理
+      ○ 算法+评估
+          ■ 输出：deviceid->聚类结果 的映射
+      ○ 聚类结果数据分析
+          ■ 输出每个簇下面的主要特征维度的直方图
+              ● 优先级：按特征文档中的第二部分和第三部分优先，第一部分设备属性其次
+  ● 现有标注样本数据的主要特征分布
+
+
+  ● 数据来源扩充
+      ○ 节目题材数据来源：IMDB、豆瓣等影视信息抓取，标签云
+      ○ 设备信息补全
+          ■ 目前价格和尺寸80%以上覆盖率
+          ■ 其他属性：电商网站
+  ● 特征权重处理
+      ○ 目前：根据物理意义人为指定+结合聚类直方图优化
+      ○ 剧集的热门程度处理：类IDF处理方式
+      ○ 剧集长度：归一化，减少对剧集长度干扰
+  ● 算法的升级
+      ○ 样本扩充：Lookalike，扩大标注集合
+      ○ 聚类算法对特征权重的支持
+      ○ 分类算法准备：决策树，boosting(GBDT)和bagging(随机森林）
+
+========================================================================
+  1、 可先用100万有剧集信息的终端cluster
+   2、特征维度确定
+   3、初始点的选取
+   4、聚类结果的分类：邻近算法（MNN）
+
+  1、交叉特征可配置、封装的问题
+w
+可配置：date + config（配置文件）     cluster date
+w   例如2个特征为10维×24维，最终保存10维、24维、240维。
+
+   2、聚类评估指标：
+
+w   指标1：
+
+  3、对覆盖率低的维度做数据的弥补
+w   用均值、中位数等等补
+
+  4、 周末/工作日日期定义出错：
+w   人工评判周末/工作日的差别（利用600多份有设备ID的数据）
+
+  5、标注样本中的每个分类下的设备信息直方图
+ 1、  数据维度的问题：
+
+w   特征维度数据未全覆盖，400多万终端中100多万有剧集信息
+
+w   按照比例扩展：用100万推400万
+
+ 2、 以700份样本训练模型（KNN、DT）
+
+  3、 指标的问题
+
+u  时长和次数：时长（归一化）
+--------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+@Cheng 程老师这是指标一的结果，从结果来看聚类的个数越大，内聚性越强
+
+这个是指标二的结果，综合来看的话，设为12个类正确率比较高
+
+聚类里初始点一般都是设置的随机的
+
+他说是初始点选取对最终结果的影响不大，
+
+毕竟算法是在不断迭代收敛的，
+
+初始点影响的应该是聚类的速度
+
+贴标签
+
+ 第一轮标签结果总结
+ 标签总覆盖终端 唯一标签覆盖终端 与其他标签重叠覆盖终端 与其他标签重叠覆盖终端细分
+    单身 二人世界 夫妻+小孩 夫妻+老人 夫妻、小孩和老人
+单身 1525678 1525678   0 0 0 0
+二人世界 372566 151536    65352 87079 8823
+夫妻+小孩 1815140 1514127     25601 152961
+夫妻+老人 242334 70169      3958
+夫妻、小孩和老人 439888 254569
+
+
+
+SELECT COUNT(1) FROM TagFamilyCompose tc WHERE tc.`single` =1
+SELECT COUNT(1) FROM TagFamilyCompose tc WHERE tc.`couple` =1
+SELECT COUNT(1) FROM TagFamilyCompose tc WHERE tc.`coupleAndChild` =1
+SELECT COUNT(1) FROM TagFamilyCompose tc WHERE tc.`coupleAndOld` =1
+SELECT COUNT(1) FROM TagFamilyCompose tc WHERE tc.`coupleAndChildAndOld` =1
+
+SELECT COUNT(1) FROM TagFamilyCompose tc where  tc.`single` =1  and  tc.`couple` =0 AND tc.`coupleAndChild` =0 AND tc.`coupleAndOld` =0  AND tc.`coupleAndChildAndOld` =0;
+
+SELECT COUNT(1) FROM TagFamilyCompose tc where  tc.`single` =0  and  tc.`couple` =1 AND tc.`coupleAndChild` =0 AND tc.`coupleAndOld` =0  AND tc.`coupleAndChildAndOld` =0;
+
+SELECT COUNT(1) FROM TagFamilyCompose tc where  tc.`single` =0  and  tc.`couple` =0 AND tc.`coupleAndChild` =1 AND tc.`coupleAndOld` =0  AND tc.`coupleAndChildAndOld` =0;
+
+SELECT COUNT(1) FROM TagFamilyCompose tc  where  tc.`single` =0  and  tc.`couple` =0 AND tc.`coupleAndChild` =0 AND tc.`coupleAndOld` =1  AND tc.`coupleAndChildAndOld` =0;
+
+SELECT COUNT(1) FROM TagFamilyCompose tc  where  tc.`single` =0  and  tc.`couple` =0 AND tc.`coupleAndChild` =0 AND tc.`coupleAndOld` =0  AND tc.`coupleAndChildAndOld` =1;
+
+
+======================
+给终端贴标签
+
+
+标签规则文档
+第一轮标签
+规则介绍
+･ 单身：一个月内，凌晨开机2小时以上的次数不低于4次
+･ 二人世界：工作日傍晚点播看launcher比周末高30%以上
+･ 夫妻+小孩：周末日均开机时长比工作日高18%以上
+･ 夫妻+老人：周末黄金看点播launcher比工作日高50%及以上
+･ 三代同堂：黄金时段看直播央视大于省级卫视30%以上
+需求
+目的：建立用户画像标签库，根据以上规则给每个终端贴标签，一个终端可贴多个标签
+时间周期：2017年4月-2017年6月，共3个月，以每个完整自然月为一个统计周期
+1、单身
+･ 数据源：开关机日志
+･ 凌晨：0-6点
+･ 标签判断标准
+每个自然月内凌晨开机2小时以上的次数>=4次，且4-6月每个月连续符合以上条件
+2、二人世界
+･ 数据源：点播日志
+･ 傍晚：17-19点
+･ 工作日周末标准：工作日：周一至周五中的非节假日；周末：周六、周日、节假日
+･ 指标：
+工作日傍晚点播launcher占比=工作日傍晚点播launcher时长/工作日傍晚点播总时长
+周末傍晚点播launcher占比=周末傍晚点播launcher时长/周末傍晚点播总时长
+工作日比周末增长率=工作日傍晚点播launcher占比/周末傍晚点播launcher占比-1
+･ 标签判断标准：
+每个自然月内工作日比周末增长率>=20%，且4-6月每个月连续符合以上条件
+3、夫妻+小孩
+･ 数据源：开关机日志
+･ 工作日周末标准：工作日：周一至周五中的非节假日；周末：周六、周日、节假日
+･ 指标：
+周末日均开机时长=周末累计使用时长/周末总天数
+工作日开机时长=工作日累计开机时长/工作日总天数
+周末比工作日开机时长增长率=周末日均开机时长/工作日开机时长-1
+･ 标签判断标准：
+每个自然月内周末比工作日开机时长增长率>=18%，且4-6月每个月连续符合以上条件
+4、夫妻+老人
+･ 数据源：点播日志
+･ 黄金时段：19-22点
+･ 工作日周末标准：工作日：周一至周五中的非节假日；周末：周六、周日、节假日
+･ 指标：
+工作日黄金点播launcher占比=工作日黄金点播launcher时长/工作日黄金点播总时长
+周末黄金点播launcher占比=周末黄金点播launcher时长/周末黄金点播总时长
+周末比工作日增长率=周末黄金点播launcher占比/工作日黄金点播launcher占比-1
+･ 标签判断标准：
+每个自然月内周末比工作日增长率>=50%，且4-6月每个月连续符合以上条件
+
+5、三代同堂：
+黄金时段看直播央视频道大于省级卫视频道30%以上
+･ 数据源：直播日志
+･ 黄金时段：19-22点
+･ 指标：
+黄金时段直播央视占比=黄金时段直播央视观看时长/黄金时段直播总观看时长
+黄金时段直播卫视占比=黄金时段直播卫视观看时长/黄金时段直播总观看时长
+黄金时段央视比省级卫视增长率=黄金时段直播央视占比/黄金时段直播卫视占比-1
+･ 标签判断标准
+每个自然月内黄金时段央视比省级卫视增长率>=30%，且4-6月每个月连续符合以上条件
+第一轮标签结果总结
+
+贴完第一轮标签后，请填写以下表格中的数据
+ 第一轮标签结果总结
+ 标签总覆盖终端 唯一标签覆盖终端 与其他标签重叠覆盖终端 与其他标签重叠覆盖终端细分
+    单身 二人世界 夫妻+小孩 夫妻+老人 三代同堂
+单身
+二人世界
+夫妻+小孩
+夫妻+老人
+三代同堂
+
+ -------------------------------
+ 相关维度表
+
+ DROP TABLE  hr.user_tag_ruler_map_live;
+ CREATE TABLE hr.user_tag_ruler_map_live(
+ rulerId 	 string,
+ channel string,
+ timeRange	  string,
+ theater	string,
+ tag string)
+ ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+     WITH SERDEPROPERTIES (
+     "separatorChar" = "\t",
+       "quoteChar"     = "'",
+    "escapeChar"    = "\\"
+      )
+ STORED AS TEXTFILE;
+
+
+ load data inpath '/user/hdfs/rsync/userdata/user_tag_ruler_map_live.txt'  into table hr.user_tag_ruler_map_live ;
+
+ show create table xxx;
+
+ /user/hive/warehouse/hr.db/user_tag_ruler_map_live
+
+ DROP TABLE  hr.user_tag_ruler_map_plot;
+ CREATE TABLE hr.user_tag_ruler_map_plot(
+ rulerId 	 string,
+ plot string,
+ tag string
+ )
+ ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+     WITH SERDEPROPERTIES (
+     "separatorChar" = "\t",
+       "quoteChar"     = "'",
+    "escapeChar"    = "\\"
+      )
+ STORED AS TEXTFILE;
+
+ load data inpath '/user/hdfs/rsync/userdata/user_tag_ruler_map_plot.txt'  into table hr.user_tag_ruler_map_plot ;
+
+ show create table xxx;
+
+
+ /user/hive/warehouse/hr.db/user_tag_ruler_map_plot
+
+ =====================================
+
+贴标签 规则
+
+标签规则文档
+第一轮标签
+规则介绍
+･ 单身：
+1.1凌晨开机2小时以上，一个月6次及以上
+1.2周末每终端开机次数比工作日高20%以上
+1.3黄金时段，周末平均每天开机时长低于工作日
+1.4次黄金时段，周末平均每天开机时长低于工作日
+･ 二人世界：
+2.1工作日傍晚点播看launcher比周末高30%以上
+2.2早间直播看其他频道，一个月4次以上，每次超过20分钟
+2.3周末上午直播只看CCTV
+2.4周末下午点播只看launcher
+･ 夫妻+小孩：
+3.1周末日均每终端开机时长比工作日高18%以上
+3.2周末午间看launcher时长高于工作日30%以上
+夫妻+老人：
+4.1周末黄金时段看点播launcher比工作日高50%及以上
+4.2次黄金时段点播只看launcher
+4.3早间看点播不看合规app
+4.4周末点播只看launcher
+三代同堂：
+5.1黄金时段看直播央视大于省级卫视30%以上
+5.2每终端日均开机次数大于3次
+
+需求
+目的：建立用户画像标签库，根据以上规则给每个终端贴标签，一个终端可贴多个标签
+时间周期：2017年4月-2017年6月，共3个月，以每个完整自然月为一个统计周期
+
+1、单身
+1.1凌晨开机2小时以上，一个月4次及以上
+･ 数据源：开关机日志
+･ 凌晨：0-6点
+･ 标签判断标准
+每个自然月内凌晨开机2小时以上的次数>=4次，且4-6月每个月连续符合以上条件
+
+1.2周末每终端开机次数比工作日高20%以上
+･ 数据源：开关机日志
+･ 工作日周末标准：工作日：周一至周五中的非节假日；周末：周六、周日、节假日
+･ 指标：
+周末日均开机次数=周末累计开机次数/周末总天数
+工作日日均开机次数=工作日累计开机次数/工作日总天数
+周末比工作日开机次数增长率=周末日均开机次数/工作日日均开机次数-1
+･ 标签判断标准：
+每个自然月内周末比工作日开机次数增长率>=20%，且4-6月每个月连续符合以上条件
+
+1.3黄金时段，周末平均每天开机时长低于工作日
+･ 数据源：开关机日志
+･ 黄金时段：19-22点
+･ 工作日周末标准：工作日：周一至周五中的非节假日；周末：周六、周日、节假日
+･ 指标：
+周末黄金时段日均开机时长=周末黄金时段累计开机时长/周末总天数
+工作日黄金时段日均开机时长=工作日黄金时段累计开机时长/工作日总天数
+周末与工作日黄金时段的开机时长之差=周末黄金时段日均开机时长-工作日黄金时段日均开机时长
+･ 标签判断标准：
+每个自然月内周末与工作日黄金时段的开机时长之差<0，且4-6月每个月连续符合此条件
+
+1.4次黄金时段，周末平均每天开机时长低于工作日
+･ 数据源：开关机日志
+･ 次黄金时段：22-24点
+･ 工作日周末标准：工作日：周一至周五中的非节假日；周末：周六、周日、节假日
+･ 指标：
+周末次黄金时段日均开机时长=周末次黄金时段累计开机时长/周末总天数
+工作日次黄金时段日均开机时长=工作日次黄金时段累计开机时长/工作日总天数
+周末与工作日次黄金时段的开机时长之差=周末次黄金时段日均开机时长-工作日次黄金时段日均开机时长
+･ 标签判断标准：
+每个自然月内周末与工作日黄金时段的开机时长之差<0，且4-6月每个月连续符合此条件
+
+2、二人世界
+2.1工作日傍晚点播看launcher比周末高30%以上
+･ 数据源：点播日志
+･ 傍晚：17-19点
+･ 工作日周末标准：工作日：周一至周五中的非节假日；周末：周六、周日、节假日
+･ 指标：
+工作日傍晚点播launcher占比=工作日傍晚点播launcher时长/工作日傍晚点播总时长
+周末傍晚点播launcher占比=周末傍晚点播launcher时长/周末傍晚点播总时长
+工作日比周末傍晚点播launcher增长率=工作日傍晚点播launcher占比/周末傍晚点播launcher占比-1
+･ 标签判断标准：
+每个自然月内工作日傍晚点播launcher比周末傍晚点播launcher增长率>=20%，且4-6月每个月连续符合以上条件
+
+2.2早间直播看其他频道，一个月4次以上，每次超过20分钟
+･ 数据源：直播日志
+･ 早间：6-8点
+･ 标签：早间直播看其他频道时长超过20分钟的次数
+･ 标签判断标准：
+每个自然月内早间直播看其他频道时长超过20分钟的次数>4次，且4-6月每个月连续符合以上条件
+2.3周末上午直播只看CCTV
+･ 数据源：直播日志
+･ 上午：8-12点
+･ 周末标准：周六、周日、节假日
+･ 指标：
+周末上午直播看CCTV的占比=周末上午直播看CCTV的时长/周末上午直播的总时长
+･ 标签判断标准：
+每个自然月内周末上午直播看CCTV的占比=100%，且4-6月每个月连续符合以上条件
+2.4周末下午点播只看launcher
+･ 数据源：点播日志
+･ 下午：14-17点
+･ 周末标准：周六、周日、节假日
+･ 指标：
+周末下午点播launcher的占比=周末下午点播launcher的时长/周末下午点播的总时长
+･ 标签判断标准：
+每个自然月内周末下午点播launcher的占比=100%，且4-6月每个月连续符合以上条件
+3、夫妻+小孩
+3.1周末日均每终端开机时长比工作日高18%以上
+･ 数据源：开关机日志
+･ 工作日周末标准：工作日：周一至周五中的非节假日；周末：周六、周日、节假日
+･ 指标：
+周末日均开机时长=周末累计开机时长/周末总天数
+工作日日均开机时长=工作日累计开机时长/工作日总天数
+周末比工作日开机时长增长率=周末日均开机时长/工作日日均开机时长-1
+･ 标签判断标准：
+每个自然月内周末比工作日开机时长增长率>=18%，且4-6月每个月连续符合以上条件
+3.2周末午间看launcher时长高于工作日30%以上
+･ 数据源：点播日志
+･ 午间：12-14点
+･ 工作日周末标准：工作日：周一至周五中的非节假日；周末：周六、周日、节假日
+･ 指标：
+周末午间看launcher占比=周末午间看launcher时长/周末午间点播总时长
+工作日午间看launcher占比=工作日午间看launcher时长/工作日午间点播总时长
+周末比工作日午间看launcher的增长率=周末午间看launcher占比/工作日午间看launcher占比-1
+･ 标签判断标准
+每个自然月内周末比工作日午间看launcher的增长率>=30%，且4-6月每个月连续符合以上条件
+4、夫妻+老人
+4.1周末黄金时段看点播launcher比工作日高50%及以上
+･ 数据源：点播日志
+･ 黄金时段：19-22点
+･ 工作日周末标准：工作日：周一至周五中的非节假日；周末：周六、周日、节假日
+･ 指标：
+周末黄金时段点播launcher占比=周末黄金时段点播launcher时长/周末黄金时段点播总时长
+工作日黄金时段点播launcher占比=工作日黄金时段点播launcher时长/工作日黄金时段点播总时长
+周末比工作日黄金时段点播launcher增长率=周末黄金时段点播launcher占比/工作日黄金时段点播launcher占比-1
+･ 标签判断标准：
+每个自然月内周末比工作日黄金时段点播launcher增长率>=50%，且4-6月每个月连续符合以上条件
+
+4.2次黄金时段点播只看launcher
+･ 数据源：点播日志
+･ 次黄金时段：22-24点
+･ 指标：
+次黄金时段点播看launcher的占比=次黄金时段点播看launcher时长/次黄金时段点播的总时长
+･ 标签判断标准：
+每个自然月内次黄金时段点播launcher的占比=100%，且4-6月每个月连续符合此条件
+4.3早间看点播不看合规app
+･ 数据源：点播日志
+･ 早间：6-8点
+･ 指标：
+早间点播看合规app的占比=早间点播看合规app的时长/早间点播的总时长
+･ 标签判断标准：
+每个自然月内早间看点播合规app的占比=0%，且4-6月每个月连续符合以上条件
+4.4周末点播只看launcher
+･ 数据源：点播日志
+･ 周末标准：周六、周日、节假日
+･ 指标：
+周末点播看launcher的占比=周末点播看launcher的时长/周末点播的总时长
+･ 标签判断标准：
+每个自然月周末点播看launcher的占比=100%，且4-6月每个月连续符合以上条件
+5、三代同堂：
+5.1黄金时段看直播央视大于省级卫视30%以上
+･ 数据源：直播日志
+･ 黄金时段：19-22点
+･ 指标：
+黄金时段直播央视占比=黄金时段直播央视观看时长/黄金时段直播总观看时长
+黄金时段直播省级卫视占比=黄金时段直播省级卫视观看时长/黄金时段直播总观看时长
+黄金时段央视比省级卫视增长率=黄金时段直播央视占比/黄金时段直播省级卫视占比-1
+･ 标签判断标准
+每个自然月内黄金时段央视比省级卫视增长率>=30%，且4-6月每个月连续符合以上条件
+5.2每终端日均开机次数大于3次
+･ 数据源：开关机日志
+･ 指标：
+每终端日均开机次数=每个月累计开机次数/这个月总天数
+･ 标签判断标准
+每个自然月内每终端日均开机次数>3次，且4-6月每个月连续符合以上条件
+
+
+第一轮标签结果输出表
+具体输出的表格式见附件excel：用户画像终端标签表
+
+==============================================
+
+一、性别标签规则文档
+性别规则介绍：
+男：
+6.1符合性别标签规则表-男中的频道及对应的播出时间段内观看，且时长大于30分钟的次数超过4次
+6.2观看性别标签规则表-男中的剧情类型节目，且时长大于30分钟的次数超过4次
+女：
+7.1符合性别标签规则表-女中的频道及对应的播出时间段内观看，且时长大于30分钟的次数超过4次
+7.2观看性别标签规则表-女中的剧情类型节目，且时长大于30分钟的次数超过4次
+
+需求：
+目的：建立用户画像标签库，根据性别标签规则，对每个终端贴性别的标签，一个终端可以贴多个标签。
+时间周期：2017年4月-2017年6月，共3个月，以每个完整自然月为一个统计周期
+
+男
+6.1符合性别标签规则表-男中的频道及对应的播出时间段内观看，且时长大于30分钟的次数超过4次
+ž 数据源：直播表、性别标签规则表-男，按频道、播出时间段两个字段匹配
+ž 判断标准：每个自然月内，该频道该播出时间内的使用时长大于30分钟且次数>4次，且4-6月每个月连续符合以上条件
+
+6.2观看性别标签规则表-男中的剧情类型节目，且时长大于30分钟的次数超过4次
+ž 数据源：点播表、性别标签规则表-男，按剧情类型字段匹配
+ž 判断标准：每个自然月内，观看该类型节目的时长大于30分钟且次数>4次，且4-6月每个月连续符合以上条件
+女
+7.1符合性别标签规则表-女中的频道及对应的播出时间段内观看，且时长大于30分钟的次数超过4次
+ž 数据源：直播表、性别标签规则表-女：按频道、播出时间段两个字段匹配
+ž 判断标准：每个自然月内，该频道该播出时间内的使用时长大于30分钟，且次数>4次，且4-6月每个月连续符合以上条件
+
+7.2观看性别标签规则表-女中的剧情类型节目，且时长大于30分钟的次数超过4次
+ž 数据源：点播表、性别标签规则表-女，按剧情类型字段匹配
+ž 判断标准：每个自然月内，观看该类型节目的时长大于30分钟且次数>4次，且4-6月每个月连续符合以上条件
+
+二、年龄标签文档
+年龄规则介绍：
+P0-3
+8 观看年龄标签规则表-P0-3中剧情类型节目，且观看时长大于30分钟的次数超过4次
+P4-14
+9.1在06:00-22:30时间段内观看CCTV-14频道的时长大于30分钟且次数大于4次
+9.2观看年龄标签规则表-P4-14中剧情类型节目，且观看时长大于30分钟的次数超过4次
+P15-29
+10.1周五22:00-23:00或周六20:10-22:00观看湖南卫视的时长大于30分钟，
+10.2观看年龄标签规则表-P15-29中剧情类型节目，且时长大于30分钟的次数超过4次
+P30-45
+11 观看年龄标签规则表-P30-45中剧情类型节目，且时长大于30分钟的次数超过4次
+P45+
+12.1满足年龄标签规则表-P45+中的频道及播出时间段内观看，且时长大于30分钟的次数超过4次
+12.2观看年龄标签规则表-P45+中剧情类型节目，且观看时长大于30分钟的次数超过4次
+需求：
+目的：建立用户画像标签库，根据年龄标签规则，对每个终端贴年龄的标签，一个终端可以贴多个标签。
+时间周期：2017年4月-2017年6月，共3个月，以每个完整自然月为一个统计周期
+P0-3
+8观看年龄标签规则表-P0-3中剧情类型节目，且时长大于30分钟的次数超过4次
+ž 数据源：点播表、年龄标签规则表-P0-3，按剧情类型字段匹配
+ž 判断标准：每个自然月内，观看该类型节目的时长大于30分钟且次数>4次，且4-6月每个月连续符合以上条件
+
+P4-14
+9.1在06:00-22:30时间段内观看CCTV-14频道的时长大于30分钟且次数大于4次
+ž 数据源：直播表，取频道、播出时间段两个字段匹配
+ž 时间段：06:00-22:30、CCTV-14频道
+ž 判断标准：每个自然月内，在06:00-22:30时间段内收看CCTV-14频道的时长大于30分钟且次数>4次，且4-6月每个月连续符合以上条件
+
+9.2观看年龄标签规则表-P4-14中剧情类型节目，且观看时长大于30分钟的次数超过4次
+ž 数据源：点播表、年龄标签规则表-P4-14，按剧情类型字段匹配
+ž 判断标准：每个自然月内，收看此剧情类型节目的时长大于30分钟且次数>4次，且4-6月每个月连续符合以上条件
+
+P15-29
+10.1 周五22:00-23:00或周六20:10-22:00时间段内收看湖南卫视的时长大于30分钟
+ž 数据源：直播表，取频道、播出时间段两个字段匹配
+ž 判断标准：每个自然月内，周五22:00-23:00或周六20:10-22:00时间段内收看湖南卫视的时长大于30分钟，每个月连续符合以上条件
+
+10.2观看年龄标签规则表-P15-29中剧情类型节目，且观看时长大于30分钟的次数超过4次
+ž 数据源：点播表、年龄标签规则表-P15-29，按剧情类型字段匹配
+ž 判断标准：每个自然月内，观看该类型节目的时长大于30分钟且次数>4次，且4-6月每个月连续符合以上条件
+
+P30-45
+11观看年龄标签规则表-P30-45中剧情类型节目，且观看时长大于30分钟的次数超过4次
+ž 数据源：点播表、年龄标签规则表-P30-45，按剧情类型字段匹配
+ž 判断标准：每个自然月内，观看该剧情类型节目的时长大于30分钟且次数>4次，且4-6月每个月连续符合以上条件
+
+P45+
+12.1满足年龄标签规则表-P45+中的频道及播出时间段内观看，且时长大于30分钟的次数超过4次
+ž 数据源：直播表、年龄标签规则表-P45+，按频道、播出时间段两个字段匹配
+ž 判断标准：每个自然月内，该频道该播出时间内，使用时长大于30分钟且次数>4次，且4-6月每个月连续符合以上条件
+
+12.2观看年龄标签规则表-P45+中剧情类型节目，且观看时长大于30分钟的次数超过4次
+ž 数据源：点播表、年龄标签规则表-P45+，按剧情类型字段匹配
+ž 判断标准：每个自然月内，收看该剧情类型节目的时长大于30分钟且次数>4次，且4-6月每个月连续符合以上条件
+
+三、性别、年龄标签结果输出表
+具体输出的表格式见附件excel：用户画像终端标签表
+
+
+
+============
+
+结果 呈现方式
+
+
+
+ 1.标签的规则
+ 如果该终端如果满足某条标签规则，则标记为1，不满足标记为0
+ 比如：终端sn1满足单身标签规则1.1，则标记为1；不满足单身标签规则1.2，则标记为0
+
+ 2.标签结果输出表如下所示
+ 终端 家庭构成                性别  年龄
+  单身标签规则    二人世界标签规则    夫妻+小孩标签规则  夫妻+老人标签规则    三代同堂标签规则  男标签规则 女标签规则 P0-3标签规则 P4-14标签规则 P15-29标签规则 P25-45标签规则 P45+标签规则
+  1.1 1.2 1.3 1.4 2.1 2.2 2.3 2.4 3.1 3.2 4.1 4.2 4.3 4.4 5.1 5.1 6.1 6.2 7.1 7.2 7.3 7.4 7.5
+ sn1 1 0 1 0 1 0 ..
+ sn2 0 1 1 0 0 1 ..
+ sn3 ... ... .. .. .. ..
+ ...
+
+
+
+  二、结果呈现方式
+表格存储结果字段如下表
+如果该终端如果满足某条标签规则，则标记为1，不满足标记为0，比如：终端sn1满足单身标签规则1.1，则标记为1；不满足单身标签规则1.2，则标记为0
+
+
+终端 1.1 1.2 1.3 1.4 2.1 2.2 2.3 2.4 3.1 3.2 4.1 4.2 4.3 4.4 5.1 5.1 6.1 6.2 7.1 7.2 7.3 7.4 7.5
+sn1 1 0 1 0 1 0 ..
+sn2 0 1 1 0 0 1 ..
+sn3 ... ... .. .. .. ..
+...
+
+
+
+结论
+
+程老师，附件是基于700分标注样本，按家庭结构做的行为特征分析，以下是主要结论，具体数据详见附件
+
+家庭构成 开机时间 开机频道 电视剧类型 电影类型 综艺类型 动画片类型 年份 地区
+单身类 工作日的开机时间集中在午后傍晚和深夜，休息日开机时间向上午转移 很少观看央视频道 观看电视剧特点比较接近：以剧情、爱情、战争和历史类为主 5类观看电影题材大致比较类似，都是以剧情和爱情类为主，单身类稍有不同，排名第三的是动作类，其他四类排名第三的都是喜剧类。 排名第一的是真人秀类， 题材集中在喜剧、亲子、奇幻、动画等 每类用户年份偏好上都比较一致 5类人群观看主要以中国大陆的综艺和电视剧为主，相比之下，夫妻+老人+孩子观看中国大陆的电视剧较多，其他4类观看大陆-综艺和大陆-电视剧相差不大
+二人世界 工作日观看次数在中午和晚上比休息日多，上午休息日观看的要比工作日的多，四类之间没有明显的区别 cctv-5、cctv1较多   其它类排名第一、真人秀、纪实、少儿、生活类紧随其后 观看题材比较类似，以动画、亲子、奇幻、其它类为主
+夫妻+小孩   观看特点较接近：以美食、农村、家庭、历史类为主
+夫妻+老人  观看央视较多，尤其CCTV-4，CCTV10次之
+夫妻+老人+小孩
+
+总体来看，区分开不同家庭构成的维度主要有开机时间、开机频道和观看节目类型，节目年份和地区并不能区分
+是否可以考虑去掉这两个维度，增加一些可以区分开的特征，比如细分点播端的观看行为
+各位，基于上次的8类聚类结果，做了相应的行为特征分析，详见附件，每个细分sheet里有主要结论分析。
+整体来看，类0、2、3、5比较偏互联网化，类1、4、6、7行为相对传统化，其他个体间的差异化不是特别明显
+
+===========
+
+ 2000份问卷数据的家庭构成
+
+ 型号model 空的 乱码 或者 没有匹配上的占比
+ 437461
+ 4806824
+ 0.09100832483153117318212607742659
+
+
+分类标签设计
+
+标签名称 标签维度 取值规则 备注
+家庭构成 6维 对应家庭构成取1，其他取0
+是否有小孩 1维 有小孩取1，无小孩取0
+是否有老人 1维 有老人取1，无老人取0
+
+需求解读
+表格式：
+终端 家庭组成 是否有小孩 是否有老人
+终端1 <……0,1,……> <1> <1>
+终端2
+终端3
+
+
+
+向量维度说明：
+家庭组成：<一口人，二口人，三口人，四口人，五口人，六口人及以上>，6维
+是否有小孩： 1维,是记为1，否记为0
+是否有老人：1维,是记为1，否记为0
+
+
+===========================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+摘要：用户画像(User Profile)，作为大数据的根基，它完美地抽象出一个用户的信息全貌，为进一步精准、快速地分析用户行为习惯、消费习惯等重要信息，提供了足够的数据基础，奠定了大数据时代的基石。
+微博作为最大的中文社交媒体，拥有数以“PB”(1024 TB)计的用户信息，从海量的用户信息中发掘每个用户的社交特性、潜在能力及兴趣等信息，是微博为用户提供更加人性化服务的基础。微博大数据经过近两年不断地调整、磨合、优化，针对社交媒体特性，研发构建了一整套完整的用户画像体系。该体系涵盖能力标签、兴趣标签、关系及亲密度、信用质量和自然属性五大部分，完整而全面地实现了用户信息标签化。同时，大数据的用户画像体系已应用于微博众多的业务场景中，并随着微博业务的发展不断完善升级，将“大数据”概念落地落实。
+为了方便与大家交流探讨，大数据用户团队特别整理了用户画像系列文章，主要从微博的角度出发，重点介绍社交媒体平台中用户的特性，微博业务发展中用户的建模刚需，以及不同纬度建模过程中遇到的问题和解决方案。
+引言
+在以微博为代表的社交媒体平台中，每一个用户都是网络中的一个具备发布、传播、消费信息功能的节点。其中一部分节点具备发布优质原创信息的功能，并通过社交网络将信息快速传播，即能力节点;而其他大部分节点则偏重于消费信息，同时传播其感兴趣的信息，即消费节点。微博平台的这种信息传播方式使得能力节点从原创信息传播中获得对网络的影响力，并打造自身的品牌，从而进一步促使更多节点消费其原创信息;而这信息传播方式也让消费节点在消费信息的同时发掘其自身兴趣，促进其对同类信息的消费，从而提升能力节点的活跃性。因此，促进优质信息的快速传播是我们的首要任务，而挖掘出具备原创信息发布能力的节点，并为其打上相应的能力标签是后续工作的前提和基础。
+本文主要从用户标签体系、能力标签的应用场景、能力标签挖掘框架、关键技术点四个方面对用户能力标签的整体挖掘框架和挖掘算法进行介绍。
+一、用户标签体系：
+微博作为最大的中文社交媒体，每天都有丰富的信息在其上发布与传播，从某个话题下的相关信息中聚合出一个或者多个具有代表性的词语作为标签，能够方便对用户与内容的查找与分析。因此，对于在微博上能够聚合出的数量庞大的标签库而言，为了有效的梳理标签，方便挖掘工作的进行，需要构建一个清晰完整的用户标签体系。图1是目前已经构建的三层标签体系，其左半部分叙述了三个层级标签的数量，右半部分则对标签层级进行举例说明。
+
+图1：三层用户标签体系
+如图1左半部分所述，在当前的三层用户标签体系中，共存在50多个一级标签，1000多个二级标签和近30万的三级标签;其中一级标签是大类标签，类似于新闻客户端中常见的频道(如右半部分的财经、互联网等)，二级标签是从属于一级标签的细分(如右半部分中财经下的股票，互联网下的互联网安全等)，三级标签是对二级标签的进一步细分，能对应到一级标签下的实体对象(如财经下某一支具体的股票，互联网下的某一家具体公司等)。
+在所确定的标签体系下，我们需要对每一个粒度的标签聚合信息，具体到用户能力标签，就是要在每个标签下聚合具有该细分标签能力的用户群体。
+二、能力标签的应用场景
+目前能力标签已经应用于微博众多业务场景中，其中两个典型的业务场景是“微博找人”和“热门微博”，分别如图2和图3所示。
+
+图2：为“微博找人”业务直接推荐各个行业的专家账号
+
+
+图3：“热门微博”内容来源于挖掘的各个领域的专家账号
+在找人业务场景中，用户可以直接发现各垂直领域的专家账号，通过关注专家账号可以直接获取各垂直领域的优质内容。在热门微博业务场景中，内容流都出自于垂直领域的专家账号：一个账号通过发布某个领域的优质内容形成初步影响力，大数据计算出其所属领域后，热门微博会在对应领域进行内容推荐，使该账户逐步成长为专家账号，从而形成一个产品闭环。能力标签的主要作用是构建各种优质语料的重要基础数据源，通过能力标签圈定专家用户群体，提取出优质语料等相关信息;在大部分情况下，能力标签不直接在业务场景中展示。
+三、能力标签挖掘框架
+能力标签挖掘，即对用户标签体系中的能力标签进行挖掘。具体的，在整体用户能力标签挖掘流程中，首先通过用户关系数据(主要是分组，用于体现粉丝对于用户能力的认可度)、用户内容数据(主要是原创博文，用于体现用户自身的专业能力)、用户行为数据(主要是转、评、赞等互动信息，用于体现该用户在相关领域内的影响力)挖掘出用户的能力标签及其基础权重;其次通过引入用户的自填信息、认证信息作为能力标签权重的调权因子参与计算;接下来通过多个维度的定向挖掘系统和运营反馈系统进行能力标签的校正和增加能力标签的覆盖。最后，将挖掘出来的用户能力标签及权重输出至用户能力标签库，供上层业务调用。整体的挖掘框架如图4所示：
+
+图4：用户能力标签挖掘整体框架
+四、能力标签挖掘关键技术点
+本节主要介绍能力标签挖掘中涉及到的标签词汇聚、用户影响力、时间窗口和时间衰减三个关键技术点。
+标签词汇聚
+用户的分组信息即用户为关注对象打上的标签作为用户关系数据引入到挖掘过程中，由于标签属于UGC，就会造成同一个标签主题有多种不同的表达方式，将多种不同的表达方式聚合起来，形成一个标签集，并且映射到我们的标签体系中，可以有效地提升能力标签的准确率和覆盖率。
+首先将分组信息通过分类模型划分为强关系型(同学、同事等)和兴趣型(互联网、财经等)两类，并将兴趣型分组信息作为我们的基础预料。
+接下来通过聚类、关联等相关算法进行标签词(分组信息)的聚合;
+最后将聚合的标签集根据相关程度等因子划分为高相关和低相关两类。
+以互联网标签为例，聚合出来的最终结果如表1所示：
+
+
+表1：互联网相关标签集
+用户影响力
+用户影响力指的是用户在某个特定标签下的影响力，因此影响力计算的边界(如图5所示)是标签对应的兴趣用户群体(包含该标签的能力用户)，即对该标签所对应的领域有一定了解的用户群体。具体地，我们将其它用户对某个用户原创博文的转、评、赞等互动行为作为基础数据，利用pagerank迭代算法进行该用户影响力的计算。
+
+图5：用户影响力计算边界
+其中，同领域用户的影响力大小是由其它用户对相关博文的转、评、赞等互动行为按照一定的权重比计算得到的。所谓相关博文就是指用户发表的属于标签对应领域的原创博文(即打上内容标签的原创博文，该部分属于大数据内容团队负责，后续会有相关文章介绍)。
+时间窗口和时间衰减
+考虑到原创博文的消费价值和计算代价，对于用户内容数据，我们选取了用户近一段时期内的原创博文作为基础语料进行计算。
+关于时间衰减，我们结合牛顿冷却定律和微博的业务需求推导出相应的衰减公式，并通过衰减效果的对比，确定了相关衰减参数的数值，最终得出了用户能力标签内容权重的时间衰减函数，如图6所示。
+
+图6：用户能力标签内容权重衰减函数
+五、小结
+当前我们主要从社交关系、原创内容、影响力三个维度来识别用户的能力标签以及计算相应的权重，同时通过用户的自填信息、认证信息等其他信息进行调权。对于某些特定的垂直领域或某类具有明显特征的用户群体，我们通过定向挖掘系统来进行处理，然后融合到最终的用户能力标签库进行输出。
+相对于用户能力标签，用户兴趣标签涉及到的上层业务更加广泛，依赖的数据也更加复杂多变，在下一篇用户画像系列文章中，我们将会详细介绍用户兴趣标签的挖掘流程。
+
+----------------------
+
+听说个推有基于大数据的用户画像，想知道它的标签体系是怎样的。谁比较清楚呢，说说呗
+石字架上的猪 | 浏览 751 次
+发布于2016-08-17 07:37 最佳答案
+标签是某一种用户特征的符号表示，每个标签都规定了观察、认识和描述用户的一个角度，用户画像是一个整体，各个维度不孤立，标签之间有联系，用户画像可以用标签的集合来表示。个推有几百个用户相关的标签，用户的性别，年龄，兴趣爱好，消费习惯，地理位置，用户设备等。
+ 本回答由提问者推荐 评论 2 0
+
+冷数据是指，性别、兴趣、常驻地、职业、年龄等数据画像，表征“这是什么样的人”。热数据是指，当前地点、打开的应用等场景化明显的、稍纵即逝的营销机会，表征“正在哪里干什么”。温数据是指，近期活跃应用、近期去过的地方等具有一定时效性的行为数据，表征“最近对什么感兴趣”。个推独创，但是分析得很到位啊！
+
+
