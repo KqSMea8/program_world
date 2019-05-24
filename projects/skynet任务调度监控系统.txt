@@ -1,0 +1,1094 @@
+SkyNet任务调度监控系统
+
+当前版本 V0.0.1
+作者 刘晓文
+
+修改记录
+更新时间 版本 修订人 修改内容
+2014/12/30 V0.0.1 刘晓文 初始创建
+2015/5/4 V0.0.2 刘晓文 元数据、
+
+
+目录
+一、 设计目的 0
+二、 整体架构 2
+2.1 SkyNet核心功能 2
+2.2 SkyNet核心组件 3
+三、 Job元数据 3
+3.1 Job配置表 3
+3.2 Job依赖配置表 4
+3.3 Job运行历史表 4
+3.4 资源配置表 4
+3.5 告警配置表 5
+3.6 告警发送记录表 5
+3.7 正在运行Job 5
+3.8 任务池表 6
+3.9 等待任务表 6
+3.10 序列表 7
+3.11 Job状态视图 8
+3.12 用户表 9
+3.13 业务类型配置表 9
+3.14 资源健康状态表 9
+四、 JobClient 10
+五、 JobManager (Master) 10
+5.1 RPCServer 10
+5.2 数据库管理服务类 11
+5.3 资源管理服务 11
+5.4 Job依赖关系维护 12
+5.5 定时调度器 12
+5.6 Job监控 12
+5.7 告警服务 13
+5.8 初始化流程 13
+5.9 启动流程 13
+5.10 成功Job处理流程 13
+5.11 失败Job处理流程 13
+六、 JobWorker (Slave) 14
+6.1 内存数据结构 14
+6.2 定期从获取可以运行的Job 14
+6.3 执行Job 14
+七、 核心流程图 14
+7.1 Job维护流程 14
+7.2 Job依赖维护流程 16
+7.3 资源维护流程 17
+7.4 Job提交流程 18
+7.5 Job执行流程 19
+7.6 Job监控流程 19
+八、 SkyNet后台部署与运行 21
+8.1 安装 21
+8.2 数据库建库建表 21
+8.3 配置 21
+8.4 运行 22
+8.5 停止 22
+九、 SkyNet前端部署与运行 23
+9.1 安装 23
+9.2 配置 23
+9.3 运行 23
+
+
+一、 设计目的
+l 目前整个数据平台的任务调度非常粗糙，基本仅靠Crontab来定时运行，日志清洗、日志校验、数据分析、入库各模块之间无有效依赖，经常由于前置任务出错或者未完成，后续的任务运行出错，并且对任务出错的监控不到位，造成分析数据不能及时入库，导致线上BUG。
+l 真实业务场景下合理的任务运行图：
+
+
+
+（图一）
+1. 定时触发一个日志校验的Job，去检查清洗后的日志是否已经就绪；
+2. 分析的JOB均依赖日志校验的Job，一旦日志校验的Job执行成功，则并发启动依赖其的分析Job1-4；
+3. 入库JOB1依赖分析JOB1和分析JOB2，如果这两个分析JOB全部执行成功，则启动执行入库JOB1；
+4. 对于入库JOB2，如果分析JOB3和分析JOB4有一个未成功执行，则入库JOB2就不执行；
+l 一个复杂的任务依赖图：
+
+
+l 为了解决数据平台ETL任务的稳定性，时效性，因此设计开发SkyNet任务调度系统，旨在解决任务的统一配置，统一调度，统一监控告警等功能，减少开发人员的开发和维护成本，提高平台的稳定性。
+
+二、 整体架构
+
+2.1 SkyNet核心功能
+
+1. Job维护：添加、修改、删除、杀死Job；
+2. Job依赖关系维护：添加、修改、删除Job之间的依赖关系；
+3. 查询类：查询Job列表、根据状态查询Job列表、查询Job的父子依赖等；
+4. 资源维护：添加、修改、删除资源，查询资源列表；
+5. Job触发：支持定时、依赖、手工触发调度Job；
+6. 任务失败告警：当任务失败或者某个时间点未成功结束时，触发邮件和短信报警；
+7. 支持任务类型包括：shell、python、MapReduce、Hive、DataHub任务的调度及监控；
+8. 可扩展性：Slave（JobWorker）可根据需要随时扩充；
+
+2.2 SkyNet核心组件
+
+1. 元数据库：Mysql，保存Job的配置、依赖关系、运行历史、资源配置、告警配置等；
+2. JobClient：SkyNet客户端类，对外的唯一接口；
+3. JobManager：SkyNet的Master，提供RPC服务，接收并处理JobClient提交的所有操作；与元数据库通讯，维护Job元数据；负责任务的统一配置维护、触发、调度、监控；
+4. JobMonitor: 监控正在运行的Job状态、监控任务池、监控等待运行的Job；
+5. JobWorker：SkyNet的Slave，从任务池中获取Job、负责启动并收集Job的执行状态，以心跳方式发送给JobManager；
+
+以上各组件下文中详细介绍。
+
+三、 Job元数据
+元数据存储于Mysql，数据库名skynet.
+CREATE DATABASE `skynet` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+3.1 Job配置表
+
+DROP TABLE IF EXISTS dmp_job;
+CREATE TABLE dmp_job (
+job_id INT NOT NULL,
+job_create_time DATETIME NOT NULL,
+job_last_update_time DATETIME NOT NULL,
+job_name VARCHAR(200) NOT NULL,
+job_type  VARCHAR(20) NOT NULL COMMENT 'JOB类型：SHELL,HIVE,MR,JAVA,etc.',
+job_app_location VARCHAR(500) NOT NULL COMMENT 'JOB程序文件路径',
+job_class_name VARCHAR(200) COMMENT 'JOB类名',
+job_run_args VARCHAR(500) COMMENT 'JOB运行参数',
+job_run_cron VARCHAR(20) COMMENT 'JOB定时运行quartz表达式',
+job_business_type VARCHAR(200) NOT NULL COMMENT 'JOB业务类型，如：DAP,UT,etc.',
+job_comment  VARCHAR(4000) COMMENT 'JOB备注信息',
+job_period INT DEFAULT 0 COMMENT 'JOB运行周期,0:天,1:小时',
+job_special_host VARCHAR(100) COMMENT 'JOB指定运行的HOST',
+job_business_time VARCHAR(50) COMMENT 'JOB业务日期格式',
+job_retry_cnt   INT DEFAULT 0 COMMENT '失败重试次数',
+job_retry_interval INT DEFAULT 60 COMMENT '失败重试间隔(秒)',
+job_final_command VARCHAR(500) COMMENT '任务完成后执行命令',
+PRIMARY KEY (job_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+3.2 Job依赖配置表
+DROP TABLE IF EXISTS dmp_job_dependence;
+CREATE TABLE dmp_job_dependence(
+parent_job_id INT NOT NULL,
+son_job_id INT NOT NULL,
+PRIMARY KEY (parent_job_id,son_job_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+3.3 Job运行历史表
+DROP TABLE IF EXISTS dmp_job_log;
+CREATE TABLE dmp_job_log (
+job_instance_id BIGINT NOT NULL,
+job_id INT NOT NULL,
+create_time datetime NOT NULL COMMENT '记录创建时间',
+job_run_host VARCHAR(50) NOT NULL COMMENT 'job运行主机',
+job_status VARCHAR(20) NOT NULL COMMENT 'job运行状态',
+job_business_time VARCHAR(20) COMMENT 'job运行业务日期',
+job_start_time datetime COMMENT 'job开始运行时间',
+job_end_time datetime COMMENT 'job运行结束时间',
+job_run_log VARCHAR(200) COMMENT 'job运行日志文件',
+job_submit_flag INT COMMENT 'job提交标记，0:自动;1:手动',
+job_batch_no BIGINT DEFAULT 0 COMMENT 'job运行批次号',
+INDEX `job_instance_id` (job_instance_id),
+INDEX `job_id` (`job_id`),
+INDEX `job_business_time` (`job_business_time`),
+INDEX `create_time` (`create_time`),
+INDEX `job_status` (`job_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+3.4 资源配置表
+DROP TABLE IF EXISTS dmp_resource_config;
+CREATE TABLE dmp_resource_config (
+hostname  VARCHAR(100) NOT NULL COMMENT '主机名/IP',
+job_type VARCHAR(50) NOT NULL COMMENT '可运行的JOB类型',
+max_job_count INT NOT NULL COMMENT '该类型可运行的最大任务数',
+running_job_count INT COMMENT '表示已分配出去的任务数',
+is_special INT default 0 comment '是否特定的资源',
+PRIMARY KEY (hostname,job_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+3.5 告警配置表
+DROP TABLE IF EXISTS dmp_alarm_config;
+CREATE TABLE dmp_alarm_config (
+job_id INT NOT NULL,
+alarm_flag INT NOT NULL DEFAULT 0 COMMENT '0:失败告警，1:指定时间未成功结束告警;',
+alarm_time  VARCHAR(20) COMMENT '当alarm_type = 1时，设定告警时间，格式为: HH:mm:ss',
+alarm_type INT NOT NULL DEFAULT 0 COMMENT '0:邮件告警，1:短信告警，2:邮件和短信告警;',
+alarm_mail_list VARCHAR(2000) COMMENT '邮件告警收件人列表,分号分隔',
+alarm_mobile_list VARCHAR(2000) COMMENT '短信告警收信人手机号列表，分号分隔',
+PRIMARY KEY (job_id,alarm_flag)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+3.6 告警发送记录表
+DROP TABLE IF EXISTS dmp_alarm_log;
+CREATE TABLE dmp_alarm_log (
+job_id INT NOT NULL,
+alarm_flag INT DEFAULT 0 COMMENT '0:失败告警，1:指定时间未成功结束告警;',
+alarm_time datetime NOT NULL COMMENT '告警时间',
+alarm_status INT NOT NULL COMMENT '告警发送结果，0:成功，1:失败'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+3.7 正在运行Job
+保存正在运行的job，当job结束后，从该表中删除。
+DROP TABLE IF EXISTS dmp_running_job;
+CREATE TABLE dmp_running_job (
+job_instance_id BIGINT NOT NULL,
+job_id INT NOT NULL,
+create_time datetime NOT NULL COMMENT '记录创建时间',
+job_last_update_time datetime NOT NULL COMMENT '上次更新状态的时间',
+job_run_host VARCHAR(50) NOT NULL COMMENT 'job运行主机',
+job_status VARCHAR(20) NOT NULL COMMENT 'job运行状态',
+job_business_time VARCHAR(20) COMMENT 'job运行业务日期',
+job_start_time datetime COMMENT 'job开始运行时间',
+job_end_time datetime COMMENT 'job运行结束时间',
+job_run_log VARCHAR(200) COMMENT 'job运行日志文件',
+job_submit_flag INT NOT NULL DEFAULT 0 COMMENT '0:自动提交；1:手动提交',
+job_batch_no BIGINT DEFAULT 0 COMMENT 'job运行批次号',
+PRIMARY KEY (job_instance_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+3.8 任务池表
+用于存放等待JobWorker获取的Job
+
+DROP TABLE IF EXISTS dmp_job_pool;
+CREATE TABLE dmp_job_pool (
+job_instance_id BIGINT NOT NULL,
+job_id INT NOT NULL,
+create_time datetime NOT NULL COMMENT '记录创建时间',
+job_run_host VARCHAR(50) NOT NULL COMMENT 'job运行主机',
+job_business_time VARCHAR(20) COMMENT 'job运行业务日期',
+job_action INT NOT NULL DEFAULT 0 COMMENT '0:运行任务;1:kill任务',
+job_submit_flag INT NOT NULL DEFAULT 0 COMMENT '0:自动提交；1:手动提交',
+job_is_geted INT NOT NULL DEFAULT 0 COMMENT '0:未被JobWorker拿走；1:已经被JobWorker拿走',
+job_batch_no BIGINT DEFAULT 0 COMMENT 'job运行批次号',
+PRIMARY KEY (job_instance_id),
+INDEX job_run_host (job_run_host)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+3.9 等待任务表
+存放等待运行的job，标记出是没资源，还是父任务未全部完成
+
+DROP TABLE IF EXISTS dmp_waitting_job;
+CREATE TABLE dmp_waitting_job (
+job_instance_id BIGINT NOT NULL,
+job_id INT NOT NULL,
+create_time datetime NOT NULL COMMENT '记录创建时间',
+job_business_time VARCHAR(20) COMMENT 'job运行业务日期',
+job_wait_flag INT NOT NULL COMMENT '0:没有资源;1:父任务未全部完成',
+job_submit_flag INT NOT NULL DEFAULT 0 COMMENT '0:自动提交；1:手动提交',
+job_batch_no BIGINT DEFAULT 0 COMMENT 'job运行批次号',
+PRIMARY KEY (job_instance_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+3.10 序列表
+--------实现序列的功能
+
+drop table if exists dmp_seq;
+create table dmp_seq (
+    seq_name        VARCHAR(50) NOT NULL COMMENT '序列名称',
+    current_val     BIGINT         NOT NULL COMMENT '当前值',
+    increment_val   INT         NOT NULL    DEFAULT 1 COMMENT '步长(跨度)',
+    PRIMARY KEY (seq_name)
+);
+
+INSERT INTO dmp_seq (seq_name,current_val) VALUES('job_id',1000);
+INSERT INTO dmp_seq (seq_name,current_val) VALUES('job_instance_id',25000);
+INSERT INTO dmp_seq (seq_name,current_val) VALUES('job_batch_no',1200);
+
+DELIMITER $
+create function currval(v_seq_name VARCHAR(50))
+returns integer
+begin
+    declare value integer;
+    set value = 0;
+    select current_val into value
+    from dmp_seq
+    where seq_name = v_seq_name;
+    return value;
+end$
+
+DELIMITER $
+CREATE function nextval (v_seq_name VARCHAR(50))
+returns integer
+begin
+  update dmp_seq
+  set current_val = current_val + increment_val
+  where seq_name = v_seq_name;
+  return currval(v_seq_name);
+end$
+
+DELIMITER $
+create function setval(v_seq_name VARCHAR(50), v_new_val INTEGER)
+returns integer
+begin
+  update dmp_seq
+  set current_val = v_new_val
+  where seq_name = v_seq_name;
+return currval(v_seq_name);
+end$
+
+3.11 Job状态视图
+CREATE or replace view v_job_status1
+as
+select a.job_id,
+a.job_instance_id,
+a.create_time,
+null as job_run_host,
+'WAITTING' as job_status,
+a.job_business_time,
+null as job_start_time,
+null as job_end_time,
+null as job_run_log,
+a.job_submit_flag,
+a.job_wait_flag,
+1 as odr
+from dmp_waitting_job a
+union all
+select b.job_id,
+b.job_instance_id,
+b.create_time,
+b.job_run_host,
+b.job_status,
+b.job_business_time,
+b.job_start_time,
+b.job_end_time,
+b.job_run_log,
+b.job_submit_flag,
+null as job_wait_flag,
+2 as odr
+from dmp_job_log b
+union all
+select c.job_id,
+c.job_instance_id,
+c.create_time,
+c.job_run_host,
+c.job_status,
+c.job_business_time,
+c.job_start_time,
+c.job_end_time,
+c.job_run_log,
+c.job_submit_flag,
+null as job_wait_flag,
+3 as odr
+from dmp_running_job c;
+
+CREATE or replace view v_job_status
+as
+SELECT a.*,b.job_name,b.job_type,b.job_business_type
+FROM v_job_status1 a join dmp_job b
+ON (a.job_id = b.job_id);
+
+3.12 用户表
+DROP TABLE IF EXISTS dmp_user;
+CREATE TABLE dmp_user (
+username VARCHAR(100) NOT NULL,
+password VARCHAR(100) NOT NULL,
+createtime DATETIME NOT NULL,
+user_role VARCHAR(100),
+job_business_type VARCHAR(200) NOT NULL COMMENT 'JOB业务类型，如：DAP,UT,etc.',
+PRIMARY KEY (username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+3.13 业务类型配置表
+DROP TABLE IF EXISTS dmp_job_buseinss_type;
+CREATE TABLE dmp_job_buseinss_type(
+job_business_type VARCHAR(100) NOT NULL,
+user_name VARCHAR(100) NOT NULL COMMENT '业务类型使用的用户名',
+hadoop_resource_pool VARCHAR(100) COMMENT 'hadoop资源池',
+PRIMARY KEY (job_business_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+3.14 资源健康状态表
+
+DROP TABLE IF EXISTS dmp_resource_healthy;
+CREATE TABLE dmp_resource_healthy (
+hostname  VARCHAR(100) NOT NULL COMMENT '主机名/IP',
+last_update_time datetime COMMENT '上次心跳时间',
+flag INT DEFAULT 0 COMMENT '0:jobworker,1:jobmanager',
+PRIMARY KEY (hostname,flag)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
+四、 JobClient
+1. 用户与系统交互的唯一接口；
+2. 封装提供给用户使用的所有接口，单例模式，使用时候指定JobManager的RPC hostname和端口号；
+JobClient jc = JobClient.getInstance("lxw-PC", 2234);
+3. 拥有JobManager的RPC代理，将用户提交的操作通过RPC调用JobManager的相应接口进行处理；
+4. 提供的接口包括：
+l 操作Job，包括增加，修改，删除，运行，杀死Job等；
+l 维护Job依赖关系；
+l 配置、查询资源；
+l 查询Job信息，包括指定条件查询，如状态，JobID，时间等；
+l 查询Job依赖；
+
+
+
+五、 JobManager (Master)
+SkyNet调度系统的Master节点，负责所有任务的调度，分发，状态跟踪，报警，资源管理等。
+
+5.1 RPCServer
+l JobManager自身为一个RPCServer，为JobClient提供调用接口；
+l 为JobClient提供的RPC接口：
+ü Job操作类接口：保存Job，根据JobID获取Job，获取所有Job，获取新的JobID，删除Job；
+ü Job依赖关系维护接口：添加、删除Job依赖，查询Job的父子依赖；
+ü 查询类接口；查询正在运行的Job，查询Job的历史运行，查询一个时间段内的Job等；
+ü 维护类接口：停止JobManager，添加、修改、删除资源，获取资源列表；
+5.2 数据库管理服务类
+l JobStoreManager，封装所有与元数据库通讯的接口，用于Job元数据的持久化和查询。
+l 使用数据库链接池；
+l 接口列表：
+
+5.3 资源管理服务
+l ResourceManager，负责Job资源的计算和分配；
+l 资源包括：主机名/IP，可运行的任务类型，最大运行的任务数量；
+l 初始化将资源配置表中已分配的Job数全部设为0；
+l 资源申请流程：
+
+ü 根据Job类型，首先从资源配置表中获取可以运行该类型Job的节点、最多可运行的Job数量、已分配出去的Job数量；
+ü 从上面获取的节点中取（max_job_count – running_job_count）> 0，并按照（max_job_count – running_job_count）降序排列，取第一条记录；
+ü 如果有返回主机名，表示有资源，则将该资源已分配Job数量+1；
+ü 返回主机名；
+ü 如果没有记录返回，则表示没有资源，返回null；
+l 资源释放流程：
+
+ü 根据传入的hostname和job_type，将资源配置表中该记录已分配Job数量-1；
+
+5.4 Job依赖关系维护
+l Neo4jService
+l 使用Neo4j保存任务的依赖关系，供查询使用；
+l 当Job的依赖关系发生变化时，需要在Neo4j中做相应的维护；
+
+5.5 定时调度器
+l QuartzService
+l 维护定时运行的Job，当Job到达任务触发时间时，提交Job运行；
+
+5.6 Job监控
+l 监控超时未成功执行的Job，触发告警（可依靠Quartz定时触发）；
+l 监控正在运行的Job列表，当Job长时间未更新时，做相应处理；
+l 监控待运行Job队列，并尝试提交Job；
+l 监控任务池，从任务池中删除被拿走的Job；
+
+5.7 告警服务
+l 提供告警服务，目前只提供邮件告警服务
+
+5.8 初始化流程
+l 获取RPC host&port：从配置文件conf/master.xml中获取；
+l 构建RPCServer；
+l 初始化Neo4j服务；
+l 从数据库中初始化加载所有Job；
+l 从数据库中初始化job依赖；
+l 初始化资源管理服务；
+l 构建Quartz服务；
+
+5.9 启动流程
+l 初始化；
+l 启动jobManagerRPCServer；
+l registerShutdownHook；
+l 启动Neo4j服务线程；
+l 启动Quartz服务线程；
+l 启动Job监控线程；
+
+5.10 成功Job处理流程
+l 更新Job状态；
+l 获取该Job的一级子Job，分别检查子Job的其他父Job，如果父Job全部完成，则提交该Job运行；如果有父Job未完成，则将该Job加入因前置Job未全部完成而等待运行的Job队列
+5.11 失败Job处理流程
+l 更新Job状态；
+l 告警；
+六、 JobWorker (Slave)
+6.1 内存数据结构
+l 正在运行的JobExecutor列表；
+6.2 定期从获取可以运行的Job
+l 定期从任务池获取可以运行的Job
+l 定期汇总各个Job状态，并更新；
+6.3 执行Job
+l 根据Job类型，构建相应的JobExecutor，执行并收集Job执行日志；
+
+
+七、 核心流程图
+7.1 Job维护流程
+l 添加、修改Job
+
+l 删除Job
+
+7.2 Job依赖维护流程
+l 添加Job依赖
+
+
+l 删除Job依赖
+
+
+7.3 资源维护流程
+l 添加、修改资源
+
+l 删除资源
+
+
+7.4 Job提交流程
+l Job自动提交（定时触发和依赖触发）
+
+l Job手动提交（由JobClient提交）
+
+7.5 Job执行流程
+
+
+7.6 Job监控流程
+l 监控任务池
+
+
+
+l 监控等待运行的Job
+
+
+
+l 监控正在运行的Job
+
+
+
+八、 SkyNet后台部署与运行
+8.1 安装
+l 解压skynet.tar.gz
+l 解压后目录结构：
+skynet/
+conf/      ##配置文件
+bin/   ##执行脚本
+lib/   ##第三方jar包
+SkyNet.jar ##SkyNet核心jar包
+8.2 数据库建库建表
+l 建库：
+CREATE DATABASE `skynet` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+l 赋权：
+GRANT ALL PRIVILEGES ON skynet.* TO 'skynet'@'localhost' IDENTIFIED BY 'password' WITH GRANT OPTION;
+flush privileges;
+l 建表：
+见第三章,Job元数据中建表脚本
+8.3 配置
+l conf/c3p0.properties
+c3p0数据库链接池。
+l conf/mail.properties
+发送告警邮件配置。
+l conf/master.properties
+JobManager配置文件。
+ü job_manager_rpc_host=172.16.0.1  //JobManager RPC运行主机ip
+ü job_manager_rpc_port=2234 //JobManager RPC运行端口号
+ü job_monitor_scan_period=10 //JobMonitor扫描数据库时间间隔
+l conf/slave.properties
+JobWorker配置文件。
+ü job_worker_scan_period=5 //JobWorker线程扫描数据库间隔，单位：秒
+ü job_log_dir=/usr/local/skynet/logs  //JobWorker记录的日志路径
+ü job_worker_jetty_port=9911   //JobWorker中Jetty服务端口号，用于查看Job运行日志
+ü job_working_directory=/tmp/skynet/ //job执行工作目录,各用户必须有可读写权限,chmod –R 777 /tmp/skynet
+l bin/skynet.sh
+配置export JAVA_HOME=/usr/local/jre1.7.0_67
+l bin/monitor-skynet.sh
+系统监控脚本。
+配置export JAVA_HOME=/usr/local/jre1.7.0_67
+配置maillist=liu.xiaowen@uniclick.cn   //当系统运行异常时，发给管理员邮件告警
+l 开放相关端口访问权限
+job_manager_rpc_port、job_worker_jetty_port
+l 配置环境变量
+SKYNET_HOME,JAVA_HOME
+l 数据库中配置初始数据
+dmp_job_buseinss_type //业务类型
+dmp_resource_config //资源
+dmp_user //用户、用于前端页面登陆和权限控制
+8.4 运行
+l 运行JobManager
+bin/skynet.sh start jm
+启动后，在skynet/下产生jm.log日志文件
+l 运行JobWorker
+bin/skynet.sh start jw
+启动后，在skynet/下产生jw.log日志文件
+l 运行系统监控脚本
+bin/ monitor-skynet.sh
+启动后，在skynet/下产生monitor.log日志文件（5分钟刷新一次）
+8.5 停止
+l 停止JobWorker
+bin/skynet.sh stop jw
+l 停止JobManager
+bin/skynet.sh stop jm
+//会将JobManager和系统监控(monitor-skynet.sh)一起停止
+九、 SkyNet前端部署与运行
+9.1 安装
+l 将skynet.war拷贝至$TOMCAT_HOME/ webapps/
+9.2 配置
+l 开放8080端口
+l 配置tomcat数据库链接池：
+$TOMCAT_HOME/conf/ context.xml
+<Resource name="jdbc/SkyNetDB" auth="Container" type="javax.sql.DataSource"
+        driverClassName="com.mysql.jdbc.Driver"
+        maxActive="50" maxIdle="10" maxWait="10000"
+        username="skynet_reader" password="password"
+        url="jdbc:mysql://172.16.0.1:3306/skynet"
+        validationQuery='select 1'
+     testWhileIdle='true'
+     timeBetweenEvictionRunsMillis='8000'
+     minEvictableIdleTimeMillis='10000'/>
+l 配置SkyNet后台服务信息：
+$TOMCAT_HOME/ webapps/skynet/WEB-INF/classes/ jm.properties
+job_manager_rpc_port=2234
+job_manager_rpc_host=172.16.0.1
+9.3 运行
+l 运行tomcat即可。
+l 访问页面：http://localhost:8080/skynet/
+l 用户名和密码直接在数据库dmp_user表中更新
+
+
+SkyNet调度系统使用手册
+
+当前版本 V0.0.2
+作者 刘晓文
+
+
+
+
+修改记录
+
+更新时间 版本 修订人 修改内容
+2014/12/30 V0.0.1 刘晓文 初始创建
+2015/5/4 V0.0.2 刘晓文 页面功能介绍、HTTP接口
+
+
+目录
+第1章 系统概述 3
+1.1 背景 3
+1.2 系统架构 4
+1.2.1 名词解释 4
+1.2.2 系统模块 4
+1.2.3 系统特性 5
+1.3 系统核心功能 5
+第2章 DashBoard 6
+2.1 页面 6
+2.2 功能 6
+第3章 任务维护 7
+3.1 添加任务 7
+3.1.1 页面 7
+3.1.2 功能 8
+3.2 查询操作任务 9
+3.2.1 页面 9
+3.2.2 查询任务 9
+3.2.3 运行任务 9
+3.2.4 查看任务依赖 10
+3.2.5 修改任务 10
+3.2.6 删除任务 11
+第4章 任务依赖 12
+4.1 查询依赖 12
+4.2 添加任务依赖 12
+4.3 删除任务依赖 13
+4.4 查看任务最后一次运行详情 13
+第5章 任务监控 14
+5.1 页面 14
+5.2 查询任务运行历史 15
+5.3 查看任务运行日志 15
+5.4 重做任务 16
+5.5 KILL任务 16
+第6章 告警配置 17
+6.1 添加任务告警 17
+6.1.1 任务失败告警 18
+6.1.2 任务超时未完成告警（暂未实现） 18
+6.2 查询任务告警配置 18
+6.3 修改任务告警 19
+6.4 删除任务告警 19
+6.5 查询告警发送记录 20
+第7章 系统部分运行原理 20
+7.1 业务类型 20
+7.2 程序路径 21
+7.3 指定任务运行主机 21
+7.4 调度的延迟 21
+附录A 动态时间参数 22
+附录B Quartz时间表达式 22
+附录C 定时任务配置流程 23
+附录D 依赖任务配置流程 23
+
+
+第1章 系统概述
+1.1 背景
+大数据平台技术框架支持的开发语言多种多样，开发人员的背景差异也很大，这就产生出很多不同类型的程序（任务）运行在大数据平台之上，
+如：MapReduce、Hive、Pig、Spark、Java、Shell、Python等。
+这些任务需要不同的运行环境，并且除了定时运行，各种类型之间的任务存在依赖关系，一张简单的任务依赖图如下：
+
+目前各业务的数据任务基本都是靠Crontab定时调度，各个任务之间的依赖仅靠简单的串行来实现。
+这样做的问题：
+l 很容易造成前面的任务未结束或者失败，后面的任务也运行起来，最终跑出错误的分析结果；
+l 任务不能并发执行，增加任务执行的整体时间窗口；
+l 任务管理和维护很不方便，不好统计任务的执行时间及运行日志；
+l 缺乏及时有效的告警；
+SkyNet调度监控系统，正是为了解决以上问题。
+1.2 系统架构
+
+
+1.2.1 名词解释
+SkyNet 任务调度监控系统的名称。
+Job/任务 一个程序运行单元，比如，一个MapReduce程序、一个Shell脚本等。
+业务日期 每个程序运行所处理的数据日期。
+JobInstance/任务实例 一次任务运行实例，因为一个任务在同一业务日期可能会运行多次。
+资源 任务运行的节点（主机）
+DataHub 数据交换机，用于异构数据源时间的数据交换。
+   
+
+1.2.2 系统模块
+l JobManager：SkyNet的Master，提供RPC服务，接收并处理JobClient/Web提交的所有操作；与元数据通讯，维护Job元数据；负责任务的统一配置维护、触发、调度、监控
+l JobMonitor: 监控正在运行的Job状态、监控任务池、监控等待运行的Job；
+l JobWorker：SkyNet的Slave，从任务池中获取Job、负责启动并收集Job的执行状态，维护至元数据库；
+l JobClient/Web：SkyNet客户端类，前端界面提供给用户，用作任务的配置、管理、监控等；
+l 任务元数据：目前使用Mysql，保存Job的配置、依赖关系、运行历史、资源配置、告警配置等；
+
+
+1.2.3 系统特性
+l 分布式架构：容量和负载能力(JobWorker)可线性扩充；
+l 高可用性：拥有主备Master，一旦主Master异常，备Master会接替主Master提供服务(后期实现)；
+l 高容错性：Master重新启动后，会将之前未完成的任务重新调度运行；
+l 完善易用的Web用户界面：用于用户配置、提交、查询、监控任务及任务的依赖关系；
+l 支持任意类型的任务：除了Hadoop生态圈的MapReduce、Hive、Pig等，还支持其他任何语言开发的任务，如Java、Shell、Python、Perl、Spark等；
+l 完整的日志记录：收集并记录任务运行过程中产生的标准输出和标准错误，提供Http访问，用户可通过访问任务对应的日志Url来方便的访问任务运行日志；
+l 任务之间的灵活依赖：可将任意一个任务作为自己的父任务进行依赖触发；
+l 灵活多样的告警规则：除了失败告警，也支持任务超时未完成、任务超时未开始等告警规则；
+
+
+1.3 系统核心功能
+l 任务的管理和维护：添加、修改、删除、运行、重做、Kill任务；
+l 任务依赖关系维护：添加、修改、删除任务之间的依赖关系；
+l 查询：
+根据业务类型、任务ID查询任务；
+根据任务ID查询任务的父、子任务；
+根据任务状态、任务ID、任务实例ID、任务创建时间、业务日期查询任务运行情况；
+根据任务ID查询任务告警配置信息；
+根据任务ID、告警发送时间、告警发送状态查询告警发送记录；
+查询任务的运行完整日志；
+l 任务告警：配置、修改、删除任务告警；
+
+第2章 DashBoard
+2.1 页面
+
+2.2 功能
+SkyNet系统任务和资源情况的整体监控。
+
+l 任务
+ü 总共任务数：系统中所有的任务数量；点击进入“查询操作任务”页面。
+ü 正在运行：当天，正在运行的任务数量；点击进入“任务监控”页面。
+ü 成功：当天，运行成功的任务数量；点击进入“任务监控”页面。
+ü 失败：当天，运行失败的任务数量；点击进入“任务监控”页面。
+ü 等待：当天，等待运行的任务数量；点击进入“任务监控”页面。
+l 资源
+ü 系统中所有的资源(JobWorker)主机名、可运行的任务类型、该任务类型最多可运行的任务数量、该任务类型正在运行的任务数量；
+
+
+第3章 任务维护
+3.1 添加任务
+3.1.1 页面
+点击”任务维护”à“添加任务”进入。
+
+
+3.1.2 功能
+向系统中添加任务。
+l 任务名称：填入该任务的名称，长度：200字节。
+l 任务类型：从下拉菜单中选择任务类型，JAVA、SHELL、MR等。
+l 任务业务日期格式：该任务要处理的数据日期格式，支持天和小时的日期格式，如，${yyyy-MM-dd,-2d}表示两天前，${yyyy-MM-dd-HH,-1H}表示一小时前。（具体用法见附录A解释）；
+l 程序路径：程序所在的绝对路径，支持本地路径和HDFS路径，
+如：/home/liuxiaowen/jobs/shell-job.sh、
+hdfs://namenode/tmp/lxw/jobs/java-job.jar
+注意：
+ü 当程序存储在HDFS上时候，填入正确的HDFS路径，以”hdfs://”开头，区分大小写；执行任务的用户（跟业务类型有关）必须有访问权限。
+ü 当程序存储在本地目录时候，必须在JobWorker所在机器的本地目录，且执行任务的用户（跟业务类型有关）必须有访问权限。
+l 程序运行类型：当任务类型为JAVA、MR时候，指定程序运行的类名，如：com.lxw.test.TestJavaSuccessJob,其他任务类型留空即可。
+l 程序运行参数：程序运行需要的参数，多个参数以空格分开，系统会将该值整体传给程序运行，这里可以加动态时间参数，程序在调度时候，会以真实的业务日期，替换其中的动态时间参数。
+比如：业务日期设置为${yyyy-MM-dd,-1d}，今天（2015-05-04）调度时候根据当前时间，得到的真实业务日期为2015-05-03，而程序运行参数中有day=${yyyy-MM-dd,-1d}，此处替换时候会以2015-05-03为基准时间，替换后为day=2015-05-02
+l 程序定时运行时间：当程序需要定时运行时候，填入Quartz时间表达式（具体用法见附录B解释）；
+l 业务类型：根据实际业务，选择业务类型；
+注意：
+ü 业务类型和程序执行所使用的用户有关，特别是和Hadoop有关的任务，如：wizad业务使用wizad用户、ut业务使用ut用户；
+ü 如果没有自己的业务类型或者想使用其他用户执行程序，请与管理员联系；
+l 任务说明：对该任务的说明，可空；
+l 指定运行主机：一般不填。
+如果需要指定程序到哪台机器上运行，请填入主机名，前提是指定的主机上必须运行着JobWorker服务，具体使用请与管理员联系。
+l 失败重试次数：当任务失败时候，可以重试10次以下。
+l 失败重试间隔：任务失败重试时间间隔，单位为秒，最低60秒。
+l 失败执行命令：任务最终失败时，执行该命令，用于失败后处理，比如：sh /tmp/jobfailed.sh ${yyyy-MM-dd}
+这里可以用动态时间参数，替换规则同程序运行参数中的替换规则。
+l 父任务：在添加任务时候，可以直接指定依赖的父任务，ID以逗号分隔。
+点击”添加任务”按钮之后，弹出框会显示操作结果。
+l 如果结果中是刚添加的任务信息，首个数字为任务ID，如下图所示：
+
+
+则表示添加成功，点击”Close”按钮之后，会跳转至任务查询页面，显示刚才添加的任务。
+l 如果弹出框中显示null或其他信息，则表示添加失败。
+3.2 查询操作任务
+3.2.1 页面
+点击”任务维护”à“查询操作任务”进入。
+
+
+3.2.2 查询任务
+l 可选择业务类型，输入任务ID查询任务列表。
+l 可以输入任务名称进行查询，支持模糊匹配；
+l 可以选择任务类型进行查询；
+l 多种查询条件可任意组合；
+l 默认显示所有的任务列表。
+l 显示的内容包括：
+ü 任务ID、任务名称；
+ü 程序路径、程序类名、程序运行参数；
+ü 程序定时运行Quartz表达式；
+ü 业务类型；
+ü 指定运行的主机名；
+3.2.3 运行任务
+l 点击某条任务前面的”运行”超链接，弹出提交任务的弹出框：
+
+
+l 填入业务日期，日期格式必须与程序运行参数中指定的日期格式一致。
+选择是否需要运行子任务：
+ü 如果选择”不运行子任务”，则只运行该任务本身；
+ü 如果选择”运行子任务”，则会将该任务及所有该任务的子孙任务依次运行（运行失败的任务其子任务不会运行）；
+l 点击”提交”按钮，弹出框中会显示任务的提交结果：
+
+
+l 如果显示”true,任务提交成功”，则表示任务提交成功，关闭后跳转至任务监控页面。
+
+如果显示”false”，则表示任务提交不成功，同时将相关的原因显示出。
+
+
+3.2.4 查看任务依赖
+在任务查询页面点击“依赖”超链接，跳转到任务依赖页面，显示该任务的下级依赖任务。
+详见第4章介绍。
+
+3.2.5 修改任务
+
+l 在任务查询页面点击“修改”超链接，跳转至修改该任务的页面。
+
+
+l 修改任务属性，点击”修改任务”按钮。弹出框显示修改结果。
+l 和添加任务结果类似，如果显示修改过的任务信息，则表示修改成功，关闭后跳转至任务查询页面，显示该任务信息。
+
+
+
+如果是其他信息，则表示修改失败。
+
+3.2.6 删除任务
+l 在任务查询页面点击”删除”超链接，弹出删除任务确认对话框。
+
+
+l 点击”删除”按钮，显示任务删除操作结果。
+
+
+l 如果显示”true”，则表示删除成功，否则删除失败，并且会提示失败原因。
+注意：当一个任务依赖其他任务，或者被其他任务依赖，则不能删除。必须先删除其依赖关系，之后才能删除任务。
+
+
+
+第4章 任务依赖
+4.1 查询依赖
+输入任务ID，选择”找下级”或者”找下级”，点击“查询”。
+
+
+l 默认会显示任务树中所有任务昨天执行的结果状态图示；
+l 如果需要查询某一个业务日期的执行结果图示，则填入业务日期和任务ID，查询即可。
+4.2 添加任务依赖
+l 点击”添加依赖”按钮，出现添加任务依赖弹出框，填入父任务ID和子任务ID，点击”添加”按钮。
+
+
+l 结果显示”true”，则添加成功，”false”，添加失败。
+l 注意：输入的父任务ID和子任务ID必须存在，也就是说，必须先添加任务，之后才能添加任务依赖。
+4.3 删除任务依赖
+l 点击”删除依赖”按钮，出现删除任务依赖弹出框，填入父任务ID和子任务ID，点击”删除”按钮。
+
+
+l 结果显示”true”，则删除成功，”false”，删除失败。
+
+4.4 查看任务最后一次运行详情
+l 在任务依赖图中点击一个任务ID，出现弹出框，显示该任务最后一次运行详情。
+
+
+
+其中，点击运行日志中的URL，可查看任务运行日志。
+
+
+第5章 任务监控
+5.1 页面
+点击”任务监控”菜单进入。
+默认显示前10条任务运行历史（按照创建时间排序）。
+
+
+5.2 查询任务运行历史
+l 根据任务状态、任务ID、任务实例ID、任务创建时间(任务运行记录创建时间)、业务日期这几个条件任意组合筛选查询；
+l 显示的内容包括：任务ID、任务实例ID、运行节点、任务状态、业务时间、任务开始时间、任务结束时间、运行日志、提交标记、等待标记。
+l 提交标记：0，表示系统自动提交的任务；1，表示用户手动提交的任务；
+l 等待标记：当任务状态为等待（WAITTING）时才有意义。0，表示没有资源而等待；1，表示父任务未全部完成而等待。
+5.3 查看任务运行日志
+l 点击任务监控页面某个运行记录中运行日志的URL，即可打开该任务实例的运行日志页面。
+
+
+5.4 重做任务
+在任务监控页面，当任务状态为结束状态（SUCCESS、FAILED、KILLED）时候，点击任务实例左侧的”重做任务”超链接，出现提交任务的弹出框。
+
+
+业务日期默认为任务实例中的业务日期（可修改），选择是否运行子任务，点击”提交”按钮。
+
+
+结果中出现”true,提交成功”则表示提交成功。
+
+5.5 KILL任务
+在任务监控页面中，当任务状态为等待（WAITTING）或者正在运行（RUNNING）时候，可以进行KILL操作。
+点击”KILL”超链接，出现Kill任务的弹出框，点击”Kill”按钮。
+
+
+结果显示”true”,则表示Kill成功，任务状态被更新为KILLED。
+
+
+第6章 告警配置
+6.1 添加任务告警
+点击”告警配置”à“添加任务告警”进入。
+l 告警标记：
+ü 失败告警：当任务执行失败时候触发告警；
+ü 定时告警：当任务在定时的时间内未成功结束时候触发告警（暂未实现）；
+l 告警时间：当告警标记为定时告警时候，选择定时告警时间，格式为时：分。
+l 告警类型：
+ü 邮件告警：发送告警邮件；
+ü 短信告警：发送告警短信（暂未实现）；
+ü 邮件和短信告警：同时发送告警邮件和告警短信（暂未实现）；
+l 邮件列表：当告警类型中包含邮件告警时候，填入收件人邮箱列表，分号分隔；
+l 手机列表：当告警类型中包含短信告警时候，填入收信人手机号列表，分号分隔；（暂未实现）
+6.1.1 任务失败告警
+
+填入任务ID，告警标记选择”失败告警”，选择告警类型，填入邮件列表或手机列表，点击”添加”。
+
+
+弹出框显示”true”，表示添加成功。之后跳转至“查询配置任务告警”页面。
+6.1.2 任务超时未完成告警
+6.2 查询任务告警配置
+点击”告警配置”à”查询配置任务告警”进入。
+
+可输入任务ID查询。
+6.3 修改任务告警
+在查询任务告警配置页面中点击“修改”超链接，进入修改告警配置页面。
+
+
+修改相关信息，点击“修改”按钮，弹出框显示修改结果。
+
+
+6.4 删除任务告警
+在查询任务告警配置页面中点击“删除”超链接，出现删除任务告警弹出框，点击”删除”按钮确认删除。
+
+
+
+6.5 查询告警发送记录
+l 点击“告警配置”à“查询任务告警发送记录”菜单进入。
+
+
+l 可根据任务ID、告警发送时间、告警发送状态进行筛选查询。
+l 告警发送状态：0，表示发送成功；1，表示发送失败。
+第7章 系统部分运行原理
+7.1 业务类型
+由于每种业务类型的任务，开发和生产环境使用的用户都不一样，不同业务的任务，需要用不同的用户去执行，因此，在添加任务时候，选择正确的业务类型非常重要。
+在使用系统之初，需要与管理员沟通确定你的业务类型名称，以及该业务类型使用哪个用户。
+系统使用root用户运行服务，当需要调度某个任务时，会根据该任务的业务类型，从元数据中获取该业务类型的用户名，然后su到该用户去执行程序。
+
+7.2 程序路径
+由于系统会存在多个JobWorker，如果任务没指定运行主机，就有可能被分配到任一JobWorker上，那么保存任务程序脚本的存储必须使得每个JobWorker都能访问到，最好的解决办法就是使用HDFS。
+当JobWorker获取到一个可执行的任务时候，会判断该任务的程序路径，
+l 如果以”hdfs://”开头，表示存放于HDFS上，接下来在本地创建一个工作目录，从HDFS上将程序脚本下载到本地工作目录，使用本地工作目录中的程序脚本执行程序，结束后，将此次任务运行的工作目录删除。
+l 如果不以“hdfs://”开头，表示存放于JobWorker本地，直接使用该路径来执行程序。
+需要注意的是：
+不论是程序路径存放在JobWorker本地还是HDFS，都必须使得业务类型对应的用户有访问权限。
+7.3 指定任务运行主机
+有些业务的程序复杂，在之前使用的机器上运行很久了，不好迁移。这时候，可以将系统的JobWorker服务运行在该机器上，这样，也可以不用迁移程序，使用调度系统。
+在添加任务的时候，指定任务的运行主机为你的机器主机名，这样，JobManager在分配任务资源的时候，会将你的任务分配到你的机器上，而不会分配到其他的JobWorker上。
+有这种需求的提前和管理员联系。
+
+7.4 调度的延迟
+系统采用类似生产者消费者的模式，JobManager和JobMonitor会将待运行的任务放入元数据库中的任务池表，由JobWorker周期性获取属于自己的任务，这样就会有延迟。
+这个延迟时间和各个服务扫描数据库的周期有关，考虑对数据库的压力，目前设置的稍长，综合下来，任务的调度延迟一般在10秒以内。
+7.5 任务执行命令
+系统会根据任务的程序路径、程序类名、程序运行参数拼接成任务执行命令。
+l JAVA
+java –jar 程序路径 程序类名 程序运行参数
+l MR
+hadoop jar程序路径 程序类名 程序运行参数
+l SHELL
+sh 程序路径 程序运行参数
+l PYTHON
+python程序路径 程序运行参数
+
+
+
+第8章 HTTP接口
+8.1  提交运行任务
+请求URL：${skynetHost}:${skynetPort}/skynet/submitjob
+请求类型：POST/GET
+请求参数：
+参数名 参数含义 是否必须 备注
+username 登陆Skynet的用户名 是  
+password 登陆Skynet的密码 是  
+job_id 提交的任务ID 是 如：271
+job_business_time 运行任务的业务日期 是 如：2015-05-04
+submit_sons 是否运行子任务 否 1：运行子任务；0：不运行子任务；默认为0
+job_batch_no 任务批次号 否 默认为0
+
+返回格式：
+{
+"status":0,   //status 为0表示提交成功
+"msg":"[true,0,job [278] 提交成功，jobInstanceId:[25589], job_run_host:[idc-ds20-ad-02], job_batch_no:[1234], job_business_time:[2015-05-04] ..,]"
+}
+
+8.2 KILL任务
+
+请求URL：${skynetHost}:${skynetPort}/skynet/killjob
+请求类型：POST/GET
+请求参数：
+参数名 参数含义 是否必须 备注
+username 登陆Skynet的用户名 是  
+password 登陆Skynet的密码 是  
+job_instance_id 任务运行实例ID 是 如：25592
+
+返回格式：
+{
+"status":0, //status 为0表示提交成功
+"msg":[true,0,null]
+}
+
+8.3 查询任务运行状态和历史
+请求URL：${skynetHost}:${skynetPort}/skynet/queryjoblog
+请求类型：POST/GET
+请求参数：
+参数名 参数含义 是否必须 备注
+username 登陆Skynet的用户名 是  
+password 登陆Skynet的密码 是  
+job_id 任务ID 否  
+job_business_time 业务日期 否 默认前一天
+job_instance_id 任务运行实例ID 否 如：25592
+job_status 任务状态 否 RUNNING,SUCCESS,FAILED,WAITTING,KILLED
+create_time 任务运行创建时间 否 如：2015-05-04
+job_business_type 任务的业务类型 否 任务的业务类型
+page 查询分页码 否 默认0，每页10条
+
+返回格式：
+{
+"status":0,
+"msg":[
+{"action":0,"job_app_location":"","job_batch_no":1233,"job_business_time":"2015-05-04","job_business_type":"","job_class_name":"","job_end_time":null,"job_id":278,"job_instance_id":25388,"job_last_update_time":"","job_run_args":"","job_run_host":"idc-ds20-ad-02","job_run_log":"http://idc-ds20-ad-02:9911/2015-05-05/job-278-25388.log","job_run_time":"2015-05-05 10:36:30.0","job_start_time":"2015-05-05 10:35:32.0","job_status":"RUNNING","job_submit_flag":1,"job_type":"","job_wait_flag":0},
+{"action":0,"job_app_location":"","job_batch_no":0,"job_business_time":"2015-05-04","job_business_type":"","job_class_name":"","job_end_time":"2015-05-04 15:39:18.0","job_id":278,"job_instance_id":25333,"job_last_update_time":"","job_run_args":"","job_run_host":"idc-ds20-ad-02","job_run_log":"http://idc-ds20-ad-02:9911/2015-05-04/job-278-25333.log","job_run_time":"2015-05-04 15:40:12.0","job_start_time":"2015-05-04 15:39:03.0","job_status":"SUCCESS","job_submit_flag":0,"job_type":"","job_wait_flag":0},
+{"action":0,"job_app_location":"","job_batch_no":1232,"job_business_time":"2015-05-04","job_business_type":"","job_class_name":"","job_end_time":"2015-05-04 15:28:00.0","job_id":278,"job_instance_id":25332,"job_last_update_time":"","job_run_args":"","job_run_host":"idc-ds20-ad-02","job_run_log":"http://idc-ds20-ad-02:9911/2015-05-04/job-278-25332.log","job_run_time":"2015-05-04 15:28:51.0","job_start_time":"2015-05-04 15:27:45.0","job_status":"SUCCESS","job_submit_flag":1,"job_type":"","job_wait_flag":0}
+]
+}
+附录A 动态时间参数
+系统中附带了动态时间参数的解析功能，方便用户使用。
+格式如下：
+l ${yyyy-MM-dd,-1d}，将当前时间减一天(-1d)，格式为yyyy-MM-dd。
+比如：程序自动运行时候日期为2014年10月24日，则会将该参数替换为2014-10-23.
+l ${yyyy-MM-dd-HH,-2H}，将当前时间减2小时(-2H)，格式为yyyy-MM-dd-HH。比如：程序自动运行时候时间为2014年10月24日14时，则会将该参数替换为2014-10-24-12。
+l 参数中的时间格式需要是Java支持的日期格式。
+示例：
+任务A的运行参数为
+”/user/hive/warehouse/tableA/dt=${yyyy-MM-dd,-2d}”，那么2014年10月24日，调度系统在自动触发该任务时候会将参数替换为
+”/user/hive/warehouse/tableA/dt=2014-10-22”，作为最终的参数传给程序运行。
+特别注意：
+l 动态时间参数在任务自动调度触发时候才会根据当前时间来替换；
+l 手工提交任务时，会用填入的业务日期将参数中的动态日期参数直接替换，不会做计算。比如：上面示例中的任务A，用户手动运行该任务，并且，填入了业务日期2014-10-24，则最终的参数为
+” /user/hive/warehouse/tableA/dt=2014-10-24”.
+l 手工提交任务时候，会根据程序运行参数中的动态日期格式来判断填入的业务日期是否符合格式，比如：任务A中的动态日期参数为${yyyy-MM-dd,-2d}，那么手工运行任务A时候，填入的业务日期格式只能是yyyy-MM-dd，其他均会提示不符合日期格式。
+l 假如一个任务程序运行参数中没有动态日期参数，那么会将当前日期作为该任务的业务日期，格式为yyyy-MM-dd。
+附录B Quartz时间表达式
+参考网址：http://technique-digest.iteye.com/blog/1200356
+
+常用的表达式：
+0 0 12 * * ? 每天12点触发
+0 15 10 ? * * 每天10点15分触发
+0 48 * ? * * 每小时48分触发
+
+其他不常用：
+
+0 0 12 * * ? 每天中午12点触发
+0 15 10 ? * * 每天上午10:15触发
+0 15 10 * * ? 每天上午10:15触发
+0 15 10 * * ? * 每天上午10:15触发
+0 15 10 * * ? 2005     2005年的每天上午10:15触发
+0 * 14 * * ? 在每天下午2点到下午2:59期间的每1分钟触发
+0 0/5 14 * * ? 在每天下午2点到下午2:55期间的每5分钟触发
+0 0/5 14,18 * * ? 在每天下午2点到2:55期间和下午6点到6:55期间的每5分钟触发
+0 0-5 14 * * ? 在每天下午2点到下午2:05期间的每1分钟触发
+0 10,44 14 ? 3 WED 每年三月的星期三的下午2:10和2:44触发
+0 15 10 ? * MON-FRI 周一至周五的上午10:15触发
+0 15 10 15 * ? 每月15日上午10:15触发
+0 15 10 L * ? 每月最后一日的上午10:15触发
+0 15 10 ? * 6L 每月的最后一个星期五上午10:15触发
+0 15 10 ? * 6#3 每月的第三个星期五上午10:15触发
+每天早上6点
+0 6 * * *
+每两个小时
+0 */2 * * *
+晚上11点到早上7点之间每两个小时，早上八点
+0 23-7/2，8 * * *
+每个月的4号和每个礼拜的礼拜一到礼拜三的早上11点
+0 11 4 * 1-3
+1月1日早上4点
+0 4 1 1 *
+附录C 定时任务配置流程
+l 进入”添加任务”页面：点击”任务维护”à“添加任务”;
+l 填入任务相关信息，主要是填入”程序定时运行时间”中的Quartz表达式；
+l 点击”添加任务”按钮，添加成功后即可完成定时任务的配置。
+附录D 依赖任务配置流程
+假设有父任务A,子任务B,子任务C。B和C均依赖A;
+l 在系统中分别添加任务A、B、C;
+l 添加任务成功之后，再添加任务依赖，在任务依赖页面中点击”添加依赖”按钮；
+l 任务依赖需要添加两次，A->B，A->C;
+l 在添加任务依赖弹出框中填入父任务ID：A，子任务ID：B，点击”添加”按钮；
+l 同样方法再添加A->C的依赖。
+l 添加完毕后，可以在任务依赖页面，输入任务ID：A，选择“找下级”，查询任务依赖是否正确。
+l 注意：
+ü 一般根节点任务都是定时任务，如上面中的任务A。
+ü 当一个任务既有父任务，又有定时运行时间时，会将定时运行忽略，等待父任务完成后才触发。
