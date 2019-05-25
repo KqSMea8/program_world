@@ -1,0 +1,295 @@
+使用 Docker-compose 一键部署gitlab
+民工哥技术之路  昨天
+点击上方“民工哥技术之路”选择“置顶或星标”
+
+每天10点为你分享不一样的干货
+
+
+
+原文：https://www.jb51.net/article/153399.htm
+
+一、gitlab介绍
+
+
+
+gitlab官方地址：https://about.gitlab.com/
+
+
+
+GitLab是利用 Ruby on Rails 一个开源的版本管理系统，实现一个自托管的Git项目仓库，可通过Web界面进行访问公开的或者私人项目。
+
+
+
+它拥有与Github类似的功能，能够浏览源代码，管理缺陷和注释。可以管理团队对仓库的访问，它非常易于浏览提交过的版本并提供一个文件历史库。
+
+
+
+团队成员可以利用内置的简单聊天程序(Wall)进行交流。它还提供一个代码片段收集功能可以轻松实现代码复用，便于日后有需要的时候进行查找。
+
+
+gitlab就是一个代码仓库，能够非常好地实现对代码的管理和开发人员之间的团队协作。
+
+
+
+目前应用最为广泛地就是利用jenkins和gitlab实现持续集成和部署。
+
+
+
+官方的推荐配置为2核心CPU和4G内存，这是因为gitlab的整体运行包含了多个进程，
+
+
+
+如：nginx、postgresql、prometheus、redis等等。
+
+
+为此，这里使用docker-compose进行单机部署gitlab中文社区版本，让大家更好地体会gitlab的强大功能，其余废话就不多说了，直接开撸就对了！！
+
+
+
+
+二、安装Docker
+
+
+
+安装docker依赖包
+
+
+
+[root@gitlab ~]# yum -y install yum-utils device-mapper-persistent-data lvm2
+
+
+添加Docker-ce镜像源并安装
+
+
+国外源（适合在国外工作的朋友）
+
+
+
+[root@gitlab ~]# yum-config-manager \
+--add-repo \
+
+https://download.docker.com/linux/centos/docker-ce.repo
+
+
+国内阿里云源（适合在国内工作的朋友）
+
+
+
+[root@gitlab ~]# yum-config-manager \
+--add-repo \
+
+http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
+
+
+服务器的包信息下载到本地电脑缓存起来
+
+
+
+[root@gitlab ~]# yum makecache fast
+
+
+安装docker CE
+
+
+
+[root@gitlab ~]# yum -y install docker-ce
+
+
+配置下载docker镜像加速器
+
+
+
+国外加速器：
+[root@gitlab ~]# curl -sSL https://get.daocloud.io/daotools/set_mirror.sh | sh -s http://bc437cce.m.daocloud.io
+
+国内阿里云加速器：
+vim /etc/docker/daemon.json
+#输入下面内容并保存：
+{
+  "registry-mirrors": ["https://9w1hl6qt.mirror.aliyuncs.com"]
+}
+
+
+重载systemctl并自动和开启自启动docker
+
+
+
+[root@gitlab ~]# systemctl daemon-reload
+[root@gitlab ~]# systemctl start docker
+[root@gitlab ~]# systemctl enable docker
+[root@gitlab ~]# docker --version
+Docker version 18.09.0, build 4d60db4
+
+
+三、安装Docker-compose
+
+
+
+下载Docker-compose二进制文件并添加执行权限
+
+
+
+root@gitlab ~]# curl -L https://github.com/docker/compose/releases/download/1.23.2/docker-compose-`uname -s-uname -m` -o /usr/local/bin/docker-compose
+% Total % Received % Xferd Average Speed Time Time Time Current
+Dload Upload Total Spent Left Speed
+100 617 0 617 0 0 590 0 --:--:-- 0:00:01 --:--:-- 590
+100 11.2M 100 11.2M 0 0 498k 0 0:00:23 0:00:23 --:--:-- 737k
+[root@gitlab ~]# chmod +x /usr/local/bin/docker-compose
+[root@gitlab ~]# docker-compose --version
+docker-compose version 1.23.2, build 1110ad01
+
+
+
+
+四、安装Gitlab
+
+
+
+编辑docker-compose的yml文件
+
+[root@gitlab ~]# mkdir gitlab
+[root@gitlab ~]# cd gitlab
+[root@gitlab gitlab]# vim docker-compose.yml
+
+
+
+
+
+端口映射说明以及注意事项：
+gitlab镜像官方推荐容器80端口映射宿主机8181端口
+gitlab镜像官方推荐容器443端口映射宿主机8443端口
+gitlab镜像官方推荐容器22端口映射宿主机22端口
+
+注：头两行不能顶头写，要分别都空一格，可以去yml文件检测网站进行检测：
+https://www.bejson.com/validators/yaml_editor/
+
+
+如你们的检测如下图所示，则表示yml文件完全无误：
+
+
+
+
+
+
+下面是在我linux服务器上看到的情况：
+
+
+
+
+
+
+创建相关目录
+
+
+
+[root@gitlab gitlab]# mkdir -p /opt/gitlab/{config,data,logs}
+[root@gitlab gitlab]# ls -l /opt/gitlab/
+total 0
+drwxr-xr-x 2 root root 6 Dec 22 12:03 config
+drwxr-xr-x 2 root root 6 Dec 22 12:03 data
+drwxr-xr-x 2 root root 6 Dec 22 12:03 logs
+
+
+目录说明如下：
+config   #存储 GitLab 配置信息
+data      #存储数据库
+logs      #存储日志
+
+
+
+拉取gitlab中文版镜像
+
+
+
+[root@gitlab gitlab]# docker pull twang2218/gitlab-ce-zh:latest
+latest: Pulling from twang2218/gitlab-ce-zh
+8ee29e426c26: Pull complete
+6e83b260b73b: Pull complete
+e26b65fd1143: Pull complete
+40dca07f8222: Pull complete
+b420ae9e10b3: Pull complete
+a218309dd589: Pull complete
+5c60fd7ba0ce: Pull complete
+659c2144b5a3: Pull complete
+8289bbac0d0e: Pull complete
+31bbd150e8a7: Pull complete
+9114e78243fa: Pull complete
+e242e5cd1314: Pull complete
+0a079dc3f92c: Pull complete
+f0e195b09fd2: Pull complete
+6e23346e2f58: Pull complete
+91f00659be69: Pull complete
+a1031bcc5b2c: Pull complete
+e3074327c7b1: Pull complete
+a917618dbe42: Pull complete
+Digest: sha256:62686b74c6fca5ece8ed582d03a126c5988423dd8a19ce70e9a22357ffcaf1c8
+Status: Downloaded newer image for twang2218/gitlab-ce-zh:latest
+
+[root@gitlab gitlab]# docker images
+REPOSITORY TAG IMAGE ID CREATED SIZE
+twang2218/gitlab-ce-zh latest 18da462b5ff5 4 months ago 1.61GB
+
+
+启动gitlab的容器
+
+
+
+在启动前，先要修改宿主机的22端口，因为宿主机占用了22端口，所以启动容器会失败，因为映射不过来，修改如下：
+
+vim /etc/ssh/sshd_config
+#默认在第17行修改：Port 2222
+#修改后，重启sshd：systemctl restart sshd
+[root@gitlab gitlab]# netstat -tulnp | grep 22
+tcp 0 0 0.0.0.0:2222 0.0.0.0: LISTEN 31889/sshd
+tcp6 0 0 :::2222 ::: LISTEN 31889/sshd
+
+正式启动：
+
+
+
+[root@gitlab gitlab]# docker-compose up -d
+Creating network "gitlab_default" with the default driver
+Creating gitlab ... done
+
+[root@gitlab gitlab]# docker-compose ps
+Name Command State Ports
+gitlab /assets/wrapper Up (healthy) 0.0.0.0:22->22/tcp, 0.0.0.0:8443->443/tcp, 0.0.0.0:8181->80/tcp
+
+[root@gitlab gitlab]# docker ps -a
+CONTAINER ID IMAGE COMMAND CREATED STATUS PORTS NAMES
+814e559dc728 twang2218/gitlab-ce-zh:latest "/assets/wrapper" 5 minutes ago Up 5 minutes (healthy) 0.0.0.0:22->22/tcp, 0.0.0.0:8181->80/tcp, 0.0.0.0:8443->443/tcp gitlab
+
+
+gitlab设置开机启动
+
+
+
+[root@gitlab gitlab]# chmod +x /etc/rc.local
+[root@gitlab gitlab]# ls -l /etc/rc.local
+lrwxrwxrwx 1 root root 13 Dec 3 14:31 /etc/rc.local -> rc.d/rc.local
+[root@gitlab gitlab]# echo "cd /root/gitlab && docker-compose up -d" >> /etc/rc.local
+[root@gitlab gitlab]# tail -1 /etc/rc.local
+cd /root/gitlab && docker-compose up -d
+
+
+gitlab管理界面
+
+
+
+地址：在浏览器输入yml文件的第12行ip或者域名
+用户：root
+密码：首次登陆需要手动设置密码
+如下图所示：
+
+
+
+
+
+
+
+
+
+
+至此，利用Docker-compose一键部署gitlab就完成了，是不是非常的简单？
+
+
