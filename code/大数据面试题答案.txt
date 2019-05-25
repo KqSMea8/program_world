@@ -1,0 +1,155 @@
+1 var, val和def三个关键字之间的区别?
+var immutable variable
+val mutable variable
+def function defined keyword 
+
+2.object 和 class 的区别?
+
+object  单例 无构造器 成员变量和method都是static 可以直接访问main方法 可以与class同名 构成伴生对象
+
+class 有构造器 需要创建对象 才能在main方法中执行 
+
+3.case class (样本类）是什么？
+经过scala编译器优化 适合于对不可变数据建模 可用于模式匹配
+Case class的每个参数默认以val(不变形式)存在，除非显式的声明为var
+自动产生伴生对象，、且半生对象中自动产生appay方法来构建对象
+半生对象自动产生unapply方法，提取主构造器的参数进行模式匹配
+产生copy方法，来构建一个与现有值相同的新对象
+自动产生hashcode，toString，equals方法
+默认是可以序列化的，也就是实现了Serializable ；
+
+
+
+4 Option , Try和Either三者的区別?
+
+三者内部都包含两个case class 
+
+区别是：
+
+Option 代表可选值，一个是 Some（代表有值），一个是 None （值为空）；常用于结果可能为 null 的情况；
+
+
+Try 
+运算的结果有两种情况，一个是运行正常，即 Success ，一个是运行出错，抛出异常 ，即 Failure ，其中 Failure 里面包含的是异常的信息；
+
+
+Either 代表结果有两种可能 Right 或者 left 
+
+
+5.什么是函数柯里化
+
+函数可以定义多个参数列表。当使用较少的参数列表调用方法时，这将生成一个将缺少的参数列表作为参数的函数。如果固定某些参数，将得到接受余下参数的一个函数
+
+作用：
+1.提高适用性，参数复用
+
+2.延迟计算
+
+6. trait (特质)和abstract class (抽象类)的区別？
+
+一个class可以实现多个trait 只能继承一个abstract class 
+trait 
+用于在类之间共享接口和字段。它们类似于Java 8的接口。不能实例化，因此没有参数。
+
+abstract class 可以定义有参数构造器
+
+
+二、编程题(每题10分，共30分}
+1.	99乘法表。
+
+ def main(args: Array[String]): Unit = {
+    for (
+      i <- 1 to 9;
+      j <- 1 to i;
+      res = s"$j*$i=${i * j}\t"
+    ) yield {
+      if (j == i) s"$res\n" else res
+    }.foreach(print)
+
+  }
+  
+2.编写一个BankAccount类，加入deposit和withdraw方法，和一个只读的
+balance属性。
+
+class BankAcount(val balance : Int = 0) {
+  def deposit() {}
+  def withdraw() {}
+}
+
+
+3.	Spark wordcount 计算。
+object WordCount {
+  def main(args: Array[String]) {
+    if (args.length < 1) {
+      System.err.println("Usage: WordCount <directory>")
+      System.exit(1)
+    }
+    val sparkConf = new SparkConf().setAppName("WordCount" 
+    val ssc = new StreamingContext(sparkConf, Seconds(2))
+    val lines = ssc.textFileStream(args(0))
+    val words = lines.flatMap(_.split(" "))
+    val wordCounts = words.map(x => (x, 1)).reduceByKey(_ + _)
+    wordCounts.print()
+    ssc.start()
+    ssc.awaitTermination()
+  }
+}
+
+
+三、简答题（每题8分 共40分）
+
+1、driver的功能是什么？
+一个程序，它声明数据的RDD上的转换和操作，并将这些请求提交给master
+功能
+1）、创建SparkContext的程序，连接到给定的SparkMaster
+
+2）、划分rdd stage 并生成 DAGScheduler
+
+3）、通过taskScheduler生成并发送task到executor 
+
+它的位置独立于master、slave。您在master节点，也可以从另一个节点运行它。唯一的要求是它必须在一个可以从Spark Workers访问的网络中
+
+2、RDD宽依赖和窄依赖？
+
+
+wide dependency or shuffle dependency
+多个子RDD的Partition会依赖同一个父RDD的Partition
+
+
+narrow dependency 
+每一个父RDD的Partition最多被子RDD的一个Partition使用
+
+
+3、map 和 flatMap、mapPartition 的区别？
+map 
+通过向这个RDD的所有元素应用一个函数来返回一个新的RDD。
+
+flatMap
+返回一个新的RDD 首将一个函数应用于该RDD的所有元素，然后将结果展平。
+
+mapPartitions
+通过向这个RDD的每个分区应用一个函数来返回一个新的RDD
+preservespartitioning 指示输入函数是否保留分区器，
+默认为false，除非这是pairRDD，并且输入函数不修改keys
+
+4、spark中的RDD是什么？有哪些特性?
+
+RDD是弹性分布式数据集 不可变的可并行操作的元素的分区集合
+每个RDD具有五个主要特性：
+
+1）、有分区列表
+
+2）、可用于计算每个分区的函数
+
+3）、依赖于其他RDD的列表
+
+4）、可选pairRDD的分区器（例如说RDD是哈希分区的）
+
+5）、优先选择本地最优的位置去计算每个分片（例如，HDFS文件块位置）即数据的本地性
+
+
+
+5、spark中如何划分 stage
+stage是一组并行任务，作为job的部分 计算相同的函数 
+stage通过是否存在Shuffle或者宽依赖为边界来划分的 如遇到reduceByKey,groupByKey的算子等算子
+从当前job的最后一个算子往前推，遇到宽依赖，那么当前在这个批次中的所有算子操作都划分成一个stage,然后继续按照这种方式在继续往前推，如在遇到宽依赖，又划分成一个stage,一直到最前面的一个算子。最后整个job会被划分成多个stage,而stage之间又存在依赖关系，后面的stage依赖于前面的stage
