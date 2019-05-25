@@ -3455,3 +3455,252 @@ auto_ptr 实现代码
 索引（一）（General Index）
 索引（二）（Index of Example Classes，Functions，and Templtes）
 
+如何搭建Eclipse C/C++ MinGW 环境
+96  ffewi
+ 0.2 2018.04.30 19:06 字数 671 阅读 1375评论 1喜欢 4
+准备工作
+
+eclipse：eclipse-cpp-oxygen-3a-win32-x86_64.zip
+CDT：cdt-9.3.3.zip
+MinGW：mingw-w64.zip
+JDK：jdk-8u171-windows-i586.exe or jdk-8u171-windows-x64.exe
+下载地址：链接：https://pan.baidu.com/s/1AxCp7uN__oYzqEVwAWD70w 密码：o2t1
+
+开始安装
+步骤1：
+
+由于运行eclipse需要java环境，并且Oxygen版本的eclipse对于JDK版本要求应该为1.8，所以先安装JDK1.8
+运行JDK安装包自行安装，安装目录自定义。笔者目录：
+
+C:\Program Files (x86)\Java\jdk1.8.0_171 【JDK】
+C:\Program Files (x86)\Java\jre8 【JRE】
+测试安装成功否：
+
+D:\>java -version
+java version "1.8.0_171"
+Java(TM) SE Runtime Environment (build 1.8.0_171-b11)
+Java HotSpot(TM) 64-Bit Server VM (build 25.171-b11, mixed mode)
+
+D:\>
+步骤2：
+
+解压eclipse-cpp-oxygen-3a-win32-x86_64.zip 至自定义路径，笔者目录路径：
+
+D:\developer\eclipse
+运行eclipse.exe，是否能正常启动？
+
+步骤3：
+
+解压mingw-w64.zip 至自定义路径，笔者目录路径：
+
+D:\environment\mingw
+里面包含两个字文件夹：mingw-w64、msys
+
+运行查看压缩包是否正常
+
+Win+R运行CMD，进入解压目录中mingw-w64子目录mingw-w64\x86_64-4.9.2-posix-seh-rt_v3-rev1\mingw64\bin，
+执行gcc -v,查看控制台输出，结尾行：
+
+gcc version 4.9.2 (x86_64-posix-seh-rev1, Built by MinGW-W64 project)
+进入msys\1.0\etc，编辑fstab文件：
+
+#在这里添加mingw路径
+#Win32_Path     Mount_Point
+D:/environment/mingw/mingw-w64/x86_64-4.9.2-posix-seh-rt_v3-rev1/mingw64        /mingw
+提示：如果此目录下没有fstab，复制fatab.sample再进行编辑。
+
+运行D:\environment\mingw\msys\1.0\msys.bat，键入gcc -v,查看输出：
+
+$ gcc -v
+    ...
+    ...
+ gcc version 4.9.2 (x86_64-posix-seh-rev1, Built by MinGW-W64 project)
+至此，C/C++ 运行环境调试成功！
+
+步骤4：
+
+配置eclipse MINGW_HOME和MSYS_HOME:
+
+Window --> Preferences --> C/C++ --> Build --> Environment
+Variable	Value
+MINGW_HOME	D:\environment\mingw\mingw-w64\x86_64-4.9.2-posix-seh-rt_v3-rev1\mingw64
+MSYS_HOME	D:\environment\mingw\msys\1.0
+配置Toolchains：
+
+Window --> Preferences --> C/C++ --> Core Build Toolchains
+User Defined Toolchains：
+
+Compiler：D:\environment\mingw\mingw-w64\x86_64-4.9.2-posix-seh-rt_v3-rev1\mingw64\bin\gcc.exe
+Operating System：WIN7
+CPU Architecture：
+
+步骤5：
+
+安装eclipse CDT插件：
+
+Help --> Install New Software...
+Work with 键入CDT安装地址进行安装。笔者下载的离线安装包直接键入： jar:file:/D:/tools/cdt-9.3.3.zip!/。
+不知道需要安装那些功能可以Select All进行安装。
+
+至此，Eclise + C环境 就已经全部设置完毕！
+
+新建C Project
+
+Project Explorer 区域右键New --> C/C++ Project --> C Managed Build
+
+Project name: 自定义（例如：hello-c）。
+Project type：Executable --> Hello World ANSI C Project
+Toolchains：MinGW GCC
+
+点击Finish即自动创建了一个Hello C项目示例。
+
+hello-c.c
+
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(void) {
+    puts("Hello C Language!"); /* prints Hello C Language! */
+    return EXIT_SUCCESS;
+}
+
+如何运行？
+
+在Eclipse中，要运行项目中的*.c文件，首先要编译出二进制文件，上面新建的项目没有进行编译，结构为：
+
+hello-c
+    + Includs // C 的类库
+    + src // *.c 源码
+        - hello-c.c // 创建项目时自动生成的文件
+选中项目Ctrl+B 或者 右键项目Build Project，此时项目目录为
+
+hello-c
+    + Binaries // 编译的二进制*.exe 可执行文件
+    + Includs // C 的类库
+    + src // *.c 源码
+        - hello-c.c // 创建项目时自动生成的文件
+    + Debug // 编译输出目录路径
+控制台编译消息：
+
+16:06:22 **** Incremental Build of configuration Debug for project hello-c ****
+Info: Internal Builder is used for build
+gcc -O0 -g3 -Wall -c -fmessage-length=0 -o "src\\hello-c.o" "..\\src\\hello-c.c"
+gcc -o hello-c.exe "src\\hello-c.o"
+
+16:06:22 Build Finished (took 402ms)
+此时，这个项目就可以运行了。选中hello-c.c 右键 Run As --> Local C/C++ Application。即可看到输出：
+
+Hello C Language!
+
+===========
+
+很多学过java的程序员在使用微软的那一系列开发工具时大都不是很适应，VS系列体积庞大，反应极慢。由此很多人会想到小巧好使的eclipse。下面就来看看如何在eclipse下写C++程序，以及支持C++11新标准。
+
+1.需要的安装工具
+
+1）eclipse C++版本（JDK当然必不可少，这个许多java基础书籍上都有介绍如何配置环境变量，在此处本人不在多说）。下载地址：http://www.eclipse.org/downloads/packages/eclipse-ide-cc-developers/keplersr2
+
+
+
+2）MinGW：用它作为C++和C的编译器。下载地址：nuwen.net/mingw.html
+
+
+
+
+
+下载MinGW后双击文件自解压，自动生成MinGW文件夹。（在此处本人默认你的MinGW文件夹位于C盘根目录）
+
+
+
+
+
+2.MinGW的环境变量配置
+
+1）path=C:\MinGW\bin;C:\MinGW\libexec\gcc\x86_64-w64-mingw32\4.8.2
+
+注：如果你的环境变量已经有path这一项，那么你最好不要再新建path，直接将C:\MinGW\bin;C:\MinGW\libexec\gcc\x86_64-w64-mingw32\4.8.2;加到最前面即可，否则你原有的path路径会被破坏：比如你在cmd下输入ipconfig，ping这些命令都会不支持
+
+2)  LIBRARY_PATH=C:\MinGW\lib
+
+3)  C_INCLUDEDE_PATH=C:\MinGW\include
+
+4)  CPLUS_INCLUDE_PATH=C:\MinGW\include\c++\4.8.2;C:\MinGW\include\c++\4.8.2\backward;C:\MinGW\include
+
+
+
+此时打开命令行输入gcc -v
+
+显示
+
+说明你的环境变量配置成功！
+
+
+
+3.打开eclipse_cpp版本
+
+1）
+
+
+
+
+
+2）
+
+
+
+3）
+
+
+
+4）
+
+
+
+5）写几句代码试试：
+
+复制代码
+ 1 #include  <iostream>
+ 2 #include <list>
+ 3 using namespace std;
+ 4
+ 5 int main(int argc, char **argv)
+ 6 {
+ 7     //C++11列表初始化
+ 8     list<int> il={1,2,3,4,5,6};
+ 9
+10     //基于范围的for语句
+11     for(auto i:il)
+12     {
+13         cout<<i<<" ";
+14     }
+15     cout<<endl;
+16 }
+复制代码
+
+
+6）先别急着运行，先构建在运行。
+
+
+
+
+
+
+
+7）运行结果
+
+
+
+
+
+
+
+
+
+
+
+最后在说明一点：在我的机器环境下C++11新标准可以支持，如果你的eclipse版本不是很新或者你用的不是我这个版本的编译器，那新标准很可能不支持。可参见：http://hkllzh.iteye.com/blog/1620352
+
+
+
+
+

@@ -1,0 +1,45 @@
+Logstash是一个开源的服务器端数据处理管道，起初用于将日志类数据写入ES中。随着开源社区的不断发展，现在Logstash可以同时从多个数据源获取数据，并对其进行转换，然后将其发送到用户想要的“存储端”。
+
+以日志数据为例，可以通过开源logstash output插件logstash-output-jdbc将log数据导入分析型数据库MySQL版中进行进一步分析（分析型数据库MySQL版支持原生JDBC方式访问）。但经过测试发现，在日志量非常大的情况下，通过jdbc方式写入分析型数据库MySQL版的性能较低，并且非常消耗CPU的资源（因为jdbc是单条记录写入的方式）。为此，我们优化了一个基于jdbc的Logstash output plugin插件——logstash-ouput-analyticdb，专门用于以聚合方式向分析型数据库MySQL版写入日志数据。
+
+通过logstash-output-analyticdb将数据写入分析型数据库MySQL版时的性能，相较于logstash-output-jdbc有5倍的提升，并且对CPU的消耗也明显降低，本章节将为您介绍详细的操作步骤。
+
+安装
+Logstash的安装流程请参见Installing Logstash，这里主要介绍安装logstash-output-analyticdb的流程。
+
+进入logstash根目录：cd logstash。
+
+安装logstash-output-analyticdb：bin/logstash-plugin install logstash-output-analyticdb。
+
+在logstash目录下创建vendor/jar/jdbc目录：mkdir -p vendor/jar/jdbc。
+
+将jdbc jar拷贝到vendor/jar/jdbc中：cd vendor/jar/jdbc; wget http://central.maven.org/maven2/mysql/mysql-connector-java/5.1.36/mysql-connector-java-5.1.36.jar
+
+至此，logstash-output-analyticdb的安装步骤全都完成。
+
+使用方式
+和大多数logstash示例的使用方式一样，需要在config目录下创建一个logstash-analyticdb.conf（名字可以自行定义）的配置文件，conf文件的内容如下所示。
+
+input
+{
+    stdin { }
+}
+output {
+    analyticdb {
+        driver_class => "com.mysql.jdbc.Driver"
+        connection_string => "jdbc:mysql://HOSTNAME/DATABASE?user=USER&password=PASSWORD"
+        statement => [ "INSERT INTO log (host, timestamp, message) VALUES(?, ?, ?)", "host", "@timestamp", "message" ]
+    }
+}
+connection_string：连接分析型数据库MySQL版的jdbc url。
+
+statement：insert SQL的声明数组。
+
+上述配置文件的内容只是一个示例，具体配置文件的内容请根据实际场景来决定。与分析型数据库MySQL版相关的其他配置项请参见README。logstash的原使用配置项和规则，请参见logstash文档。
+
+至此，配置任务已全部完成，接下来将启动任务。
+
+启动任务
+在logstash安装目录执行：bin/logstash -f config/logstash-analyticdb.conf启动任务。
+
+如果您在使用过程中遇到任何问题，欢迎issue给我们！

@@ -846,3 +846,235 @@
 附录A　常见问题总结 398
 附录B　Docker命令查询 404
 附录C　参考资源链接 411
+
+Java 8 终于支持 Docker ！
+Grzegorz Kocur  Java技术栈  今天
+
+
+作者 | Grzegorz Kocur
+
+原文：https://blog.softwaremill.com/docker-support-in-new-java-8-finally-fd595df0ca54
+
+出品 | CSDN，译者 | 苏本如，责编 | 屠敏
+
+
+
+Java 8 过去一直与 Docker 无法很好地兼容，现在可让开发者们奔走相告的是，这个问题已经解决了。
+
+请注意：本文中我使用的是遵循GNU GPL v2 许可授权的OpenJDK官方Docker镜像。这里描述的对Docker的支持在Oracle Java SE 开发工具包(JDK)版本8的更新191中被引入。Oracle在2019年4月修改了Java 8更新的许可政策，自Java SE 8更新211后的商业使用不再免费。
+
+你是否曾经经历过在Docker中运行基于JVM的应用程序时出现“随机”故障？或者一些奇怪的死机？两者都有可能是由于Java 8（它仍然被广泛使用）中的糟糕的Docker支持引起。
+
+Docker使用控制组（cgroups）来限制对资源的使用。在容器中运行应用程序时限制其对内存和CPU的使用绝对是一个好主意，它可以防止应用程序占用全部可用的内存和/或CPU，因而导致在同一系统上运行的其他容器无法响应。限制资源的使用可以提高应用程序的可靠性和稳定性。它还为硬件容量的规划提供了依据。在像诸如Kubernetes或DC/OS这样的编排系统上运行容器时，这一点尤为重要。
+
+
+
+一、问题
+
+
+
+JVM可以“看到”系统上所有可用的内存和CPU内核，并保持与这些资源的一致。在默认情况下，JVM会将max heap size（最大堆大小）设置为系统内存的1/4，并将一些线程池个数（比如说垃圾回收（GC））设置为与物理CPU内核的数量一致。我们一起来看看下面的例子。
+
+我们将运行一个简单的应用程序，它将消耗尽可能多的内存（示例可以在这个站点上找到）：
+
+
+
+import java.util.Vector;
+public class MemoryEater
+{
+  public static void main(String[] args)
+  {
+    Vector v = new Vector();
+    while (true)
+    {
+      byte b[] = new byte[1048576];
+      v.add(b);
+      Runtime rt = Runtime.getRuntime();
+      System.out.println( "free memory: " + rt.freeMemory() );
+    }
+  }
+}
+
+
+
+我们在内存为64GB的系统上运行它，让我们来检查一下默认的最大堆大小：
+
+
+
+$ docker run -ti -m 512M openjdk:8u181-jdk
+root@eca214e0fcd4:/# java -XX:+PrintFlagsFinal -version | grep MaxHeap
+    uintx MaxHeapFreeRatio                          = 100                                 {manageable}
+    uintx MaxHeapSize                              := 16819159040                         {product}
+openjdk version "1.8.0_181"
+OpenJDK Runtime Environment (build 1.8.0_181-8u181-b13-2~deb9u1-b13)
+OpenJDK 64-Bit Server VM (build 25.181-b13, mixed mode)
+
+
+
+如前所述，它应该是系统物理内存的1/4 （16GB）。如果我们使用Docker cgroups限制内存，会发生什么呢？让我们检查一下：
+
+
+
+$ docker run -ti -m 512M openjdk:8u181-jdk
+root@eca214e0fcd4:/# javac MemoryEater.java
+Note: MemoryEater.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+root@eca214e0fcd4:/# java MemoryEater
+free memory: 1003980048
+free memory: 1003980048
+free memory: 1003980048
+[...]
+free memory: 803562640
+free memory: 802514048
+free memory: 801465456
+free memory: 800416864
+Killed
+root@eca214e0fcd4:/#
+
+
+
+这个JVM进程被终止了。因为它是一个子进程，所以容器本身幸存下来，但是通常当Java是容器内的唯一进程（用PID 1）时，容器也会崩溃。46张PPT弄懂JVM、GC算法和性能调优，这个分享给你。
+
+让我们深入研究一下系统日志中有什么：
+
+
+
+Apr 18 16:18:46 dcos-agent-1 kernel: java invoked oom-killer: gfp_mask=0xd0, order=0, oom_score_adj=0
+Apr 18 16:18:46 dcos-agent-1 kernel: java cpuset=eca214e0fcd4b245eecb2a80c05e9d7f8688fc36979c510d2fb9afab2ce55712 mems_allowed=0
+Apr 18 16:18:46 dcos-agent-1 kernel: CPU: 6 PID: 4142 Comm: java Tainted: G               ------------ T 3.10.0-693.17.1.el7.x86_64 #1
+Apr 18 16:18:46 dcos-agent-1 kernel: Hardware name: Supermicro Super Server/X10SRi-F, BIOS 2.0 12/17/2015
+Apr 18 16:18:46 dcos-agent-1 kernel: Call Trace:
+Apr 18 16:18:46 dcos-agent-1 kernel: [<ffffffff816a6071>] dump_stack+0x19/0x1b
+Apr 18 16:18:46 dcos-agent-1 kernel: [<ffffffff816a1466>] dump_header+0x90/0x229
+Apr 18 16:18:46 dcos-agent-1 kernel: [<ffffffff81187dc6>] ? find_lock_task_mm+0x56/0xc0
+Apr 18 16:18:46 dcos-agent-1 kernel: [<ffffffff811f36a8>] ? try_get_mem_cgroup_from_mm+0x28/0x60
+Apr 18 16:18:46 dcos-agent-1 kernel: [<ffffffff81188274>] oom_kill_process+0x254/0x3d0
+Apr 18 16:18:46 dcos-agent-1 kernel: [<ffffffff812ba2fc>] ? selinux_capable+0x1c/0x40
+Apr 18 16:18:46 dcos-agent-1 kernel: [<ffffffff811f73c6>] mem_cgroup_oom_synchronize+0x546/0x570
+Apr 18 16:18:46 dcos-agent-1 kernel: [<ffffffff811f6840>] ? mem_cgroup_charge_common+0xc0/0xc0
+Apr 18 16:18:46 dcos-agent-1 kernel: [<ffffffff81188b04>] pagefault_out_of_memory+0x14/0x90
+Apr 18 16:18:46 dcos-agent-1 kernel: [<ffffffff8169f82e>] mm_fault_error+0x68/0x12b
+Apr 18 16:18:46 dcos-agent-1 kernel: [<ffffffff816b3a21>] __do_page_fault+0x391/0x450
+Apr 18 16:18:46 dcos-agent-1 kernel: [<ffffffff816b3b15>] do_page_fault+0x35/0x90
+Apr 18 16:18:46 dcos-agent-1 kernel: [<ffffffff816af8f8>] page_fault+0x28/0x30
+Apr 18 16:18:46 dcos-agent-1 kernel: Task in /docker/eca214e0fcd4b245eecb2a80c05e9d7f8688fc36979c510d2fb9afab2ce55712 killed as a result of limit of /docker/eca214e0fc
+d4b245eecb2a80c05e9d7f8688fc36979c510d2fb9afab2ce55712
+Apr 18 16:18:46 dcos-agent-1 kernel: memory: usage 524180kB, limit 524288kB, failcnt 314788
+Apr 18 16:18:46 dcos-agent-1 kernel: memory+swap: usage 1048576kB, limit 1048576kB, failcnt 6
+Apr 18 16:18:46 dcos-agent-1 kernel: kmem: usage 0kB, limit 9007199254740988kB, failcnt 0
+Apr 18 16:18:46 dcos-agent-1 kernel: Memory cgroup stats for /docker/eca214e0fcd4b245eecb2a80c05e9d7f8688fc36979c510d2fb9afab2ce55712: cache:28KB rss:524152KB rss_huge
+:0KB mapped_file:0KB swap:524396KB inactive_anon:262176KB active_anon:261976KB inactive_file:8KB active_file:4KB unevictable:0KB
+Apr 18 16:18:46 dcos-agent-1 kernel: [ pid ]   uid  tgid total_vm      rss nr_ptes swapents oom_score_adj name
+Apr 18 16:18:46 dcos-agent-1 kernel: [ 1400]     0  1400     4985      418      14      139             0 bash
+Apr 18 16:18:46 dcos-agent-1 kernel: [ 4141]     0  4141  4956003   126966     606   137837             0 java
+Apr 18 16:18:46 dcos-agent-1 kernel: Memory cgroup out of memory: Kill process 4162 (java) score 1012 or sacrifice child
+Apr 18 16:18:46 dcos-agent-1 kernel: Killed process 4141 (java) total-vm:19824012kB, anon-rss:495748kB, file-rss:12116kB, shmem-rss:0kB
+
+
+
+像这样的故障很难调试，因为应用程序日志中没有任何内容。在像AWS ECS这样的管理系统上，它可能尤其困难。
+
+CPU怎么样？让我们运行一个显示可用处理器数量的小程序，来再一次看看会发生什么：
+
+
+
+public class AvailableProcessors {
+public static void main(String[] args) {
+// check the number of processors available
+      System.out.println(""+Runtime.getRuntime().availableProcessors());
+   }
+}
+
+
+
+我们在一个CPU数量设置为1的Docker容器中运行这个小程序：
+
+
+
+$ docker run -ti --cpus 1 openjdk:8u181-jdk
+root@82080104994c:/# javac AvailableProcessors.java
+root@82080104994c:/# java AvailableProcessors
+12
+
+
+
+不好！这个系统上实际有12个CPU。因此，即使将可用处理器的数量限制为1个，JVM也将尝试使用12个。例如，垃圾回收(GC)线程数量是基于以下公式设置的：
+
+在具有n个硬件线程并且n大于8的计算机上，并行回收器使用一个固定的分数来设定垃圾回收器的线程数。当n大于8时，这个分数约为5/8。当n小于8时，垃圾回收器的线程数为n。
+
+在案例中：
+
+
+
+root@82080104994c:/# java -XX:+PrintFlagsFinal -version | grep ParallelGCThreads
+    uintx ParallelGCThreads                         = 10                                  {product}
+
+
+
+
+
+二、解决方案
+
+
+
+好的，我们现在知道这个问题的存在了。那么有解决办案吗？幸运的是 - 有！
+
+新的Java版本（10及以上）已经内置了Docker的支持功能。但有时升级并不能解决问题，比如说，如果应用程序与新的JVM不兼容就不行。推荐阅读：Docker 教程，详细到令人发指。
+
+好消息是：对Docker的支持还被向后移植到Java 8。让我们运行下面人命令来检查标记为8u212的最新openjdk 镜像。我们将内存限制为1G，并使用1个CPU:
+
+
+
+docker run -ti --cpus 1 -m 1G openjdk:8u212-jdk
+
+
+
+内存:
+
+
+
+root@843e552c2e49:/# java -XX:+PrintFlagsFinal -version | grep MaxHeap
+    uintx MaxHeapFreeRatio                          = 70                                  {manageable}
+    uintx MaxHeapSize                              := 268435456                           {product}
+openjdk version "1.8.0_212"
+OpenJDK Runtime Environment (build 1.8.0_212-8u212-b01-1~deb9u1-b01)
+OpenJDK 64-Bit Server VM (build 25.212-b01, mixed mode)
+root@843e552c2e49:/#
+
+
+
+它是256M, 正好是已分配内存的1/4。
+
+CPU：
+
+
+
+root@16f12923f731:/# java AvailableProcessors
+1
+
+
+
+正如我们想要的那样。
+
+此外，还有一些新设置：
+
+
+
+-XX:InitialRAMPercentage
+-XX:MaxRAMPercentage
+-XX:MinRAMPercentage
+
+
+
+这些设置允许微调 heap size（堆大小）。这些设置的含义在StackOverflow的这个优秀答案中已经得到了解释。请注意，它们设置的是百分比，而不是固定值。多亏了它，更改Docker内存设置不会破坏任何东西。
+
+如果出于某种原因不需要新JVM的特性，可以使用-xx:-useContainerSupport关闭它。
+
+
+
+三、结论
+
+
+
+为基于JVM的应用程序设置正确的heap size（堆大小）是非常重要的。使用最新的Java 8版本，你可以依赖安全（但是非常保守）的默认设置。而不需要在Docker入口点中使用任何变通办法，也不需要再将Xmx设置为固定值。
+
