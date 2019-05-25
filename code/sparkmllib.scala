@@ -1,101 +1,330 @@
-import scala.collection.mutable
-import scala.io.Source
-
-object Apriori{
-
-  def main(args: Array[String]) {
-
-    val minSup = 2											//设置最小支持度
-    val list = new mutable.LinkedHashSet[String]()					//设置可变列表
-Source.fromFile("c://apriori.txt").getLines()						//读取数据集并存储
-.foreach(str => list.add(str))								//将数据存储
-    var map = mutable.Map[String,Int]()							//设置map进行计数
-    list.foreach(strss => {										//计算开始
-      val strs = strss.split("、")									//分割数据
-      strs.foreach(str => {									//开始计算程序
-        if(map.contains(str)){									//判断是否存在
-          map.update(str,map(str) + 1)							//对已有数据+1
-        } else map += (str -> 1)								//将未存储的数据加入
-      })
-    })
-
-    val tmpMap = map.filter(_._2 > minSup)						//判断最小支持度
-
-    val mapKeys = tmpMap.keySet								//提取清单内容
-    val tempList = new mutable.LinkedHashSet[String]()				//创先辅助List
-    val conList = new mutable.LinkedHashSet[String]()				//创建连接List
-    mapKeys.foreach(str => tempList.add(str))						//进行连接准备
-    tempList.foreach(str => {									//开始连接
-      tempList.foreach(str2 =>{								//读取辅助List
-        if(str != str2){										//判断
-          val result = str + "、" + str2							//创建连接字符
-          conList.add(result)									//添加
-        }
-      })
-    })
-
-    conList.foreach(strss => {								  //开始对原始列表进行比对
-      val strs = strss.split("、")									//切分数据
-      strs.foreach(str => {									//开始计数
-        if(map.contains(str)){									//判断是否包含
-          map.update(str,map(str) + 1)							//对已有数据+1
-        } else map += (str -> 1)								//将未存储的数据加入
-      })
-    })
-  }
-}
 
 
+
+
+
+import org.apache.spark.mllib.classification.LogisticRegressionWithSGD
+import org.apache.spark.mllib.evaluation.MulticlassMetrics
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.{SparkContext, SparkConf}
-import org.apache.spark.mllib.classification.{NaiveBayes, NaiveBayesModel}
-import org.apache.spark.mllib.linalg.Vectors
-import org.apache.spark.mllib.regression.LabeledPoint
 
-object Bayes {
+object GastriCcancer {
   def main(args: Array[String]) {
-
-val conf = new SparkConf()                                     //创建环境变量
-.setMaster("local")                                             //设置本地化处理
-.setAppName("Bayes ")                              			//设定名称
+    val conf = new SparkConf()                                     //创建环境变量
+      .setMaster("local")                                             //设置本地化处理
+      .setAppName("LogisticRegression4")                              //设定名称
     val sc = new SparkContext(conf)                                 //创建环境变量实例
-    val data = MLUtils.loadLabeledPoints(sc,"c://bayes.txt")			//读取数据集
-    val model = NaiveBayes.train(data, 1.0)						//训练贝叶斯模型
-    model.labels.foreach(println)								//打印label值
-model.pi.foreach(println)									//打印先验概率
-}
-}
 
+    val data = MLUtils.loadLibSVMFile(sc, "c://wa.txt")				//获取数据集
+    val splits = data.randomSplit(Array(0.7, 0.3), seed = 11L)			//对数据集切分
+    val parsedData = splits(0)									//分割训练数据
+    val parseTtest = splits(1)									//分割测试数据
+    val model = LogisticRegressionWithSGD.train(parsedData,50)		//训练模型
 
-import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.mllib.classification.NaiveBayes
-import org.apache.spark.mllib.linalg.Vectors
-import org.apache.spark.mllib.regression.LabeledPoint
-
-object Bayes {
-
-  def main(args: Array[String]) {
-val conf = new SparkConf()                                     //创建环境变量
-.setMaster("local")                                             //设置本地化处理
-.setAppName("BayesTest ")                              			//设定名称
-    val sc = new SparkContext(conf)                                 //创建环境变量实例
-    val data = MLUtils.loadLabeledPoints(sc,"c://data.txt")			//读取数据集
-    val data = file.map { line =>								//处理数据
-      val parts = line.split(',')									//分割数据
-      LabeledPoint(parts(0).toDouble, 							//标签数据转换
-Vectors.dense(parts(1).split(' ').map(_.toDouble)))				//向量数据转换
+    val predictionAndLabels = parseTtest.map { 					//计算测试值
+      case LabeledPoint(label, features) =>						//计算测试值
+        val prediction = model.predict(features)						//计算测试值
+        (prediction, label)										//存储测试和预测值
     }
 
-    val splits = data.randomSplit(Array(0.7, 0.3), seed = 11L)			//对数据进行分配
-    val trainingData = splits(0)									//设置训练数据
-    val testData = splits(1)									//设置测试数据
-    val model = NaiveBayes.train(trainingData, lambda = 1.0)			//训练贝叶斯模型
-    val predictionAndLabel = testData.map(p => (model.predict(p.features), p.label)) //验证模型
-    val accuracy = 1.0 * predictionAndLabel.filter(					//计算准确度
-      label => label._1 == label._2).count()						//比较结果
-    println(accuracy)										//打印准确度
+    val metrics = new MulticlassMetrics(predictionAndLabels)			//创建验证类
+    val precision = metrics.precision								//计算验证值
+    println("Precision = " + precision)							//打印验证值
+
+    val patient = Vectors.dense(Array(70,3,180.0,4,3))				//计算患者可能性
+    if(patient == 1) println("患者的胃癌有几率转移。")				//做出判断
+    else println("患者的胃癌没有几率转移。")					//做出判断
   }
 }
+
+import org.apache.spark.mllib.classification.SVMWithSGD
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.{SparkConf, SparkContext}
+
+object SVM {
+  def main(args: Array[String]) {
+    val conf = new SparkConf()                                     //创建环境变量
+      .setMaster("local")                                             //设置本地化处理
+      .setAppName("SVM")                              			//设定名称
+    val sc = new SparkContext(conf)                                //创建环境变量实例
+    val data = sc.textFile("c:/u.txt")							  	//获取数据集路径
+    val parsedData = data.map { line =>							//开始对数据集处理
+      val parts = line.split('|')									//根据逗号进行分区
+      LabeledPoint(parts(0).toDouble, Vectors.dense(parts(1).map(_.toDouble))
+    }.cache()                                                      //转化数据格式
+    val model = SVMWithSGD.train(parsedData, 10)				//训练数据模型
+    println(model.weights)									//打印权重
+    println(model.intercept)									//打印截距
+  }
+}
+
+import org.apache.spark.mllib.classification. SVMWithSGD
+import org.apache.spark.mllib.evaluation.MulticlassMetrics
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.mllib.util.MLUtils
+import org.apache.spark.{SparkContext, SparkConf}
+
+object GastriCcancer {
+  def main(args: Array[String]) {
+    val conf = new SparkConf()                                     //创建环境变量
+      .setMaster("local")                                             //设置本地化处理
+      .setAppName("SVMTest ")                        		      //设定名称
+    val sc = new SparkContext(conf)                                 //创建环境变量实例
+
+    val data = MLUtils.loadLibSVMFile(sc, "c://wa.txt")				//获取数据集
+    val splits = data.randomSplit(Array(0.7, 0.3), seed = 11L)			//对数据集切分
+    val parsedData = splits(0)									//分割训练数据
+    val parseTtest = splits(1)									//分割测试数据
+    val model = SVMWithSGD.train(parsedData,50)					//训练模型
+    val predictionAndLabels = parseTtest.map { 					//计算测试值
+      case LabeledPoint(label, features) =>						//计算测试值
+        val prediction = model.predict(features)						//计算测试值
+        (prediction, label)										//存储测试和预测值
+    }
+
+    val metrics = new MulticlassMetrics(predictionAndLabels)			//创建验证类
+    val precision = metrics.precision								//计算验证值
+    println("Precision = " + precision)							//打印验证值
+
+    val patient = Vectors.dense(Array(70,3,180.0,4,3))				//计算患者可能性
+    if(patient == 1) println("患者的胃癌有几率转移。")				//做出判断
+    else println("患者的胃癌没有几率转移。")					//做出判断
+  }
+}
+
+
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.{SparkContext, SparkConf}
+import org.apache.spark.mllib.tree.DecisionTree
+import org.apache.spark.mllib.util.MLUtils
+
+object DT {
+  def main(args: Array[String]) {
+    val conf = new SparkConf()                                     //创建环境变量
+      .setMaster("local")                                             //设置本地化处理
+      .setAppName("DT")                              			//设定名称
+    val sc = new SparkContext(conf)                                 //创建环境变量实例
+    val data = MLUtils.loadLibSVMFile(sc, "c://DTree.txt")				//输入数据集
+
+    val numClasses = 2 										//设定分类数量
+    val categoricalFeaturesInfo = Map[Int, Int]()					//设定输入格式
+    val impurity = "entropy"									//设定信息增益计算方式
+    val maxDepth = 5										//设定树高度
+    val maxBins = 3											//设定分裂数据集
+
+    val model = DecisionTree.trainClassifier(data, numClasses, categoricalFeaturesInfo,
+      impurity, maxDepth, maxBins)								//建立模型
+    println(model.topNode)									//打印决策树信息
+
+  }
+}
+
+import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.mllib.tree.RandomForest
+import org.apache.spark.mllib.util.MLUtils
+
+object RFDTree {
+  def main(args: Array[String]) {
+    val conf = new SparkConf()                                     //创建环境变量
+      .setMaster("local")                                             //设置本地化处理
+      .setAppName("DT2")                              			//设定名称
+    val sc = new SparkContext(conf)                                 //创建环境变量实例
+    val data = MLUtils.loadLibSVMFile(sc, "c://DTree.txt")				//输入数据集
+
+    val numClasses = 2										//设定分类的数量
+    val categoricalFeaturesInfo = Map[Int, Int]()					//设置输入数据格式
+    val numTrees = 3 								   //设置随机雨林中决策树的数目
+    val featureSubsetStrategy = "auto"							//设置属性在节点计算数
+    val impurity = "entropy"									//设定信息增益计算方式
+    val maxDepth = 5										//设定树高度
+    val maxBins = 3											//设定分裂数据集
+
+    val model = RandomForest.trainClassifier(data, numClasses, categoricalFeaturesInfo,
+      numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins)	//建立模型
+
+    model.trees.foreach(println)								//打印每棵树的相信信息
+  }
+}
+
+
+import org.apache.spark.{SparkContext, SparkConf}
+import org.apache.spark.mllib.tree.GradientBoostedTrees
+import org.apache.spark.mllib.tree.configuration.BoostingStrategy
+import org.apache.spark.mllib.tree.model.GradientBoostedTreesModel
+import org.apache.spark.mllib.util.MLUtils
+
+object GDTree {
+
+  def main(args: Array[String]) {
+    val conf = new SparkConf()                                     //创建环境变量
+      .setMaster("local")                                             //设置本地化处理
+      .setAppName("GDTree")                              			//设定名称
+    val sc = new SparkContext(conf)                                 //创建环境变量实例
+    val data = MLUtils.loadLibSVMFile(sc, "c://DTree.txt")				//输入数据集
+
+    val boostingStrategy = BoostingStrategy.defaultParams("Classification")	//创建算法类型
+    boostingStrategy.numIterations = 3 							//迭代次数
+    boostingStrategy.treeStrategy.numClasses = 2					//分类数目
+    boostingStrategy.treeStrategy.maxDepth = 5					//决策树最高层数
+    boostingStrategy.treeStrategy.categoricalFeaturesInfo = Map[Int, Int]()	//数据格式
+
+    val model = GradientBoostedTrees.train(data, boostingStrategy)	//训练模型
+  }
+}
+
+
+
+import org.apache.spark.mllib.regression.IsotonicRegression
+import org.apache.spark.{SparkConf, SparkContext}
+
+object IS {
+  def main(args: Array[String]) {
+
+    val conf = new SparkConf()                                     //创建环境变量
+      .setMaster("local")                                             //设置本地化处理
+      .setAppName("IS")                              				//设定名称
+    val sc = new SparkContext(conf)                                 //创建环境变量实例
+    val data = MLUtils.loadLibSVMFile(sc, "c://u.txt")				//输入数据集
+
+    val parsedData = data.map { line =>							//处理数据格式
+      val parts = line.split(',').map(_.toDouble)						//切分数据
+      (parts(0), parts(1), 1.0)									//分配数据格式
+    }
+
+    val model = new IsotonicRegression().setIsotonic(true).run(parsedData)	//建立模型
+
+    model.predictions.foreach(println)							//打印保序回归模型
+
+    val res = model.predict(5)									//创建预测值
+    println(res)												//打印预测结果
+
+  }
+}
+
+import org.apache.spark.mllib.clustering.GaussianMixture
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.{SparkConf, SparkContext}
+
+object GMG {
+  def main(args: Array[String]) {
+
+    val conf = new SparkConf()                                     //创建环境变量
+      .setMaster("local")                                             //设置本地化处理
+      .setAppName("GMG ")                              			//设定名称
+    val sc = new SparkContext(conf)                                 //创建环境变量实例
+    val data = sc.textFile("c://gmg.txt")							//输入数个
+    val parsedData = data.map(s => Vectors.dense(s.trim.split(' ')		//转化数据格式
+      .map(_.toDouble))).cache()
+    val model = new GaussianMixture().setK(2).run(parsedData)		//训练模型
+
+    for (i <- 0 until model.k) {
+      println("weight=%f\nmu=%s\nsigma=\n%s\n" format			//逐个打印单个模型
+        (model.weights(i), model.gaussians(i).mu, model.gaussians(i).sigma))	//打印结果
+    }
+  }
+}
+
+
+
+
+
+
+
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.regression.{LabeledPoint, LinearRegressionWithSGD}
+import org.apache.spark.{SparkConf, SparkContext}
+
+object LinearRegression {
+  val conf = new SparkConf()                                     //创建环境变量
+    .setMaster("local")                                              //设置本地化处理
+    .setAppName("LinearRegression ")                               //设定名称
+  val sc = new SparkContext(conf)                                 //创建环境变量实例
+
+  def main(args: Array[String]) {
+    val data = sc.textFile("c:/lpsa2.data")							//获取数据集路径
+    val parsedData = data.map { line =>							//开始对数据集处理
+      val parts = line.split(',')									//根据逗号进行分区
+      LabeledPoint(parts(0).toDouble, Vectors.dense(parts(1).split(' ').map(_.toDouble)))
+    }.cache()                                                     //转化数据格式
+    val model = LinearRegressionWithSGD.train(parsedData, 100,0.1)	//建立模型
+    val result = model.predict(Vectors.dense(2))					//通过模型预测模型
+    println(result)											//打印预测结果
+  }
+
+}
+
+
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.regression.{LabeledPoint, LinearRegressionWithSGD}
+import org.apache.spark.{SparkConf, SparkContext}
+
+object LinearRegression {
+  val conf = new SparkConf()                                     //创建环境变量
+    .setMaster("local")                                              //设置本地化处理
+    .setAppName("LinearRegression2 ")                               //设定名称
+  val sc = new SparkContext(conf)                                 //创建环境变量实例
+
+  def main(args: Array[String]) {
+    val data = sc.textFile("c:/lr.txt")							  	 //获取数据集路径
+    val parsedData = data.map { line =>							 //开始对数据集处理
+      val parts = line.split('|')									 //根据逗号进行分区
+      LabeledPoint(parts(0).toDouble, Vectors.dense(parts(1).split(',').map(_.toDouble)))
+    }.cache()                                                      //转化数据格式
+    val model = LinearRegressionWithSGD.train(parsedData, 2,0.1)	  	 //建立模型
+    val result = model.predict(Vectors.dense(2))					 //通过模型预测模型
+    println(result)											 //打印预测结果
+  }
+
+}
+
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.regression.{LabeledPoint, LinearRegressionWithSGD}
+import org.apache.spark.{SparkConf, SparkContext}
+
+object LinearRegression {
+  val conf = new SparkConf()                                     //创建环境变量
+    .setMaster("local")                                              //设置本地化处理
+    .setAppName("LinearRegression3 ")                               //设定名称
+  val sc = new SparkContext(conf)                                 //创建环境变量实例
+
+  def main(args: Array[String]) {
+    val data = sc.textFile("c:/lr.txt")							  	 //获取数据集路径
+    val parsedData = data.map { line =>							 //开始对数据集处理
+      val parts = line.split('|')									 //根据逗号进行分区
+      LabeledPoint(parts(0).toDouble, Vectors.dense(parts(1).split(',').map(_.toDouble)))
+    }.cache()                                                      //转化数据格式
+    val model = LinearRegressionWithSGD.train(parsedData, 2,0.1)	  	//建立模型
+    val valuesAndPreds = parsedData.map { point => {				//获取真实值与预测值
+      val prediction = model.predict(point.features)					//对系数进行预测
+      (point.label, prediction)									//按格式存储
+    }
+    }
+
+    val MSE = valuesAndPreds.map{ case(v, p) => math.pow((v - p), 2)}.mean() //计算MSE
+    println(MSE)
+  }
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 import org.apache.spark.{SparkContext, SparkConf}
@@ -1502,46 +1731,7 @@ object testZip{
     arr4.foreach(print)                                               //打印结果
   }
 }
-import org.apache.spark.mllib.feature.{IDF, HashingTF}
-import org.apache.spark.{SparkContext, SparkConf}
 
-object TF_IDF {
-  def main(args: Array[String]) {
-    val conf = new SparkConf()                                   	//创建环境变量
-      .setMaster("local")                                          	//设置本地化处理
-      .setAppName("TF_IDF ")                                    		//设定名称
-    val sc = new SparkContext(conf)                               	//创建环境变量实例
-    val documents = sc.textFile("c://a.txt").map(_.split(" ").toSeq)		//读取数据文件
-
-    val hashingTF = new HashingTF()							//首先创建TF计算实例
-    val tf = hashingTF.transform(documents).cache()				//计算文档TF值
-    val idf = new IDF().fit(tf)									//创建IDF实例并计算
-
-    val tf_idf= idf.transform(tf)									//计算TF_IDF词频
-    tf_idf.foreach(println)										//打印结果
-
-  }
-}
-import org.apache.spark.mllib.feature.Word2Vec
-import org.apache.spark.{SparkConf, SparkContext}
-
-object word2Vec {
-  def main(args: Array[String]) {
-    val conf = new SparkConf()                                   	//创建环境变量
-      .setMaster("local")                                          	//设置本地化处理
-      .setAppName("word2Vec ")                                    		//设定名称
-    val sc = new SparkContext(conf)                               	//创建环境变量实例
-    val documents = sc.textFile("c://a.txt").map(_.split(" ").toSeq)		//读取数据文件
-
-    val word2vec = new Word2Vec()							//创建词向量实例
-    val model = word2vec.fit(data)								//训练模型
-    println(model.getVectors)  								//打印向量模型
-    val synonyms = model.findSynonyms("spar", 2)					//寻找spar的相似词
-    for(synonym <- synonyms){								//打印找到的内容
-      println(synonym)
-    }
-  }
-}
 
 
 import org.apache.spark.{SparkContext, SparkConf}

@@ -1,0 +1,312 @@
+import org.apache.spark.mllib.linalg.{Matrices, Vectors}
+import org.apache.spark.mllib.stat.Statistics
+
+object testChiSq{
+  def main(args: Array[String]) {
+    val vd = Vectors.dense(1,2,3,4,5)                                 //
+    val vdResult = Statistics.chiSqTest(vd)
+    println(vdResult)
+    println("-------------------------------")
+    val mtx = Matrices.dense(3, 2, Array(1, 3, 5, 2, 4, 6))
+    val mtxResult = Statistics.chiSqTest(mtx)
+    println(mtxResult)
+  }
+}
+import org.apache.spark._
+import org.apache.spark.mllib.linalg.{Vector, Vectors}
+import org.apache.spark.mllib.linalg.distributed.{CoordinateMatrix, MatrixEntry}
+
+object testCoordinateRowMatrix {
+  def main(args: Array[String]) {
+val conf = new SparkConf()                                       //创建环境变量
+.setMaster("local")                                               //设置本地化处理
+.setAppName("testIndexedRowMatrix")						  //设定名称
+    val sc = new SparkContext(conf)                                  //创建环境变量实例
+    val rdd = sc.textFile("c://a.txt")                                     //创建RDD文件路径
+      .map(_.split(' ')                                                //按“ ”分割
+      .map(_.toDouble))                                             //转成Double类型
+      .map(vue => (vue(0).toLong,vue(1).toLong,vue(2)))                //转化成坐标格式
+      .map(vue2 => new MatrixEntry(vue2 _1,vue2 _2,vue2 _3))         //转化成坐标矩阵格式
+    val crm = new CoordinateMatrix(rdd)                              //实例化坐标矩阵
+    println(crm.entries.foreach(println))                                //打印数据
+  }
+}
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.stat.Statistics
+import org.apache.spark.{SparkConf, SparkContext}
+
+object testCorrect {
+  def main(args: Array[String]) {
+val conf = new SparkConf()                                       //创建环境变量
+.setMaster("local")                                               //设置本地化处理
+.setAppName("testCorrect ")                                    //设定名称
+    val sc = new SparkContext(conf)                                  //创建环境变量实例
+    val rddX = sc.textFile("c://x.txt")                                   //读取数据
+        .flatMap(_.split(' ')                                           //进行分割
+        .map(_.toDouble))                                           //转化为Double类型
+    val rddY = sc.textFile("c://y.txt")                                   //读取数据
+      .flatMap(_.split(' ')                                             //进行分割
+      .map(_.toDouble))                                            //转化为Double类型
+    val correlation: Double = Statistics.corr(rddX, rddY)                 //计算不同数据之间的相关系数
+    println(correlation)                                              //打印结果
+  }
+}
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.stat.Statistics
+import org.apache.spark.{SparkConf, SparkContext}
+
+object testCorrect2 {
+  def main(args: Array[String]) {
+val conf = new SparkConf()                                       //创建环境变量
+.setMaster("local")                                               //设置本地化处理
+.setAppName("testCorrect2 ")                                    //设定名称
+    val sc = new SparkContext(conf)                                  //创建环境变量实例
+    val rddX = sc.textFile("c://x.txt")                                   //读取数据
+        .flatMap(_.split(' ')                                           //进行分割
+        .map(_.toDouble))                                           //转化为Double类型
+    val rddY = sc.textFile("c://y.txt")                                   //读取数据
+      .flatMap(_.split(' ')                                             //进行分割
+      .map(_.toDouble))                                            //转化为Double类型
+    val correlation: Double = Statistics.corr(rddX, rddY，” spearman “)    //使用斯皮尔曼计算不同数据之间的相关系数
+    println(correlation)                                              //打印结果
+  }
+}
+import org.apache.spark._
+import org.apache.spark.mllib.linalg.distributed.{IndexedRow, RowMatrix, IndexedRowMatrix}
+import org.apache.spark.mllib.linalg.{Vector, Vectors}
+
+object testIndexedRowMatrix {
+  def main(args: Array[String]) {
+val conf = new SparkConf()                                       //创建环境变量
+.setMaster("local")                                               //设置本地化处理
+setAppName("testIndexedRowMatrix")						  //设定名称
+       val sc = new SparkContext(conf)                               //创建环境变量实例
+    val rdd = sc.textFile("c://a.txt")                                     //创建RDD文件路径
+      .map(_.split(' ')                                                //按“ ”分割
+      .map(_.toDouble))                                             //转成Double类型
+      .map(line => Vectors.dense(line))                               //转化成向量存储
+      .map((vd) => new IndexedRow(vd.size,vd))                      //转化格式
+    val irm = new IndexedRowMatrix(rdd)                             //建立索引行矩阵实例
+    println(irm.getClass)                                            //打印类型
+    println(irm.rows.foreach(println))                                 //打印内容数据
+  }
+}
+import org.apache.spark.mllib.linalg.{Vector, Vectors}
+import org.apache.spark.mllib.regression.LabeledPoint
+
+object testLabeledPoint {
+  def main(args: Array[String]) {
+    val vd: Vector =  Vectors.dense(2, 0, 6)                            //建立密集向量
+    val pos = LabeledPoint(1, vd)                                     //对密集向量建立标记点
+    println(pos.features)                                             //打印标记点内容数据
+    println(pos.label)                                                //打印既定标记
+val vs: Vector = Vectors.sparse(4, Array(0,1,2,3), Array(9,5,2,7))      //建立稀疏向量
+    val neg = LabeledPoint(2, vs)                                    //对密集向量建立标记点
+    println(neg.features)                                            //打印标记点内容数据
+    println(neg.label)                                               //打印既定标记
+  }
+}
+import org.apache.spark.mllib.linalg.{Vector, Vectors}
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark._
+import org.apache.spark.mllib.util.MLUtils
+
+object testLabeledPoint2 {
+  def main(args: Array[String]) {
+    val conf = new SparkConf().setMaster("local").setAppName("SparkPi")//建立本地环境变量
+val sc = new SparkContext(conf)                                 //建立Spark处理
+
+    val mu = MLUtils.loadLibSVMFile(sc, "c://a.txt")                    //从C路径盘读取文件
+mu.foreach(println)                                             //打印内容
+	}
+}
+import org.apache.spark.mllib.linalg.{Matrix, Matrices}
+
+object testMatrix {
+  def main(args: Array[String]) {
+    val mx = Matrices.dense(2, 3, Array(1,2,3,4,5,6))                    //创建一个分布式矩阵
+    println(mx)                                                     //打印结果
+  }
+}
+import org.apache.spark.{SparkContext, SparkConf}
+import org.apache.spark.mllib.random.RandomRDDs._
+
+object testRandomRDD {
+  def main(args: Array[String]) {
+    val conf = new SparkConf()
+      .setMaster("local")
+      .setAppName("testRandomRDD")
+    val sc = new SparkContext(conf)
+    val randomNum = normalRDD(sc, 100)
+    randomNum.foreach(println)
+  }
+}
+import org.apache.spark._
+import org.apache.spark.mllib.linalg.{Vector, Vectors}
+import org.apache.spark.mllib.linalg.distributed.RowMatrix
+
+object testRowMatrix {
+  def main(args: Array[String]) {
+val conf = new SparkConf()                                       //创建环境变量
+.setMaster("local")                                               //设置本地化处理
+.setAppName("testRowMatrix")                                    //设定名称
+    val sc = new SparkContext(conf)                                   //创建环境变量实例
+    val rdd = sc.textFile("c://a.txt")                                     //创建RDD文件路径
+      .map(_.split(' ')                                                //按“ ”分割
+      .map(_.toDouble))                                             //转成Double类型
+      .map(line => Vectors.dense(line))                                //转成Vector格式
+    val rm = new RowMatrix(rdd)                                      //读入行矩阵
+    println(rm.numRows())                                           //打印列数
+    println(rm.numCols())                                            //打印行数
+  }
+}
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.stat.Statistics
+import org.apache.spark.{SparkConf, SparkContext}
+
+object testSingleCorrect {
+  def main(args: Array[String]) {
+val conf = new SparkConf()                                       //创建环境变量
+.setMaster("local")                                               //设置本地化处理
+.setAppName("testSingleCorrect ")                                //设定名称
+    val sc = new SparkContext(conf)                                  //创建环境变量实例
+val rdd = sc.textFile("c://x.txt")                                    //读取数据文件
+      .map(_.split(' ')                                               //切割数据
+      .map(_.toDouble))                                            //转化为Double类型
+      .map(line => Vectors.dense(line))                               //转为向量
+println(Statistics.corr(rdd,"spearman"))                            //使用斯皮尔曼计算相关系数
+}
+}
+object testStratifiedSampling2 {
+  def main(args: Array[String]) {
+val conf = new SparkConf()                                       //创建环境变量
+.setMaster("local")                                               //设置本地化处理
+.setAppName("testSingleCorrect2 ")                                //设定名称
+    val sc = new SparkContext(conf)                                  //创建环境变量实例
+    val data = sc.textFile("c://a.txt")                                   //读取数据
+      .map(row => {                                                //开始处理
+      if(row.length == 3)                                            //判断字符数
+        (row,1)                                                    //建立对应map
+      else (row,2)                                                  //建立对应map
+    })
+    val fractions: Map[String, Double] = Map("aa" -> 2)                 //设定抽样格式
+    val approxSample = data.sampleByKey(withReplacement = false, fractions,0) //计算抽样样本
+    approxSample.foreach(println)                                   //打印结果
+  }
+}
+object testSummary{
+  def main(args: Array[String]) {
+val conf = new SparkConf()                                       //创建环境变量
+.setMaster("local")                                               //设置本地化处理
+.setAppName("testSummary")                                    //设定名称
+    val sc = new SparkContext(conf)                                   //创建环境变量实例
+    val rdd = sc.textFile("c://a.txt")                                     //创建RDD文件路径
+      .map(_.split(' ')                                                //按“ ”分割
+      .map(_.toDouble))                                             //转成Double类型
+      .map(line => Vectors.dense(line))                                //转成Vector格式
+    val summary = Statistics.colStats(rdd)						  //获取Statistics实例
+    println(summary.mean)                                           //计算均值
+    println(summary.variance)                                        //计算标准差
+  }
+}
+object testSummary{
+  def main(args: Array[String]) {
+val conf = new SparkConf()                                       //创建环境变量
+.setMaster("local")                                               //设置本地化处理
+.setAppName("testSummary2")                                    //设定名称
+    val sc = new SparkContext(conf)                                   //创建环境变量实例
+    val rdd = sc.textFile("c://a.txt")                                     //创建RDD文件路径
+      .map(_.split(' ')                                                //按“ ”分割
+      .map(_.toDouble))                                             //转成Double类型
+      .map(line => Vectors.dense(line))                                //转成Vector格式
+    val summary = Statistics.colStats(rdd)						  //获取Statistics实例
+    println(summary.normL1)                                         //计算曼哈段距离
+    println(summary.normL2)                                        //计算欧几里得距离
+  }
+}
+
+import org.apache.spark.mllib.linalg.{Vector, Vectors}
+
+object testVector {
+  def main(args: Array[String]) {
+    val vd: Vector = Vectors.dense(2, 0, 6)                             //建立密集向量
+println(vd(2))	                                                //打印稀疏向量第3个值
+val vs: Vector = Vectors.sparse(4, Array(0,1,2,3), Array(9,5,2,7))		 //建立稀疏向量
+    println(vs(2))											 //打印稀疏向量第3个值
+  }
+}
+
+
+import org.apache.spark._
+import org.apache.spark.mllib.recommendation.{ALS, Rating}
+
+object CollaborativeFilter {
+  def main(args: Array[String]) {
+    val conf = new SparkConf().setMaster("local").setAppName("CollaborativeFilter ")	//设置环境变量
+val sc = new SparkContext(conf)                                 //实例化环境
+    val data = sc.textFile("c://u1.txt")								//设置数据集
+val ratings = data.map(_.split(' ') match {						//处理数据
+ case Array(user, item, rate) => 							//将数据集转化
+      Rating(user.toInt, item.toInt, rate.toDouble)				//将数据集转化为专用Rating
+    })
+    val rank = 2											//设置隐藏因子
+    val numIterations = 2										//设置迭代次数
+    val model = ALS.train(ratings, rank, numIterations, 0.01)			//进行模型训练
+    var rs = model.recommendProducts(2,1)						//为用户2推荐一个商品
+    rs.foreach(println)										//打印结果
+  }
+}
+
+
+import org.apache.spark.{SparkConf, SparkContext}
+import scala.collection.mutable.Map
+
+
+object CollaborativeFilteringSpark {
+val conf = new SparkConf().setMaster("local").setAppName("CollaborativeFilteringSpark ")	//设置环境变量
+val sc = new SparkContext(conf)                                 //实例化环境
+val users = sc.parallelize(Array("aaa","bbb","ccc","ddd","eee"))       //设置用户
+val films = sc.parallelize(Array("smzdm","ylxb","znh","nhsc","fcwr"))	//设置电影名
+
+val source = Map[String,Map[String,Int]]()				//使用一个source嵌套map作为姓名电影名和分值的存储
+   val filmSource = Map[String,Int]() 					//设置一个用以存放电影分的map
+   def getSource(): Map[String,Map[String,Int]] = {			//设置电影评分
+     val user1FilmSource = Map("smzdm" -> 2,"ylxb" -> 3,"znh" -> 1,"nhsc" -> 0,"fcwr" -> 1)
+     val user2FilmSource = Map("smzdm" -> 1,"ylxb" -> 2,"znh" -> 2,"nhsc" -> 1,"fcwr" -> 4)
+     val user3FilmSource = Map("smzdm" -> 2,"ylxb" -> 1,"znh" -> 0,"nhsc" -> 1,"fcwr" -> 4)
+     val user4FilmSource = Map("smzdm" -> 3,"ylxb" -> 2,"znh" -> 0,"nhsc" -> 5,"fcwr" -> 3)
+     val user5FilmSource = Map("smzdm" -> 5,"ylxb" -> 3,"znh" -> 1,"nhsc" -> 1,"fcwr" -> 2)
+     source += ("aaa" -> user1FilmSource)				//对人名进行存储
+     source += ("bbb" -> user2FilmSource) 				//对人名进行存储
+     source += ("ccc" -> user3FilmSource) 				//对人名进行存储
+     source += ("ddd" -> user4FilmSource) 				//对人名进行存储
+     source += ("eee" -> user5FilmSource) 				//对人名进行存储
+     source										//返回嵌套map
+   }
+
+   //两两计算分值,采用余弦相似性
+   def getCollaborateSource(user1:String,user2:String):Double = {
+     val user1FilmSource = source.get(user1).get.values.toVector		//获得第1个用户的评分
+     val user2FilmSource = source.get(user2).get.values.toVector		//获得第2个用户的评分
+val member = user1FilmSource.zip(user2FilmSource).map(d => d._1 * d._2).reduce(_ + _   _).toDouble												//对公式分子部分进行计算
+     val temp1  = math.sqrt(user1FilmSource.map(num => {			//求出分母第1个变量值
+       math.pow(num,2)										//数学计算
+     }).reduce(_ + _))										//进行叠加
+     val temp2  = math.sqrt(user2FilmSource.map(num => {			////求出分母第2个变量值
+       math.pow(num,2) 									//数学计算
+     }).reduce(_ + _))										//进行叠加
+     val denominator = temp1 * temp2							//求出分母
+     member / denominator									//进行计算
+}
+
+   def main(args: Array[String]) {
+     getSource()											//初始化分数
+     val name = "bbb"										//设定目标对象
+    users.foreach(user =>{									//迭代进行计算
+      println(name + " 相对于 " + user +"的相似性分数是："+ getCollaborateSource(name,user))
+    })
+   }
+ }
+
+
+

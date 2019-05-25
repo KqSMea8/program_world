@@ -1,0 +1,74 @@
+import org.apache.spark.mllib.classification.LogisticRegressionWithSGD
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.{SparkConf, SparkContext}
+
+object LogisticRegression{
+  val conf = new SparkConf()                                     //创建环境变量
+    .setMaster("local")                                             //设置本地化处理
+    .setAppName("LogisticRegression ")                              //设定名称
+  val sc = new SparkContext(conf)                                 //创建环境变量实例
+
+  def main(args: Array[String]) {
+    val data = sc.textFile("c:/u.txt")							  	 //获取数据集路径
+    val parsedData = data.map { line =>							 //开始对数据集处理
+      val parts = line.split('|')									 //根据逗号进行分区
+      LabeledPoint(parts(0).toDouble, Vectors.dense(parts(1).map(_.toDouble))
+    }.cache()                                                      //转化数据格式
+    val model = LogisticRegressionWithSGD.train(parsedData,50)		//建立模型
+    val target = Vectors.dense(-1)								//创建测试值
+    val resulet = model.predict(target)							//根据模型计算结果
+    println(resulet)  										//打印结果
+  }
+}
+
+
+import org.apache.spark.mllib.classification.LogisticRegressionWithSGD
+import org.apache.spark.mllib.util.MLUtils
+import org.apache.spark.{SparkConf, SparkContext}
+
+object LogisticRegression2 {
+  val conf = new SparkConf()                                     //创建环境变量
+    .setMaster("local")                                             //设置本地化处理
+    .setAppName("LogisticRegression2 ")                              //设定名称
+  val sc = new SparkContext(conf)                                 //创建环境变量实例
+
+  def main(args: Array[String]) {
+    val data = MLUtils.loadLibSVMFile(sc, "c://sample_libsvm_data.txt")	//读取数据文件
+    val model = LogisticRegressionWithSGD.train(data,50)			//训练数据模型
+    println(model.weights.size)								//打印θ值
+    println(model.weights)									//打印θ值个数
+    println(model.weights.toArray.filter(_ != 0).size)					//打印θ中不为0的数
+  }
+}
+
+
+import org.apache.spark.mllib.classification.LogisticRegressionWithSGD
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.mllib.util.MLUtils
+import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.mllib.evaluation.MulticlassMetrics
+
+object LinearRegression3{
+  val conf = new SparkConf()                                     //创建环境变量
+    .setMaster("local")                                             //设置本地化处理
+    .setAppName("LogisticRegression3")                              //设定名称
+  val sc = new SparkContext(conf)                                 //创建环境变量实例
+
+  def main(args: Array[String]) {
+    val data = MLUtils.loadLibSVMFile(sc, "c://sample_libsvm_data.txt")	//读取数据集
+    val splits = data.randomSplit(Array(0.6, 0.4), seed = 11L)			//对数据集切分
+    val parsedData = splits(0)									//分割训练数据
+    val parseTtest = splits(1)									//分割测试数据
+    val model = LogisticRegressionWithSGD.train(parsedData,50)		//训练模型
+    println(model.weights)									//打印θ值
+    val predictionAndLabels = parseTtest.map { 					//计算测试值
+      case LabeledPoint(label, features) =>						//计算测试值
+        val prediction = model.predict(features)						//计算测试值
+        (prediction, label)										//存储测试和预测值
+    }
+    val metrics = new MulticlassMetrics(predictionAndLabels)			//创建验证类
+    val precision = metrics.precision								//计算验证值
+    println("Precision = " + precision)							//打印验证值
+  }
+}
