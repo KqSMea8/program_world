@@ -1953,6 +1953,7 @@ B．9 参考资料IX：C和C++的区别 726
 12.1.1　为什么使用函数 265
 12.1.2　函数声明的组成要件 265
 
+
 1. 让自己习惯C++ 11
 
 Accustoming Yourself to C++ 11
@@ -3454,6 +3455,12 @@ Familiarize yourself with the language standard.
 auto_ptr 实现代码
 索引（一）（General Index）
 索引（二）（Index of Example Classes，Functions，and Templtes）
+
+
+https://mingw-w64.org/doku.php/download
+
+
+
 
 如何搭建Eclipse C/C++ MinGW 环境
 96  ffewi
