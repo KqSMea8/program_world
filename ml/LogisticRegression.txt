@@ -43,32 +43,59 @@ object LogisticRegression2 {
 }
 
 
-import org.apache.spark.mllib.classification.LogisticRegressionWithSGD
-import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.mllib.util.MLUtils
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.log4j.{ Level, Logger }
+import org.apache.spark.{ SparkConf, SparkContext }
+import org.apache.spark.mllib.classification.{ LogisticRegressionWithLBFGS, LogisticRegressionModel }
 import org.apache.spark.mllib.evaluation.MulticlassMetrics
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.util.MLUtils
 
-object LinearRegression3{
-  val conf = new SparkConf()                                     //创建环境变量
-    .setMaster("local")                                             //设置本地化处理
-    .setAppName("LogisticRegression3")                              //设定名称
-  val sc = new SparkContext(conf)                                 //创建环境变量实例
+object logistic_regression {
 
   def main(args: Array[String]) {
-    val data = MLUtils.loadLibSVMFile(sc, "c://sample_libsvm_data.txt")	//读取数据集
-    val splits = data.randomSplit(Array(0.6, 0.4), seed = 11L)			//对数据集切分
-    val parsedData = splits(0)									//分割训练数据
-    val parseTtest = splits(1)									//分割测试数据
-    val model = LogisticRegressionWithSGD.train(parsedData,50)		//训练模型
-    println(model.weights)									//打印θ值
-    val predictionAndLabels = parseTtest.map { 					//计算测试值
-      case LabeledPoint(label, features) =>						//计算测试值
-        val prediction = model.predict(features)						//计算测试值
-        (prediction, label)										//存储测试和预测值
+    //1 构建Spark对象
+    val conf = new SparkConf().setAppName("logistic_regression")
+    val sc = new SparkContext(conf)
+    Logger.getRootLogger.setLevel(Level.WARN)
+
+    // 读取样本数据1，格式为LIBSVM format
+    val data = MLUtils.loadLibSVMFile(sc, "hdfs://192.168.180.79:9000/user/huangmeiling/sample_libsvm_data.txt")
+
+    //样本数据划分训练样本与测试样本
+    val splits = data.randomSplit(Array(0.6, 0.4), seed = 11L)
+    val training = splits(0).cache()
+    val test = splits(1)
+
+    //新建逻辑回归模型，并训练
+    val model = new LogisticRegressionWithLBFGS().
+      setNumClasses(10).
+      run(training)
+    model.weights
+    model.intercept
+
+    //对测试样本进行测试
+    val predictionAndLabels = test.map {
+      case LabeledPoint(label, features) =>
+        val prediction = model.predict(features)
+        (prediction, label)
     }
-    val metrics = new MulticlassMetrics(predictionAndLabels)			//创建验证类
-    val precision = metrics.precision								//计算验证值
-    println("Precision = " + precision)							//打印验证值
+    val print_predict = predictionAndLabels.take(20)
+    println("prediction" + "\t" + "label")
+    for (i <- 0 to print_predict.length - 1) {
+      println(print_predict(i)._1 + "\t" + print_predict(i)._2)
+    }
+
+    // 误差计算
+    val metrics = new MulticlassMetrics(predictionAndLabels)
+    val precision = metrics.precision
+    println("Precision = " + precision)
+
+    //保存模型
+    val ModelPath = "/user/huangmeiling/logistic_regression_model"
+    model.save(sc, ModelPath)
+    val sameModel = LogisticRegressionModel.load(sc, ModelPath)
+
   }
+
 }
