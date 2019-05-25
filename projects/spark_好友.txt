@@ -1,0 +1,284 @@
+Spark 计算人员二度关系
+2018年05月17日 11:35:25 gmHappy 阅读数：2509更多
+所属专栏： 大数据
+1、一度人脉：双方直接是好友
+
+2、二度人脉：双方有一个以上共同的好友，这时朋友网可以计算出你们有几个共同的好友并且呈现数字给你。你们的关系是： 你->朋友->陌生人
+
+3、三度人脉：即你朋友的朋友的朋友就是这个陌生人。你们的关系是 你->朋友->朋友->陌生人
+
+4、四度人脉：比三度增加一度，你们的关系是，你->朋友->朋友->朋友->陌生人
+
+5、五度人脉：你->朋友->朋友->朋友->朋友->陌生人 ，像上面这张图片表示的就是一个五度人脉关系。
+
+6、六度人脉：你->朋友->朋友->朋友->朋友->朋友->陌生人
+
+
+数据格式如下：
+
+A,B
+A,C
+A,E
+B,D
+E,D
+C,F
+F,G
+业务逻辑如下：
+
+1、转换操作flatMapToPair将行数据变为键值对，如A，B表示A和B认识，A可以通过B认识B的朋友，B通过A可以认识A的朋友，转化结果为｛A：A，B｝、｛B：B，A｝；
+
+2、转换操作groupByKey对键值对按Key进行分组，转化结果为：｛A，【A，B ，A，E ， A，C 】｝...；
+
+3、转成操作flatMapToPair生成包含可能存在（A->B,A->C两者走向B和C不相同，B和C即存在可能）二度关系的新的键值对，如A和B认识且A与C认识，那么B与C可以存在认识关系即二度关系，路线走向为：B->A->C；
+
+4、转成操作filter在新的键值对中筛选出一度关系即两者已经是认识的，如A和B认识是一度关系；
+
+5、转成操作subtractByKey对包含二度关系的键值对删除存在一度关系的人员；
+
+6、行为操作countByKey统计存在二度关系的比重；
+
+具有实现：
+
+package com.test;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.FlatMapFunction;
+import org.apache.spark.api.java.function.Function;
+import org.apache.spark.api.java.function.Function2;
+import org.apache.spark.api.java.function.MapFunction;
+import org.apache.spark.api.java.function.PairFlatMapFunction;
+import org.apache.spark.api.java.function.PairFunction;
+
+import scala.Tuple2;
+
+public class Test1 {
+
+	public static void main(String[] args) {
+		SparkConf conf = new SparkConf().setMaster("local").setAppName("My Test APP");
+
+		JavaSparkContext sc = new JavaSparkContext(conf);
+
+		JavaRDD<String> rdd = sc.textFile("C:/rmgx.txt");
+
+		JavaPairRDD<String, String> r1 = rdd.flatMapToPair(new PairFlatMapFunction<String,String,String>(){
+			@Override
+			public Iterator<Tuple2<String, String>> call(String t)
+					throws Exception {
+				List<Tuple2<String, String>> list = new ArrayList();
+				String[] eachterm = t.split(",");
+				list.add(new Tuple2(eachterm[0], eachterm[0] + "," + eachterm[1]));
+				list.add(new Tuple2(eachterm[1],eachterm[1] + "," + eachterm[0]));
+				return list.iterator();
+			}
+		});
+
+		JavaPairRDD<String, Iterable<String>> r2 = r1.groupByKey();
+
+		JavaPairRDD<String, String> r3 = r2.flatMapToPair(new PairFlatMapFunction<Tuple2<String,Iterable<String>>,String,String>(){
+			@Override
+			public Iterator<Tuple2<String, String>> call(
+					Tuple2<String, Iterable<String>> t) throws Exception {
+				List<Tuple2<String, String>> list = new ArrayList();
+				for (Iterator iter = t._2.iterator(); iter.hasNext();) {
+				     String str1 = (String)iter.next();
+				     String str1_0 = str1.split(",")[0];
+				     String str1_1 = str1.split(",")[1];
+				     list.add(new Tuple2(str1_0+ "->" + str1_1,"deg1friend,"+str1_0+ "->" + str1_1));
+				     for (Iterator iter2 = t._2.iterator(); iter2.hasNext();) {
+				    	 String str2 = (String)iter2.next();
+				    	 String str2_0 = str2.split(",")[0];
+					     String str2_1 = str2.split(",")[1];
+					     if(!str1_1.equals(str2_1)){
+					    	 list.add(new Tuple2(str1_1+ "->" + str2_1 ,"deg2friend,"+str1_1 + "->" + str2_0 + "->" + str2_1));
+					     }
+				     }
+				}
+				return list.iterator();
+			}
+		});
+
+		JavaPairRDD<String, String> r4 = r3.filter(new Function<Tuple2<String,String>,Boolean>(){
+			@Override
+			public Boolean call(Tuple2<String, String> v1) throws Exception {
+				return v1._2.indexOf("deg1friend")>-1;
+			}
+		});
+
+		JavaPairRDD<String, String> r5 = r3.subtractByKey(r4);
+
+		System.out.println("线路走向："+StringUtils.join(r5.collect(), ","));
+
+		Map<String, Long> r6 = r5.countByKey();
+
+		System.out.println("二度关系及比重：" + r6);
+	}
+}
+结果如下：
+
+线路走向：(A->F,deg2friend,A->C->F),(F->A,deg2friend,F->C->A),(A->D,deg2friend,A->B->D),(A->D,deg2friend,A->E->D),(C->G,deg2friend,C->F->G),(C->E,deg2friend,C->A->E),(C->B,deg2friend,C->A->B),(G->C,deg2friend,G->F->C),(B->E,deg2friend,B->A->E),(B->E,deg2friend,B->D->E),(E->B,deg2friend,E->A->B),(E->B,deg2friend,E->D->B),(E->C,deg2friend,E->A->C),(B->C,deg2friend,B->A->C),(D->A,deg2friend,D->B->A),(D->A,deg2friend,D->E->A)
+二度关系及比重：{F->A=1, C->G=1, A->D=2, B->E=2, E->B=2, C->B=1, C->E=1, B->C=1, G->C=1, D->A=2, A->F=1, E->C=
+
+
+==========
+
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+
+import scala.collection.mutable.ListBuffer
+object FindCommonFriends {
+  def main(args: Array[String]): Unit = {
+    val sparkConf = new SparkConf().setAppName("FindCommonFriends").setMaster("local")
+    val sc = new SparkContext(sparkConf)
+    val input = "file:///media/chenjie/0009418200012FF3/ubuntu/friends.txt"
+    val output = "file:///media/chenjie/0009418200012FF3/ubuntu/friends"
+    val records = sc.textFile(input)
+    /*
+    * 100,200 300 400 500 600
+      200,100 300 400
+      300,100 200 400 500
+      400,100 200 300
+      500,100 300
+      600,100
+    * */
+    val pairs = records.flatMap(s => {
+      //100,200 300 400 500 600
+      val tokens = s.split(",")
+      val person = tokens(0).toLong//100
+      val friends = tokens(1).split("\\s+").map(_.toLong).toList//200 300 400 500 600
+      val result = for {
+        i <- 0 until friends.size
+        friend = friends(i)
+      } yield {
+        if (person < friend)
+          ((person, friend), friends)
+        else
+          ((friend, person), friends)
+      }
+      //以上代码等价于以下代码
+      /*val result = ListBuffer.empty[Tuple2[Tuple2[Long,Long],List[Long]]]
+      for(friend <- friends){
+        if(person < friend)
+          result += new Tuple2(new Tuple2(person, friend), friends)
+        else
+          result += new Tuple2(new Tuple2(friend, person), friends)
+      }*/
+      result
+    })
+    /*
+    * ((100,200),List(200, 300, 400, 500, 600))
+      ((100,300),List(200, 300, 400, 500, 600))
+      ((100,400),List(200, 300, 400, 500, 600))
+      ((100,500),List(200, 300, 400, 500, 600))
+      ((100,600),List(200, 300, 400, 500, 600))
+      ((100,200),List(100, 300, 400))
+      ((200,300),List(100, 300, 400))
+      ((200,400),List(100, 300, 400))
+      ((100,300),List(100, 200, 400, 500))
+      ((200,300),List(100, 200, 400, 500))
+      ((300,400),List(100, 200, 400, 500))
+      ((300,500),List(100, 200, 400, 500))
+      ((100,400),List(100, 200, 300))
+      ((200,400),List(100, 200, 300))
+      ((300,400),List(100, 200, 300))
+      ((100,500),List(100, 300))
+      ((300,500),List(100, 300))
+      ((100,600),List(100))
+    * */
+    val grouped = pairs.groupByKey()
+    /*
+    * ((300,400),CompactBuffer(List(100, 200, 400, 500), List(100, 200, 300)))
+      ((100,200),CompactBuffer(List(200, 300, 400, 500, 600), List(100, 300, 400)))
+      ((300,500),CompactBuffer(List(100, 200, 400, 500), List(100, 300)))
+      ((100,500),CompactBuffer(List(200, 300, 400, 500, 600), List(100, 300)))
+      ((200,300),CompactBuffer(List(100, 300, 400), List(100, 200, 400, 500)))
+      ((100,600),CompactBuffer(List(200, 300, 400, 500, 600), List(100)))
+      ((100,300),CompactBuffer(List(200, 300, 400, 500, 600), List(100, 200, 400, 500)))
+      ((200,400),CompactBuffer(List(100, 300, 400), List(100, 200, 300)))
+      ((100,400),CompactBuffer(List(200, 300, 400, 500, 600), List(100, 200, 300)))
+    * */
+
+    val commonFriends = grouped.mapValues(iter => {
+      //CompactBuffer(List(100, 200, 400, 500), List(100, 200, 300))
+      /*val friendCount = for {
+        list <- iter
+        if !list.isEmpty
+        friend <- list
+      } yield ((friend, 1))
+      friendCount.groupBy(_._1).mapValues(_.unzip._2.sum).filter(_._2 > 1).map(_._1)*/
+      //以下代码等价于以上代码
+      val friendCount = ListBuffer.empty[Tuple2[Long,Int]]
+      for(list <- iter){
+        //List(100, 200, 400, 500)
+        //List(100, 200, 300))
+        if(!list.isEmpty){
+          for(friend <- list){
+            friendCount.+=(Tuple2(friend,1))
+            //(100,1) (200,1) (400,1) (500,1)
+            //(100,1) (200,1) (300,1)
+          }
+        }
+      }
+      //ListBuffer((100,1), (200,1), (400,1), (500,1), (100,1), (200,1), (300,1))
+
+      //friendCount.groupBy(_._1)
+      //Map(500 -> ListBuffer((500,1)),
+      // 300 -> ListBuffer((300,1)),
+      // 400 -> ListBuffer((400,1)),
+      // 200 -> ListBuffer((200,1), (200,1)),
+      // 100 -> ListBuffer((100,1), (100,1)))
+
+      //friendCount.groupBy(_._1).mapValues(_.unzip)
+      //Map(500 -> (ListBuffer(500),ListBuffer(1)),
+      // 300 -> (ListBuffer(300),ListBuffer(1)),
+      // 400 -> (ListBuffer(400),ListBuffer(1)),
+      // 200 -> (ListBuffer(200, 200),ListBuffer(1, 1)),
+      // 100 -> (ListBuffer(100, 100),ListBuffer(1, 1)))
+
+      //friendCount.groupBy(_._1).mapValues(_.unzip._2)
+      //Map(500 -> ListBuffer(1),
+      // 300 -> ListBuffer(1),
+      // 400 -> ListBuffer(1),
+      // 200 -> ListBuffer(1, 1),
+      // 100 -> ListBuffer(1, 1))
+
+      //friendCount.groupBy(_._1).mapValues(_.unzip._2.sum)
+      //Map(500 -> 1, 300 -> 1, 400 -> 1, 200 -> 2, 100 -> 2)
+
+      //friendCount.groupBy(_._1).mapValues(_.unzip._2.sum).filter(_._2 > 1)
+      //Map(200 -> 2, 100 -> 2)
+
+      //friendCount.groupBy(_._1).mapValues(_.unzip._2.sum).filter(_._2 > 1).map(_._1)
+      //List(200, 100)
+      friendCount.groupBy(_._1).mapValues(_.unzip._2.sum).filter(_._2 > 1).map(_._1)
+    })
+    /*
+    ((300,400),List(200, 100))
+    ((100,200),List(300, 400))
+    ((300,500),List(100))
+    ((100,500),List(300))
+    ((200,300),List(400, 100))
+    ((100,600),List())
+    ((100,300),List(500, 400, 200))
+    ((200,400),List(100, 300))
+    ((100,400),List(300, 200))
+    * */
+    commonFriends.saveAsTextFile(output)
+    val formatedResult = commonFriends.map(
+      f => s"(${f._1._1}, ${f._1._2})\t${f._2.mkString("[", ", ", "]")}"
+    )
+    formatedResult.foreach(println)
+    sc.stop()
+  }
+}
+
