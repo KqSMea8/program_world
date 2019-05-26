@@ -1,0 +1,281 @@
+package recommend
+
+import scala.math._
+import org.apache.spark.rdd.RDD
+import org.apache.spark.SparkContext._
+
+/**
+ * 用户评分.
+ * @param userid 用户
+ * @param itemid 评分物品
+ * @param pref 评分
+ */
+case class ItemPref(
+  val userid: String,
+  val itemid: String,
+  val pref: Double) extends Serializable
+/**
+ * 用户推荐.
+ * @param userid 用户
+ * @param itemid 推荐物品
+ * @param pref 评分
+ */
+case class UserRecomm(
+  val userid: String,
+  val itemid: String,
+  val pref: Double) extends Serializable
+/**
+ * 相似度.
+ * @param itemid1 物品
+ * @param itemid2 物品
+ * @param similar 相似度
+ */
+case class ItemSimi(
+  val itemid1: String,
+  val itemid2: String,
+  val similar: Double) extends Serializable
+
+/**
+ * 相似度计算.
+ * 支持：同现相似度、欧氏距离相似度、余弦相似度
+ *
+ */
+class ItemSimilarity extends Serializable {
+
+  /**
+   * 相似度计算.
+   * @param user_rdd 用户评分
+   * @param stype 计算相似度公式
+   * @param RDD[ItemSimi] 返回物品相似度
+   *
+   */
+  def Similarity(user_rdd: RDD[ItemPref], stype: String): (RDD[ItemSimi]) = {
+    val simil_rdd = stype match {
+      case "cooccurrence" =>
+        ItemSimilarity.CooccurrenceSimilarity(user_rdd)
+      case "cosine" =>
+        ItemSimilarity.CosineSimilarity(user_rdd)
+      case "euclidean" =>
+        ItemSimilarity.EuclideanDistanceSimilarity(user_rdd)
+      case _ =>
+        ItemSimilarity.CooccurrenceSimilarity(user_rdd)
+    }
+    simil_rdd
+  }
+
+}
+
+object ItemSimilarity {
+
+  /**
+   * 同现相似度矩阵计算.
+   * w(i,j) = N(i)∩N(j)/sqrt(N(i)*N(j))
+   * @param user_rdd 用户评分
+   * @param RDD[ItemSimi] 返回物品相似度
+   *
+   */
+  def CooccurrenceSimilarity(user_rdd: RDD[ItemPref]): (RDD[ItemSimi]) = {
+    // 0 数据做准备
+    val user_rdd1 = user_rdd.map(f => (f.userid, f.itemid, f.pref))
+    val user_rdd2 = user_rdd1.map(f => (f._1, f._2))
+    // 1 (用户：物品) 笛卡尔积 (用户：物品) => 物品:物品组合
+    val user_rdd3 = user_rdd2.join(user_rdd2)
+    val user_rdd4 = user_rdd3.map(f => (f._2, 1))
+    // 2 物品:物品:频次
+    val user_rdd5 = user_rdd4.reduceByKey((x, y) => x + y)
+    // 3 对角矩阵
+    val user_rdd6 = user_rdd5.filter(f => f._1._1 == f._1._2)
+    // 4 非对角矩阵
+    val user_rdd7 = user_rdd5.filter(f => f._1._1 != f._1._2)
+    // 5 计算同现相似度（物品1，物品2，同现频次）
+    val user_rdd8 = user_rdd7.map(f => (f._1._1, (f._1._1, f._1._2, f._2))).
+      join(user_rdd6.map(f => (f._1._1, f._2)))
+    val user_rdd9 = user_rdd8.map(f => (f._2._1._2, (f._2._1._1,
+      f._2._1._2, f._2._1._3, f._2._2)))
+    val user_rdd10 = user_rdd9.join(user_rdd6.map(f => (f._1._1, f._2)))
+    val user_rdd11 = user_rdd10.map(f => (f._2._1._1, f._2._1._2, f._2._1._3, f._2._1._4, f._2._2))
+    val user_rdd12 = user_rdd11.map(f => (f._1, f._2, (f._3 / sqrt(f._4 * f._5))))
+    // 6 结果返回
+    user_rdd12.map(f => ItemSimi(f._1, f._2, f._3))
+  }
+
+  /**
+   * 余弦相似度矩阵计算.
+   * T(x,y) = ∑x(i)y(i) / sqrt(∑(x(i)*x(i)) * ∑(y(i)*y(i)))
+   * @param user_rdd 用户评分
+   * @param RDD[ItemSimi] 返回物品相似度
+   *
+   */
+  def CosineSimilarity(user_rdd: RDD[ItemPref]): (RDD[ItemSimi]) = {
+    // 0 数据做准备
+    val user_rdd1 = user_rdd.map(f => (f.userid, f.itemid, f.pref))
+    val user_rdd2 = user_rdd1.map(f => (f._1, (f._2, f._3)))
+    // 1 (用户,物品,评分) 笛卡尔积 (用户,物品,评分) => （物品1,物品2,评分1,评分2）组合
+    val user_rdd3 = user_rdd2.join(user_rdd2)
+    val user_rdd4 = user_rdd3.map(f => ((f._2._1._1, f._2._2._1), (f._2._1._2, f._2._2._2)))
+    // 2 （物品1,物品2,评分1,评分2）组合 => （物品1,物品2,评分1*评分2） 组合 并累加
+    val user_rdd5 = user_rdd4.map(f => (f._1, f._2._1 * f._2._2)).reduceByKey(_ + _)
+    // 3 对角矩阵
+    val user_rdd6 = user_rdd5.filter(f => f._1._1 == f._1._2)
+    // 4 非对角矩阵
+    val user_rdd7 = user_rdd5.filter(f => f._1._1 != f._1._2)
+    // 5 计算相似度
+    val user_rdd8 = user_rdd7.map(f => (f._1._1, (f._1._1, f._1._2, f._2))).
+      join(user_rdd6.map(f => (f._1._1, f._2)))
+    val user_rdd9 = user_rdd8.map(f => (f._2._1._2, (f._2._1._1,
+      f._2._1._2, f._2._1._3, f._2._2)))
+    val user_rdd10 = user_rdd9.join(user_rdd6.map(f => (f._1._1, f._2)))
+    val user_rdd11 = user_rdd10.map(f => (f._2._1._1, f._2._1._2, f._2._1._3, f._2._1._4, f._2._2))
+    val user_rdd12 = user_rdd11.map(f => (f._1, f._2, (f._3 / sqrt(f._4 * f._5))))
+    // 6 结果返回
+    user_rdd12.map(f => ItemSimi(f._1, f._2, f._3))
+  }
+
+  /**
+   * 欧氏距离相似度矩阵计算.
+   * d(x, y) = sqrt(∑((x(i)-y(i)) * (x(i)-y(i))))
+   * sim(x, y) = n / (1 + d(x, y))
+   * @param user_rdd 用户评分
+   * @param RDD[ItemSimi] 返回物品相似度
+   *
+   */
+  def EuclideanDistanceSimilarity(user_rdd: RDD[ItemPref]): (RDD[ItemSimi]) = {
+    // 0 数据做准备
+    val user_rdd1 = user_rdd.map(f => (f.userid, f.itemid, f.pref))
+    val user_rdd2 = user_rdd1.map(f => (f._1, (f._2, f._3)))
+    // 1 (用户,物品,评分) 笛卡尔积 (用户,物品,评分) => （物品1,物品2,评分1,评分2）组合
+    val user_rdd3 = user_rdd2 join user_rdd2
+    val user_rdd4 = user_rdd3.map(f => ((f._2._1._1, f._2._2._1), (f._2._1._2, f._2._2._2)))
+    // 2 （物品1,物品2,评分1,评分2）组合 => （物品1,物品2,评分1-评分2） 组合 并累加
+    val user_rdd5 = user_rdd4.map(f => (f._1, (f._2._1 - f._2._2) * (f._2._1 - f._2._2))).reduceByKey(_ + _)
+    // 3 （物品1,物品2,评分1,评分2）组合 => （物品1,物品2,1） 组合 并累加    计算重叠数
+    val user_rdd6 = user_rdd4.map(f => (f._1, 1)).reduceByKey(_ + _)
+    // 4 非对角矩阵
+    val user_rdd7 = user_rdd5.filter(f => f._1._1 != f._1._2)
+    // 5 计算相似度
+    val user_rdd8 = user_rdd7.join(user_rdd6)
+    val user_rdd9 = user_rdd8.map(f => (f._1._1, f._1._2, f._2._2 / (1 + sqrt(f._2._1))))
+    // 6 结果返回
+    user_rdd9.map(f => ItemSimi(f._1, f._2, f._3))
+  }
+
+}
+
+package recommend
+
+import org.apache.spark.rdd.RDD
+import org.apache.spark.SparkContext._
+
+  /**
+   * 用户推荐计算.
+   * 根据物品相似度、用户评分、指定最大推荐数量进行用户推荐
+   */
+
+class RecommendedItem {
+  /**
+   * 用户推荐计算.
+   * @param items_similar 物品相似度
+   * @param user_prefer 用户评分
+   * @param r_number 推荐数量
+   * @param RDD[UserRecomm] 返回用户推荐物品
+   *
+   */
+  def Recommend(items_similar: RDD[ItemSimi],
+    user_prefer: RDD[ItemPref],
+    r_number: Int): (RDD[UserRecomm]) = {
+    //   0 数据准备
+    val rdd_app1_R1 = items_similar.map(f => (f.itemid1, f.itemid2, f.similar))
+    val user_prefer1 = user_prefer.map(f => (f.userid, f.itemid, f.pref))
+    //   1 矩阵计算——i行与j列join
+    val rdd_app1_R2 = rdd_app1_R1.map(f => (f._1, (f._2, f._3))).
+      join(user_prefer1.map(f => (f._2, (f._1, f._3))))
+    //   2 矩阵计算——i行与j列元素相乘
+    val rdd_app1_R3 = rdd_app1_R2.map(f => ((f._2._2._1, f._2._1._1), f._2._2._2 * f._2._1._2))
+    //   3 矩阵计算——用户：元素累加求和
+    val rdd_app1_R4 = rdd_app1_R3.reduceByKey((x, y) => x + y)
+    //   4 矩阵计算——用户：对结果过滤已有I2
+    val rdd_app1_R5 = rdd_app1_R4.leftOuterJoin(user_prefer1.map(f => ((f._1, f._2), 1))).
+      filter(f => f._2._2.isEmpty).map(f => (f._1._1, (f._1._2, f._2._1)))
+    //   5 矩阵计算——用户：用户对结果排序，过滤
+    val rdd_app1_R6 = rdd_app1_R5.groupByKey()
+    val rdd_app1_R7 = rdd_app1_R6.map(f => {
+      val i2 = f._2.toBuffer
+      val i2_2 = i2.sortBy(_._2)
+      if (i2_2.length > r_number) i2_2.remove(0, (i2_2.length - r_number))
+      (f._1, i2_2.toIterable)
+    })
+    val rdd_app1_R8 = rdd_app1_R7.flatMap(f => {
+      val id2 = f._2
+      for (w <- id2) yield (f._1, w._1, w._2)
+    })
+    rdd_app1_R8.map(f => UserRecomm(f._1, f._2, f._3))
+  }
+
+  /**
+   * 用户推荐计算.
+   * @param items_similar 物品相似度
+   * @param user_prefer 用户评分
+   * @param RDD[UserRecomm] 返回用户推荐物品
+   *
+   */
+  def Recommend(items_similar: RDD[ItemSimi],
+    user_prefer: RDD[ItemPref]): (RDD[UserRecomm]) = {
+    //   0 数据准备
+    val rdd_app1_R1 = items_similar.map(f => (f.itemid1, f.itemid2, f.similar))
+    val user_prefer1 = user_prefer.map(f => (f.userid, f.itemid, f.pref))
+    //   1 矩阵计算——i行与j列join
+    val rdd_app1_R2 = rdd_app1_R1.map(f => (f._1, (f._2, f._3))).
+      join(user_prefer1.map(f => (f._2, (f._1, f._3))))
+    //   2 矩阵计算——i行与j列元素相乘
+    val rdd_app1_R3 = rdd_app1_R2.map(f => ((f._2._2._1, f._2._1._1), f._2._2._2 * f._2._1._2))
+    //   3 矩阵计算——用户：元素累加求和
+    val rdd_app1_R4 = rdd_app1_R3.reduceByKey((x, y) => x + y)
+    //   4 矩阵计算——用户：对结果过滤已有I2
+    val rdd_app1_R5 = rdd_app1_R4.leftOuterJoin(user_prefer1.map(f => ((f._1, f._2), 1))).
+      filter(f => f._2._2.isEmpty).map(f => (f._1._1, (f._1._2, f._2._1)))
+    //   5 矩阵计算——用户：用户对结果排序，过滤
+    val rdd_app1_R6 = rdd_app1_R5.map(f => (f._1, f._2._1, f._2._2)).
+      sortBy(f => (f._1, f._3))
+    rdd_app1_R6.map(f => UserRecomm(f._1, f._2, f._3))
+  }
+
+}
+
+package recommend
+
+import org.apache.log4j.{ Level, Logger }
+import org.apache.spark.{ SparkConf, SparkContext }
+import org.apache.spark.rdd.RDD
+
+object ItemCF {
+  def main(args: Array[String]) {
+
+    //0 构建Spark对象
+    val conf = new SparkConf().setAppName("ItemCF")
+    val sc = new SparkContext(conf)
+    Logger.getRootLogger.setLevel(Level.WARN)
+
+    //1 读取样本数据
+    val data_path = "/home/jb-huangmeiling/sample_itemcf2.txt"
+    val data = sc.textFile(data_path)
+    val userdata = data.map(_.split(",")).map(f => (ItemPref(f(0), f(1), f(2).toDouble))).cache()
+
+    //2 建立模型
+    val mysimil = new ItemSimilarity()
+    val simil_rdd1 = mysimil.Similarity(userdata, "cooccurrence")
+    val recommd = new RecommendedItem
+    val recommd_rdd1 = recommd.Recommend(simil_rdd1, userdata, 30)
+
+    //3 打印结果
+    println(s"物品相似度矩阵: ${simil_rdd1.count()}")
+    simil_rdd1.collect().foreach { ItemSimi =>
+      println(ItemSimi.itemid1 + ", " + ItemSimi.itemid2 + ", " + ItemSimi.similar)
+    }
+    println(s"用戶推荐列表: ${recommd_rdd1.count()}")
+    recommd_rdd1.collect().foreach { UserRecomm =>
+      println(UserRecomm.userid + ", " + UserRecomm.itemid + ", " + UserRecomm.pref)
+    }
+
+  }
+}
+
