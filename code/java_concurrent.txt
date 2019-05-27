@@ -1,3 +1,3105 @@
+为什么需要并行
+业务要求
+性能
+摩尔定律的失效，`预计18个月会将芯片的性能提高一倍`
+出于业务模型的需要：
+    并不是为了提高系统性能，而是确实在业务上需要多个执行单元。
+    比如HTTP服务器，为每一个Socket连接新建一个处理线程
+    让不同线程承担不同的业务工作
+    简化任务调度
+几个重要的概念
+同步（synchronous）和异步(asynchronous)
+
+在一条时间轴上同步会等待方法的调用返回，而异步会立刻就返回并在另一个任务中创建一个线程中执行代码
+1
+并发(concurrency)和并行(Parallelism)
+
+并行会在多个进程中同时执行，出现在多核cpu情况中，在外界开来是同时执行
+并发会在单个进程中随机执行任务，有任务调度过程
+1
+2
+临界值
+
+用来表示一种公共资源或者说是共享数据，可以被多个线程使用。但是每一次，只能有一个线程使用它，一旦临界区资源被占用，其他线程要想使用这个资源，就必须等待。
+模拟流程：
+1.进程
+2.进入区(申请资源)
+3.1资源被占有，暂时不能访问，进入阻塞等待队列
+3.2临界区
+4.退出区(释放资源)
+阻塞(Blocking)和非阻塞(Non-Blocking)
+
+阻塞和非阻塞通常用来形容多线程间的相互影响。比如一个线程占用了临界区资源，那么其它所有需要这个资源的线程就必须在这个临界区中进行等待，等待会导致线程挂起。这种情况就是阻塞。此时，如果占用资源的线程一直不愿意释放资源，那么其它所有阻塞在这个临界区上的线程都不能工作。
+非阻塞允许多个线程同时进入临界区
+1
+2
+死锁(Deadlock)、饥饿(Starvation)和活锁(Livelock)
+
+死锁是线程静态的，其中一个人放弃后即可
+活锁是线程动态的，需要所有其他全部放弃
+饥饿是指某一个或者多个线程因为种种原因无法获得所需要的资源，导致一直无法执行。线程级别低。
+1
+2
+3
+并行级别
+
+阻塞：当一个线程进入临界区后，其他线程必须等待
+非阻塞：
+    无障碍：最弱的非阻塞调度；自由出入临界区；无竞争时，有限步内完成操作；有竞争时，回滚数据（乐观状态，只要结果无误，反之就回滚）。
+    无锁：是无障碍的；保证有一个线程可以胜出。
+    无等待(Wait-Free)：无锁的；要求所有的线程都必须在有限步内完成；无饥饿的。
+1
+2
+3
+4
+5
+有关并行的2个重要定律：
+
+Amdahl定律(阿姆达尔定律)
+
+定义了串行系统并行化后的加速比的计算公式和理论上限
+加速比定义：加速比=优化前系统耗时/优化后系统耗时
+最大等于优化前系统耗时，最小等于1，越大越好
+
+t(n)=t1(串行比例f+1/n并行比例(1-f))
+加速比=优化前耗时t1/优化后耗时tn
+     =t1/t1(f+1/n(1-f))
+     =1/(f+(（1/n）(1-f)）)
+说明增加CPU处理器的数量并不一定能起到有效的作用，提高系统内可并行化的模块比重，合理增加并行处理器数量，才能以最小的投入，得到最大的加速比
+
+Gustafson定律（古斯塔夫森）
+
+说明处理器个数，串行比例和加速比之间的关系
+执行时间：串行时间a+并行时间b
+总执行时间:a+处理器个数nb
+加速比：(a+ng)/(a+b)
+定义：f=a/(a+b)串行比例
+则加速比s(n)=(a+nb)/(a+b)=a/(a+b)+nb/(a+b)
+            =f+n((a+b-a)/(a+b))=f+n(1-a/(a+b))
+            =f+n(1-f)=f+n-nf
+            =n-f(n-1)
+说明只要有足够的并行化，那么加速比和CPU个数成正比
+
+
+线程是进程内的执行单元
+1
+线程的基本操作
+
+new --start启动-->runable--结束-->terminated
+runable的三种情况:
+1.runable--synchronous同步块-->blocked--sychronous-->runable
+2.runable--等待wait-->waiting--通知notify-->runable
+3.runable--等待wait-->timed_waiting--通知notify-->runable
+1
+2
+3
+4
+5
+新建线程
+
+new Thread().start(); 创建线程并启动（在一个新的操作系统线程上调用方法，.run()方法却不是）
+new Thread(){@Override public void run(){...}}
+new Thread(){new Runable(){@Override public void run(){...}}}
+1
+2
+3
+终止线程
+
+Thread.stop();不推荐使用，因为它会释放所有的monitor,太过暴力，可能会使写操作时导致数据不一致性
+1
+中断线程
+
+public void Thread.interrupt();中断线程
+public boolean Thread.isInterrupted();判断是否被中断
+public static boolean Thread.interrupted();判断是否被中断，并清除当前中断状态
+1
+2
+3
+线程休眠
+
+Thread.sleep(毫秒值); 需要捕获InterruptedException异常，当有人唤醒即将入等待状态的线程时，程序能做出相应的反应，如：Thread.currentThread().interrupt();
+写法不优雅，但是使用很优雅
+1
+2
+挂起(suspend)和继续执行(resume)线程
+
+suspend()不会释放锁
+如果加锁发生在resume（）之前，则死锁发生
+不推荐使用
+1
+2
+3
+等待线程结束(join)和谦让(yeild)
+
+public final void join() throws InterruptedException
+public final synchronized void join(long millis)throws InterruptedException
+本次让出机会，而下次会继续抢夺cpu的执行机会
+不要在Thread实例上使用wait()和notify()方法
+join的本质：while(iAlive()){wait(0);}
+线程执行完毕后系统会调用notifyAll();
+守护线程
+
+在后台默默地完成一些系统性的服务，比如垃圾回收线程、JIT
+当一个java应用内，只有守护线程时，java虚拟机就会自然退出
+setDaemon(true);  必须设置在线程启动之前，否则会抛出非法状态
+1
+2
+3
+线程优先级
+
+public final static int MIN_PRIORITY=1;
+public final static int NORM_PRIORITY=5;
+public final static int MAX_PRIORITY=10;
+setPriority();
+高优先级的线程更容易在竞争中获胜
+1
+2
+3
+4
+5
+同步操作
+
+1.synchronized:
+指定加锁对象：对给定对象加锁，进入同步代码前要获得给定对象的锁
+直接作用于实例方法：相当于对当前实例加锁，进入同步代码前要获得当前实例的锁 synchronized void methodName(){}
+直接作用于静态方法：相当于对当前类加锁，进入同步代码前要获得当前类的锁 static synchronized void methodName(){}
+
+2.Object.wait() Object.notify()
+wait需要先获得monitor,处于synchronized(...){}中，会释放锁，等待其他唤醒，同时需要获取锁后才能继续执行
+notify会随机唤醒一个，而notifyAll()会唤醒所有等待在这个对象上的线程
+1
+2
+3
+4
+5
+6
+7
+8
+JAVA内存模型和线程安全
+1、原子性
+
+原子性是指一个操作时不可中断的。即使是在多个线程一起执行的时候，一个操作一旦开始，就不会被其他线程干扰。
+i++不是原子操作
+1
+2
+2、有序性
+
+在并发时，程序的执行可能就会出现乱序
+一条指令的执行时可以分为很多步骤的：
+1.取指IF
+2.译码和取寄存器操作ID
+3.执行或者有效地址计算EX
+4.存储器访问MEM
+5.写回WB
+
+指令重拍可以使流水线更加顺畅（个人理解：无关联操作时可以进行读写分离，从而消除气泡，提高效率），原则：保证串行时的结果
+1
+2
+3
+4
+5
+6
+7
+8
+9
+3、可见性
+
+可见性是指当一个线程修改了某一个共享变量的值，其他线程是否能够立即知道这个修改。
+1.编译器优化
+2.硬件优化（如写吸收、批操作）
+java虚拟机层面上的可见性 以-server模式运行
+1
+2
+3
+4
+4、Happen-Before规则
+
+程序顺序原则：一个线程内保证语义的串行性
+volatile规则：volatile变量的写，先发生于读，这保证了volatile变量的可见性
+锁规则：结锁(unlock)必然发生在随后的加锁的(lock)前
+传递性：a先于b,b先于c,那么a必然先于c
+线程的start（）方法先于它的每一个动作
+线程的所有操作先于线程的终结（Thread.join()）
+线程的中断(interrupt())先于被中断线程的代码
+对象的构造函数执行结束先于finalize()方法
+1
+2
+3
+4
+5
+6
+7
+8
+​
+5、线程安全的概念
+
+指某一个函数，函数库再多线程环境中被调用时，能够正确的处理各个线程局部变量，使程序功能正确完成。
+使用阻塞式的synchronized方法，每次只能进入一个线程
+1
+2
+无锁
+无锁：无障碍的运行，所有的线程能够同时进入临界区同时每一次竞争结果必然出现一个优胜者，不能是所有的线程都失败，这是理论上的。
+
+无锁类的原理详解
+CAS
+
+CAS算法的过程：它包含3个参数CAS（V,E,N）。V表示要更新的变量，E表示预期值，N表示新值。仅当V值等于E值时，才会将V的值设为N，如果V值和E值不同，则说明已经有其他线程做了更新，则当前线程什么都不做。最后，CAS返回当前V的真实值。CAS操作时抱着乐观的态度进行的，它总是认为自己可以成功完成操作。当多个线程同时使用CSA操作一个变量时，只有一个会胜出，并成功更新，其余均会失败。失败的线程不会被挂起，仅是被告知失败，并且允许再次尝试，当然也允许失败的线程放弃操作。基于这样的原理，CAS操作即使没有锁，也可以发现其他线程对当前线程的干扰，并进行恰当的处理。
+1
+CPU指令
+
+cpu指令为：
+cmpxchg
+if(accumulator == Destination){
+    ZF = 1;
+    Destination = Source;
+}else{
+    ZF = 0;
+    accumulator = Destination;
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+无锁类的使用
+1.AtomicInteger
+概述
+
+Number
+1
+主要接口
+
+public fianl int get();取得当前值
+public final void set(int newValue);设置当前值
+public final int getAndSet(int newValue);设置新值并返回旧值
+public final boolean compareAndSet(int expect,int u);如果当前值为expect，则设置为u
+public final int getAndIncrement();当前值加1，返回旧值
+public final int getAndDecrement();当前值减1，返回旧值
+public final int getAndAdd(int delta);当前值增加delta,返回旧值
+public final int incrementAndGet();当前值加1，返回新值
+public final int addAndGet(int delta);当前值增加delta，返回新值
+1
+2
+3
+4
+5
+6
+7
+8
+9
+主要接口的实现
+
+内部实现都是使用了死循环for(;;){}
+1
+2.Unsafe
+
+概述：
+    非安全的操作，比如：根据偏移量设置值，park(),底层的CAS操作，非公开的API,在不同版本的JDK中，可能有较大差异。
+主要接口：
+    public native int getInt(Object o,long offset);获得给定对象偏移量上的int值
+    public native void putInt(Object o,long offset,int x);设置给定对象偏移量上的值
+    public native long objectFieldOffset(Field f);获得字段在对象中的偏移量
+    public native void putIntVolatile(Object o,long offset,int x);设置给定对象的int值，使用volatile语义
+    public native int getIntVolatile(Object o,long offset);获得给定对象对象的int值，使用volatile语义
+    public native void putRoderedInt(Object o,long offset,int x);和putIntvOLATILE()一样，但是它要求被操作字段就是volatile类型的
+1
+2
+3
+4
+5
+6
+7
+8
+9
+3.AtomicReference
+
+概述：
+    对引用进行修改，是一个模板类，抽象了数据类型
+主要接口：
+    get();
+    set(V);
+    compareAndSet();
+    getAndSet(V);
+1
+2
+3
+4
+5
+6
+7
+4.AtomicStampedReference
+
+概述：
+    ABA问题
+主要接口：
+    public boolean compareAndSet(V expectedReference,V newReference,int expectedStamp,int newStamp);比较设置参数依次为：期望值，写入新值，期望时间戳，新时间戳
+    pubic V getReference();获得当前对象引用
+    public int getStamp();获得当前时间戳
+    public void set(V newReference,int newStamp);设置当前对象引用和时间戳
+1
+2
+3
+4
+5
+6
+7
+5.AtomicIntegerArray
+
+概述：
+    支持无锁的数组
+主要接口：
+    public final int get(int i);获得数组第i个下标的元素
+    public final int length();获得数组的长度
+    public final int getAndSet(int i,int newValue);将数组第i个下标设置为newValue,并返回旧的值
+    public final boolean compareAndSet(int i,int expect,int update);进行CAS操作，如果第i个下标的元素等于expect，则设置为update，设置成功返回true
+    public final int getAndIncrement(int i);将第i个下标的元素加1
+    public final int getAndDecrement(int i);将第i个下标的元素减1
+    public final int getAndAdd(int i,int delta);将第i个下标的元素增加delta(delta可以是负数)
+6.AtomicIntegerFieldUpdater
+
+概述：
+    让普通变量也享受原子操作
+主要接口：
+    AtomicIntegerFieldUpdater.newUpdater();
+    incrementAndGet();
+小说明：
+    1.Updater只能修改它可见范围内的变量。因为Updater使用反射得到这个变量。如果变量是不可见的，就会出错。比如如果score申明为private,就是不可见的。
+    2.为了确保变量被正确的读取，它必须是volatile类型的。如果我们原有代码中未申明这个类型，那么简单的申明一下就行，这不会引起申明问题。
+    3.由于CAS操作会通过对象实例中的偏移量直接进行赋值，因此，它不支持static字段(Unsafe.objectFieldOffset()不支持静态变量)
+
+
+各种同步控制工具的使用
+ReentrantLock
+
+1.可重入：单线程可以重复进入，但要重复退出，成对使用
+2.可中断：lockInterruptibly();
+3.可限时：超时不能获得锁，就返回false,不会永久等待构成死锁
+4.公平锁：
+    先来先得
+    public ReentrantLock(boolean fair);
+    public static ReentrantLock fairLock = new ReentrantLock(true);
+
+
+Condition
+
+概述：
+    类似于Object.wait()和Object.notify();
+    与ReentrantLock结合使用
+主要接口：
+    void await() throws InterruptedException;
+    void awaitUninterruptibly();
+    long awaitNanos(long nanosTimeout)thorws InterruptedException;
+    boolean await(long time,TimeUnit unit)throws InterruptedException;
+    boolean awaitUnitill(Date deadline) throws InterruptedException;
+    void signal();
+    void signalAll();
+API详解：
+    await()方法会使当前线程等待，同时释放当前锁，当其他锁使用signal()时或者signalAll()方法时，线程会重新获得锁并继续执行。或者线程被中断时，也能跳出等待。这和Object.wait()方法很相似。
+    awaitUniterruptibly()方法与await()方法基本相同，但是它并不会在等待过程中响应中断。
+    singal()方法用于唤醒一个在等待中的线程。相对的signalAll()方法会唤醒所有在等待中的线程。这和Object.notify()方法很类似。
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+Semaphore
+
+概述：
+    共享锁，运行多个线程同时临界区。
+
+主要接口：
+    public void acquire();
+    public void acquireUninterruptibly();
+    public boolean tryAcquire();
+    public boolean tryAcquire(long timeout,TimeUnit unit);
+    public void release();
+1
+2
+3
+4
+5
+6
+7
+8
+9
+ReadWriterLock
+
+概述： ReadWriteLock是JDK5中提供的读写分离锁。
+
+访问情况：
+    读-读不互斥：读读之间不阻塞
+    读-写互斥：读阻塞写，写也会阻塞读
+    写-写互斥：写写阻塞。
+    除了读读，其他都会造成阻塞
+
+主要接口：
+    private static ReentrantReadWrieteLock readWriteLock = new ReentrantReadWriteLock();
+    private static Lock readLock = readWriteLock.readLock();
+    private static Lock writeLock = readWriteLock.writeLock();
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+CountDownLatch
+
+概述：
+    倒数计时器
+    一种典型的场景就是火箭发射。在火箭发射前，为了保证万无一失，往往还要进行各种设备、仪器的检查。只有等所有的检查完毕后，引擎才能点火。这种场景就非常适合使用CountDownLatch。它可以使得点火线程，等待所有检查线程全部完工后，再执行。
+    其中每一个线程完成任务后就会countDown1
+主要接口：
+    static final CountDownLatch end = new CountDownLatch(10);
+    end.countDown();
+    end.await();
+示意图：
+    检查任务                        检查任务
+    ---------->        |          ------------>|
+    ----->             |               --------|
+    ------->           |            -----------|
+    主线程                         主线程
+   ------------------->|                       |----------------->
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+CyclicBarrier
+
+概述：
+    循环栅栏
+    Cyclic意为循环，也就是说这个计数器可以反复使用。比如我们将计数器设置为10。那么凑齐第一批10个线程后，计数器也会归零，然后接着凑齐下一批10个线程。
+主要接口：
+    public CyclicBarrier(int parties,Runnable barrierAction )
+    barrierAction 就是当计数器一次计数完成后，系统会执行的动作
+    await();
+示意图：
+        士兵           集合           集合完毕
+        ----->         |          ------>|
+        ----------->   |      -----------|
+        --->           |             --->|
+
+        任务          任务完成          任务完成通知
+    |======----------->|                 |
+    |=========-------->|                 |
+    |===-------------->|                 |------>
+    下一次计数
+    当一条线程抛出了interruptedException时，其他线程会抛出broken异常
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+LockSupport
+
+概述：提供线程阻塞原语
+主要接口：
+    LockSupport.park();
+    LockSupport.unpark(t1);
+与suspend()比较
+    不容易引起线程冻结
+中断响应：
+    能够响应中断，但不抛出异常
+    中断响应的结果是，park()函数的返回，可以从Thread.interrupted()得到中断标志
+1
+2
+3
+4
+5
+6
+7
+8
+9
+ReentrantLock的实现
+
+CAS状态
+等待队列
+park()
+1
+2
+3
+并发容器及典型源码分析
+集合包装
+HashMap
+
+Collections.synchronizedMap
+public static Map m = Conllections.synchronizedMap(new HashMap());
+1
+2
+List
+
+synchronizedList
+1
+Set
+
+synchronizedSet
+1
+ConcurrentHashMap
+
+高性能HashMap
+1
+BlockingQueue
+
+阻塞队列
+    空队列  | = = = = |---->读取等待
+    写入等待|*=*=*=*=*|满队列
+1
+2
+3
+ConcurrentLinkedQueue
+
+线程池##
+线程池的基本使用
+为什么需要线程池
+
+原因：简单的线程池实现，线程创建和销毁需要消耗一定性能，并且是无意义的，项目中需要频繁使用到线程，对于开发者来说，只关心业务而不是线程的创建和销毁。对线程进行复用，从而提高性能
+1
+JDK为我们提供了哪些支持
+
+内置线程池
+1.Executors:+newFixedThreadPool(int nThreads){ExecutorService},+newSingleThreadExecutor(){ExecutorService},+newCachedThreadPool(){ExecutorService},+newSingleThreadScheduledExecutor(){ScheduledExecutorService};------>C[]ExecutorService:+shutdown(),+isShutdown(){boolean},+isTerminated(){boolean},+submit(Callback task){Future};------->C[]Executor:+execute(Runnable command)
+2.Excutors:+newFixedThreadPool(int nThreads),+newSingleThreadExecutor(),+newCachedThreadPool(),+newSingleThreadScheduledExecutor();----->ThreadPoolExecutor----->AbstractExecutorService--->C[] ExecutorService:+shutdown(),isShutDown(),isTerminated(),submit(Callback task);---->C[] Executor:+execute(Runnable command)
+3.C[] ScheduledExecutorService:+ schedule(Runnable command,long delay,TimeUnit unit){ScheduledFuture}---->C[] ExecutorService :+shutdonw(),+isShutdown(),+isTerminated(),submit(Callback task)---->C[] Executor:+execute(Runnable command)
+1
+2
+3
+4
+线程池的使用
+线程池的种类
+
+newFixedThreadPool
+newSingleThreadExecutor
+newCachedThreadPool
+newScheduledThradPool
+1
+2
+3
+4
+不同线程池的共同性
+
+线程池构造函数详解，是ThreadPoolExecutor不同构造参数下的不同实例
+1
+线程池使用的小例子
+简单线程池
+ScheduledThreadPool
+拓展和增强线程池
+回调接口
+
+beforeExecute
+afterExecute
+terminated
+1
+2
+3
+拒绝策略
+自定义ThreadFactory
+线程池及其核心代码分析
+ForkJoin
+思想
+
+大任务--fork-->子任务---->部分结果--join-->最终结果
+     --fork-->子任务---->子任务--->子结果--->部分结果---join->最终结果
+     --fork-->子任务---->子任务--->子结果---->部分结果--join-->最终结果
+     --fork(提交任务)-->子任务--->部分结果--join(收集结果)-->最终结果
+1
+2
+3
+4
+使用接口
+RecursiveAction
+
+无返回值
+1
+RecursiveTask
+
+有返回值
+1
+简单例子
+实现要素
+
+空闲              繁忙
+ 1                 1
+线程A              线程B
+ |                 1
+ |                task
+ |                 1
+ |                task
+ |                 1
+ -------------------
+ 线程A获取线程B在繁忙状态下的任务栈，并去完成
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+​
+
+并发设计模式
+什么是设计模式
+
+在软件工程中，设计模式（design pattern）是Udine软件设计中普遍存在(反复出现)的各种问题，所提出的解决方案。这个术语是在1990年代从建筑领域引入到计算机科学的。
+Richard Helm,Ralph Johnson,John Vlissides(GOF)
+《设计模式：可复用面向对象软件的基础》 收录23中模式
+    观察者模式、策略模式、装饰者模式、享元模式、模板方法..
+架构模式：
+    MVC
+    分层
+设计模式：
+    提炼系统中的组件
+代码模式(成例Idiom):
+    低层次，与编码直接相关
+    如DCL
+单例模式
+
+单例对象的类必须保证只有一个实例存在。许多时候整个系统只需要拥有一个全局对象，这样有利于我们协调系统整体的行为。
+比如：全局信息配置
+1
+2
+//饿汉式实现
+//单例类
+public class Singleton{
+    private static final int DATA = 1; //内部静态变量
+    private static Singleton singleton = new Singleton(); //私有化内部静态对象实例
+    private Singleton(){ System.out.println("Singleton is created")}//私有化构造函数
+    public static newInstance(){return singleton;}//对外静态提供实例
+}
+//补充：当访问内部静态变量时，会调用空参构造函数 打印出 "Singleton is created"
+1
+2
+3
+4
+5
+6
+7
+8
+9
+//懒汉式实现
+public class Singleton{
+    private static Singleton single; //内部保留实例
+    private Singleton(){System.out.println("private instance is created");} //私有化空参构造函数
+    //静态提供单例实例
+    public static newInstance(){
+        if(singleton==null){//实例为空时
+            synchronized(this){//以当前对象为锁
+                if(singleton==null){//实例为空时，拿到锁后还需要判断是否已经实例化了
+                    singleton = new Singleton();//实例化空参构造函数
+                    return singleton;
+                }
+            }
+        }
+        return Singleton.singleton; //返回静态成员变量
+    }
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+面向holder
+public class StaticSingleton{
+    private StaticSingleton(){
+        System.out.println("Static Singleton is create");
+    }
+    private static class SingletonHolder{
+    private static StaticSingleton instance = new StaticSingleton();
+    }
+    public static StaticSingleton getInstance(){
+        return SingletonHolder.instance;
+    }
+
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+不变模式
+
+一个类的内部状态创建后，在整个生命周期都不会发生变化，就是不变类
+不变模式不需要同步
+1
+2
+​
+
+public final class fixed{
+    private static final String data;
+    public Fixed(String data){
+        super();
+        this.data =  data;
+    }
+    public String getData(){
+        return this.data;
+    }
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+java.lang.String
+Boolean
+Byte
+Character
+Double
+Float
+Integer
+Long
+Short
+1
+2
+3
+4
+5
+6
+7
+8
+9
+Future模式
+
+需求模式，
+核心思想是异步调用
+两者之间契约，用于
+
+模拟：
+参与者          作用
+Main           系统启动，调用Client发出请求
+Client         返回Data对象，立即返回FutureData,并开启ClientThread线程装配RealData
+Data           返回数据的接口
+FutureData     Future数据，构造很快，但是是一个虚拟的数据，需要装配RealData
+RealData       真实数据，其构造是比较慢的
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+​
+
+虚拟数据接口
+public interface Data{
+    public String getResult();
+}
+1
+2
+3
+4
+需求者包装
+public class FutureData implements Data{
+    protected RealData realData = null;//FutureData是RealData的包装
+    protected boolean  isReady  = false;
+    public synchronized void setRealData(RealData realData){
+        if(isReady){
+            return ;
+        }
+        this.readyData = realData;
+        isReady = true;
+        notifyAll();        //RealData已经注入，通知getResult()
+    }
+    public synchronized String getResult(){
+        while(isReady){
+            try{
+                wait();   //一直等待，直到RealData被注入
+            }catch(InterruptedException ie){
+                e.printStackTrace();
+            }
+        }
+        return realData.result;          //由RealData实现
+    }
+
+
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+真实数据：
+public class RealData implements Data{
+    protected final String result;
+    public RealData(String para){
+        //RealData的构造可能很慢，需要用户等待很久，这里使用sleep模拟
+        StringBuffer sb = new StringBuffer();
+        for(int i = 0; i <100;i++){
+            sb.append(para);
+            try{
+                //这里使用sleep,代替一个很慢的操作过程
+                Thread.sleep(100);
+            }catch(InterruptedException ie){
+                ie.printStackTrace();
+            }
+        }
+        result = sb.toString();
+    }
+    public String getResult(){
+        return result;
+    }
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+客户端
+public class Client{
+    public Data request(final String queryStr){
+        final FutureData future = new FutureData();
+        new Thread(){
+            public void run(){
+                //RealData的构造很慢，所以要在单独的线程中进行
+                RealData realData = new RealData(queryStr);
+                future.setRealData(realData);
+            }
+        }.start();
+        return future;//FutrueData会被立刻返回
+    }
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+​
+
+主函数模拟：
+public static void main(String[] args){
+    Client client = new Client();
+    //这里会立刻返回，因为得到的是FutureData而不是RealData
+    Data data = client.request("name");
+    System.out.println("请求完毕");
+    try{
+        //这里可以用一个sleep代替Lee对其他业务逻辑的处理
+        //在处理这些业务逻辑的过程中，RealData被创建，从而充分利用了等待时间
+        Thread.sleep(2000);
+    }catch(InterruptedException ie){
+        ie.printStackTrace();
+    }
+    //使用真实的数据
+    System.out.println("数据："+data.getResult());
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+JDK对Futrue模式的支持：
+    C Runnable{+ run() :void}
+    C Future{+ get():void}Future接口内的方法未列全
+    C RunnableFuture{+ run():void}
+    FutureTask{+ get():V,+ run():void}
+    Sync{# innerRun():void}
+    C Callable{+ call():V} 线程动作可以返回任意类型的数据
+1
+2
+3
+4
+5
+6
+7
+​
+
+结合JDK使用：
+public class RealData implements Callable<String{
+    private String para;
+    public RealData(String para){
+        this.para = para;
+    }
+    @Override
+    public String call() throws Exception{
+        StringBuffer sb  = new StringBuffer();
+        for(int i = 0;i<100;i++){
+            sb.append(para);
+            try{
+                Thread.sleep(100);
+            }catch(InterruptedException ie){
+                ie.printStackTrace();
+            }
+        }
+        return sb.toString();
+    }
+
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+结合JDK使用：
+public class FutureMian{
+    public static void main(String args[]) throws InterruptedException,ExecutionException{
+        //构造FutureTask
+        FutureTask<String> future = new FutureTask<String>(new RealData("data"));
+        ExecutorService executor = Executors.newFixedThreadPool(1);
+        //执行FutureTask，相当于上例中的client.request("a");发送请求
+        //在这里开启线程进行RealData的call()执行
+        executor.submit(future);
+        {
+        写法2：
+            Future<String> future = executor.submit(new RealData("data"));
+        }
+        System.out.println("请求完毕");
+        try{
+            //这里依然可以做额外的数据操作，这里使用sleep代替其他业务逻辑的处理
+            Thread.sleep(2000);
+        }catch(InterruptedException ie){
+            ie.printStackTrace();
+        }
+        //相当于data.getResult()，取得call()方法的返回值
+        //如果此时call()方法没有执行完成，则依然会等待
+        System.out.println("数据："+futrue.get())
+    }
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+生产者消费者
+
+生产者-消费者模式是一个典型的多线程设计模式。它为多线程间的协作提供了良好的解决方案。在生产者-消费者模式中，通常由两类线程，即若干生产者线程和若干消费者线程。生产者线程负责提交用户请求，消费者线程则负责具体处理生产者提交的任务。生产者和消费者之间则通过共享内存缓冲区进行通信。
+1
+生产者—–>共享数据—->消费者
+生产者—–>共享数据—->消费者
+生产者—–>共享数据—->消费者
+
+表格形式:
+角色 作用
+生产者 用于提交用户请求，提取用户任务，并装入内存缓冲区
+消费者 在内存缓冲区中提取并处理任务
+内存缓冲区 缓存生产者提交的任务或数据，供消费者使用
+任务 生产者向内存缓冲区提交的数据结构
+Main 使用生产者和消费者的客户端
+
+private BlockingQueue<PCData> queue;
+....
+while(isRunning){
+    Thread.sleep(r.nextInt()SLEEPTIME);
+    data = new PCData(count.incrementAndGet());
+    //构造任务数据
+    System.out.println(data+"is put into queue");
+    if(!queue.offer(data,2,TimeUnit.SECONDS)){
+        //提交数据到缓冲区
+        System.out.println("faild to put data："+data);
+    }
+}
+......
+while(true){
+    PCData data = queue.tack();
+    //提取任务
+    if(null != data){
+        int re = data.getData* data.getData();//计算平方
+        System.out.println();
+        Thread.sleep(r.nextInt(SLEEPTIME));
+    }
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+NIO与AIO
+什么是NIO:
+
+NIO是New I/O的简称，与旧式的基于流的I/O方法相对，从名字看，它表示新的一套Java I/O标准。它是在Java 1.4中被纳入到JDK中。
+1
+NIO特性：
+
+NIO是基于块(Block)的，它以块为基本单位处理数据
+为所有的原始类型提供(Buffer)缓存支持
+增加通道(Channel)对象，作为新的原始I/O抽象
+支持锁和内存映射文件的文件访问接口
+提供了基于Selector的异步网络I/O
+1
+2
+3
+4
+5
+通道(Channel)——————>缓冲Buffer
+
+Buffer&Channel
+
+FileChannel fc = new FileInputStream(new File("d:/xxx.txt")).getChannel(); //创建channel
+ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+fc.read(byteBuffer);//确定关系
+fc.close();   //关闭流
+byteBuffer.flip();//
+1
+2
+3
+4
+5
+使用NIO复制文件：
+public static void nioCopyFile(String resource,String destination) throws IOException{
+    FileInputStream fis = new FileInputStream(resource);
+    FileOutputStream fos = new FileOutputStream(destination);
+    FileChannel realChannel  = fis.getChannel();//读文件通道
+    FileChannel writeChannel = fos.getChannel();//写文件通道
+    ByteBuffer buffer = ByteBuffer.allocate(1024);//读入数据缓存
+    while(true){
+        buffer.clear();
+        int len = readChannel.read(buffer);//读入数据
+        if(len==-1){
+            break;//读取完毕
+        }
+        buffer.filp(); //读写转换
+        wirteChannel.write(buffer);//写文件
+    }
+    readChannel.close();//关闭通道，释放资源
+    writeChannel.close();
+
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+Buffer中3个重要的参数：位置(position)、容量(capacity)和上限(limit);
+位置(position):
+    写模式：当前缓冲区的位置，将从position的下一个位置写数据
+    读模式：当前缓冲区读取的位置，将从此位置后，读取数据
+容量(capacity):
+    写模式：缓存区的总容量上限
+    读模式:缓存区的总容量上限
+上限(limit):
+    写模式：缓冲区的实际上限，它总是小于等于容量。通常情况下，和容量相等
+    读模式：代表可读取的总容量，和上次写入的数据量相等
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+ByteBuffer b = ByteBuffer.allacate(15);//15个字节的缓冲区
+打印操作：System.out.println("limit:"+b.limit()+" capacity:"+b.capacity()+" position:"+b.position());
+for(int i= 0;i<10;i++){ //存入10个字节数据
+    b.put((byte)i);
+}
+打印操作：
+b.flip();            //充值position
+打印操作
+for(int i=0;i<5;i++){
+    System.out.println(b.get());
+}
+打印操作
+b.flip();
+打印操作
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+flip:该操作会充值position，通常,将buffer从写模式转换为读模式需要执行此方法，filp()操作不仅重置了当前的position为0，还将limit设置到当前position的位置
+
+
+public final Buffer rewind():将position置零，并清除标志位(mark)
+public final Buffer clear():将position置零，同时将limit设置为capacity的大小，并清除了标志mark
+public final Buffer flip():先将limit设置到position所在位置，然后将position置零，并清除标志位mark;通常在读写转换时使用
+1
+2
+3
+4
+5
+6
+文件映射到内存：
+
+RandomAccessFile raf = new RandomAccessFile("d:/xxx.txt","rw");
+FileChannel fc = raf.getChannel();
+//将文件映射到内存中
+MappedByteBuffer mbb = fc.map(FileChannel.MapMode.READ_WRITE,0,raf.length());
+while(mbb.hasRemaining()){
+    System.out.println((char)mbb.get());
+}
+mbb.put(0,(byte)98);//修改文件
+raf.close();
+1
+2
+3
+4
+5
+6
+7
+8
+9
+网络编程
+
+多线程网络服务器的一般结构：
+    客户端--->派发--->服务器 Socket--->线程
+问题：
+    为每一个客户端使用一个线程，如果客户端出现延时等异常，线程可能会被占用很长时间。因为数据的准备和读取都在这个线程中。
+    此时，如果客户端数量众多，可能会消耗大量的系统资源。
+解决：
+    非阻塞的NIO
+    数据准备好了再工作
+1
+2
+3
+4
+5
+6
+7
+8
+AIO
+
+锁的优化和注意事项
+锁优化的思路：
+
+减少锁持有时间
+减少锁粒度
+锁分离
+锁粗化
+锁消除
+1
+2
+3
+4
+5
+减少锁持有时间
+
+​
+
+pulbic synchronized void synMethod(){
+    othercode1();
+    mutextMethod();
+    othercode();
+}
+---------------->
+public void syncMethod2(){
+    othercode();
+    synchronized(this){
+        mutextMethod();
+    }
+    othercode2();
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+减少锁粒度
+
+将大对象，拆成小对象，大大增加并行度，降低锁竞争
+偏向锁，轻量级锁成功率提高
+ConcurrentHashMap
+HashMap的同步实现
+    Conllections.synchronizedMap(Map<K,V> m)
+    返回SynchronizedMap对象
+1
+2
+3
+4
+5
+6
+public V get(Object key){
+    synchronized(mutext)
+    {return m.get(key);}
+}
+public v put(K key,V value){
+    synchronized(mutext){return m.put(key,value);}
+}
+1
+2
+3
+4
+5
+6
+7
+ConcurrentHashMap
+    若干个Segment:Segment<K,V>[] segment
+    Segment中维护HashEntry<K,V>
+    put操作时：
+        先定位到Segment,锁定一个Segment，执行put
+在减少锁粒度后，ConcurrentHashMap允许若干个线程同时进入
+1
+2
+3
+4
+5
+6
+锁分离
+
+根据功能进行锁分离
+ReadWriteLock
+读多写少的情况，可以提高性能
+    读锁-读锁：可访问
+    读锁-写锁：不可访问
+    写锁-读锁：不可访问
+    写锁-写锁：不可访问
+读写分离思想可以延伸，只要操作互不影响，锁就可以分离
+LinkedBlockingQueue
+    队列
+    链表
+        take<-- A|B|C|D <--put
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+锁粗化
+
+通常情况下，为了保证多线程间的有效并发，会要求每个线程持有锁的时间尽量短，即在使用完公共资源后，应该立即释放锁。只有这样，等待在这个锁上的其他线程才能尽早的获得资源执行任务。但是，凡事都有一个度，如果对同一个锁不停的进行请求、同步和释放，其本身也会消耗系统宝贵的资源，反而不利于性能的优化。
+1
+​
+
+public void demoMethod(){
+    synchronized(lock){
+        //do str.
+    }
+    //做其他不需要的同步的工作，但能很快执行完毕
+    synchronized(lock){
+        //do str
+    }
+}
+----->
+public void demoMethod(){
+    //整合一次请求
+    synchronized(lock){
+        //do str
+        //做其他不需要的同步的工作，但能很快执行完毕
+    }
+}
+--------------------
+for(int i =0;i<CIRCLE;i++){
+    synchronized(lock){
+    }
+}
+------>
+synchrozied(lock){
+    for(int i =0;i<CIRCLE;i++){
+    }
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+锁消除
+
+在即时编译器时，如果发现不可能被共享的对象，则可以消除这些对象的锁操作
+1
+​
+
+public static void main(String args[]) throws InterruptedException{
+    long start = System.currentTimeMillis();
+    for(int i = 0;i<CIRCLE;i++){
+        createStringBuffer("JVM","Diagnosis");
+    }
+    long bufferCost = System.currentTimeMillis()-start;
+    System.out.println("createStringBuffer:"+bufferCost+"ms");
+}
+public static String createStringBuffer(String s1,String s2){
+    StringBuffer sb = new StringBuffer();
+    //同步操作
+    sb.append(s1);
+    sb.append(s2);
+    return sb.toStringg();
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+CIRCLE=2000000
+
+-server -XX:+DoEscapeAnalysis -XX:+EliminatedLocks
+------:
+createStrinBuffer:187ms
+------------------------------
+1
+2
+3
+4
+虚拟机内的锁优化
+偏向锁
+轻量级锁
+自旋锁
+1
+2
+3
+对象头Mark
+Mark Word，对象头的标记，32位
+描述对象的hash,锁信息，垃圾回收标记，年龄
+    指向锁记录的指针
+    执行monitor的指针
+    GC标记
+    偏向锁线程ID
+1
+2
+3
+4
+5
+6
+偏向锁
+
+大部分情况下是没有竞争的，所以可以通过偏向来提高性能
+所谓的偏向，就是偏心，即锁会偏向于当前已经占有锁的线程
+将对象头Mark的标记设置为偏向，并将线程ID写入对象头Mark
+只要没有竞争，获得偏向锁的线程，在将来进入同步块，不需要做同步
+当其他线程请求相同的锁时，偏向模式结束
+-XX:+UseBiasedLockingg
+    默认启用
+在竞争激烈的场合，偏向锁会增加系统负担
+1
+2
+3
+4
+5
+6
+7
+8
+public static List<Integer> numberList = new Vector<Integer>();
+public static void main(String args[]) throws InterruptedException{
+    long begin = System.currentTimeMillis();
+    int count = 0;
+    int startnum = 0;
+    while(count<1000000){
+        numberList.add(startnum);
+        startnum += 2;
+        count++;
+    }
+    long end = System.currentTimeMills();
+    System.out.println(end-begin);
+}
+-XX:+UseBiasedLocking -XX:BiasedLockingStartupDelay=0
+
+-XX:UseBiasedLocking
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+轻量级锁
+
+BasicObjectLock
+    嵌入在线程栈中的对象
+1
+2
+BasicObjectLock-->BasicLock     markOop_displaced_header
+BasicObjectLock-->ptr to obj hold the lock
+1
+2
+普通的锁处理性能不够理想，轻量级锁时一种快速的锁定方法。
+如果对象没有被锁定
+    将对象头Mark指针保存到锁对象中
+    将对象头设置为指向锁的指针（在线程栈空间中）
+1
+2
+3
+4
+lock -> set_displaced_header(mark);
+if(mark==(markOop)Atomic::cmpxchg_ptr(lock,obj() -> mark_addr(),mark)){
+    TEVENT(slow_ente:release stacklock);
+    return;
+}
+//lock位于线程栈中
+1
+2
+3
+4
+5
+6
+如果轻量级锁失败，表示存在竞争，升级为重量级锁(常规锁)
+在没有锁竞争的前提下，减少传统锁使用OS互斥量产生的性能损耗
+在竞争激烈时，轻量级锁会多做很多额外操作，导致性能下降
+1
+2
+3
+自旋锁
+
+当竞争存在时，如果线程可以很快获得锁，那么可以不再OS层挂起线程，让线程做几个空操作（自旋）
+JDK1.6中-XX:+UseSpinning 开启
+JDK1.7中，去掉此参数，改为内置实现
+如果同步块很长，自旋失败，很降低系统性能
+如果同步块很短，自旋成功，节省线程挂起切换时间，提升系统性能
+1
+2
+3
+4
+5
+偏向锁，轻量级锁，自旋锁总结
+
+不是Java语言层面的锁优化方法：
+内置于JVM中的获取锁的优化方法和获取锁的步骤
+    偏向锁柯永刚会先尝试偏向锁
+    轻量级锁可用会先尝试轻量级锁
+    以上都失败，尝试自旋锁
+    再失败，尝试普通锁，使用OS互斥量在操作系统层挂起
+1
+2
+3
+4
+5
+6
+一个错误使用锁的案例：
+public class IntegerLock{
+    static Integer i = 0;
+    public static class AddThread extends Thread{
+        public void run(){
+            for(int k=0;k<100000;k++){
+                synchronized(i){
+                    i++;
+                }
+            }
+        }
+    }
+    public static void main(String args[]) throws InterruptedException(){
+        AddThread t1 = new AddThread();
+        AddThread t2 = new AddThread();
+        t1.start();t2.start();
+        t1.join();t2.join();
+        System.out.println(i);
+    }
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+TheradLocl及其源码分析
+SimpleDateFormat被多线程访问
+private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+public static class ParseDate implements Runnable{
+    int i = 0;
+    public ParseDate(int i){this.i=i;}
+    pubic void run(){
+        try{
+            Date t = sdf.parse("2017-06-20 09:35"+i%60);
+            System.out.println(i+":"+t);
+        }catch(ParseException e){
+            e.printStackTrace();
+        }
+    }
+}
+public static void main(String[] args){
+    ExecutorService es = Executors.newFixedThreadPool(10);
+    for(int i =0;i<1000;i++){
+        es.execute(new ParseDate(i));
+    }
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+为每一个线程分配一个实例
+static ThreadLocal<SimpleDateFormat> tl = new ThreadLocal<SimpleDateFormat>();
+public static class ParseDate implement Runnable{
+    int i = 0;
+    public ParseDate(int i){this.i=i;}
+    public void run(){
+        try{
+            if(tl.get()==null){
+                tl.set(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
+            }
+            Date t = tl.get().parse("2017-06-20 09:41"+i%60);
+            System.out.println(i+":"+t);
+        }catch(ParseException e){
+            e.printStackTrace();
+        }
+    }
+}
+public static void main(String args[]){
+    ExecutorService es = Executors.newFixedThreadPool(10);
+    for(int i = 0 ;i <1000;i++){
+        es.execute(new ParseDate(i));
+    }
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+如果使用共享实例，起不到效果
+private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+1
+2
+多线程调试的方法
+​
+
+​ breakingpoint Properties———>(!(Thread.currenetThread().getName().equals(“main”))
+
+​ suspend VM 挂起所有线程
+
+​
+
+线程dump及分析
+​ jstack 3392
+
+​ 在%JAVA_HOME%/bin 文件目录下找到软件
+
+​ 死锁案例
+
+JDK8对并发的新支持
+​ LongAdder
+
+– 和AtomicInteger类似的使用方式
+– 在AtomicInteger上进行了热点分离
+– public void add(long x)
+– public void increment()
+– public void decrement()
+– public long sum()
+– public long longValue()
+– public int intValue()
+1
+2
+3
+4
+5
+6
+7
+8
+​ CompletableFuture
+
+– 实现CompletionStage接口（40余个方法）
+– Java 8中对Future的增强版
+– 支持流式调用
+stage.thenApply(x -> square(x)).thenAccept(x -> System.out.print(x)).thenRun(() ->
+System.out.println())
+– 完成后得到通知
+01 public static class AskThread implements Runnable {
+02 CompletableFuture<Integer> re = null;
+03
+04 public AskThread(CompletableFuture<Integer> re) {
+05 this.re = re;
+06 }
+07
+08 @Override
+09 public void run() {
+10 int myRe = 0;
+11 try {
+12 myRe = re.get() * re.get();
+13 } catch (Exception e) {
+14 }
+15 System.out.println(myRe);
+16 }
+17 }
+18
+19 public static void main(String[] args) throws InterruptedException {
+20 final CompletableFuture<Integer> future = new CompletableFuture<>();
+21 new Thread(new AskThread(future)).start();
+22 // 模拟长时间的计算过程
+23 Thread.sleep(1000);
+24 // 告知完成结果
+25 future.complete(60);
+26 }
+– 异步执行 01 public static Integer 02 try { calc(Integer para) {
+03 // 模拟一个长时间的执行
+04 Thread.sleep(1000);
+05 } catch (InterruptedException e) {
+06 }
+07 return para*para;
+08 }
+09
+10 public static void main(String[] args) throws InterruptedException, ExecutionException {
+11 final CompletableFuture<Integer> future =
+12 CompletableFuture.supplyAsync(() -> calc(50));
+13 System.out.println(future.get());
+14 }
+– 工厂方法
+static <U> CompletableFuture<U> supplyAsync(Supplier<U> supplier);
+static <U> CompletableFuture<U> supplyAsync(Supplier<U> supplier, Executor executor);
+static CompletableFuture<Void> runAsync(Runnable runnable);
+static CompletableFuture<Void> runAsync(Runnable runnable, Executor executor);
+– 流式调用
+01 public static Integer calc(Integer para) {
+02 try {
+03 // 模拟一个长时间的执行
+04 Thread.sleep(1000);
+05 } catch (InterruptedException e) {
+06 }
+07 return para*para;
+08 }
+09
+10 public static void main(String[] args) throws InterruptedException, ExecutionException {
+11 CompletableFuture<Void> fu=CompletableFuture.supplyAsync(() -> calc(50))
+12 .thenApply((i)->Integer.toString(i))
+13 .thenApply((str)->"\""+str+"\"")
+14 .thenAccept(System.out::println);
+15 fu.get();
+16 }
+– 组合多个CompletableFuture
+public <U> CompletableFuture<U> thenCompose(Function<? super T, ? extends CompletionStage<U>> fn)
+01 public static Integer calc(Integer para) {
+02 return para/2;
+03 }
+04
+05 public static void main(String[] args) throws InterruptedException, ExecutionException {
+06 CompletableFuture<Void> fu =
+07 CompletableFuture.supplyAsync(() -> calc(50))
+08 .thenCompose((i)->CompletableFuture.supplyAsync(() -> calc(i)))
+09 .thenApply((str)->"\"" + str + "\"").thenAccept(System.out::println);
+10 fu.get();
+11 }
+"12"
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+​ StampedLock
+
+– 读写锁的改进
+– 读不阻塞写
+01 public class Point {
+02 private double x, y;
+03 private final StampedLock sl = new StampedLock();
+04
+05 void move(double deltaX, double deltaY) { // an exclusively locked method
+06 long stamp = sl.writeLock();
+07 try {
+08 x += deltaX;
+09 y += deltaY;
+10 } finally {
+11 sl.unlockWrite(stamp);
+12 }
+13 }
+14
+15 double distanceFromOrigin() { // A read-only method
+16 long stamp = sl.tryOptimisticRead();
+17 double currentX = x, currentY = y;
+18 if (!sl.validate(stamp)) {
+19 stamp = sl.readLock();
+20 try {
+21 currentX = x;
+22 currentY = y;
+23 } finally {
+24 sl.unlockRead(stamp);
+25 }
+26 }
+27 return Math.sqrt(currentX * currentX + currentY * currentY);
+28 }
+29 }
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+StampedLock的实现思想
+– CLH自旋锁
+– 锁维护一个等待线程队列，所有申请锁，但是没有成功的线程都记录在这个队列中。每一个节点（一个
+节点代表一个线程），保存一个标记位（locked），用于判断当前线程是否已经释放锁。
+– 当一个线程试图获得锁时，取得当前等待队列的尾部节点作为其前序节点。并使用类似如下代码判断前
+序节点是否已经成功释放锁：
+while (pred.locked) {
+}
+– 不会进行无休止的自旋，会在在若干次自旋后挂起线程
+1
+2
+3
+4
+5
+6
+7
+8
+9
+jetty分析
+1.newServer()
+
+public Server(@Name("port")int port)
+{
+this((ThreadPool)null);
+ServerConnector connector=new ServerConnector(this);
+connector.setPort(port);
+setConnectors(new Connector[]{connector});
+}
+1
+2
+3
+4
+5
+6
+7
+​ 1.1 初始化线程池
+
+public Server(@Name("threadpool") ThreadPool pool)
+{
+_threadPool=pool!=null?pool:new QueuedThreadPool();
+addBean(_threadPool);
+setServer(this);
+}
+1
+2
+3
+4
+5
+6
+​ 1.1.1QueuedThreadPool
+
+参见: 启动QueuedThreadPool
+实现了SizedThreadPool
+1
+2
+​ execute()方法
+
+@Override
+public void execute(Runnable job)
+{
+if (!isRunning() || !_jobs.offer(job))
+{
+LOG.warn("{} rejected {}", this, job);
+throw new RejectedExecutionException(job.toString());
+}
+else
+{
+// Make sure there is at least one thread executing the job.
+if (getThreads() == 0)
+startThreads(1);
+}
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+​ BlockingQueue
+
+将任务推入
+BlockingQueue<Runnable> org.eclipse.jetty.util.thread.QueuedThreadPool._jobs
+1
+2
+​ 1.2初始化ServerConnector
+
+HTTP connector using NIO ByteChannels and Selectors
+继承自 AbstractConnector
+1
+2
+​ 1.2.1初始化SchedulerExecutorScheduler
+
+based on JDK's {@link ScheduledThreadPoolExecutor}.
+1
+​ 1.2.2初始化ByteBufferPool
+
+在数据传输过程中，不可避免需要byte数组
+buffer池
+默认产生 ArrayByteBufferPool
+ByteBufferPool 接口有2个方法：
+public ByteBuffer acquire(int size, boolean direct);
+public void release(ByteBuffer buffer);
+这是一个很好的对象池范本
+1
+2
+3
+4
+5
+6
+7
+​ ArrayByteBufferPool
+
+public ArrayByteBufferPool(int minSize, int increment, int maxSize)
+public ArrayByteBufferPool()
+{
+this(0,1024,64*1024);6
+}
+_direct=new Bucket[maxSize/increment];
+_indirect=new Bucket[maxSize/increment];
+1
+2
+3
+4
+5
+6
+7
+​ 结构
+
+​ Bucket
+
+_direct Bucket数组
+_indirect Bucket数组
+为每一个大小，新建一个Bucket
+但不初始化ByteBuffer
+int size=0;
+for (int i=0;i<_direct.length;i++)
+{
+size+=_inc;
+_direct[i]=new Bucket(size);
+_indirect[i]=new Bucket(size);
+}
+一个Bucekt存放大小相同的所有的ByteBuffer
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+​ _size
+
+bytebuffer大小
+1
+​ _queue
+
+public final Queue<ByteBuffer> _queue= new ConcurrentLinkedQueue<>();
+1
+​ acquire
+
+public ByteBuffer acquire(int size, boolean direct)
+1
+​ 取得合适的Bucket
+
+ 每个Bucket的大小不同，这里找到最合适的
+Bucket bucket = bucketFor(size,direct);
+1
+2
+​ 从Bucket中取得ByteBuffer
+
+ByteBuffer buffer = bucket==null?null:bucket._queue.poll();
+1
+​ 不存在则新建
+
+if (buffer == null)
+{
+int capacity = bucket==null?size:bucket._size;
+buffer = direct ? BufferUtil.allocateDirect(capacity) : BufferUtil.allocate(capacity);
+}
+1
+2
+3
+4
+5
+​ release
+
+public void release(ByteBuffer buffer)
+{
+if (buffer!=null)
+{
+Bucket bucket = bucketFor(buffer.capacity(),buffer.isDirect());
+if (bucket!=null)
+{
+BufferUtil.clear(buffer);
+bucket._queue.offer(buffer);
+}
+}
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+​ 取得合适的Bucket
+
+Bucket bucket = bucketFor(buffer.capacity(),buffer.isDirect());
+1
+​ 清空Buffer
+
+BufferUtil.clear(buffer);
+1
+​ 归还Pool
+
+bucket._queue.offer(buffer);
+1
+​ 例外处理
+
+如果申请的ByteBuffer过大或者过小，
+无法在POOL中满足，则可以申请成功，但无法归还给POOL。
+1
+2
+​ 1.2.3维护ConnectionFactory
+
+HttpConnectionFactory
+用于创建连接，
+比如Accept后，需要创建一个表示连接的对象
+1
+2
+3
+​ 1.2.4取得可用CPU数量
+
+int cores = Runtime.getRuntime().availableProcessors();
+1
+​ 1.2.5更新acceptor数量
+
+if (acceptors < 0)
+acceptors=Math.max(1, Math.min(4,cores/8));
+1
+2
+​ 1.2.6创建acceptor线程组
+
+参见: 创建Acceptor线程
+_acceptors = new Thread[acceptors];
+1
+2
+​ 1.2.7初始化ServerConnectorMananger
+
+继承自 SelectorManager
+_manager = new ServerConnectorManager(getExecutor(), getScheduler(),
+selectors>0?selectors:Math.max(1,Math.min(4,Runtime.getRuntime().availableProcessors()/2)));
+1
+2
+3
+​ 保存selector线程数量
+
+Math.min(4,Runtime.getRuntime().availableProcessors()/2))
+1
+​ 1.3设置port
+
+connector.setPort(port);
+1
+​ 1.4关联Server()和Connector
+
+setConnectors(new Connector[]{connector});
+1
+2.Server.start()
+
+org.eclipse.jetty.server.Server
+启动web服务器
+WebAppContext context = new WebAppContext();
+context.setContextPath("/");
+context.setResourceBase("./web/");
+context.setClassLoader(Thread.currentThread().getContextClassLoader());
+server.setHandler(context);
+server.start();
+1
+2
+3
+4
+5
+6
+7
+8
+​ 2.1设置启动状态
+
+AbstractLifeCycle
+private void setStarting()
+{
+if (LOG.isDebugEnabled())
+LOG.debug("starting {}",this);
+_state = __STARTING;
+for (Listener listener : _listeners)
+listener.lifeCycleStarting(this);
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+​ 2.2启动过程doStart()
+
+Server
+启动整个server
+protected void doStart() throws Exception
+{
+//If the Server should be stopped when the jvm exits, register
+//with the shutdown handler thread.
+if (getStopAtShutdown())
+ShutdownThread.register(this);
+//Register the Server with the handler thread for receiving
+//remote stop commands
+ShutdownMonitor.register(this);
+//Start a thread waiting to receive "stop" commands.
+ShutdownMonitor.getInstance().start(); // initialize
+LOG.info("jetty-" + getVersion());
+HttpGenerator.setJettyVersion(HttpConfiguration.SERVER_VERSION);
+MultiException mex=new MultiException();
+// check size of thread pool
+SizedThreadPool pool = getBean(SizedThreadPool.class);
+int max=pool==null?-1:pool.getMaxThreads();
+int selectors=0;
+int acceptors=0;
+if (mex.size()==0)
+{
+for (Connector connector : _connectors)
+{
+if (connector instanceof AbstractConnector)
+acceptors+=((AbstractConnector)connector).getAcceptors();
+if (connector instanceof ServerConnector)
+selectors+=((ServerConnector)connector).getSelectorManager().getSelectorCount();
+}
+}
+int needed=1+selectors+acceptors;
+if (max>0 && needed>max)
+throw new IllegalStateException(String.format("Insufficient threads: max=%d < needed(acceptors=%d +
+selectors=%d + request=1)",max,acceptors,selectors));
+try
+{
+super.doStart();
+}
+catch(Throwable e)
+{
+mex.add(e);
+}
+// start connectors last
+for (Connector connector : _connectors)
+{
+try
+{
+connector.start();
+}
+catch(Throwable e)
+{
+mex.add(e);
+}
+}
+if (isDumpAfterStart())
+dumpStdErr();
+mex.ifExceptionThrow();
+LOG.info(String.format("Started @%dms",Uptime.getUptime()));
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+​ 2.2.1注册ShutdownMonitor
+
+远程控制接口
+//Register the Server with the handler thread for receiving
+//remote stop commands
+ShutdownMonitor.register(this);
+//Start a thread waiting to receive "stop" commands.
+ShutdownMonitor.getInstance().start(); // initialize
+1
+2
+3
+4
+5
+6
+​ 2.2.2获取线程池
+
+// check size of thread pool
+SizedThreadPool pool = getBean(SizedThreadPool.class);
+1
+2
+​ QueuedThreadPool
+
+​ 2.2.3设置selector数量
+
+根据Connector数量进行累计
+大部分情况下，只有一个ServerConnector
+for (Connector connector : _connectors)
+{
+if (connector instanceof AbstractConnector)
+acceptors+=((AbstractConnector)connector).getAcceptors();
+if (connector instanceof ServerConnector)
+selectors+=((ServerConnector)connector).getSelectorManager().getSelectorCount();
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+​ 累计所有的Connector的需求
+
+​ 2.2.4计算所需的所有线程数量
+
+int needed=1+selectors+acceptors;
+如果大于默认的200则中断程序
+if (max>0 && needed>max)
+throw new IllegalStateException(String.format("Insufficient threads: max=%d < needed(acceptors=%d
++ selectors=%d + request=1)",max,acceptors,selectors));
+1
+2
+3
+4
+5
+​ 2.2.5维护Bean
+
+​ 启动QueuedTheadPool
+
+参见: QueuedThreadPool
+1
+​ doStart
+
+​ startThreads()
+
+​ 创建线程
+
+Thread thread = newThread(_runnable);
+1
+​ _runnable
+
+​ _jobs中取任务并执行
+
+​ 设置线程的属性
+
+thread.setDaemon(isDaemon());
+thread.setPriority(getThreadsPriority());
+thread.setName(_name + "-" + thread.getId());
+_threads.add(thread);
+1
+2
+3
+4
+​ 启动线程
+
+thread.start();
+1
+​ 启动WebAppContext
+
+如果需要使用，在此处启动
+1
+​ 2.2.6启动Connector
+
+​ 取得ConnectorFactory
+
+_defaultConnectionFactory = getConnectionFactory(_defaultProtocol);
+1
+​ 创建selector线程并启动
+
+for (int i = 0; i < _selectors.length; i++)
+{
+ManagedSelector selector = newSelector(i);
+_selectors[i] = selector;
+selector.start();
+execute(new NonBlockingThread(selector));
+}
+1
+2
+3
+4
+5
+6
+7
+​ newSelector()
+
+参见: ManagedSelector处理
+protected ManagedSelector newSelector(int id)
+{
+return new ManagedSelector(id);
+}
+1
+2
+3
+4
+5
+​ 创建Acceptor线程
+
+参见: 创建acceptor线程组
+_stopping=new CountDownLatch(_acceptors.length);
+for (int i = 0; i < _acceptors.length; i++)
+{
+Acceptor a = new Acceptor(i);
+addBean(a);
+getExecutor().execute(a);
+}
+1
+2
+3
+4
+5
+6
+7
+8
+​ Acceptor
+
+参见: Accept成功
+1
+​ 设置线程名称
+
+final Thread thread = Thread.currentThread();
+String name=thread.getName();
+_name=String.format("%s-acceptor-%d@%x-
+%s",name,_acceptor,hashCode(),AbstractConnector.this.toString());
+thread.setName(_name);
+1
+2
+3
+4
+5
+​ 设置优先级
+
+​ 将自己放入_acceptors数组
+
+synchronized (AbstractConnector.this)
+{
+_acceptors[_acceptor] = thread;
+}
+1
+2
+3
+4
+​ 监听端口
+
+try
+{
+while (isAccepting())
+{
+try
+{15
+accept(_acceptor);
+}
+catch (Throwable e)
+{
+if (isAccepting())
+LOG.warn(e);
+else
+LOG.ignore(e);
+}
+}
+}
+finally
+{
+thread.setName(name);
+if (_acceptorPriorityDelta!=0)
+thread.setPriority(priority);
+synchronized (AbstractConnector.this)
+{
+_acceptors[_acceptor] = null;
+}
+CountDownLatch stopping=_stopping;
+if (stopping!=null)
+stopping.countDown();
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+​ SererConnector.accept()
+
+public void accept(int acceptorID) throws IOException
+{
+ServerSocketChannel serverChannel = _acceptChannel;
+if (serverChannel != null && serverChannel.isOpen())
+{
+SocketChannel channel = serverChannel.accept();
+accepted(channel);
+}
+}
+在accept的地方等待
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+​ 没有Acceptor的情况
+
+channle默认是blocking的16
+如果acceptor数量为0，没有安排线程专门进行accept，则设置为非阻塞模式
+若是非0，有专门线程进行accept，因此，为阻塞模式
+protected void doStart() throws Exception
+{
+super.doStart();
+if (getAcceptors()==0)
+{
+_acceptChannel.configureBlocking(false);
+_manager.acceptor(_acceptChannel);
+}
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+​ 2.3启动完毕
+
+AbstractLifeCycle
+private void setStarted()
+{
+_state = __STARTED;
+if (LOG.isDebugEnabled())
+LOG.debug(STARTED+" @{}ms {}",Uptime.getUptime(),this);
+for (Listener listener : _listeners)
+listener.lifeCycleStarted(this);
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+3.Http请求
+
+​ 3.1Accept成功
+
+参见: Acceptor
+private void accepted(SocketChannel channel) throws IOException
+{
+channel.configureBlocking(false);
+Socket socket = channel.socket();
+configure(socket);
+_manager.accept(channel);
+}
+1
+2
+3
+4
+5
+6
+7
+8
+​ 3.1.1设置为非阻塞模式
+
+channel.configureBlocking(false);
+1
+​ 3.1.2配置Socket
+
+Socket socket = channel.socket();
+configure(socket);
+1
+2
+​ 3.1.3正式处理
+
+SelectorManager _manager；
+_manager.accept(channel);
+1
+2
+​ 选择可用的ManagedSelector线程
+
+private ManagedSelector chooseSelector()
+{
+// The ++ increment here is not atomic, but it does not matter,
+// so long as the value changes sometimes, then connections will
+// be distributed over the available selectors.
+long s = _selectorIndex++;
+int index = (int)(s % getSelectorCount());
+return _selectors[index];
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+​ ManagedSelector处理
+
+参见: newSelector()
+ManagedSelector 是一个线程
+封装了Selector 的使用
+1
+2
+3
+​ 提交任务
+
+参见: runChanges()
+selector.submit(selector.new Accept(channel, attachment));
+提交这个处理任务到ManagedSelector：
+private final Queue<Runnable> _changes = new ConcurrentArrayQueue<>();
+_changes.offer(change);
+1
+2
+3
+4
+5
+​ ConcurrentArrayQueue
+
+与ConcurrentLinkedQueue相似的性能，但直接保存元素
+而不是node，因此需要更少的对象，更少的GC
+1
+2
+​ 3.2请求处理
+
+​ 3.2.1ManagedSelector.run()
+
+while (isRunning())
+select();
+1
+2
+​ select()
+
+发现有任务就执行
+1
+​ runChanges()
+
+参见: 提交任务
+private void runChanges()
+{
+Runnable change;
+while ((change = _changes.poll()) != null)
+runChange(change);
+}
+1
+2
+3
+4
+5
+6
+7
+​ runChange()
+
+change.run();
+1
+​ Accept.run
+
+SelectionKey key = channel.register(_selector, 0, attachment);
+EndPoint endpoint = createEndPoint(channel, key);
+key.attach(endpoint);
+1
+2
+3
+​
+
+select()
+int selected = _selector.select();
+1
+2
+​ 处理SelectionKey
+
+Set<SelectionKey> selectedKeys = _selector.selectedKeys();
+for (SelectionKey key : selectedKeys)
+{
+if (key.isValid())
+{
+processKey(key);
+}
+else
+{
+if (debug)
+LOG.debug("Selector loop ignoring invalid key for channel {}", key.channel());
+Object attachment = key.attachment();
+if (attachment instanceof EndPoint)
+((EndPoint)attachment).close();
+}
+}
+selectedKeys.clear();
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+​ processKey
+
+private void processKey(SelectionKey key)
+{
+Object attachment = key.attachment();
+try
+{
+if (attachment instanceof SelectableEndPoint)
+{
+((SelectableEndPoint)attachment).onSelected();
+}
+else if (key.isConnectable())
+{
+processConnect(key, (Connect)attachment);
+}
+else if (key.isAcceptable())20
+{
+processAccept(key);
+}
+else
+{
+throw new IllegalStateException();
+}
+}
+catch (CancelledKeyException x)
+{
+LOG.debug("Ignoring cancelled key for channel {}", key.channel());
+if (attachment instanceof EndPoint)
+closeNoExceptions((EndPoint)attachment);
+}
+catch (Throwable x)
+{
+LOG.warn("Could not process key for channel " + key.channel(), x);
+if (attachment instanceof EndPoint)
+closeNoExceptions((EndPoint)attachment);
+}
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+​ onSelected
+
+@Override
+public void onSelected()
+{
+assert _selector.isSelectorThread();
+int oldInterestOps = _key.interestOps();
+int readyOps = _key.readyOps();
+int newInterestOps = oldInterestOps & ~readyOps;
+setKeyInterests(oldInterestOps, newInterestOps);
+updateLocalInterests(readyOps, false);
+if (_key.isReadable())
+getFillInterest().fillable();
+if (_key.isWritable())
+getWriteFlusher().completeWrite();
+}
+会使用新的线程进行HTTP业务处理 (提交到线程池)
+
+
 package com.lmax.disruptor;
 
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;

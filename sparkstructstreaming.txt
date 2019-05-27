@@ -1,5 +1,663 @@
-是时候放弃 Spark Streaming, 转向 Structured Streaming 了
-legendtkl  过往记忆大数据  前天
+
+
+
+
+package cassandra
+
+import org.apache.spark.sql._
+import com.datastax.spark.connector._
+import com.datastax.spark.connector.cql.CassandraConnector
+import kafka.KafkaService
+import radio.{SimpleSongAggregation, SimpleSongAggregationKafka}
+import spark.SparkHelper
+import foreachSink._
+import log.LazyLogger
+
+object CassandraDriver extends LazyLogger {
+  private val spark = SparkHelper.getSparkSession()
+  import spark.implicits._
+
+  val connector = CassandraConnector(SparkHelper.getSparkSession().sparkContext.getConf)
+
+  val namespace = "structuredstreaming"
+  val foreachTableSink = "radio"
+  val StreamProviderTableSink = "radioothersink"
+  val kafkaMetadata = "kafkametadata"
+  def getTestInfo() = {
+    val rdd = spark.sparkContext.cassandraTable(namespace, kafkaMetadata)
+
+    if( !rdd.isEmpty ) {
+      log.warn(rdd.count)
+      log.warn(rdd.first)
+    } else {
+      log.warn(s"$namespace, $kafkaMetadata is empty in cassandra")
+    }
+  }
+
+
+  /**
+    * remove kafka metadata and only focus on business structure
+    */
+  def getDatasetForCassandra(df: DataFrame) = {
+    df.select(KafkaService.radioStructureName + ".*")
+      .as[SimpleSongAggregation]
+  }
+
+  //https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html#using-foreach
+  //https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html#output-modes
+  def saveForeach(df: DataFrame ) = {
+    val ds = CassandraDriver.getDatasetForCassandra(df)
+
+    ds
+      .writeStream
+      .queryName("KafkaToCassandraForeach")
+      .outputMode("update")
+      .foreach(new CassandraSinkForeach())
+      .start()
+  }
+
+  def saveStreamSinkProvider(ds: Dataset[SimpleSongAggregationKafka]) = {
+    ds
+      .toDF() //@TODO see if we can use directly the Dataset object
+      .writeStream
+      .format("cassandra.StreamSinkProvider.CassandraSinkProvider")
+      .outputMode("update")
+      .queryName("KafkaToCassandraStreamSinkProvider")
+      .start()
+  }
+
+  /**
+    * @TODO handle more topic name, for our example we only use the topic "test"
+    *
+    *  we can use collect here as kafkameta data is not big at all
+    *
+    * if no metadata are found, we would use the earliest offsets.
+    *
+    * @see https://spark.apache.org/docs/latest/structured-streaming-kafka-integration.html#creating-a-kafka-source-batch
+    *  assign	json string {"topicA":[0,1],"topicB":[2,4]}
+    *  Specific TopicPartitions to consume. Only one of "assign", "subscribe" or "subscribePattern" options can be specified for Kafka source.
+    */
+  def getKafaMetadata() = {
+    try {
+      val kafkaMetadataRDD = spark.sparkContext.cassandraTable(namespace, kafkaMetadata)
+
+      val output = if (kafkaMetadataRDD.isEmpty) {
+        ("startingOffsets", "earliest")
+      } else {
+        ("startingOffsets", transformKafkaMetadataArrayToJson(kafkaMetadataRDD.collect()))
+      }
+      log.warn("getKafkaMetadata " + output.toString)
+
+      output
+    }
+    catch {
+      case e: Exception =>
+        ("startingOffsets", "earliest")
+    }
+  }
+
+  /**
+    * @param array
+    * @return {"topicA":{"0":23,"1":-1},"topicB":{"0":-2}}
+    */
+  def transformKafkaMetadataArrayToJson(array: Array[CassandraRow]) : String = {
+      s"""{"${KafkaService.topicName}":
+          {
+           "${array(0).getLong("partition")}": ${array(0).getLong("offset")}
+          }
+         }
+      """.replaceAll("\n", "").replaceAll(" ", "")
+  }
+
+  def debug() = {
+   val output = spark.sparkContext.cassandraTable(namespace, foreachTableSink)
+
+    log.warn(output.count)
+  }
+}
+package cassandra
+
+import kafka.KafkaMetadata
+
+object CassandraKafkaMetadata {
+  private def cql(metadata: KafkaMetadata): String = s"""
+       INSERT INTO ${CassandraDriver.namespace}.${CassandraDriver.kafkaMetadata} (partition, offset)
+       VALUES(${metadata.partition}, ${metadata.offset})
+    """
+
+  //https://github.com/datastax/spark-cassandra-connector/blob/master/doc/1_connecting.md#connection-pooling
+  def save(metadata: KafkaMetadata) = {
+    CassandraDriver.connector.withSessionDo(session =>
+      session.execute(cql(metadata))
+    )
+  }
+}
+package cassandra.StreamSinkProvider
+
+import cassandra.{CassandraDriver, CassandraKafkaMetadata}
+import org.apache.spark.sql.{DataFrame, Dataset}
+import org.apache.spark.sql.execution.streaming.Sink
+import org.apache.spark.sql.functions.max
+import spark.SparkHelper
+import cassandra.CassandraDriver
+import com.datastax.spark.connector._
+import kafka.KafkaMetadata
+import log.LazyLogger
+import org.apache.spark.sql.execution.streaming.Sink
+import org.apache.spark.sql.types.LongType
+import radio.SimpleSongAggregation
+
+/**
+* must be idempotent and synchronous (@TODO check asynchronous/synchronous from Datastax's Spark connector) sink
+*/
+class CassandraSink() extends Sink with LazyLogger {
+  private val spark = SparkHelper.getSparkSession()
+  import spark.implicits._
+  import org.apache.spark.sql.functions._
+
+  private def saveToCassandra(df: DataFrame) = {
+    val ds = CassandraDriver.getDatasetForCassandra(df)
+    ds.show() //Debug only
+
+    ds.rdd.saveToCassandra(CassandraDriver.namespace,
+      CassandraDriver.StreamProviderTableSink,
+      SomeColumns("title", "artist", "radio", "count")
+    )
+
+    saveKafkaMetaData(df)
+  }
+
+  /*
+   * As per SPARK-16020 arbitrary transformations are not supported, but
+   * converting to an RDD allows us to do magic.
+   */
+  override def addBatch(batchId: Long, df: DataFrame) = {
+    log.warn(s"CassandraSink - Datastax's saveToCassandra method -  batchId : ${batchId}")
+    saveToCassandra(df)
+  }
+
+  /**
+    * saving the highest value of offset per partition when checkpointing is not available (application upgrade for example)
+    * http://docs.datastax.com/en/cassandra/3.0/cassandra/dml/dmlTransactionsDiffer.html
+    * should be done in the same transaction as the data linked to the offsets
+    */
+  private def saveKafkaMetaData(df: DataFrame) = {
+    val kafkaMetadata = df
+      .groupBy($"partition")
+      .agg(max($"offset").cast(LongType).as("offset"))
+      .as[KafkaMetadata]
+
+    log.warn("Saving Kafka Metadata (partition and offset per topic (only one in our example)")
+    kafkaMetadata.show()
+
+    kafkaMetadata.rdd.saveToCassandra(CassandraDriver.namespace,
+      CassandraDriver.kafkaMetadata,
+      SomeColumns("partition", "offset")
+    )
+
+    //Otherway to save offset inside Cassandra
+    //kafkaMetadata.collect().foreach(CassandraKafkaMetadata.save)
+  }
+}
+
+package cassandra.foreachSink
+
+import cassandra.CassandraDriver
+import log.LazyLogger
+import org.apache.spark.sql.ForeachWriter
+import radio.SimpleSongAggregation
+
+/**
+  * Inspired by
+  * https://github.com/ansrivas/spark-structured-streaming/
+  * https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html#using-foreach
+  */
+class CassandraSinkForeach() extends ForeachWriter[SimpleSongAggregation] with LazyLogger {
+  private def cqlRadio(record: SimpleSongAggregation): String = s"""
+       insert into ${CassandraDriver.namespace}.${CassandraDriver.foreachTableSink} (title, artist, radio, count)
+       values('${record.title}', '${record.artist}', '${record.radio}', ${record.count})"""
+
+  def open(partitionId: Long, version: Long): Boolean = {
+    // open connection
+    //@TODO command to check if cassandra cluster is up
+    true
+  }
+
+  //https://github.com/datastax/spark-cassandra-connector/blob/master/doc/1_connecting.md#connection-pooling
+  def process(record: SimpleSongAggregation) = {
+    log.warn(s"Saving record: $record")
+    CassandraDriver.connector.withSessionDo(session =>
+      session.execute(cqlRadio(record))
+    )
+  }
+
+  //https://github.com/datastax/spark-cassandra-connector/blob/master/doc/reference.md#cassandra-connection-parameters
+
+  def close(errorOrNull: Throwable): Unit = {
+    // close the connection
+    //connection.keep_alive_ms	--> 5000ms :	Period of time to keep unused connections open
+  }
+}package cassandra.StreamSinkProvider
+
+import org.apache.spark.sql.sources.StreamSinkProvider
+import org.apache.spark.sql.streaming.OutputMode
+import org.apache.spark.sql.{DataFrame, SQLContext}
+
+/**
+  From Holden Karau's High Performance Spark
+  https://github.com/holdenk/spark-structured-streaming-ml/blob/master/src/main/scala/com/high-performance-spark-examples/structuredstreaming/CustomSink.scala#L66
+  *
+  */
+class CassandraSinkProvider extends StreamSinkProvider {
+  override def createSink(sqlContext: SQLContext,
+                          parameters: Map[String, String],
+                          partitionColumns: Seq[String],
+                          outputMode: OutputMode): CassandraSink = {
+    new CassandraSink()
+  }
+}package elastic
+
+import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
+import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery}
+import radio.{SimpleSongAggregation, Song}
+import org.elasticsearch.spark.sql.streaming._
+import org.elasticsearch.spark.sql._
+import org.elasticsearch.spark.sql.streaming.EsSparkSqlStreamingSink
+
+object ElasticSink {
+  def writeStream(ds: Dataset[Song] ) : StreamingQuery = {
+    ds   //Append output mode not supported when there are streaming aggregations on streaming DataFrames/DataSets without watermark
+      .writeStream
+      .outputMode(OutputMode.Append) //Only mode for ES
+      .format("org.elasticsearch.spark.sql") //es
+      .queryName("ElasticSink")
+      .start("test/broadcast") //ES index
+  }
+
+}package kafka
+
+case class KafkaMetadata(partition: Long, offset: Long)
+package kafka
+
+import org.apache.spark.sql.types.StringType
+import org.apache.spark.sql.types._
+import spark.SparkHelper
+
+object KafkaService {
+  private val spark = SparkHelper.getSparkSession()
+
+  val radioStructureName = "radioCount"
+
+  val topicName = "test"
+
+  val bootstrapServers = "localhost:9092"
+
+  val schemaOutput = new StructType()
+    .add("title", StringType)
+    .add("artist", StringType)
+    .add("radio", StringType)
+    .add("count", LongType)
+}
+package kafka
+
+import org.apache.spark.sql.{DataFrame, Dataset}
+import org.apache.spark.sql.functions.{struct, to_json, _}
+import _root_.log.LazyLogger
+import org.apache.spark.sql.streaming.StreamingQuery
+import org.apache.spark.sql.types.{StringType, _}
+import radio.{SimpleSongAggregation, SimpleSongAggregationKafka}
+import spark.SparkHelper
+
+object KafkaSink extends LazyLogger {
+  private val spark = SparkHelper.getSparkSession()
+
+  import spark.implicits._
+
+  def writeStream(staticInputDS: Dataset[SimpleSongAggregation]) : StreamingQuery = {
+    log.warn("Writing to Kafka")
+    staticInputDS
+      .select(to_json(struct($"*")).cast(StringType).alias("value"))
+      .writeStream
+      .outputMode("update")
+      .format("kafka")
+      .option("kafka.bootstrap.servers", KafkaService.bootstrapServers)
+      .queryName("Kafka - Count number of broadcasts for a title/artist by radio")
+      .option("topic", "test")
+      .start()
+  }
+
+  /**
+      Console sink from Kafka's stream
+      +----+--------------------+-----+---------+------+--------------------+-------------+--------------------+
+      | key|               value|topic|partition|offset|           timestamp|timestampType|          radioCount|
+      +----+--------------------+-----+---------+------+--------------------+-------------+--------------------+
+      |null|[7B 22 72 61 64 6...| test|        0|    60|2017-11-21 22:56:...|            0|[Feel No Ways,Dra...|
+    *
+    */
+  def debugStream(staticKafkaInputDS: Dataset[SimpleSongAggregationKafka]) = {
+    staticKafkaInputDS
+      .writeStream
+      .queryName("Debug Stream Kafka")
+      .format("console")
+      .start()
+  }
+}
+package kafka
+
+import org.apache.spark.sql.{DataFrame, Dataset}
+import org.apache.spark.sql.functions.{struct, to_json, _}
+import _root_.log.LazyLogger
+import org.apache.spark.sql.types.{StringType, _}
+import radio.{SimpleSongAggregation, SimpleSongAggregationKafka}
+import spark.SparkHelper
+
+/**
+ @see https://spark.apache.org/docs/latest/structured-streaming-kafka-integration.html
+ */
+object KafkaSource extends LazyLogger {
+  private val spark = SparkHelper.getSparkSession()
+
+  import spark.implicits._
+
+  /**
+    * will return, we keep some kafka metadata for our example, otherwise we would only focus on "radioCount" structure
+     |-- key: binary (nullable = true)
+     |-- value: binary (nullable = true)
+     |-- topic: string (nullable = true) : KEPT
+     |-- partition: integer (nullable = true) : KEPT
+     |-- offset: long (nullable = true) : KEPT
+     |-- timestamp: timestamp (nullable = true) : KEPT
+     |-- timestampType: integer (nullable = true)
+     |-- radioCount: struct (nullable = true)
+     |    |-- title: string (nullable = true)
+     |    |-- artist: string (nullable = true)
+     |    |-- radio: string (nullable = true)
+     |    |-- count: long (nullable = true)
+
+    * @return
+    *
+    *
+    * startingOffsets should use a JSON coming from the lastest offsets saved in our DB (Cassandra here)
+    */
+    def read(startingOption: String = "startingOffsets", partitionsAndOffsets: String = "earliest") : Dataset[SimpleSongAggregationKafka] = {
+      log.warn("Reading from Kafka")
+
+      spark
+      .readStream
+      .format("kafka")
+      .option("kafka.bootstrap.servers", "localhost:9092")
+      .option("subscribe", KafkaService.topicName)
+      .option("enable.auto.commit", false) // Cannot be set to true in Spark Strucutured Streaming https://spark.apache.org/docs/latest/structured-streaming-kafka-integration.html#kafka-specific-configurations
+      .option("group.id", "Structured-Streaming-Examples")
+      .option("failOnDataLoss", false) // when starting a fresh kafka (default location is temporary (/tmp) and cassandra is not (var/lib)), we have saved different offsets in Cassandra than real offsets in kafka (that contains nothing)
+      .option(startingOption, partitionsAndOffsets) //this only applies when a new query is started and that resuming will always pick up from where the query left off
+      .load()
+      .withColumn(KafkaService.radioStructureName, // nested structure with our json
+        from_json($"value".cast(StringType), KafkaService.schemaOutput) //From binary to JSON object
+      ).as[SimpleSongAggregationKafka]
+      .filter(_.radioCount != null) //TODO find a better way to filter bad json
+  }
+}
+package log
+
+import org.apache.log4j.LogManager
+
+trait LazyLogger {
+  @transient lazy val log = LogManager.getLogger(getClass)
+}
+package main
+
+import cassandra.CassandraDriver
+import elastic.ElasticSink
+import kafka.{KafkaSink, KafkaSource}
+import mapGroupsWithState.MapGroupsWithState
+import parquetHelper.ParquetService
+import spark.SparkHelper
+
+object Main {
+
+  def main(args: Array[String]) {
+    val spark = SparkHelper.getAndConfigureSparkSession()
+
+    //Classic Batch
+    //ParquetService.batchWay()
+
+    //Streaming way
+    //Generate a "fake" stream from a parquet file
+    val streamDS = ParquetService.streamingWay()
+
+    val songEvent = ParquetService.streamEachEvent
+
+    ElasticSink.writeStream(songEvent)
+
+    //Send it to Kafka for our example
+    KafkaSink.writeStream(streamDS)
+
+    //Finally read it from kafka, in case checkpointing is not available we read last offsets saved from Cassandra
+    val (startingOption, partitionsAndOffsets) = CassandraDriver.getKafaMetadata()
+    val kafkaInputDS = KafkaSource.read(startingOption, partitionsAndOffsets)
+
+    //Just debugging Kafka source into our console
+    KafkaSink.debugStream(kafkaInputDS)
+
+    //Saving using Datastax connector's saveToCassandra method
+    CassandraDriver.saveStreamSinkProvider(kafkaInputDS)
+
+    //Saving using the foreach method
+    //CassandraDriver.saveForeach(kafkaInputDS) //Untype/unsafe method using CQL  --> just here for example
+
+    //Another fun example managing an arbitrary state
+    MapGroupsWithState.write(kafkaInputDS)
+
+    //Wait for all streams to finish
+    spark.streams.awaitAnyTermination()
+  }
+}
+package mapGroupsWithState
+
+import org.apache.spark.sql.{DataFrame, Dataset}
+import org.apache.spark.sql.functions.{struct, to_json, _}
+import _root_.log.LazyLogger
+import org.apache.spark.sql.types.StringType
+import spark.SparkHelper
+import org.apache.spark.sql.streaming.{GroupState, GroupStateTimeout, OutputMode}
+import radio.{ArtistAggregationState, SimpleSongAggregation, SimpleSongAggregationKafka}
+
+object MapGroupsWithState extends LazyLogger {
+  private val spark = SparkHelper.getSparkSession()
+
+  import spark.implicits._
+
+
+  def updateArtistStateWithEvent(state: ArtistAggregationState, artistCount : SimpleSongAggregation) = {
+    log.warn("MapGroupsWithState - updateArtistStateWithEvent")
+    if(state.artist == artistCount.artist) {
+      ArtistAggregationState(state.artist, state.count + artistCount.count)
+    } else {
+      state
+    }
+  }
+
+  def updateAcrossEvents(artist:String,
+                         inputs: Iterator[SimpleSongAggregation],
+                         oldState: GroupState[ArtistAggregationState]): ArtistAggregationState = {
+
+    var state: ArtistAggregationState = if (oldState.exists)
+      oldState.get
+    else
+      ArtistAggregationState(artist, 1L)
+
+    // for every rows, let's count by artist the number of broadcast, instead of counting by artist, title and radio
+    for (input <- inputs) {
+      state = updateArtistStateWithEvent(state, input)
+      oldState.update(state)
+    }
+
+    state
+  }
+
+
+  /**
+    *
+    * @return
+    *
+    * Batch: 4
+      -------------------------------------------
+      +------+-----+
+      |artist|count|
+      +------+-----+
+      | Drake| 4635|
+      +------+-----+
+
+      Batch: 5
+      -------------------------------------------
+      +------+-----+
+      |artist|count|
+      +------+-----+
+      | Drake| 4710|
+      +------+-----+
+    */
+  def write(ds: Dataset[SimpleSongAggregationKafka] ) = {
+    ds.select($"radioCount.title", $"radioCount.artist", $"radioCount.radio", $"radioCount.count")
+      .as[SimpleSongAggregation]
+      .groupByKey(_.artist)
+      .mapGroupsWithState(GroupStateTimeout.NoTimeout)(updateAcrossEvents) //we can control what should be done with the state when no update is received after a timeout.
+      .writeStream
+      .outputMode(OutputMode.Update())
+      .format("console")
+      .queryName("mapGroupsWithState - counting artist broadcast")
+      .start()
+  }
+}
+package parquetHelper
+
+import log.LazyLogger
+import org.apache.spark.sql.{DataFrame, Dataset}
+import org.apache.spark.sql.types._
+import radio.{SimpleSongAggregation, Song}
+import spark.SparkHelper
+
+object ParquetService extends LazyLogger {
+  val pathRadioStationSongs = "data/allRadioPartitionByRadioAndDate.parquet"
+  val pathRadioES = "data/broadcast.parquet"
+
+  private val spark = SparkHelper.getSparkSession()
+  import spark.implicits._
+
+  val schema = new StructType()
+    .add("timestamp", TimestampType)
+    .add("title", StringType)
+    .add("artist", StringType)
+    .add("radio", StringType)
+    .add("humanDate", LongType)
+    .add("hour", IntegerType)
+    .add("minute", IntegerType)
+    .add("allArtists", StringType)
+    .add("year", IntegerType)
+    .add("month", IntegerType)
+    .add("day", IntegerType)
+
+  def batchWay() = {
+    //Classic  Batch way
+    val batchWay =
+      spark
+        .read
+        .schema(ParquetService.schema)
+        .parquet(pathRadioStationSongs)
+        .where($"artist" === "Drake")
+        .groupBy($"radio", $"artist",  $"title")
+        .count()
+        .orderBy("count")
+        .as[Song]
+
+    batchWay.show()
+
+    batchWay
+  }
+
+  def streamingWay() : Dataset[SimpleSongAggregation] = {
+    log.warn("Starting to stream events from Parquet files....")
+
+    spark
+      .readStream
+      .schema(ParquetService.schema)
+      .option("maxFilesPerTrigger", 1000)  // Treat a sequence of files as a stream by picking one file at a time
+      .parquet(pathRadioStationSongs)
+      .as[Song]
+      .where($"artist" === "Drake")
+      .groupBy($"radio", $"artist",  $"title")
+      .count()
+      .as[SimpleSongAggregation]
+  }
+
+  def streamEachEvent : Dataset[Song]  = {
+    spark
+      .readStream
+      .schema(ParquetService.schema)
+      .option("maxFilesPerTrigger", 1000)  // Treat a sequence of files as a stream by picking one file at a time
+      .parquet(pathRadioES)
+      .as[Song]
+      .where($"artist" === "Drake")
+      .withWatermark("timestamp", "10 minutes")
+      .as[Song]
+  }
+
+  //Process stream on console to debug only
+  def debugStream(staticInputDF: DataFrame) = {
+    staticInputDF.writeStream
+      .format("console")
+      .outputMode("complete")
+      .queryName("Console - Count number of broadcasts for a title/artist by radio")
+      .start()
+  }
+}
+package radio
+
+import java.sql.Timestamp
+
+case class Song(timestamp: Long, humanDate:Long, year:Int, month:Int, day:Int, hour:Int, minute: Int, artist:String, allArtists: String, title:String, radio:String)
+
+case class SimpleSong(title: String, artist: String, radio: String)
+
+case class SimpleSongAggregation(title: String, artist: String, radio: String, count: Long)
+
+case class SimpleSongAggregationKafka(topic: String, partition: Int, offset: Long, timestamp: Timestamp, radioCount: SimpleSongAggregation)
+
+case class ArtistAggregationState(artist: String, count: Long)package spark
+
+import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.sql.SparkSession
+
+object SparkHelper {
+  def getAndConfigureSparkSession() = {
+    val conf = new SparkConf()
+      .setAppName("Structured Streaming from Parquet to Cassandra")
+      .setMaster("local[2]")
+      .set("spark.cassandra.connection.host", "127.0.0.1")
+      .set("spark.sql.streaming.checkpointLocation", "checkpoint")
+      .set("es.nodes", "localhost") // full config : https://www.elastic.co/guide/en/elasticsearch/hadoop/current/configuration.html
+      .set("es.index.auto.create", "true") //https://www.elastic.co/guide/en/elasticsearch/hadoop/current/spark.html
+      .set("es.nodes.wan.only", "true")
+
+    val sc = new SparkContext(conf)
+    sc.setLogLevel("WARN")
+
+    SparkSession
+      .builder()
+      .getOrCreate()
+  }
+
+  def getSparkSession() = {
+    SparkSession
+      .builder()
+      .getOrCreate()
+  }
+}
+
+
+
+
+
 Spark 团队之后对 Spark Streaming 的维护可能越来越少，Spark 2.4 版本的 Release Note 里面一个 Spark Streaming 相关的 ticket 都没有。相比之下，Structured Streaming 有将近十个 ticket 说明。所以各位同学，是时候舍弃 Spark Streaming 转向 Structured Streaming 了，当然理由并不止于此。我们这篇文章就来分析一下 Spark Streaming 的不足，以及Structured Streaming 的设计初衷和思想是怎么样的。
 
 首先可以注意到的了论文标题中的 Declarative API，中文一般叫做声明式编程 API。一般直接看到这个词可能不知道什么意思，但是当我们列出他的对立面：Imperative API，中文一般叫命令式编程 API，仿佛一切都明了了。是的，没错，Declarative 只是表达出我们想要什么，而Imperative 则是说为了得到什么我们需要做哪些东西一个个说明。举个例子，我们要一个糕点，去糕点店直接去定做告诉店员我们要什么样式的糕点，然后店员去给我们做出来，这就是Declarative。而 Imperative 对应的就是面粉店了。
@@ -23,14 +681,6 @@ Incremental query model: Structured Streaming 将会在新增的流式数据上�
 Support for end-to-end application: Structured Streaming 和内置的 connector 使的 end-to-end 程序写起来非常的简单，而且 "correct by default"。数据源和 sink 满足 "exactly-once" 语义，这样我们就可以在此基础上更好地和外部系统集成。
 
 复用 Spark SQL 执行引擎：我们知道 Spark SQL 执行引擎做了非常多的优化工作，比如执行计划优化、codegen、内存管理等。这也是 Structured Streaming 取得高性能和高吞吐的一个原因。
-
-
-
-
-
-
-2. Structured Streaming 核心设计
-
 
 
 
@@ -972,10 +1622,6 @@ aggDF
   .option("checkpointLocation", "path/to/HDFS/dir")
   .format("memory")
   .start()
-
-
-
-
 
 十，总结
 

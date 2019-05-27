@@ -1,0 +1,4426 @@
+
+商城项目demo
+  表现层-->业务层-->持久层-->数据库
+1000并发
+用户-->负载均衡服务器--->[{tomcat1(webapp)500并发}]
+
+需要20台服务器做tomcat集群。当tomcat集群中节点数量增加，服务能力先增加后下降。
+
+所以集群中节点数量不能太多，一般也就5个左右。(通信和session共享问题)
+
+10000并发
+需要按照功能点把系统拆分，拆分成独立的功能。单独为某一个节点添加服务器。需要系统之间配合才能完成整个业务逻辑。叫做分布式。
+
+
+分布式架构：多个子系统相互协作才能完成业务流程。系统之间需要进行通信。
+
+集群：同一个工程部署到多台服务器上。
+
+分布式架构：
+
+把系统按照模块拆分成多个子系统。
+
+优点：
+
+1、把模块拆分，使用接口通信，降低模块之间的耦合度。
+
+2、把项目拆分成若干个子项目，不同的团队负责不同的子项目。
+
+3、增加功能时只需要再增加一个子项目，调用其他系统的接口就可以。
+
+4、可以灵活的进行分布式部署。
+
+
+
+缺点：
+
+1、系统之间交互需要使用远程通信，接口开发增加工作量。
+
+2、各个模块有一些通用的业务逻辑无法共用。
+
+
+基于soa的架构：
+
+
+SOA：Service Oriented Architecture面向服务的架构。也就是把工程拆分成服务层、表现层两个工程。服务层中包含业务逻辑，只需要对外提供服务即可。表现层只需要
+
+处理和页面的交互，业务逻辑都是调用服务层的服务来实现。
+
+
+
+商城系统架构
+
+
+
+使用maven的好处:
+使用maven管理工程。
+
+Jar包的管理。
+
+工程之间的依赖管理。
+
+自动打包，部署上线。
+
+后台工程搭建分析
+Maven的常见打包方式：jar、war、pom
+
+Pom工程一般都是父工程，管理jar包的版本、maven插件的版本、统一的依赖管理。聚合工程。
+
+
+parent：父工程，打包方式pom，管理jar包的版本号。
+
+    |           项目中所有工程都应该继承父工程。
+
+|--common：通用的工具类通用的pojo。打包方式jar
+
+|--manager：服务层工程。聚合工程。Pom工程
+
+|--manager-dao：打包方式jar
+
+|--manager-pojo：打包方式jar
+
+|--manager-interface：打包方式jar
+
+|--manager-service：打包方式：war
+
+|--manager-web：表现层工程。打包方式war
+
+系统间通信
+分析
+由于商城是基于soa的架构，表现层和服务层是不同的工程。所以要实现商品列表查询需要两个系统之间进行通信。
+
+如何实现远程通信？
+
+1、Webservice：效率不高基于soap协议。项目中不推荐使用。
+
+2、使用restful形式的服务：http+json。很多项目中应用。如果服务太多，服务之间调用关系混乱，需要治疗服务。
+
+3、使用dubbo。使用rpc协议进行远程调用，直接使用socket通信。传输效率高，并且可以统计出系统之间的调用关系、调用次数。
+
+什么是dubbo
+随着互联网的发展，网站应用的规模不断扩大，常规的垂直应用架构已无法应对，分布式服务架构以及流动计算架构势在必行，亟需一个治理系统确保架构有条不紊的演进。
+
+
+
+单一应用架构
+
+当网站流量很小时，只需一个应用，将所有功能都部署在一起，以减少部署节点和成本。
+
+此时，用于简化增删改查工作量的数据访问框架(ORM) 是关键。
+
+垂直应用架构
+
+当访问量逐渐增大，单一应用增加机器带来的加速度越来越小，将应用拆成互不相干的几个应用，以提升效率。
+
+此时，用于加速前端页面开发的Web框架(MVC) 是关键。
+
+分布式服务架构
+
+当垂直应用越来越多，应用之间交互不可避免，将核心业务抽取出来，作为独立的服务，逐渐形成稳定的服务中心，使前端应用能更快速的响应多变的市场需求。
+
+此时，用于提高业务复用及整合的分布式服务框架(RPC) 是关键。
+
+流动计算架构
+
+当服务越来越多，容量的评估，小服务资源的浪费等问题逐渐显现，此时需增加一个调度中心基于访问压力实时管理集群容量，提高集群利用率。
+
+此时，用于提高机器利用率的资源调度和治理中心(SOA) 是关键。
+
+
+
+Dubbo就是资源调度和治理中心的管理工具。
+
+Dubbo的架构
+
+
+
+节点角色说明：
+
+Provider: 暴露服务的服务提供方。
+
+Consumer: 调用远程服务的服务消费方。
+
+Registry: 服务注册与发现的注册中心。
+
+Monitor: 统计服务的调用次调和调用时间的监控中心。
+
+Container: 服务运行容器。
+
+调用关系说明：
+
+0. 服务容器负责启动，加载，运行服务提供者。
+
+1. 服务提供者在启动时，向注册中心注册自己提供的服务。
+
+2. 服务消费者在启动时，向注册中心订阅自己所需的服务。
+
+3. 注册中心返回服务提供者地址列表给消费者，如果有变更，注册中心将基于长连接推送变更数据给消费者。
+
+4. 服务消费者，从提供者地址列表中，基于软负载均衡算法，选一台提供者进行调用，如果调用失败，再选另一台调用。
+
+5. 服务消费者和提供者，在内存中累计调用次数和调用时间，定时每分钟发送一次统计数据到监控中心。
+
+使用方法
+Dubbo采用全Spring配置方式，透明化接入应用，对应用没有任何API侵入，只需用Spring加载Dubbo的配置即可，Dubbo基于Spring的Schema扩展进行加载。
+
+
+
+单一工程中spring的配置
+
+<bean id="xxxService" class="com.xxx.XxxServiceImpl" />
+
+<bean id="xxxAction" class="com.xxx.XxxAction">
+
+<property name="xxxService" ref="xxxService" />
+
+</bean>
+
+
+
+远程服务：
+
+在本地服务的基础上，只需做简单配置，即可完成远程化：
+
+
+
+将上面的local.xml配置拆分成两份，将服务定义部分放在服务提供方remote-provider.xml，将服务引用部分放在服务消费方remote-consumer.xml。
+
+并在提供方增加暴露服务配置<dubbo:service>，在消费方增加引用服务配置<dubbo:reference>。
+
+发布服务：
+
+<!-- 和本地服务一样实现远程服务 -->
+
+<bean id="xxxService" class="com.xxx.XxxServiceImpl" />
+
+<!-- 增加暴露远程服务配置 -->
+
+<dubbo:service interface="com.xxx.XxxService" ref="xxxService" />
+
+
+
+调用服务：
+
+<!-- 增加引用远程服务配置 -->
+
+<dubbo:reference id="xxxService" interface="com.xxx.XxxService" />
+
+<!-- 和本地服务一样使用远程服务 -->
+
+<bean id="xxxAction" class="com.xxx.XxxAction">
+
+<property name="xxxService" ref="xxxService" />
+
+</bean>
+
+
+
+注册中心
+注册中心负责服务地址的注册与查找，相当于目录服务，服务提供者和消费者只在启动时与注册中心交互，注册中心不转发请求，压力较小。使用dubbo-2.3.3以上版本，
+
+建议使用zookeeper注册中心。Zookeeper是Apacahe Hadoop的子项目，是一个树型的目录服务，支持变更推送，适合作为Dubbo服务的注册中心，工业强度较高，可用于生产环境，
+
+并推荐使用
+
+Zookeeper的安装：
+
+第一步：安装jdk
+
+第二步：解压缩zookeeper压缩包
+
+第三步：将conf文件夹下zoo_sample.cfg复制一份，改名为zoo.cfg
+
+第四步：修改配置dataDir属性，指定一个真实目录
+
+第五步：
+
+启动zookeeper：bin/zkServer.sh start
+
+关闭zookeeper：bin/zkServer.sh stop
+
+查看zookeeper状态：bin/zkServer.sh status
+
+注意要关闭linux的防火墙。
+
+
+
+
+发布服务
+Service工程中添加dubbo依赖的jar包:
+
+<dependency>
+
+<groupId>com.alibaba</groupId>
+
+<artifactId>dubbo</artifactId>
+
+<exclusions>
+
+<exclusion>
+
+<groupId>org.springframework</groupId>
+
+<artifactId>spring</artifactId>
+
+</exclusion>
+
+<exclusion>
+
+<groupId>org.jboss.netty</groupId>
+
+<artifactId>netty</artifactId>
+
+</exclusion>
+
+</exclusions>
+
+</dependency>
+
+<dependency>
+
+<groupId>org.apache.zookeeper</groupId>
+
+<artifactId>zookeeper</artifactId>
+
+</dependency>
+
+<dependency>
+
+<groupId>com.github.sgroschupf</groupId>
+
+<artifactId>zkclient</artifactId>
+
+</dependency>
+
+
+在spring的配置文件中添加dubbo的约束:
+
+
+xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+
+
+http://code.alibabatech.com/schema/dubbo http://code.alibabatech.com/schema/dubbo/dubbo.xsd
+
+发布服务：
+
+<!--使用dubbo发布服务-->
+
+<!--提供方应用信息，用于计算依赖关系-->
+
+<dubbo:applicationname="taotao-manager"/>
+
+<dubbo:registry protocol="zookeeper"
+
+address="ip:端口,ip:端口,ip:端口"/>
+
+<!--用dubbo协议在20880端口暴露服务-->
+
+<dubbo:protocolname="dubbo"port="20880"/>
+
+<!--声明需要暴露的服务接口-->
+
+<dubbo:serviceinterface="com.service.ItemService"ref="itemServiceImpl"/>
+
+
+引用服务
+web工程中添加dubbo依赖的jar包
+
+<!--dubbo相关-->
+
+<dependency>
+
+<groupId>com.alibaba</groupId>
+
+<artifactId>dubbo</artifactId>
+
+<exclusions>
+
+<exclusion>
+
+<groupId>org.springframework</groupId>
+
+<artifactId>spring</artifactId>
+
+</exclusion>
+
+<exclusion>
+
+<groupId>org.jboss.netty</groupId>
+
+<artifactId>netty</artifactId>
+
+</exclusion>
+
+</exclusions>
+
+</dependency>
+
+<dependency>
+
+<groupId>org.apache.zookeeper</groupId>
+
+<artifactId>zookeeper</artifactId>
+
+</dependency>
+
+<dependency>
+
+<groupId>com.github.sgroschupf</groupId>
+
+<artifactId>zkclient</artifactId>
+
+</dependency>
+
+springmvc的配置文件中添加服务的引用
+
+约束：xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+
+http://code.alibabatech.com/schema/dubbohttp://code.alibabatech.com/schema/dubbo/dubbo.xsd
+
+
+<!--引用dubbo服务-->
+
+<dubbo:applicationname="manager-web"/>
+
+<dubbo:registryprotocol="zookeeper"address="ip:端口,ip:端口,ip:端口"/>
+
+<dubbo:referenceinterface="com.service.ItemService"id="itemService"/>
+
+
+Controller中注入：
+
+@Autowired
+
+privateItemServiceitemService;
+
+
+
+解决mybatis中mapper映射文件不发布问题：
+dao工程的pom文件中添加如下内容：
+<!--如果不添加此节点mybatis的mapper.xml文件都会被漏掉。-->
+
+<build>
+
+<resources>
+
+<resource>
+
+<directory>src/main/java</directory>
+
+<includes>
+
+<include>**/*.properties</include>
+
+<include>**/*.xml</include>
+
+</includes>
+
+<filtering>false</filtering>
+
+</resource>
+
+</resources>
+
+</build>
+
+
+Dubbo监控中心
+需要安装tomcat，然后部署监控中心即可。
+
+1、部署监控中心：
+
+[root@localhost~]# cp dubbo-admin-2.5.4.warapache-tomcat-7.0.47/webapps/dubbo-admin.war
+
+启动tomcat
+
+访问http://192.168.25.167:8080/dubbo-admin/
+
+用户名：root
+
+密码：root
+
+如果监控中心和注册中心在同一台服务器上，可以不需要任何配置。
+
+如果不在同一台服务器，需要修改配置文件：
+
+/root/apache-tomcat-7.0.47/webapps/dubbo-admin/WEB-INF/dubbo.properties
+
+dubbo.registry.address=zookeeper://注册中心的ip地址:端口
+dubbo.admin.root.password=root ----root用户的的密码
+
+
+
+
+springmvc整合静态页面:
+由于在web.xml中定义的url拦截形式为“/”表示拦截所有的url请求，包括静态资源例如css、js等。所以需要在springmvc.xml中添加资源映射标签：
+
+<mvc:resourceslocation="/WEB-INF/js/"mapping="/js/**"/>
+
+<mvc:resourceslocation="/WEB-INF/css/"mapping="/css/**"/>
+
+
+
+
+图片上传分析：
+传统方式：浏览器->图片上传/下载->tomcat/webapp/img/xxx.img集群环境：
+
+浏览器->负载均衡服务器nginx->上传图片->tomcat1/webapp/img/a.img-->文件上传->fastDFS
+
+       访问图片->fastDFS(imges-|a.img /http服务器:tomcat/apache/nginx)
+
+解决方案：
+
+搭建一个图片服务器，专门保存图片。可以使用分布式文件系统FastDFS。
+
+
+FastDFS架构
+FastDFS架构包括 Tracker server和Storage server。客户端请求Tracker server进行文件上传、下载，通过Tracker server调度最终由Storage server完成文件上传和下载。
+
+Tracker server作用是负载均衡和调度，通过Tracker server在文件上传时可以根据一些策略找到Storage server提供文件上传服务。可以将tracker称为追踪服务器或调度服务器。
+
+Storage server作用是文件存储，客户端上传的文件最终存储在Storage服务器上，Storage server没有实现自己的文件系统而是利用操作系统 的文件系统来管理文件。
+
+可以将storage称为存储服务器。
+
+
+
+
+
+
+服务端两个角色：
+
+Tracker：管理集群，tracker也可以实现集群。每个tracker节点地位平等。
+
+收集Storage集群的状态。
+
+Storage：实际保存文件
+
+Storage分为多个组，每个组之间保存的文件是不同的。每个组内部可以有多个成员，组成员内部保存的内容是一样的，组成员的地位是一致的，没
+
+有主从的概念。
+
+
+
+文件上传的流程
+
+
+
+客户端上传文件后存储服务器将文件ID返回给客户端，此文件ID用于以后访问该文件的索引信息。文件索引信息包括：组名，虚拟磁盘路径，数据两级目录，文件名。
+
+
+
+
+
+
+
+
+
+
+
+
+组名：文件上传后所在的storage组名称，在文件上传成功后有storage服务器返回，需要客户端自行保存。
+
+虚拟磁盘路径：storage配置的虚拟路径，与磁盘选项store_path*对应。如果配置了store_path0则是M00，如果配置了store_path1则是M01，以此类推。
+
+数据两级目录：storage服务器在每个虚拟磁盘路径下创建的两级目录，用于存储数据文件。
+
+文件名：与文件上传时不同。是由存储服务器根据特定信息生成，文件名包含：源存储服务器IP地址、文件创建时间戳、文件大小、随机数和文件拓展名等信息。
+
+
+文件下载的流程：
+
+最简单的FastDFS架构
+
+
+
+
+
+
+图片服务器使用：
+
+
+Java环境，下载、导入fastdfs_client到ide中，运行maven install命令，在pom文件中引入坐标
+
+上传图片：
+上传步骤：
+
+
+1、加载配置文件，配置文件中的内容就是tracker服务的地址。
+
+配置文件内容：tracker_server=192.168.25.133:22122
+
+2、创建一个TrackerClient对象。直接new一个。
+
+3、使用TrackerClient对象创建连接，获得一个TrackerServer对象。
+
+4、创建一个StorageServer的引用，值为null
+
+5、创建一个StorageClient对象，需要两个参数TrackerServer对象、StorageServer的引用
+
+6、使用StorageClient对象上传图片。返回数组。包含组名和图片的路径。
+
+
+使用工具类上传：
+
+FastDFSClientfastDFSClient =new FastDFSClient("D:/.../client.conf");
+
+String file = fastDFSClient.uploadFile("D:/..../2f2eb938943d.jpg");
+
+依赖的jar包/坐标：
+
+
+需要把commons-io、fileupload的jar包添加到工程中。
+
+springmvc中修改配置文件：
+
+配置多媒体解析器。
+
+<!-- 定义文件上传解析器 -->
+
+<bean id="multipartResolver"
+
+class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+
+<!-- 设定默认编码 -->
+
+<property name="defaultEncoding" value="UTF-8"></property>
+
+<!-- 设定文件上传的最大值5MB，5*1024*1024 -->
+
+<property name="maxUploadSize" value="5242880"></property>
+
+</bean>
+
+controller中：
+
+map fileUpload(MultipartFile uploadFile) {
+
+try {
+
+//1、取文件的扩展名
+
+String originalFilename = uploadFile.getOriginalFilename();
+
+String extName = originalFilename.substring(originalFilename.lastIndexOf(".") + 1);
+
+//2、创建一个FastDFS的客户端
+
+FastDFSClient fastDFSClient = new FastDFSClient("classpath:resource/client.conf");
+
+//3、执行上传处理
+
+String path = fastDFSClient.uploadFile(uploadFile.getBytes(),extName);
+
+//4、拼接返回的url和ip地址，拼装成完整的url ，回显图片
+
+String url = IMAGE_SERVER_URL + path;
+
+//5、返回map
+
+Map result =new HashMap<>();
+
+result.put("error", 0);
+
+result.put("url",url);
+
+return result;
+
+} catch (Exceptione) {
+
+e.printStackTrace();
+
+//5、返回map
+
+Map result =new HashMap<>();
+
+result.put("error", 1);
+
+result.put("message","图片上传失败");
+
+return result;
+
+}
+
+}
+
+
+浏览器兼容问题：
+
+@requestMapping(procedure=MediaType.TEXT_PLAIN_VALUE+";charset=utf-8")
+
+return JsonUtils.objectToJson(result);//返回字符串就没问题了
+
+
+首页动态展示分析
+内容信息要从数据库中获得
+
+动态展示分析
+1、内容需要进行分类
+
+2、分类下有子分类，需要动态管理。
+
+3、分类下有内容列表
+
+4、单点的内容信息
+
+a) 有图片 b) 有链接 c) 有标题 d) 有价格 e) 包含大文本类型，可以作为公告
+
+需要一个内容分类表和一个内容表。内容分类和内容表是一对多的关系。
+
+内容分类表，需要存储树形结构的数据。
+
+需要有后台来维护内容信息。Cms系统。
+
+新增节点:
+
+
+业务逻辑：
+
+1、接收两个参数：parentId、name
+
+2、向tb_content_category表中插入数据。
+
+a) 创建一个TbContentCategory对象
+
+b) 补全TbContentCategory对象的属性
+
+c) 向tb_content_category表中插入数据
+
+3、判断父节点的isparent是否为true，不是true需要改为true。
+
+4、需要主键返回。
+
+5、返回Result，其中包装TbContentCategory对象
+
+Dao层:
+需要添加主键返回:<selectkey keyProperty="id" resultType="long" order="AFTER">select LAST_INSERT_ID();
+
+</selectkey>
+
+删除节点
+1、根据id删除记录。
+
+2、判断父节点下是否还有子节点，如果没有需要把父节点的isparent改为false
+
+3、如果删除的是父节点，子节点要级联删除。
+
+两种解决方案：
+
+1）如果判断是父节点不允许删除。
+
+递归删除。
+
+数据展示流程：
+
+
+
+
+
+
+
+
+
+真实场景：
+
+
+首页是系统的门户，也就是系统的入口。所以首页的访问量是这个系统最大的。如果每次展示首页都从数据库中查询首页的内容信息，那么势必会对数据库造成很大的
+
+压力，所以需要使用缓存来减轻数据库压力。实现缓存的工具有很多，现在比较流行的是redis。
+
+
+
+Redis五种数据类型
+String：key-value（做缓存）
+
+Redis中所有的数据都是字符串。命令不区分大小写，key是区分大小写的。Redis是单线程的。Redis中不适合保存内容大的数据。
+
+get、set、
+
+incr：加一（生成id）
+
+Decr：减一
+
+
+
+Hash：key-fields-values（做缓存）
+
+相当于一个key对于一个map，map中还有key-value
+
+使用hash对key进行归类。
+
+Hset：向hash中添加内容
+
+Hget：从hash中取内容
+
+List：有顺序可重复
+
+lpush list1 a b c d
+
+lrange list1 0 -1
+
+rpush list1 1 2 3 4
+
+lrange list1 0 -1
+
+lpop list1
+
+
+Set：元素无顺序，不能重复
+
+
+sadd set1 a b c c c d
+
+smembers set1
+
+srem set1 a
+
+smembers set1
+
+集合运算命令
+
+
+SortedSet（zset）：有顺序，不能重复
+
+
+zadd zset1 2 a 5 b 1 c 6 d
+
+zrange zset1 0 -1
+
+zrem zset1 a
+
+zrange zset1 0 -1
+
+zrevrange zset1 0 -1
+
+zrange zset1 0 -1 withscores
+
+zrevrange zset1 0 -1 withscores
+
+Key命令:
+
+
+Expire key second：设置key的过期时间
+
+Ttl key：查看key的有效期
+
+Persist key：清除key的过期时间。Key持久化。
+
+
+持久化方案:
+
+Redis的所有数据都是保存到内存中的。
+
+Rdb：快照形式，定期把内存中当前时刻的数据保存到磁盘。Redis默认支持的持久化方案。
+
+aof形式：append only file。把所有对redis数据库操作的命令，增删改操作的命令。保存到文件中。数据库恢复时把所有的命令执行一遍即可。
+
+在redis.conf配置文件中配置。
+
+
+Rdb：
+
+save 900 1
+
+save 300 10
+
+save 60 1000
+
+aof:
+
+appendonly yes
+
+appendfilename "appendonly.aof"
+
+两种持久化方案同时开启使用aof文件来恢复数据库
+
+Redis集群的搭建
+redis-cluster架构图
+
+redis-cluster投票:容错
+
+
+
+架构细节:
+
+(1)所有的redis节点彼此互联(PING-PONG机制),内部使用二进制协议优化传输速度和带宽.
+
+(2)节点的fail是通过集群中超过半数的节点检测失效时才生效.
+
+(3)客户端与redis节点直连,不需要中间proxy层.客户端不需要连接集群所有节点,连接集群中任何一个可用节点即可
+
+(4)redis-cluster把所有的物理节点映射到[0-16383]slot上,cluster负责维护node<->slot<->value
+
+Redis集群中内置了16384个哈希槽，当需要在Redis集群中放置一个key-value时，redis先对key使用crc16算法算出一个结果，然后把结果对
+
+16384求余数，这样每个key都会对应一个编号在0-16383之间的哈希槽，redis会根据节点数量大致均等的将哈希槽映射到不同的节点
+
+
+
+Redis集群的搭建
+Redis集群中至少应该有三个节点。要保证集群的高可用，需要每个节点有一个备份机。
+
+Redis集群至少需要6台服务器。
+
+搭建伪分布式。可以使用一台机器运行6个redis实例。需要修改redis的端口号7001-7006
+
+
+
+集群搭建环境
+1、使用ruby脚本搭建集群。需要ruby的运行环境。
+
+安装ruby
+
+yum install ruby
+
+yum install rubygems
+
+2、安装ruby脚本运行使用的包。
+
+[root@localhost ~]# gem install redis-3.0.0.gem
+
+Successfully installed redis-3.0.0
+
+1 gem installed
+
+Installing ri documentation for redis-3.0.0...
+
+Installing RDoc documentation for redis-3.0.0...
+
+[root@localhost ~]#
+
+[root@localhost ~]# cd redis-3.0.0/src
+
+[root@localhost src]# ll *.rb
+
+-rwxrwxr-x. 1 root root 48141 Apr  1  2015redis-trib.rb
+
+
+搭建步骤
+
+第一步：创建6个redis实例，每个实例运行在不同的端口。需要修改redis.conf配置文件。配置文件中还需要把cluster-enabled yes前的注释去掉。
+
+第二步：启动每个redis实例。
+
+第三步：使用ruby脚本搭建集群。
+
+./redis-trib.rb create --replicas 1  IP:端口,IP:端口,IP:端口,IP:端口,IP:端口,IP:端口(后面三台为备份机)
+
+
+
+创建关闭集群的脚本：
+
+[root@localhost redis-cluster]# vim shutdow-all.sh
+
+redis01/redis-cli -p 7001 shutdown
+
+redis01/redis-cli -p 7002 shutdown
+
+redis01/redis-cli -p 7003 shutdown
+
+redis01/redis-cli -p 7004 shutdown
+
+redis01/redis-cli -p 7005 shutdown
+
+redis01/redis-cli -p 7006 shutdown
+
+[root@localhost redis-cluster]# chmod u+x shutdow-all.sh
+
+
+
+[root@localhost redis-cluster]# ./redis-trib.rb create --replicas 1  IP:端口,IP:端口,IP:端口,IP:端口,IP:端口,IP:端口(后面三台为备份机)
+
+>>> Creating cluster
+
+Connecting to node 192.168.25.153:7001: OK
+
+Connecting to node 192.168.25.153:7002: OK
+
+Connecting to node 192.168.25.153:7003: OK
+
+Connecting to node 192.168.25.153:7004: OK
+
+Connecting to node 192.168.25.153:7005: OK
+
+Connecting to node 192.168.25.153:7006: OK
+
+>>> Performing hash slots allocation on 6 nodes...
+
+Using 3 masters:
+
+ip:端口
+
+ip:端口
+
+ip:端口
+
+Adding replica 192.168.25.153:7004 to 192.168.25.153:7001
+
+Adding replica 192.168.25.153:7005 to 192.168.25.153:7002
+
+Adding replica 192.168.25.153:7006 to 192.168.25.153:7003
+
+M: 2e48ae301e9c32b04a7d4d92e15e98e78de8c1f3 192.168.25.153:7001
+
+    slots:0-5460 (5461 slots) master
+
+M: 8cd93a9a943b4ef851af6a03edd699a6061ace01 192.168.25.153:7002
+
+    slots:5461-10922 (5462 slots) master
+
+M: 2935007902d83f20b1253d7f43dae32aab9744e6 192.168.25.153:7003
+
+slots:10923-16383 (5461 slots) master
+
+S: 74f9d9706f848471583929fc8bbde3c8e99e211b 192.168.25.153:7004
+
+    replicates 2e48ae301e9c32b04a7d4d92e15e98e78de8c1f3
+
+S: 42cc9e25ebb19dda92591364c1df4b3a518b795b 192.168.25.153:7005
+
+  replicates 8cd93a9a943b4ef851af6a03edd699a6061ace01
+
+S: 8b1b11d509d29659c2831e7a9f6469c060dfcd39 192.168.25.153:7006
+
+      replicates 2935007902d83f20b1253d7f43dae32aab9744e6
+
+Can I set the above configuration? (type 'yes' to accept): yes
+
+>>> Nodes configuration updated
+
+>>> Assign a different config epoch to each node
+
+>>> Sending CLUSTER MEET messages to join the cluster
+
+Waiting for the cluster to join.....
+
+>>> Performing Cluster Check (using node 192.168.25.153:7001)
+
+M: 2e48ae301e9c32b04a7d4d92e15e98e78de8c1f3 192.168.25.153:7001
+
+    slots:0-5460 (5461 slots) master
+
+M: 8cd93a9a943b4ef851af6a03edd699a6061ace01 192.168.25.153:7002
+
+   slots:5461-10922 (5462 slots) master
+
+M: 2935007902d83f20b1253d7f43dae32aab9744e6 192.168.25.153:7003
+
+    slots:10923-16383 (5461 slots) master
+
+M: 74f9d9706f848471583929fc8bbde3c8e99e211b 192.168.25.153:7004
+
+    slots: (0 slots) master
+
+    replicates 2e48ae301e9c32b04a7d4d92e15e98e78de8c1f3
+
+M: 42cc9e25ebb19dda92591364c1df4b3a518b795b 192.168.25.153:7005
+
+    slots: (0 slots) master
+
+   replicates 8cd93a9a943b4ef851af6a03edd699a6061ace01
+
+M: 8b1b11d509d29659c2831e7a9f6469c060dfcd39 192.168.25.153:7006
+
+    slots: (0 slots) master
+
+    replicates 2935007902d83f20b1253d7f43dae32aab9744e6
+
+[OK] All nodes agree about slots configuration.
+
+>>> Check for open slots...
+
+>>> Check slots coverage...
+
+[OK] All 16384 slots covered.
+
+[root@localhost redis-cluster]#
+
+集群的使用方法
+Redis-cli连接集群。
+
+[root@localhost redis-cluster]# redis01/redis-cli -p 7002-c
+
+-c：代表连接的是redis集群
+
+
+
+
+Jedis
+需要把jedis依赖的jar包添加到工程中。Maven工程中需要把jedis的坐标添加到依赖
+
+连接单机版
+第一步：创建一个Jedis对象。需要指定服务端的ip及端口。
+
+
+Jedis jedis = new Jedis("192.168.25.153", 6379);
+
+第二步：使用Jedis对象操作数据库，每个redis命令对应一个方法。
+
+
+String result = jedis.get("hello");
+
+第三步：关闭Jedis
+
+jedis.close();
+
+连接单机版使用连接池
+
+// 第一步：创建一个JedisPool对象。需要指定服务端的ip及端口。
+
+JedisPool jedisPool = new JedisPool("192.168.25.153", 6379);
+
+// 第二步：从JedisPool中获得Jedis对象。
+
+Jedis jedis = jedisPool.getResource();
+
+// 第三步：使用Jedis操作redis服务器。
+
+jedis.set("jedis","test");
+
+String result = jedis.get("jedis");
+
+System.out.println(result);
+
+// 第四步：操作完毕后关闭jedis对象，连接池回收资源。
+
+jedis.close();
+
+// 第五步：关闭JedisPool对象。
+
+jedisPool.close();
+
+
+连接集群版
+// 第一步：使用JedisCluster对象。需要一个Set<HostAndPort>参数。Redis节点的列表。
+
+Set<HostAndPort> nodes = new HashSet<>();
+
+nodes.add(new HostAndPort("192.168.25.153", 7001));
+
+nodes.add(new HostAndPort("192.168.25.153", 7002));
+
+nodes.add(new HostAndPort("192.168.25.153", 7003));
+
+nodes.add(new HostAndPort("192.168.25.153", 7004));
+
+nodes.add(new HostAndPort("192.168.25.153", 7005));
+
+nodes.add(new HostAndPort("192.168.25.153", 7006));
+
+JedisCluster jedisCluster = new JedisCluster(nodes);
+
+// 第二步：直接使用JedisCluster对象操作redis。在系统中单例存在。
+
+jedisCluster.set("hello","100");
+
+String result = jedisCluster.get("hello");
+
+// 第三步：打印结果
+
+System.out.println(result);
+
+// 第四步：系统关闭前，关闭JedisCluster对象。
+
+jedisCluster.close();
+
+
+
+向业务逻辑中添加缓存
+接口封装
+常用的操作redis的方法提取出一个接口，分别对应单机版和集群版创建两个实现类。
+
+接口定义
+
+String set(String key, String value);
+
+String get(String key);
+
+Boolean exists(String key);
+
+Long expire(String key, int seconds);
+
+Long ttl(String key);
+
+Long incr(String key);
+
+Long hset(String key, String field, String value);
+
+String hget(String key, String field);
+
+Long hdel(String key, String... field);
+
+1.1.1. 单机版实现类
+public class JedisClientPoolimplements JedisClient {
+
+@Autowired
+
+private JedisPool jedisPool;
+
+
+
+@Override
+
+public String set(Stringkey, Stringvalue) {
+
+Jedis jedis = jedisPool.getResource();
+
+String result = jedis.set(key, value);
+
+jedis.close();
+
+return result;
+
+}
+
+
+
+@Override
+
+public String get(Stringkey) {
+
+Jedis jedis = jedisPool.getResource();
+
+String result = jedis.get(key);
+
+jedis.close();
+
+return result;
+
+}
+
+
+
+@Override
+
+public Boolean exists(Stringkey) {
+
+Jedis jedis = jedisPool.getResource();
+
+Boolean result = jedis.exists(key);
+
+jedis.close();
+
+return result;
+
+}
+
+
+
+@Override
+
+public Long expire(Stringkey,int seconds) {
+
+Jedis jedis = jedisPool.getResource();
+
+Long result = jedis.expire(key, seconds);
+
+jedis.close();
+
+return result;
+
+}
+
+
+
+@Override
+
+public Long ttl(Stringkey) {
+
+Jedis jedis = jedisPool.getResource();
+
+Long result = jedis.ttl(key);
+
+jedis.close();
+
+return result;
+
+}
+
+
+
+@Override
+
+public Long incr(Stringkey) {
+
+Jedis jedis = jedisPool.getResource();
+
+Long result = jedis.incr(key);
+
+jedis.close();
+
+return result;
+
+}
+
+
+
+@Override
+
+public Long hset(Stringkey, Stringfield, Stringvalue) {
+
+Jedis jedis = jedisPool.getResource();
+
+Long result = jedis.hset(key, field, value);
+
+jedis.close();
+
+return result;
+
+}
+
+
+
+@Override
+
+public String hget(Stringkey, Stringfield) {
+
+Jedis jedis = jedisPool.getResource();
+
+String result = jedis.hget(key, field);
+
+jedis.close();
+
+return result;
+
+}
+
+
+
+@Override
+
+public Long hdel(Stringkey, String...field) {
+
+Jedis jedis = jedisPool.getResource();
+
+Long result = jedis.hdel(key, field);
+
+jedis.close();
+
+return result;
+
+}
+
+
+
+}
+
+spring中配置
+
+<!-- 配置单机版的连接 -->
+
+<bean id="jedisPool" class="redis.clients.jedis.JedisPool">
+
+<constructor-arg name="host" value="192.168.25.153"></constructor-arg>
+
+<constructor-arg name="port" value="6379"></constructor-arg>
+
+</bean>
+
+<bean id="jedisClientPool" class="com.taotao.jedis.JedisClientPool"/>
+
+集群版实现类
+public class JedisClientClusterimplements JedisClient {
+
+@Autowired
+
+private JedisClusterjedisCluster;
+
+
+
+@Override
+
+public String set(Stringkey, Stringvalue) {
+
+return jedisCluster.set(key,value);
+
+}
+
+
+
+@Override
+
+public String get(Stringkey) {
+
+return jedisCluster.get(key);
+
+}
+
+
+
+@Override
+
+public Boolean exists(Stringkey) {
+
+return jedisCluster.exists(key);
+
+}
+
+
+
+@Override
+
+public Long expire(Stringkey,int seconds) {
+
+return jedisCluster.expire(key,seconds);
+
+}
+
+
+
+@Override
+
+public Long ttl(Stringkey) {
+
+return jedisCluster.ttl(key);
+
+}
+
+
+
+@Override
+
+public Long incr(Stringkey) {
+
+return jedisCluster.incr(key);
+
+}
+
+
+
+@Override
+
+public Long hset(Stringkey, Stringfield, Stringvalue) {
+
+return jedisCluster.hset(key,field,value);
+
+}
+
+
+
+@Override
+
+public String hget(Stringkey, Stringfield) {
+
+return jedisCluster.hget(key,field);
+
+}
+
+
+
+@Override
+
+public Long hdel(Stringkey, String...field) {
+
+return jedisCluster.hdel(key,field);
+
+}
+
+
+
+}
+
+Spring的配置：
+
+<!-- 集群版的配置 -->
+
+<bean id="jedisCluster" class="redis.clients.jedis.JedisCluster">
+
+<constructor-arg>
+
+<set>
+
+<bean class="redis.clients.jedis.HostAndPort">
+
+<constructor-arg name="host" value="192.168.25.153"></constructor-arg>
+
+<constructor-arg name="port" value="7001"></constructor-arg>
+
+</bean>
+
+<bean class="redis.clients.jedis.HostAndPort">
+
+<constructor-arg name="host" value="192.168.25.153"></constructor-arg>
+
+<constructor-arg name="port" value="7002"></constructor-arg>
+
+</bean>
+
+<bean class="redis.clients.jedis.HostAndPort">
+
+<constructor-arg name="host" value="192.168.25.153"></constructor-arg>
+
+<constructor-arg name="port" value="7003"></constructor-arg>
+
+</bean>
+
+<bean class="redis.clients.jedis.HostAndPort">
+
+<constructor-arg name="host" value="192.168.25.153"></constructor-arg>
+
+<constructor-arg name="port" value="7004"></constructor-arg>
+
+</bean>
+
+<bean class="redis.clients.jedis.HostAndPort">
+
+<constructor-arg name="host" value="192.168.25.153"></constructor-arg>
+
+<constructor-arg name="port" value="7005"></constructor-arg>
+
+</bean>
+
+<bean class="redis.clients.jedis.HostAndPort">
+
+<constructor-arg name="host" value="192.168.25.153"></constructor-arg>
+
+<constructor-arg name="port" value="7006"></constructor-arg>
+
+</bean>
+
+</set>
+
+</constructor-arg>
+
+</bean>
+
+<bean id="jedisClientCluster" class="com.taotao.jedis.JedisClientCluster"/>
+
+注意：单机版和集群版不能共存，使用单机版时注释集群版的配置。使用集群版，把单机版注释。
+
+向redis中添加缓存：
+
+Key：cid
+
+Value：内容列表。需要把java对象转换成json。
+
+使用hash对key进行归类。
+
+HASH_KEY:HASH
+
+            |--KEY:VALUE
+
+            |--KEY:VALUE
+
+            |--KEY:VALUE
+
+            |--KEY:VALUE
+
+
+
+ 注意：添加缓存不能影响正常业务逻辑
+
+
+缓存同步
+对内容信息做增删改操作后只需要把对应缓存删除即可。可以根据cid删除
+
+
+Solr服务搭建：
+
+Solr的环境
+Solr是java开发。
+
+需要安装jdk。
+
+安装环境Linux。
+
+需要安装Tomcat。
+
+
+搭建步骤
+
+第一步：把solr 的压缩包上传到Linux系统
+
+第二步：解压solr。
+
+第三步：安装Tomcat，解压缩即可。
+
+第四步：把solr部署到Tomcat下。
+
+第五步：解压缩war包。启动Tomcat解压。
+
+第六步：把/root/solr-4.10.3/example/lib/ext目录下的所有的jar包，添加到solr工程中。
+
+[root@localhost ext]# pwd
+
+/root/solr-4.10.3/example/lib/ext
+
+[root@localhost ext]# cp * /usr/local/solr/tomcat/webapps/solr/WEB-INF/lib/
+
+第七步：创建一个solrhome。/example/solr目录就是一个solrhome。复制此目录到/usr/local/solr/solrhome
+
+[root@localhost example]# pwd
+
+/root/solr-4.10.3/example
+
+[root@localhost example]# cp -r solr /usr/local/solr/solrhome
+
+[root@localhost example]#
+
+第八步：关联solr及solrhome。需要修改solr工程的web.xml文件。
+
+<env-entry>
+<env-entry-name>solr/home</env-entry-name>
+
+<env-entry-value>配置solrhome的位置</env-entry-value>
+
+<env-entry-type>java.lang.String</env-entry-type>
+
+</env-entry>
+
+
+第九步：启动Tomcat
+
+http://ip:tomcat端口/solr/
+
+配置业务域
+创建步骤：
+
+第一步：把中文分析器添加到工程中。
+
+1、把IKAnalyzer2012FF_u1.jar添加到solr工程的lib目录下
+
+2、把扩展词典、配置文件放到solr工程的WEB-INF/classes目录下。
+
+第二步：配置一个FieldType，制定使用IKAnalyzer
+
+修改schema.xml文件
+
+修改Solr的schema.xml文件，添加FieldType：
+
+<fieldType name="text_ik" class="solr.TextField">
+
+   <analyzer class="org.wltea.analyzer.lucene.IKAnalyzer"/>
+
+</fieldType>
+
+
+
+第三步：配置业务域，type制定使用自定义的FieldType。
+
+设置业务系统Field
+
+<field name="item_title" type="text_ik" indexed="true" stored="true"/>
+
+<field name="item_keywords" type="text_ik" indexed="true" stored="false" multiValued="true"/>
+
+<copyField source="item_desc" dest="item_keywords"/>
+
+
+
+第四步：重启tomcat
+
+
+
+使用solrJ管理索引库
+使用SolrJ可以实现索引库的增删改查操作。
+
+添加文档
+第一步：把solrJ的jar包添加到工程中。
+
+第二步：创建一个SolrServer，使用HttpSolrServer创建对象。
+
+第三步：创建一个文档对象SolrInputDocument对象。
+
+第四步：向文档中添加域。必须有id域，域的名称必须在schema.xml中定义。
+
+第五步：把文档添加到索引库中。
+
+第六步：提交。
+
+@Test
+
+public void addDocument()throws Exception {
+
+// 第一步：把solrJ的jar包添加到工程中。
+
+// 第二步：创建一个SolrServer，使用HttpSolrServer创建对象。
+
+SolrServer solrServer = new HttpSolrServer("http://192.168.25.154:8080/solr");
+
+// 第三步：创建一个文档对象SolrInputDocument对象。
+
+SolrInputDocument document = new SolrInputDocument();
+
+// 第四步：向文档中添加域。必须有id域，域的名称必须在schema.xml中定义。
+
+document.addField("id","test001");
+
+document.addField("item_title","测试商品");
+
+document.addField("item_price","199");
+
+// 第五步：把文档添加到索引库中。
+
+solrServer.add(document);
+
+// 第六步：提交。
+
+solrServer.commit();
+
+}
+
+
+
+1.2. 删除文档
+1.2.1. 根据id删除
+第一步：创建一个SolrServer对象。
+
+第二步：调用SolrServer对象的根据id删除的方法。
+
+第三步：提交。
+
+@Test
+
+public void deleteDocumentById()throws Exception {
+
+// 第一步：创建一个SolrServer对象。
+
+SolrServer solrServer = new HttpSolrServer("http://192.168.25.154:8080/solr");
+
+// 第二步：调用SolrServer对象的根据id删除的方法。
+
+solrServer.deleteById("1");
+
+// 第三步：提交。
+
+solrServer.commit();
+
+}
+
+
+
+1.2.2. 根据查询删除
+@Test
+
+public void deleteDocumentByQuery()throws Exception {
+
+SolrServer solrServer = new HttpSolrServer("http://192.168.25.154:8080/solr");
+
+solrServer.deleteByQuery("title:change.me");
+
+solrServer.commit();
+
+}
+
+
+
+1.3. 查询索引库
+查询步骤：
+
+第一步：创建一个SolrServer对象
+
+第二步：创建一个SolrQuery对象。
+
+第三步：向SolrQuery中添加查询条件、过滤条件。。。
+
+第四步：执行查询。得到一个Response对象。
+
+第五步：取查询结果。
+
+第六步：遍历结果并打印。
+
+
+
+1.3.1. 简单查询
+@Test
+
+public void queryDocument()throws Exception {
+
+// 第一步：创建一个SolrServer对象
+
+SolrServer solrServer = new HttpSolrServer("http://192.168.25.154:8080/solr");
+
+// 第二步：创建一个SolrQuery对象。
+
+SolrQuery query = new SolrQuery();
+
+// 第三步：向SolrQuery中添加查询条件、过滤条件。。。
+
+query.setQuery("*:*");
+
+// 第四步：执行查询。得到一个Response对象。
+
+QueryResponse response = solrServer.query(query);
+
+// 第五步：取查询结果。
+
+SolrDocumentList solrDocumentList = response.getResults();
+
+System.out.println("查询结果的总记录数：" +solrDocumentList.getNumFound());
+
+// 第六步：遍历结果并打印。
+
+for (SolrDocument solrDocument : solrDocumentList) {
+
+System.out.println(solrDocument.get("id"));
+
+System.out.println(solrDocument.get("item_title"));
+
+System.out.println(solrDocument.get("item_price"));
+
+}
+
+}
+
+
+
+1.3.2. 带高亮显示
+@Test
+
+public void queryDocumentWithHighLighting()throws Exception {
+
+// 第一步：创建一个SolrServer对象
+
+SolrServer solrServer = new HttpSolrServer("http://192.168.25.154:8080/solr");
+
+// 第二步：创建一个SolrQuery对象。
+
+SolrQuery query = new SolrQuery();
+
+// 第三步：向SolrQuery中添加查询条件、过滤条件。。。
+
+query.setQuery("测试");
+
+//指定默认搜索域
+
+query.set("df","item_keywords");
+
+//开启高亮显示
+
+query.setHighlight(true);
+
+//高亮显示的域
+
+query.addHighlightField("item_title");
+
+query.setHighlightSimplePre("<em>");
+
+query.setHighlightSimplePost("</em>");
+
+// 第四步：执行查询。得到一个Response对象。
+
+QueryResponse response = solrServer.query(query);
+
+// 第五步：取查询结果。
+
+SolrDocumentList solrDocumentList = response.getResults();
+
+System.out.println("查询结果的总记录数：" +solrDocumentList.getNumFound());
+
+// 第六步：遍历结果并打印。
+
+for (SolrDocument solrDocument : solrDocumentList) {
+
+System.out.println(solrDocument.get("id"));
+
+//取高亮显示
+
+Map<String, Map<String, List<String>>> highlighting = response.getHighlighting();
+
+List<String> list = highlighting.get(solrDocument.get("id")).get("item_title");
+
+String itemTitle =null;
+
+if (list !=null &&list.size() > 0) {
+
+itemTitle =list.get(0);
+
+} else {
+
+itemTitle = (String)solrDocument.get("item_title");
+
+}
+
+System.out.println(itemTitle);
+
+System.out.println(solrDocument.get("item_price"));
+
+}
+
+}
+
+ 图片显示处理
+数据库中保存的图片是以逗号分隔的url列表，只需要展示第一张图片即可。
+
+方法：
+
+1、向索引库中添加文档时，只取第一张写入索引库
+
+2、从文档列表转换为商品列表时可以取一张。
+
+3、在jsp中对列表拆分，只取一张展示。
+
+
+
+
+SolrCloud
+
+
+SolrCloud(solr 云)是Solr提供的分布式搜索方案，当你需要大规模，容错，分布式索引和检索能力时使用SolrCloud。当一个系统的索引数据量少的时候是不需要使用SolrCloud的，当索引量很大，搜索请求并发很高，这时需要使用SolrCloud来满足这些需求。
+
+ SolrCloud是基于Solr和Zookeeper的分布式搜索方案，它的主要思想是使用Zookeeper作为集群的配置信息中心。
+
+它有几个特色功能：
+
+1）集中式的配置信息
+
+2）自动容错
+
+3）近实时搜索
+
+4）查询时自动负载均衡
+
+
+
+Solr集群的系统架构
+
+
+
+
+
+物理结构
+三个Solr实例（ 每个实例包括两个Core），组成一个SolrCloud。
+
+ 逻辑结构
+索引集合包括两个Shard（shard1和shard2），shard1和shard2分别由三个Core组成，其中一个Leader两个Replication，Leader是由zookeeper选举产生，zookeeper控制每个shard上三个Core的索引数据一致，解决高可用问题。
+
+用户发起索引请求分别从shard1和shard2上获取，解决高并发问题。
+
+
+
+ collection
+Collection在SolrCloud集群中是一个逻辑意义上的完整的索引结构。它常常被划分为一个或多个Shard（分片），它们使用相同的配置信息。
+
+比如：针对商品信息搜索可以创建一个collection。
+
+ collection=shard1+shard2+....+shardX
+
+
+
+Core
+每个Core是Solr中一个独立运行单位，提供 索引和搜索服务。一个shard需要由一个Core或多个Core组成。由于collection由多个shard组成所以collection一般由多个core组成。
+
+Master或Slave
+Master是master-slave结构中的主结点（通常说主服务器），Slave是master-slave结构中的从结点（通常说从服务器或备服务器）。同一个Shard下master和slave存储的数据是一致的，这是为了达到高可用目的。
+
+ Shard
+Collection的逻辑分片。每个Shard被化成一个或者多个replication，通过选举确定哪个是Leader。
+
+
+
+
+
+ 需要实现的solr集群架构
+
+
+Zookeeper作为集群的管理工具。
+
+1、集群管理：容错、负载均衡。
+
+2、配置文件的集中管理
+
+3、集群的入口
+
+需要实现zookeeper高可用。需要搭建集群。建议是奇数节点。需要三个zookeeper服务器。
+
+搭建solr集群需要7台服务器。
+
+搭建伪分布式：
+
+需要三个zookeeper节点
+
+需要四个tomcat节点。
+
+Zookeeper集群搭建:
+
+
+第一步：需要安装jdk环境。
+
+第二步：把zookeeper的压缩包上传到服务器。
+
+第三步：解压缩。
+
+第四步：把zookeeper复制三份。
+
+[root@localhost ~]# mkdir /usr/local/solr-cloud
+
+[root@localhost ~]# cp -r zookeeper-3.4.6 /usr/local/solr-cloud/zookeeper01
+
+[root@localhost ~]# cp -r zookeeper-3.4.6 /usr/local/solr-cloud/zookeeper02
+
+[root@localhost ~]# cp -r zookeeper-3.4.6 /usr/local/solr-cloud/zookeeper03
+
+第五步：在每个zookeeper目录下创建一个data目录。
+
+第六步：在data目录下创建一个myid文件，文件名就叫做“myid”。内容就是每个实例的id。例如1、2、3
+
+[root@localhost data]# echo 1 >> myid
+
+[root@localhost data]# ll
+
+total 4
+
+-rw-r--r--. 1 root root 2 Apr  7 18:23 myid
+
+[root@localhost data]# cat myid
+
+1
+
+第七步：修改配置文件。把conf目录下的zoo_sample.cfg文件改名为zoo.cfg
+
+
+
+
+第八步：启动每个zookeeper实例。
+
+启动bin/zkServer.sh start
+
+
+
+查看zookeeper的状态：
+
+bin/zkServer.sh status
+
+
+Solr集群的搭建:
+
+
+第一步：创建四个tomcat实例。每个tomcat运行在不同的端口。8180、8280、8380、8480
+
+第二步：部署solr的war包。把单机版的solr工程复制到集群中的tomcat中。
+
+第三步：为每个solr实例创建一个对应的solrhome。使用单机版的solrhome复制四份。
+
+第四步：需要修改solr的web.xml文件。把solrhome关联起来。
+
+第五步：配置solrCloud相关的配置。每个solrhome下都有一个solr.xml，把其中的ip及端口号配置好。
+
+
+
+
+第六步：让zookeeper统一管理配置文件。需要把solrhome/collection1/conf目录上传到zookeeper。上传任意solrhome中的配置文件即可。
+
+使用工具上传配置文件：/root/solr-4.10.3/example/scripts/cloud-scripts/zkcli.sh
+
+./zkcli.sh -zkhost 192.168.25.154:2181,192.168.25.154:2182,192.168.25.154:2183 -cmd upconfig -confdir /usr/local/solr-cloud/solrhome01/collection1/conf -confname myconf
+
+查看zookeeper上的配置文件：
+
+使用zookeeper目录下的bin/zkCli.sh命令查看zookeeper上的配置文件：
+
+[root@localhost bin]# ./zkCli.sh
+
+[zk: localhost:2181(CONNECTED) 0] ls /
+
+[configs, zookeeper]
+
+[zk: localhost:2181(CONNECTED) 1] ls /configs
+
+[myconf]
+
+[zk: localhost:2181(CONNECTED) 2] ls /configs/myconf
+
+[admin-extra.menu-top.html, currency.xml, protwords.txt, mapping-FoldToASCII.txt, _schema_analysis_synonyms_english.json, _rest_managed.json,solrconfig.xml, _schema_analysis_stopwords_english.json, stopwords.txt, lang, spellings.txt, mapping-ISOLatin1Accent.txt, admin-extra.html, xslt, synonyms.txt, scripts.conf, update-script.js, velocity, elevate.xml, admin-extra.menu-bottom.html, clustering,schema.xml]
+
+[zk: localhost:2181(CONNECTED) 3]
+
+退出：
+
+[zk: localhost:2181(CONNECTED) 3] quit
+
+
+
+第七步：修改tomcat/bin目录下的catalina.sh文件，关联solr和zookeeper。
+
+把此配置添加到配置文件中：
+
+JAVA_OPTS="-DzkHost=192.168.25.154:2181,192.168.25.154:2182,192.168.25.154:2183"
+
+
+
+第八步：启动每个tomcat实例。要包装zookeeper集群是启动状态。
+
+第九步：访问集群
+
+第十步：创建新的Collection进行分片处理。
+
+http://192.168.25.154:8180/solr/admin/collections?action=CREATE&name=collection2&numShards=2&replicationFactor=2
+
+
+第十一步：删除不用的Collection。
+
+http://192.168.25.154:8180/solr/admin/collections?action=DELETE&name=collection1
+
+
+
+
+
+使用solrJ管理集群
+使用步骤：
+
+第一步：把solrJ相关的jar包添加到工程中。
+
+第二步：创建一个SolrServer对象，需要使用CloudSolrServer子类。构造方法的参数是zookeeper的地址列表。
+
+第三步：需要设置DefaultCollection属性。
+
+第四步：创建一SolrInputDocument对象。
+
+第五步：向文档对象中添加域
+
+第六步：把文档对象写入索引库。
+
+第七步：提交。
+
+
+
+@Test
+
+public void testSolrCloudAddDocument()throws Exception {
+
+// 第一步：把solrJ相关的jar包添加到工程中。
+
+// 第二步：创建一个SolrServer对象，需要使用CloudSolrServer子类。构造方法的参数是zookeeper的地址列表。
+
+//参数是zookeeper的地址列表，使用逗号分隔
+
+CloudSolrServer solrServer =new CloudSolrServer("192.168.25.154:2181,192.168.25.154:2182,192.168.25.154:2183");
+
+// 第三步：需要设置DefaultCollection属性。
+
+solrServer.setDefaultCollection("collection2");
+
+// 第四步：创建一SolrInputDocument对象。
+
+SolrInputDocument document = new SolrInputDocument();
+
+// 第五步：向文档对象中添加域
+
+document.addField("item_title","测试商品");
+
+document.addField("item_price","100");
+
+document.addField("id","test001");
+
+// 第六步：把文档对象写入索引库。
+
+solrServer.add(document);
+
+// 第七步：提交。
+
+solrServer.commit();
+
+
+
+}
+
+
+
+查询文档
+创建一个CloudSolrServer对象，其他处理和单机版一致
+
+
+
+
+
+
+
+全局异常处理：
+
+
+
+创建全局异常处理器
+
+public class GlobalExceptionResloverimplements HandlerExceptionResolver {
+
+
+
+Logger logger = LoggerFactory.getLogger(GlobalExceptionReslover.class);
+
+@Override
+
+public ModelAndView resolveException(HttpServletRequestrequest, HttpServletResponseresponse, Object handler,
+
+Exception ex) {
+
+//写日志文件
+
+logger.error("系统发生异常",ex);
+
+//发邮件、发短信
+
+//Jmail：可以查找相关的资料
+
+//需要在购买短信。调用第三方接口即可。
+
+//展示错误页面
+
+ModelAndView modelAndView = new ModelAndView();
+
+modelAndView.addObject("message","系统发生异常，请稍后重试");
+
+modelAndView.setViewName("error/exception");
+
+return modelAndView;
+
+}
+
+
+
+}
+
+
+Springmvc中配置异常处理器
+
+<bean class="com.exception.GlobalExceptionReslover"/>
+
+
+
+同步索引库分析:
+
+
+
+方案一：在manager中，添加商品的业务逻辑中，添加一个同步索引库的业务逻辑。
+
+缺点：业务逻辑耦合度高，业务拆分不明确
+
+方案二：业务逻辑在search中实现，调用服务在manager实现。业务逻辑分开。
+
+缺点：服务之间的耦合度变高。服务的启动有先后顺序。
+
+方案三：使用消息队列。MQ是一个消息中间件。
+
+添加商品发布消息procedure--->MQ---->consumer(同步索引库、同步缓存、生成静态页面)
+
+MQ是一个消息中间件，ActiveMQ、RabbitMQ、kafka
+
+
+
+ActiveMQ：
+
+什么是ActiveMQ:
+ActiveMQ 是Apache出品，最流行的，能力强劲的开源消息总线。ActiveMQ是一个完全支持JMS1.1和J2EE 1.4规范的JMS Provider实现,尽管JMS规范出台已经是很久的事情了
+
+,但是JMS在当今的J2EE应用中间仍然扮演着特殊的地位。
+
+
+主要特点：
+
+1. 多种语言和协议编写客户端。语言: Java, C, C++, C#, Ruby, Perl, Python, PHP。应用协议: OpenWire,Stomp REST,WS Notification,XMPP,AMQP
+
+2. 完全支持JMS1.1和J2EE 1.4规范(持久化,XA消息,事务)
+
+3. 对Spring的支持,ActiveMQ可以很容易内嵌到使用Spring的系统里面去,而且也支持Spring2.0的特性
+
+4. 通过了常见J2EE服务器(如Geronimo,JBoss 4, GlassFish,WebLogic)的测试,其中通过JCA 1.5 resource adaptors的配置,可以让ActiveMQ可以自动的部署到任何兼容J2EE 1.4 商业服务器上
+
+5. 支持多种传送协议:in-VM,TCP,SSL,NIO,UDP,JGroups,JXTA
+
+6. 支持通过JDBC和journal提供高速的消息持久化
+
+7. 从设计上保证了高性能的集群,客户端-服务器,点对点
+
+8. 支持Ajax
+
+9. 支持与Axis的整合
+
+10. 可以很容易得调用内嵌JMS provider,进行测试
+
+
+消息形式:
+对于消息的传递有两种类型：
+
+一种是点对点的，即一个生产者和一个消费者一一对应；
+
+另一种是发布/订阅模式，即一个生产者产生消息并进行发送后，可以由多个消费者进行接收。
+
+
+JMS定义了五种不同的消息正文格式，以及调用的消息类型，允许你发送并接收以一些不同形式的数据，提供现有消息格式的一些级别的兼容性。
+
+· StreamMessage -- Java原始值的数据流
+
+· MapMessage--一套名称-值对
+
+· TextMessage--一个字符串对象
+
+· ObjectMessage--一个序列化的Java对象
+
+· BytesMessage--一个字节的数据流
+
+
+
+
+ActiveMQ的安装:
+
+
+进入http://activemq.apache.org/下载ActiveMQ
+
+
+安装环境：
+
+1、需要jdk
+
+2、安装Linux系统。生产环境都是Linux系统
+
+
+
+
+安装步骤:
+第一步： 把ActiveMQ的压缩包上传到Linux系统。
+
+第二步：解压缩。
+
+第三步：启动。
+
+使用bin目录下的activemq命令启动：
+
+[root@localhost bin]# ./activemq start
+
+关闭：
+
+[root@localhost bin]# ./activemq stop
+
+查看状态：
+
+[root@localhost bin]# ./activemq status
+
+
+
+进入管理后台：
+
+http://ip:8161/admin
+
+用户名：admin
+
+密码：admin
+
+
+503错误解决:
+
+1、查看机器名
+
+[root@itcast168 bin]# cat /etc/sysconfig/network
+
+NETWORKING=yes
+
+HOSTNAME=hostname
+
+2、修改host文件
+
+[root@itcast168 bin]# cat /etc/hosts
+
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4 hostname
+
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+
+[root@itcast168 bin]#
+
+3、重启Activemq服务
+
+ActiveMQ的使用方法:
+Queue:
+
+Producer:
+
+生产者：生产消息，发送端。
+
+jar依赖:
+
+<dependency>
+
+<groupId>org.apache.activemq</groupId>
+
+<artifactId>activemq-all</artifactId>
+
+</dependency>
+
+使用步骤：
+
+
+// 第一步：创建ConnectionFactory对象，需要指定服务端ip及端口号。
+
+//brokerURL服务器的ip及端口号
+
+ConnectionFactory connectionFactory = new ActiveMQConnectionFactory("tcp://192.168.25.168:61616");
+
+// 第二步：使用ConnectionFactory对象创建一个Connection对象。
+
+Connection connection = connectionFactory.createConnection();
+
+// 第三步：开启连接，调用Connection对象的start方法。
+
+connection.start();
+
+// 第四步：使用Connection对象创建一个Session对象。
+
+//第一个参数：是否开启事务。true：开启事务，第二个参数忽略。
+
+//第二个参数：当第一个参数为false时，才有意义。消息的应答模式。1、自动应答2、手动应答。一般是自动应答。
+
+Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+
+// 第五步：使用Session对象创建一个Destination对象（topic、queue），此处创建一个Queue对象。
+
+//参数：队列的名称。
+
+Queue queue = session.createQueue("test-queue");
+
+// 第六步：使用Session对象创建一个Producer对象。
+
+MessageProducer producer = session.createProducer(queue);
+
+// 第七步：创建一个Message对象，创建一个TextMessage对象。
+
+/*TextMessage message = new ActiveMQTextMessage();
+
+message.setText("hello activeMq,this is my first test.");*/
+
+TextMessage textMessage = session.createTextMessage("hello activeMq,this is my first test.");
+
+// 第八步：使用Producer对象发送消息。
+
+producer.send(textMessage);
+
+// 第九步：关闭资源。
+
+producer.close();
+
+session.close();
+
+connection.close();
+
+
+
+Consumer：
+
+
+
+// 第一步：创建一个ConnectionFactory对象。
+
+ConnectionFactory connectionFactory = new ActiveMQConnectionFactory("tcp://192.168.25.168:61616");
+
+// 第二步：从ConnectionFactory对象中获得一个Connection对象。
+
+Connection connection = connectionFactory.createConnection();
+
+// 第三步：开启连接。调用Connection对象的start方法。
+
+connection.start();
+
+// 第四步：使用Connection对象创建一个Session对象。
+
+Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+
+// 第五步：使用Session对象创建一个Destination对象。和发送端保持一致queue，并且队列的名称一致。
+
+Queue queue = session.createQueue("test-queue");
+
+// 第六步：使用Session对象创建一个Consumer对象。
+
+MessageConsumer consumer = session.createConsumer(queue);
+
+// 第七步：接收消息。
+
+consumer.setMessageListener(new MessageListener() {
+
+@Override
+
+public void onMessage(Messagemessage) {
+
+try {
+
+TextMessage textMessage = (TextMessage) message;
+
+String text = null;
+
+//取消息的内容
+
+text =textMessage.getText();
+
+// 第八步：打印消息。
+
+System.out.println(text);
+
+} catch (JMSExceptione) {
+
+e.printStackTrace();
+
+}
+
+}
+
+});
+
+//等待键盘输入
+
+System.in.read();
+
+// 第九步：关闭资源
+
+consumer.close();
+
+session.close();
+
+connection.close();
+
+Topic：
+Producer：
+// 第一步：创建ConnectionFactory对象，需要指定服务端ip及端口号。
+
+// brokerURL服务器的ip及端口号
+
+ConnectionFactory connectionFactory = new ActiveMQConnectionFactory("tcp://192.168.25.168:61616");
+
+// 第二步：使用ConnectionFactory对象创建一个Connection对象。
+
+Connection connection = connectionFactory.createConnection();
+
+// 第三步：开启连接，调用Connection对象的start方法。
+
+connection.start();
+
+// 第四步：使用Connection对象创建一个Session对象。
+
+// 第一个参数：是否开启事务。true：开启事务，第二个参数忽略。
+
+// 第二个参数：当第一个参数为false时，才有意义。消息的应答模式。1、自动应答2、手动应答。一般是自动应答。
+
+Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+
+// 第五步：使用Session对象创建一个Destination对象（topic、queue），此处创建一个topic对象。
+
+// 参数：话题的名称。
+
+Topic topic = session.createTopic("test-topic");
+
+// 第六步：使用Session对象创建一个Producer对象。
+
+MessageProducer producer = session.createProducer(topic);
+
+// 第七步：创建一个Message对象，创建一个TextMessage对象。
+
+/*
+
+ * TextMessage message = new ActiveMQTextMessage(); message.setText(
+
+ * "hello activeMq,this is my first test.");
+
+ */
+
+TextMessage textMessage = session.createTextMessage("hello activeMq,this is my topic test");
+
+// 第八步：使用Producer对象发送消息。
+
+producer.send(textMessage);
+
+// 第九步：关闭资源。
+
+producer.close();
+
+session.close();
+
+connection.close();
+
+Consumer：
+// 第一步：创建一个ConnectionFactory对象。
+
+ConnectionFactory connectionFactory =new ActiveMQConnectionFactory("tcp://192.168.25.168:61616");
+
+// 第二步：从ConnectionFactory对象中获得一个Connection对象。
+
+Connection connection = connectionFactory.createConnection();
+
+// 第三步：开启连接。调用Connection对象的start方法。
+
+connection.start();
+
+// 第四步：使用Connection对象创建一个Session对象。
+
+Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+
+// 第五步：使用Session对象创建一个Destination对象。和发送端保持一致topic，并且话题的名称一致。
+
+Topic topic = session.createTopic("test-topic");
+
+// 第六步：使用Session对象创建一个Consumer对象。
+
+MessageConsumer consumer = session.createConsumer(topic);
+
+// 第七步：接收消息。
+
+consumer.setMessageListener(new MessageListener() {
+
+@Override
+
+public void onMessage(Messagemessage) {
+
+try {
+
+TextMessage textMessage = (TextMessage)message;
+
+String text = null;
+
+// 取消息的内容
+
+text = textMessage.getText();
+
+// 第八步：打印消息。
+
+System.out.println(text);
+
+} catch (JMSExceptione) {
+
+e.printStackTrace();
+
+}
+
+}
+
+});
+
+System.out.println("topic的消费端03。。。。。");
+
+// 等待键盘输入
+
+System.in.read();
+
+// 第九步：关闭资源
+
+consumer.close();
+
+session.close();
+
+connection.close();
+
+
+
+Activemq整合spring:
+
+
+<!-- 统一消息协议接口-->
+
+<dependency>
+
+<groupId>org.springframework</groupId>
+
+<artifactId>spring-jms</artifactId>
+
+</dependency>
+
+
+<dependency>
+
+<groupId>org.springframework</groupId>
+
+<artifactId>spring-context-support</artifactId>
+
+</dependency>
+
+spring配置文件中：
+
+配置ConnectionFactory：
+
+
+<!-- 真正可以产生Connection的ConnectionFactory，由对应的 JMS服务厂商提供 -->
+
+<bean id="targetConnectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
+
+<property name="brokerURL" value="tcp://192.168.25.168:61616" />
+
+</bean>
+
+<!-- Spring用于管理真正的ConnectionFactory的ConnectionFactory -->
+
+<bean id="connectionFactory"
+
+class="org.springframework.jms.connection.SingleConnectionFactory">
+
+<!-- 目标ConnectionFactory对应真实的可以产生JMS Connection的ConnectionFactory -->
+
+<property name="targetConnectionFactory" ref="targetConnectionFactory" />
+
+</bean>
+
+</beans>
+
+配置生产者:
+
+使用JMSTemplate对象。发送消息。
+
+
+<!-- 配置生产者 -->
+
+<!-- Spring提供的JMS工具类，它可以进行消息发送、接收等 -->
+
+<bean id="jmsTemplate" class="org.springframework.jms.core.JmsTemplate">
+
+<!-- 这个connectionFactory对应的是我们定义的Spring提供的那个ConnectionFactory对象 -->
+
+<property name="connectionFactory" ref="connectionFactory" />
+
+</bean>
+
+配置Destination 目标地：
+
+<!--这个是队列目的地，点对点的 -->
+
+<bean id="queueDestination" class="org.apache.activemq.command.ActiveMQQueue">
+
+<constructor-arg>
+
+<value>spring-queue</value>
+
+</constructor-arg>
+
+</bean>
+
+<!--这个是主题目的地，一对多的 -->
+
+<bean id="topicDestination" class="org.apache.activemq.command.ActiveMQTopic">
+
+<constructor-arg value="topic" />
+
+</bean>
+
+
+发送消息：
+
+
+@Test
+
+public void testQueueProducer()throws Exception {
+
+// 第一步：初始化一个spring容器
+
+ApplicationContext applicationContext =new ClassPathXmlApplicationContext("classpath:spring/applicationContext-activemq.xml");
+
+// 第二步：从容器中获得JMSTemplate对象。
+
+JmsTemplate jmsTemplate = applicationContext.getBean(JmsTemplate.class);
+
+// 第三步：从容器中获得一个Destination对象
+
+Queue queue = (Queue) applicationContext.getBean("queueDestination");
+
+// 第四步：使用JMSTemplate对象发送消息，需要知道Destination
+
+jmsTemplate.send(queue,new MessageCreator() {
+
+@Override
+
+public Message createMessage(Sessionsession)throws JMSException {
+
+TextMessage textMessage = session.createTextMessage("spring activemq test");
+
+return textMessage;
+
+}
+
+});
+
+}
+
+接收消息：
+
+第一步：把Activemq相关的jar包添加到工程中
+
+第二步：创建一个MessageListener的实现类。
+
+public class MyMessageListener implements MessageListener {
+
+
+
+@Override
+
+public void onMessage(Messagemessage) {
+
+try {
+
+TextMessage textMessage = (TextMessage)message;
+
+//取消息内容
+
+String text = textMessage.getText();
+
+System.out.println(text);
+
+} catch (JMSExceptione) {
+
+e.printStackTrace();
+
+}
+
+}
+
+
+
+}
+
+配置spring和Activemq整合：
+
+
+<!-- 接收消息 -->
+
+<!-- 配置监听器 -->
+
+<bean id="myMessageListener" class="com.taotao.search.listener.MyMessageListener" />
+
+<!-- 消息监听容器 -->
+
+<bean class="org.springframework.jms.listener.DefaultMessageListenerContainer">
+
+<property name="connectionFactory" ref="connectionFactory" />
+
+<property name="destination" ref="queueDestination" />
+
+<property name="messageListener" ref="myMessageListener" />
+
+</bean>
+
+
+@Test
+
+public void testQueueConsumer()throws Exception {
+
+//初始化spring容器
+
+ApplicationContext applicationContext =new ClassPathXmlApplicationContext("classpath:spring/applicationContext-activemq.xml");
+
+//等待
+
+System.in.read();
+
+}
+
+
+实际使用中将new 对象操作交给spring，我们直接注值即可 @autowired
+
+
+
+
+缓存添加分析
+使用redis做缓存。
+
+
+
+业务逻辑：
+
+1、根据商品id到缓存中命中
+
+2、查到缓存，直接返回。
+
+3、差不到，查询数据库
+
+4、把数据放到缓存中
+
+5、返回数据
+
+
+
+缓存中缓存热点数据，提供缓存的使用率。需要设置缓存的有效期。一般是一天的时间，可以根据实际情况跳转。
+
+
+
+需要使用String类型来保存商品数据。
+
+可以加前缀方法对象redis中的key进行归类。将业务逻辑key抽出为配置文件值，一层一层对应
+
+ITEM_INFO:123456:BASE
+
+ITEM_INFO:123456:DESC
+
+如果把二维表保存到redis中:
+
+1、表名就是第一层
+
+2、主键是第二层
+
+3、字段名第三次
+
+三层使用“:”分隔作为key，value就是字段中的内容。 在windows上使用客户端连接工具可以清楚的看出redis缓存的层级结构
+
+
+历史使用场景：
+
+使用缓存：
+try {
+
+//查询缓存
+
+String json =jedisClient.get(ITEM_INFO_PRE +":" +itemId + ":BASE");
+
+if (StringUtils.isNotBlank(json)) {
+
+//把json转换为java对象
+
+TbItem item = JsonUtils.jsonToPojo(json, TbItem.class);
+
+return item;
+
+}
+
+} catch (Exceptione) {
+
+e.printStackTrace();
+
+}
+
+
+添加缓存：
+
+try {
+
+//把数据保存到缓存
+
+jedisClient.set(ITEM_INFO_PRE +":" +itemId + ":BASE", JsonUtils.objectToJson(item));
+
+//设置缓存的有效期
+
+jedisClient.expire(ITEM_INFO_PRE +":" +itemId + ":BASE", ITEM_INFO_EXPIRE);
+
+} catch (Exceptione) {
+
+e.printStackTrace();
+
+}
+
+
+
+网页静态化（参考我的一篇freemarker博客）
+FreeMarker是一个用Java语言编写的模板引擎，它基于模板来生成文本输出。FreeMarker与Web容器无关，即在Web运行时，它并不知道Servlet或HTTP。它不仅可以用作
+
+表现层的实现技术，而且还可以用于生成XML，JSP或Java等。
+
+目前企业中:主要用Freemarker做静态页面或是页面展示
+
+Freemarker的使用方法
+把freemarker的jar包添加到工程中。
+
+Maven工程添加依赖
+
+<dependency>
+
+  <groupId>org.freemarker</groupId>
+
+  <artifactId>freemarker</artifactId>
+
+  <version>2.3.23</version>
+
+</dependency>
+
+1.1.1. 网页的静态化方案
+输出文件的名称：商品id+“.html”
+
+输出文件的路径：工程外部的任意目录。
+
+网页访问：使用nginx访问网页。在此方案下tomcat只有一个作用就是生成静态页面。
+
+工程部署：可以把item-web部署到多个服务器上。
+
+生成静态页面的时机：商品添加后，生成静态页面。可以使用Activemq，订阅topic（商品添加）
+
+
+
+两方面影响用户访问速度:
+
+数据库查询
+
+使用缓存
+
+服务器生成html页面
+
+使用freemaker生成静态页面
+
+Freemaker生成静态页面的时机
+
+添加商品后使用activemq广播消息,freemaker监听到消息去数据库查询商品生成静态页面
+
+为什么不去redis中获取商品信息,添加商品时还没有存到redis中
+
+为什么不直接使用商品信息还要到数据库中查询:不在一个项目中传输数据麻烦,也起不到提高效率的作用;而且修改数据时也要修改静态页面
+
+
+Redis存储数据库表信息;
+
+Key:  表名:id:字段
+
+Value:  字段值
+
+
+
+
+
+nginx:
+
+高性能的代理服务器
+
+
+应用场景
+1、http服务器。Nginx是一个http服务可以独立提供http服务。可以做网页静态服务器。
+
+2、虚拟主机。可以实现在一台服务器虚拟出多个网站。例如个人网站使用的虚拟主机。
+
+3、反向代理，负载均衡。当网站的访问量达到一定程度后，单台服务器不能满足用户的请求时，需要用多台服务器集群可以使用
+
+nginx做反向代理。并且多台服务器可以平均分担负载，不会因为某台服务器负载高宕机而某台服务器闲置的情况。
+
+nginx安装：
+
+官方网站：http://nginx.org/
+
+
+安装环境:
+
+
+1、需要安装gcc的环境。yum install gcc-c++
+
+2、第三方的开发包。
+
+ PCRE
+
+PCRE(Perl Compatible Regular Expressions)是一个Perl库，包括perl兼容的正则表达式库。nginx的http模块使用
+
+pcre来解析正则表达式，所以需要在linux上安装pcre库。
+
+yum install -y pcre pcre-devel
+
+注：pcre-devel是使用pcre开发的一个二次开发库。nginx也需要此库。
+
+ zlib
+
+zlib库提供了很多种压缩和解压缩的方式，nginx使用zlib对http包的内容进行gzip，所以需要在linux上安装zlib库。
+
+yum install -y zlib zlib-devel
+
+
+
+ openssl
+
+OpenSSL 是一个强大的安全套接字层密码库，囊括主要的密码算法、常用的密钥和证书封装管理功能及SSL协议，并提
+
+供丰富的应用程序供测试或其它目的使用。
+
+nginx不仅支持http协议，还支持https（即在ssl协议上传输http），所以需要在linux安装openssl库。
+
+yum install -y openssl openssl-devel
+
+安装步骤:
+
+第一步：把nginx的源码包上传到linux系统
+
+第二步：解压缩
+
+[root@localhost ~]# tar zxf nginx-1.8.0.tar.gz
+
+第三步：使用configure命令创建一makeFile文件。
+
+./configure \
+
+--prefix=/usr/local/nginx \
+
+--pid-path=/var/run/nginx/nginx.pid \
+
+--lock-path=/var/lock/nginx.lock \
+
+--error-log-path=/var/log/nginx/error.log \
+
+--http-log-path=/var/log/nginx/access.log \
+
+--with-http_gzip_static_module \
+
+--http-client-body-temp-path=/var/temp/nginx/client \
+
+--http-proxy-temp-path=/var/temp/nginx/proxy \
+
+--http-fastcgi-temp-path=/var/temp/nginx/fastcgi \
+
+--http-uwsgi-temp-path=/var/temp/nginx/uwsgi \
+
+--http-scgi-temp-path=/var/temp/nginx/scgi
+
+注意：启动nginx之前，上边将临时文件目录指定为/var/temp/nginx，需要在/var下创建temp及nginx目录
+
+[root@localhost sbin]# mkdir /var/temp/nginx/client -p
+
+第四步：make
+
+第五步：make install
+
+
+启动nginx:
+进入sbin目录
+
+./nginx
+
+查看开启状态：ps aux|grep nginx 会 显示master和worker
+关闭nginx：
+
+[root@localhost sbin]# ./nginx -s stop
+
+推荐使用：
+
+[root@localhost sbin]# ./nginx -s quit
+
+
+重启nginx：
+
+1、先关闭后启动。
+
+2、刷新配置文件：
+
+[root@localhost sbin]# ./nginx -s reload
+
+访问nginx
+默认是80端口。
+
+注意：是否关闭防火墙。
+
+
+
+配置虚拟主机
+
+就是在一台服务器启动多个网站。
+
+如何区分不同的网站：
+
+1、域名不同
+
+2、端口不同
+
+通过端口区分不同虚拟机
+
+Nginx的配置文件：
+
+/usr/local/nginx/conf/nginx.conf
+
+一个server节点就是一个虚拟主机
+
+server {
+
+        listen       80;
+
+        server_name  localhost;
+
+
+
+        #charset koi8-r;
+
+
+
+        #access_log  logs/host.access.log  main;
+
+
+
+        location / {
+
+            root   html;
+
+Html是nginx安装目录下的html目录(静态页面存放的位置,也可以使用绝对路径)
+
+            index  index.html index.htm;
+
+        }
+
+    }
+
+可以配置多个server，配置了多个虚拟主机。
+
+添加虚拟主机：
+
+server {
+
+        listen       81;端口
+
+        server_name  localhost;
+
+
+
+        #charset koi8-r;
+
+
+
+        #access_log  logs/host.access.log  main;
+
+
+
+        location / {
+
+            root   html-81; 静态资源文件夹名称
+
+            index  index.html index.htm;
+
+        }
+
+    }
+
+重新加载配置文件
+
+[root@localhost nginx]# sbin/nginx -s reload
+
+通过域名区分虚拟主机
+什么是域名
+域名就是网站。
+
+www.baidu.com
+
+www.taobao.com
+
+www.jd.com
+
+Tcp/ip
+
+
+
+Dns服务器：把域名解析为ip地址。保存的就是域名和ip的映射关系。
+
+一级域名：
+
+Baidu.com
+
+Taobao.com
+
+Jd.com
+
+二级域名：
+
+www.baidu.com
+
+Image.baidu.com
+
+Item.baidu.com
+
+三级域名：
+
+1.Image.baidu.com
+
+Aaa.image.baidu.com
+
+
+
+一个域名对应一个ip地址，一个ip地址可以被多个域名绑定。
+
+
+Nginx的配置
+
+server {
+
+        listen       80;
+
+        server_name  www.taobao.com;
+
+
+
+        #charset koi8-r;
+
+
+
+        #access_log  logs/host.access.log  main;
+
+
+
+        location / {
+
+            root   html-taobao;
+
+            index  index.html index.htm;
+
+        }
+
+    }
+
+    server {
+
+        listen       80;
+
+        server_name  www.baidu.com;
+
+
+
+        #charset koi8-r;
+
+
+
+        #access_log  logs/host.access.log  main;
+
+
+
+        location / {
+
+            root   html-baidu;
+
+            index  index.html index.htm;
+
+        }
+
+    }
+
+反向代理
+
+
+正向代理:局域网(多台pc)---->代理服务器可以上网，请求转发---->Internet
+
+反向代理：Internet----->网站入口，公网ip,反向代理服务器nginx----->网站(tomcat)
+
+反向代理服务器决定哪台服务器提供服务
+
+返回代理服务器不提供服务器。也是请求的转发
+
+
+
+Nginx实现反向代理
+第一步：安装两个tomcat，分别运行在8080和8081端口。
+
+第二步：启动两个tomcat。
+
+第三步：反向代理服务器的配置
+
+复制一个server节点,将root改成proxy_pass
+
+配置upstream
+
+upstream tomcat1 {
+
+server 192.168.25.148:8080;
+
+    }
+
+    server {
+
+        listen       80;
+
+        server_name  www.sina.com.cn;
+
+
+
+        #charset koi8-r;
+
+
+
+        #access_log  logs/host.access.log  main;
+
+
+
+        location / {
+
+            proxy_pass   http://tomcat1;
+
+            index  index.html index.htm;
+
+        }
+
+    }
+
+    upstream tomcat2 {
+
+server 192.168.25.148:8081;
+
+    }
+
+    server {
+
+        listen       80;
+
+        server_name  www.sohu.com;
+
+
+
+        #charset koi8-r;
+
+
+
+        #access_log  logs/host.access.log  main;
+
+
+
+        location / {
+
+            proxy_pass   http://tomcat2;
+
+            index  index.html index.htm;
+
+        }
+
+    }
+
+第四步：nginx重新加载配置文件
+
+
+负载均衡
+
+如果一个服务由多条服务器提供，需要把负载分配到不同的服务器处理，需要负载均衡。
+
+ upstream tomcat2 {
+
+server 192.168.25.148:8081;
+
+server 192.168.25.148:8082;
+
+  }
+
+可以根据服务器的实际情况调整服务器权重。权重越高分配的请求越多，权重越低，请求越少。默认是都是1
+
+ upstream tomcat2 {
+
+server 192.168.25.148:8081;
+
+server 192.168.25.148:8082 weight=2;
+
+    }
+
+
+Nginx的高可用
+
+要实现nginx的高可用，需要实现备份机
+
+什么是负载均衡高可用
+
+nginx作为负载均衡器，所有请求都到了nginx，可见nginx处于非常重点的位置，如果nginx服务器宕机后端web服务将无法提供服务，
+
+影响严重。为了屏蔽负载均衡服务器的宕机，需要建立一个备份机。主服务器和备份机上都运行高可用（High Availability）监控
+
+程序，通过传送诸如“I am alive”这样的信息来监控对方的运行状况。当备份机不能在一定的时间内收到这样的信息时，它就接管
+
+主服务器的服务IP并继续提供负载均衡服务；当备份管理器又从主管理器收到“I am alive”这样的信息时，它就释放服务IP地址，
+
+这样的主服务器就开始再次提供负载均衡服务。
+
+keepalived+nginx实现主备
+
+什么是keepalived
+keepalived是集群管理中保证集群高可用的一个服务软件，用来防止单点故障。
+
+  Keepalived的作用是检测web服务器的状态，如果有一台web服务器死机，或工作出现故障，Keepalived将检测到，
+
+并将有故障的web服务器从系统中剔除，当web服务器工作正常后Keepalived自动将web服务器加入到服务器群中，这
+
+些工作全部自动完成，不需要人工干涉，需要人工做的只是修复故障的web服务器。
+
+
+
+keepalived工作原理
+
+keepalived是以VRRP协议为实现基础的，VRRP全称Virtual Router Redundancy Protocol，即虚拟路由
+
+冗余协议。
+
+虚拟路由冗余协议，可以认为是实现路由器高可用的协议，即将N台提供相同功能的路由器组成一个路由器组，
+
+这个组里面有一个master和多个backup，master上面有一个对外提供服务的vip（VIP = Virtual IP Address，虚
+
+拟IP地址，该路由器所在局域网内其他机器的默认路由为该vip），master会发组播，当backup收不到VRRP包
+
+时就认为master宕掉了，这时就需要根据VRRP的优先级来选举一个backup当master。这样的话就可以保证路
+
+由器的高可用了。
+
+keepalived主要有三个模块，分别是core、check和VRRP。core模块为keepalived的核心，负责主进程的
+
+启动、维护以及全局配置文件的加载和解析。check负责健康检查，包括常见的各种检查方式。VRRRP模块是来
+
+实现VRRP协议的。
+
+keepalived+nginx实现主备过程：
+
+初始状态
+
+客户端--->VIP虚ip:--->nginx负载均衡服务器(主)keepalived--心跳--nginx负载均衡服务器(备) kee
+
+palived---->tomcat服务器群
+
+主机宕机:
+
+
+客户端--->VIP虚ip:--->nginx负载均衡服务器(备)keepalived--心跳--nginx负载均衡服务器(主) kee
+
+palived---->tomcat服务器群
+
+主机恢复:
+
+客户端--->VIP虚ip:--->nginx负载均衡服务器(主)keepalived--心跳--nginx负载均衡服务器(备) kee
+
+palived---->tomcat服务器群
+
+
+高可用环境:
+
+两台nginx，一主一备
+
+两台tomcat服务器
+
+安装keepalived:
+
+
+1. 安装环境
+su - root
+
+yum -y install kernel-devel*
+
+yum -y install openssl-*
+
+yum -y install popt-devel
+
+yum -y install lrzsz
+
+yum -y install openssh-clients
+
+yum -y install libnl libnl-devel popt
+
+2. 安装keepalived
+2.1. 安装keepalived
+将keepalived-1.2.15.tar.gz上传到服务器/usr/local/下。
+
+
+
+cd /usr/local
+
+tar -zxvf keepalived-1.2.15.tar.gz
+
+cd keepalived-1.2.15
+
+
+
+执行配置命令
+
+./configure --prefix=/usr/local/keepalived
+
+
+
+3、编译
+
+make
+
+4、安装
+
+make install
+
+
+
+至此安装成功
+
+
+
+5、拷贝执行文件
+
+cp /usr/local/keepalived/sbin/keepalived /usr/sbin/
+
+6、将init.d文件拷贝到etc下,加入开机启动项
+
+cp /usr/local/keepalived/etc/rc.d/init.d/keepalived /etc/init.d/keepalived
+
+7、将keepalived文件拷贝到etc下，加入网卡配置
+
+cp /usr/local/keepalived/etc/sysconfig/keepalived /etc/sysconfig/
+
+8、创建keepalived文件夹
+
+mkdir -p /etc/keepalived
+
+9、将keepalived配置文件拷贝到etc下
+
+cp /usr/local/keepalived/etc/keepalived/keepalived.conf /etc/keepalived/keepalived.conf
+
+10、添加可执行权限
+
+chmod +x /etc/init.d/keepalived
+
+2.2. 加入开机启动：
+chkconfig --add keepalived #添加时必须保证/etc/init.d/keepalived存在
+
+chkconfig keepalived on
+
+
+
+添加完可查询系统服务是否存在：chkconfig --list
+
+
+
+2.3. 启动keepalived
+启动：service keepalived start
+
+停止：service keepalived stop
+
+重启：service keepalived restart
+
+
+
+3. 配置日志文件
+1.将keepalived日志输出到local0：
+
+vi /etc/sysconfig/keepalived
+
+KEEPALIVED_OPTIONS="-D -d -S 0"
+
+
+
+2.在/etc/rsyslog.conf里添加:
+
+local0.*  /var/log/keepalived.log
+
+
+
+3.重新启动keepalived和rsyslog服务：
+
+service rsyslog restart
+
+service keepalived restart
+
+4. 打开防火墙的通讯地址
+iptables -A INPUT -d 224.0.0.18 -j ACCEPT
+
+/etc/rc.d/init.d/iptables save
+
+
+
+1.1.1 配置keepalived
+1.1.1.1 主nginx
+修改主nginx下/etc/keepalived/keepalived.conf文件
+
+
+
+! Configuration File for keepalived
+
+
+
+#全局配置
+
+global_defs {
+
+   notification_email {  #指定keepalived在发生切换时需要发送email到的对象，一行一个
+
+     XXX@XXX.com
+
+   }
+
+   notification_email_from XXX@XXX.com  #指定发件人
+
+   #smtp_server XXX.smtp.com                             #指定smtp服务器地址
+
+   #smtp_connect_timeout 30                               #指定smtp连接超时时间
+
+   router_id LVS_DEVEL                                    #运行keepalived机器的一个标识
+
+}
+
+
+
+vrrp_instance VI_1 {
+
+    state MASTER           #标示状态为MASTER备份机为BACKUP
+
+    interface eth0         #设置实例绑定的网卡
+
+    virtual_router_id 51   #同一实例下virtual_router_id必须相同
+
+    priority 100           #MASTER权重要高于BACKUP比如BACKUP为99
+
+    advert_int 1           #MASTER与BACKUP负载均衡器之间同步检查的时间间隔，单位是秒
+
+    authentication {       #设置认证
+
+        auth_type PASS     #主从服务器验证方式
+
+        auth_pass 8888
+
+    }
+
+    virtual_ipaddress {    #设置vip
+
+        192.168.101.100       #可以多个虚拟IP，换行即可
+
+    }
+
+}
+
+
+
+
+
+1.1.1.2 备nginx
+修改备nginx下/etc/keepalived/keepalived.conf文件
+
+配置备nginx时需要注意：需要修改state为BACKUP , priority比MASTER低，virtual_router_id和master的值一致
+
+
+
+! Configuration File for keepalived
+
+
+
+#全局配置
+
+global_defs {
+
+   notification_email {  #指定keepalived在发生切换时需要发送email到的对象，一行一个
+
+    XXX@XXX.com
+
+   }
+
+   notification_email_from XXX@XXX.com   #指定发件人
+
+   #smtp_server XXX.smtp.com                              #指定smtp服务器地址
+
+   #smtp_connect_timeout 30                               #指定smtp连接超时时间
+
+   router_id LVS_DEVEL                                    #运行keepalived机器的一个标识
+
+}
+
+
+
+vrrp_instance VI_1 {
+
+    state BACKUP           #标示状态为MASTER备份机为BACKUP
+
+    interface eth0         #设置实例绑定的网卡
+
+    virtual_router_id 51   #同一实例下virtual_router_id必须相同
+
+    priority 99            #MASTER权重要高于BACKUP比如BACKUP为99
+
+    advert_int 1           #MASTER与BACKUP负载均衡器之间同步检查的时间间隔，单位是秒
+
+    authentication {       #设置认证
+
+        auth_type PASS     #主从服务器验证方式
+
+        auth_pass 8888
+
+    }
+
+    virtual_ipaddress {    #设置vip
+
+        192.168.101.100       #可以多个虚拟IP，换行即可
+
+    }
+
+}
+
+
+
+1.1.2 测试
+主备nginx都启动keepalived及nginx。
+
+service keepalived start
+
+./nginx
+
+1.1.1.1 初始状态
+查看主nginx的eth0设置：
+
+vip绑定在主nginx的eth0上
+
+
+
+查看备nginx的eth0设置：
+
+vip没有绑定在备nginx的eth0上。
+
+
+
+访问ccc.test.com，可以访问。
+
+
+1.1.1.1 主机宕机
+将主nginx的keepalived停止或将主nginx关机(相当于模拟宕机)，查看主nginx的eth0：
+
+eth0没有绑定vip
+
+
+
+注意这里模拟的是停止 keepalived进程没有模拟宕机，所以还要将nginx进程也停止表示主nginx服务无法提供。
+
+
+
+查看备nginx的eth0：
+
+vip已经漂移到备nginx。
+
+
+
+
+
+访问ccc.test.com，可以访问。
+
+
+
+1.1.1.2 主机恢复
+将主nginx的keepalived和nginx都启动。
+
+查看主nginx的eth0：
+
+
+
+查看备nginx的eth0：
+
+vip漂移到主nginx。
+
+
+
+
+
+查看备nginx的eth0：
+
+eth0没有绑定vip
+
+
+
+
+
+
+
+访问：ccc.test.com，正常访问。
+
+注意：主nginx恢复时一定要将nginx也启动（通常nginx启动要加在开机启动中），否则即使vip漂移到主nginx也无法访问。
+
+
+
+1.1.1 解决nginx进程和keepalived不同时存在问题
+1.1.1.1 问题描述
+keepalived是通过检测keepalived进程是否存在判断服务器是否宕机，如果keepalived进程在但是nginx进程不在了那么keepalived是不会做主备切换，所以我们需要写个脚本来监控nginx进程是否存在，如果nginx不存在就将keepalived进程杀掉。
+
+
+
+1.1.1.2 nginx进程检测脚本
+在主nginx上需要编写nginx进程检测脚本（check_nginx.sh），判断nginx进程是否存在，如果nginx不存在就将keepalived进程杀掉，check_nginx.sh内容如下：
+
+
+
+#!/bin/bash
+
+# 如果进程中没有nginx则将keepalived进程kill掉
+
+A=`ps -C nginx --no-header |wc -l`      ##查看是否有nginx进程 把值赋给变量A
+
+if [ $A -eq 0 ];then                    ##如果没有进程值得为 零
+
+       service keepalived stop          ##则结束keepalived进程
+
+fi
+
+
+
+将check_nginx.sh拷贝至/etc/keepalived下，
+
+脚本测试：
+
+将nginx停止，将keepalived启动，执行脚本：sh /etc/keepalived/check_nginx.sh
+
+
+
+
+
+从执行可以看出自动将keepalived进程kill掉了。
+
+
+
+1.1.1.3 修改keepalived.conf
+修改主nginx的keepalived.conf，添加脚本定义检测：
+
+注意下边红色标识地方：
+
+
+
+#全局配置
+
+global_defs {
+
+   notification_email {  #指定keepalived在发生切换时需要发送email到的对象，一行一个
+
+     XXX@XXX.com
+
+   }
+
+   notification_email_from miaoruntu@itcast.cn  #指定发件人
+
+   #smtp_server XXX.smtp.com                             #指定smtp服务器地址
+
+   #smtp_connect_timeout 30                               #指定smtp连接超时时间
+
+   router_id LVS_DEVEL                                    #运行keepalived机器的一个标识
+
+}
+
+vrrp_script check_nginx {
+
+    script "/etc/keepalived/check_nginx.sh"         ##监控脚本
+
+    interval 2                                      ##时间间隔，2秒
+
+    weight 2                                        ##权重
+
+}
+
+vrrp_instance VI_1 {
+
+    state MASTER           #标示状态为MASTER备份机为BACKUP
+
+    interface eth0         #设置实例绑定的网卡
+
+    virtual_router_id 51   #同一实例下virtual_router_id必须相同
+
+    priority 100           #MASTER权重要高于BACKUP比如BACKUP为99
+
+    advert_int 1           #MASTER与BACKUP负载均衡器之间同步检查的时间间隔，单位是秒
+
+    authentication {       #设置认证
+
+        auth_type PASS     #主从服务器验证方式
+
+        auth_pass 8888
+
+    }
+
+   track_script {
+
+        check_nginx        #监控脚本
+
+   }
+
+    virtual_ipaddress {    #设置vip
+
+        192.168.101.100       #可以多个虚拟IP，换行即可
+
+    }
+
+
+
+}
+
+
+
+修改后重启keepalived
+
+
+
+1.1.1.4 测试
+回到负载均衡高可用的初始状态，保证主、备上的keepalived、nginx全部启动。
+
+停止主nginx服务
+
+
+
+观察keepalived日志：
+
+tail -f /var/log/keepalived.log
+
+
+
+查看keepalived进程已经不存在。
+
+查看eth0已经没有绑定vip。
+
+
+
+Sso系统分析:
+
+什么是sso系统：
+SSO英文全称Single Sign On，单点登录。SSO是在多个应用系统中，用户只需要登录一次就可以访问所有相互信任的应用系统。它包括可以将这次主要的登录映射到
+
+其他应用中用于同一个用户的登录的机制。它是目前比较流行的企业业务整合的解决方案之一
+
+为什么要有单点登录系统：
+
+传统的登录实现方式：
+
+
+
+
+此方式在只有一个web工程时是没有问题
+
+
+集群环境下
+
+
+
+集群环境下会出现要求用户多次登录的情况。
+
+解决方案：
+
+1、配置tomcat集群。配置tomcatSession复制。节点数不要超过5个。
+
+2、可以使用Session服务器，保存Session信息，使每个节点是无状态。需要模拟Session。
+
+
+
+单点登录系统是使用redis模拟Session，实现Session的统一管理。
+
+
+
+
+
+
+补充：
+
+Nginx http服务器
+
+可做虚拟主机,在一个服务器上跑多个网站;但是默认端口只有80,80端口需要公用
+
+Nginx可以解决这个问题
+
+
+
+
+
+Nginx安装:
+
+由于市面上linux发行版本过多,版本之间的压缩包格式不同,所以nginx提供nginx的源码安装.
+
+
+
+https 加密的http协议 比http安全但效率稍微要低一些
+
+
+
+负载均衡:软负载,硬负载
+
+F5硬负载第四层负载 :传输层负载
+
+nginx是第七层应用层负载
+
+
+
+LVS实现第四层的软负载,能实现F5的60的负载功能
+
+
+
+集群 多台服务器做一个服务
+
+ Sso系统的实现
+
+
+
+登录的业务流程：
+
+
+
+
+
+
+
+
+登录的处理流程：
+
+1、登录页面提交用户名密码。
+
+2、登录成功后生成token。Token相当于原来的jsessionid，字符串，可以使用uuid。
+
+3、把用户信息保存到redis。Key就是token，value就是TbUser对象转换成json。
+
+4、使用String类型保存Session信息。可以使用“前缀:token”为key
+
+5、设置key的过期时间。模拟Session的过期时间。一般半个小时。
+
+6、把token写入cookie中。
+
+7、Cookie需要跨域。例如www.taotao.com\sso.taotao.com\order.taotao.com，可以使用工具类。
+
+8、Cookie的有效期。关闭浏览器失效。
+
+9、登录成功。
+
+Cookie二级域名跨域需要设置:
+
+1）setDomain，设置一级域名：
+
+2）setPath。设置为“/”
+
+
+首页展示用户名
+1、当用户登录成功后，在cookie中有token信息。
+
+2、从cookie中取token根据token查询用户信息。
+
+3、把用户名展示到首页。
+
+
+
+方案一：在Controller中取cookie中的token数据，调用sso服务查询用户信息。
+
+方案二：当页面加载完成后使用js取token的数据，使用ajax请求查询用户信息。
+
+
+
+问题：服务接口在sso系统中。Sso.taotao.com(localhost:8088)，在首页显示用户名称，首页的域名是www.taotao.com(localhost:8082)，使用ajax请求跨域了。
+
+
+
+Js不可以跨域请求数据。
+
+什么是跨域：
+
+1、域名不同
+
+2、域名相同端口不同。
+
+
+
+解决js的跨域问题可以使用jsonp。
+
+
+
+Jsonp不是新技术，跨域的解决方案。使用js的特性绕过跨域请求。Js可以跨域加载js文件。
+
+
+Jsonp原理：
+
+
+
+
+
+Jsonp实现
+  客户端（浏览器）
+使用jQuery
+
+var _ticket = $.cookie("USER_LOGIN_TOKEN");
+
+$.ajax({
+url:"http://ip:端口/user/token"+_ticket,
+dataType:"jsonp",
+type:"GET",
+success:function(data){
+}
+})
+
+服务端：
+1、接收callback参数，取回调的js的方法名。
+
+2、业务逻辑处理。
+
+3、响应结果，拼接一个js语句。
+
+@requestMapping("/user/token/{token}")
+
+@responseBody
+
+String getUserByToken(@PathVariable String token,String callback){
+
+if(callback不为空){
+
+String strResult = callback +"("+回传数据+")";
+
+return strResult;
+
+}
+
+}
+
+
+
+ 添加购物车
+1.1.1. 功能分析
+在不登陆的情况下也可以添加购物车。把购物车信息写入cookie。
+
+优点：
+
+1、不占用服务端存储空间
+
+2、用户体验好。
+
+3、代码实现简单。
+
+缺点：
+
+1、cookie中保存的容量有限。最大4k
+
+2、把购物车信息保存在cookie中，更换设备购物车信息不能同步。
+
+
+添加购物车商品
+业务逻辑：
+
+1、从cookie中查询商品列表。
+
+2、判断商品在商品列表中是否存在。
+
+3、如果存在，商品数量相加。
+
+4、不存在，根据商品id查询商品信息。
+
+5、把商品添加到购车列表。
+
+把购车商品列表写入cookie。
+
+删除购物车商品：
+业务逻辑：
+
+1、从url中取商品id
+
+2、从cookie中取购物车商品列表
+
+3、遍历列表找到对应的商品
+
+4、删除商品。
+
+5、把商品列表写入cookie。
+
+返回逻辑视图：在逻辑视图中做redirect跳转。
+
+
+使用cookie实现购物车：
+
+优点：
+
+1、实现简单
+
+2、不需要占用服务端存储空间。
+
+缺点：
+
+1、存储容量有限
+
+2、更换设备购车信息不能同步。
+
+
+
+实现购车商品数据同步：
+
+1、要求用户登录。
+
+2、把购物车商品列表保存到数据库中。推荐使用redis(用户会频繁操作购物车)。
+
+
+
+3、Key：用户id，value：购车商品列表。推荐使用hash，hash的field：商品id，value：商品信息。Key 用户id
+
+Value
+
+Key 商品id
+
+    Value 商品json
+
+4、在用户未登录情况下写cookie。当用户登录后，访问购物车列表时，
+
+a) 把cookie中的数据同步到redis。
+
+b) 把cookie中的数据删除
+
+c) 展示购物车列表时以redis为准。
+
+d) 如果redis中有数据cookie中也有数据，需要做数据合并。相同商品数量相加，不同商品添加一个新商品。
+
+5、如果用户登录状态，展示购物车列表以redis为准。如果未登录，以cookie为准。
+
+
+
+订
+数据库的读写分离
+
+单系统
+1.1. 功能分析
+1、在购物车页面点击“去结算”按钮跳转到订单确认页面。
+
+a) 展示商品列表
+
+b) 配送地址列表
+
+c) 选择支付方式
+
+2、展示订单确认页面之前，应该确认用户身份。
+
+a) 使用拦截器实现。
+
+b) Cookie中取token
+
+c) 取不到token跳转到登录页面
+
+d) 取到token，根据token查询用户信息。
+
+e) 如果没有用户信息，登录过期跳转到登录页面
+
+f) 取到用户信息，放行。
+
+3、提交订单
+
+a) 生成订单
+
+b) 展示订单提交成功页面。
+
+
+ 功能分析
+1、使用springmvc的拦截器实现。需要实现一个接口HandlerInterceptor接口。
+
+2、业务逻辑
+
+a) 从cookie中取token。
+
+b) 没有token，需要跳转到登录页面。
+
+c) 有token。调用sso系统的服务，根据token查询用户信息。
+
+d) 如果查不到用户信息。用户登录已经过期。需要跳转到登录页面。
+
+e) 查询到用户信息。放行。
+
+3、在springmvc.xml中配置拦截器。
+
+
+
+补充：
+
+可以使用redis的incr命令生成订单号。订单号需要一个初始值
+
+
+
+
+
+
+
+
+Linux下安装mysql
+第一步：查看mysql是否安装。
+
+rpm -qa|grep mysql
+
+第二步：如果mysql的版本不是想要的版本。需要把mysql卸载。
+
+yum remove mysql mysql-server mysql-libs mysql-common
+
+rm -rf /var/lib/mysql
+
+rm /etc/my.cnf
+
+第三步：安装mysql。需要使用yum命令安装。在安装mysql之前需要安装mysql的下载源。需要从oracle的官方网站下载。
+
+1）下载mysql的源包。
+
+我们是centos6.4对应的rpm包为：mysql-community-release-el6-5.noarch.rpm
+
+2）安装mysql下载源：
+
+yum localinstall mysql-community-release-el6-5.noarch.rpm
+
+
+
+3）在线安装mysql：
+
+yum install mysql-community-server
+
+第四步：启动mysql
+
+service mysqld start
+
+第五步：需要给root用户设置密码。
+
+/usr/bin/mysqladmin -u root password 'new-password'//为root账号设置密码
+
+第六步：远程连接授权。
+
+GRANT ALL PRIVILEGES ON *.* TO 'myuser'@'%' IDENTIFIED BY'mypassword'WITH GRANT OPTION;
+
+注意：'myuser'、'mypassword'需要替换成实际的用户名和密码。
+
+
+数据库的读写分离
+
+Mysql提供的解决方案：使用binlog进行数据库同步。需要配置mysql。
+
+代码中实现读写分类：
+
+1、可以使用aop实现一个切面。动态切换数据源。需要编程实现。
+
+2、使用数据库中间件实现读写分类，分库分表。
+
+分库分表：
+
+当数据库的表中数据非常大的时候例如上千万条数据。查询性能非常低。可以把一张表保存到不同的数中。
+
+
+
+可以使用一个数据库中间件mycat。国产开源项目，前身是cobar项目。
+
+
+
+Tomcat热部署
+可以使用maven实现tomcat热部署。Tomcat启动时 部署工程。
+
+Tomcat有个后台管理功能，可以实现工程热部署。
+
+配置方法：
+
+第一步：需要修改tomcat的conf/tomcat-users.xml配置文件。添加用户名、密码、权限。
+
+<role rolename="manager-gui" />
+
+<role rolename="manager-script" />
+
+<user username="tomcat" password="tomcat" roles="manager-gui, manager-script"/>
+
+第二步：重新启动tomcat。
+
+
+
+使用maven的tomcat插件实现热部署：
+
+第一步：配置tomcat插件，需要修改工程的pom文件。
+
+<build>
+
+<plugins>
+
+<!-- 配置Tomcat插件 -->
+
+<plugin>
+
+<groupId>org.apache.tomcat.maven</groupId>
+
+<artifactId>tomcat7-maven-plugin</artifactId>
+
+<configuration>
+
+<port>8081</port>
+
+<path>/</path>
+
+<url>http://192.168.25.135:8080/manager/text</url>
+
+<username>tomcat</username>
+
+<password>tomcat</password>
+
+</configuration>
+
+</plugin>
+
+</plugins>
+
+</build>
+
+第二步：使用maven命令进行部署。
+
+tomcat7:deploy
+
+tomcat7:redeploy
+
+部署的路径是“/”会把系统部署到webapps/ROOT目录下。
+
+部署工程跳过测试：
+
+clean tomcat7:redeploy -DskipTests
+
+
+
+
+1.1. 电商活动倒计时方案：
+1、确定一个基准时间。可以使用一个sql语句从数据库中取出一个当前时间。SELECT NOW()；
+
+2、活动开始的时间是固定的。
+
+3、使用活动开始时间-基准时间可以计算出一个秒为单位的数值。
+
+4、在redis中设置一个key（活动开始标识）。设置key的过期时间为第三步计算出来的时间。
+
+5、展示页面的时候取出key的有效时间。Ttl命令。使用js倒计时。
+
+6、一旦活动开始的key失效，说明活动开始。
+
+7、需要在活动的逻辑中，先判断活动是否开始。
+
+
+
+1.2. 秒杀方案：
+1、把商品的数量放到redis中。
+
+2、秒杀时使用decr命令对商品数量减一。如果不是负数说明抢到。
+
+一旦返回数值变为0说明商品已售完。

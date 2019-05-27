@@ -1,0 +1,541 @@
+
+==========================
+Hive 1.2.1安装
+
+spark 2.0，默认是跟hive 1.2.1进行整合的，所以之前我们安装的是hive 0.13.1是不Ok的，实际跑的时候会出现hive 0.13支持的一些操作，spark 2.0会用自己内置的hive 1.2.1 lib去操作和访问我们的hive 0.13（包括metastore service），出现版本不一致的问题
+
+1、将/usr/local/hive删除
+2、将apache-hive-1.2.1-bin.tar.gz使用WinSCP上传到spark1的/usr/local目录下。
+3、解压缩hive安装包：tar -zxvf apache-hive-1.2.1-bin.tar.gz。
+4、重命名hive目录：mv apache-hive-1.2.1-bin hive
+5、cp /usr/share/java/mysql-connector-java-5.1.17.jar /usr/local/hive/lib
+
+
+mv hive-default.xml.template hive-site.xml
+vi hive-site.xml
+<property>
+  <name>javax.jdo.option.ConnectionURL</name>
+  <value>jdbc:mysql://spark2upgrade01:3306/hive_metadata?createDatabaseIfNotExist=true</value>
+</property>
+<property>
+  <name>javax.jdo.option.ConnectionDriverName</name>
+  <value>com.mysql.jdbc.Driver</value>
+</property>
+<property>
+  <name>javax.jdo.option.ConnectionUserName</name>
+  <value>hive</value>
+</property>
+<property>
+  <name>javax.jdo.option.ConnectionPassword</name>
+  <value>hive</value>
+</property>
+<property>
+  <name>hive.metastore.uris</name>
+  <value>thrift://spark2upgrade01:9083</value>
+</property>
+
+把hive-site.xml中所有${system:java.io.tmpdir}全部替换为/usr/local/hive/iotmp
+把hive-site.xml中所有${system:user.name}全部替换为root
+
+rm -rf /usr/local/hadoop/share/hadoop/yarn/lib/jline-0.9.94.jar
+cp /usr/local/hive/lib/jline-2.12.jar /usr/local/hadoop/share/hadoop/yarn/lib
+
+mv hive-env.sh.template hive-env.sh
+vi /usr/local/hive/bin/hive-config.sh
+export JAVA_HOME=/usr/java/latest
+export HIVE_HOME=/usr/local/hive
+export HADOOP_HOME=/usr/local/hadoop
+
+1、将hive-site.xml放置到spark的conf目录下
+2、启动hive metastore service
+hive --service metastore &
+
+1、创建一份文件，students.txt，每行是一个学生的信息
+2、CREATE TABLE students(name string, age int, score double)
+3、LOAD DATA LOCAL INPATH '/usr/local/test_data/students.txt' INTO TABLE students
+4、spark-shell --master spark://spark2upgrade01:7077 --driver-memory 500m --executor-memory 500m
+5、在spark-shell中，运行针对hive的sql语句
+spark.sql(“select * from students”).show();
+spark.sql(“select name from students where score>=90;”).show();
+spark.sql(“select name from students where age<=15;”).show();
+6、观察是否有正确的结果
+7、在spark web ui中检查是否有运行的作业记录
+
+
+
+
+
+=================
+
+Spark从入门到精通
+Spark 2.0-开发环境搭建：Eclipse+Maven+Scala+Spark
+
+Maven
+scala 2.11
+
+Eclipse
+安装eclipse scala插件：http://download.scala-ide.org/sdk/helium/e38/scala211/stable/site
+安装eclipse m2e connector插件：http://download.eclipse.org/technology/m2e/releases
+add scala library
+
+Spark 2.0 Dependency
+
+
+
+
+手动创建一个课程的工程，作为演示
+maven project
+
+org.scala-tools.archetypes
+scala-archetype-simple
+1.2
+
+<inceptionYear>2015</inceptionYear>
+<properties>
+    <scala.version>2.11.7</scala.version>
+</properties>
+
+
+
+
+
+
+CentOS 6.5集群搭建
+虚拟机安装
+
+1、使用课程提供的CentOS 6.5镜像即可，CentOS-6.5-i386-minimal.iso。
+2、创建虚拟机：打开Virtual Box，点击“新建”按钮，点击“下一步”，输入虚拟机名称为spark2upgrade01，选择操作系统为Linux，选择版本为Red Hat，分配4096MB内存，后面的选项全部用默认，在Virtual Disk File location and size中，一定要自己选择一个目录来存放虚拟机文件，最后点击“create”按钮，开始创建虚拟机。
+3、设置虚拟机网卡：选择创建好的虚拟机，点击“设置”按钮，在网络一栏中，连接方式中，选择“Bridged Adapter”。
+4、安装虚拟机中的CentOS 6.5操作系统：选择创建好的虚拟机，点击“开始”按钮，选择安装介质（即本地的CentOS 6.5镜像文件），选择第一项开始安装-Skip-欢迎界面Next-选择默认语言-Baisc Storage Devices-Yes, discard any data-主机名:spark2upgrade01-选择时区-设置初始密码为hadoop-Replace Existing Linux System-Write changes to disk-CentOS 6.5自己开始安装。
+5、安装完以后，CentOS会提醒你要重启一下，就是reboot，你就reboot就可以了。
+
+
+CentOS 6.5集群搭建
+配置网络
+
+vi /etc/sysconfig/network-scripts/ifcfg-eth0
+
+DEVICE=eth0
+TYPE=Ethernet
+ONBOOT=yes
+BOOTPROTO=dhcp
+service network restart
+ifconfig
+
+BOOTPROTO=static
+IPADDR=192.168.0.X
+NETMASK=255.255.255.0
+GATEWAY=192.168.0.1
+service network restart
+
+vi /etc/hosts
+配置本机的hostname到ip地址的映射
+
+此时就可以使用SecureCRT从本机连接到虚拟机进行操作了
+
+CentOS 6.5集群搭建
+关闭防火墙
+service iptables stop
+service ip6tables stop
+chkconfig iptables off
+chkconfig ip6tables off
+
+vi /etc/selinux/config
+SELINUX=disabled
+
+关闭windows的防火墙
+
+
+
+
+
+CentOS 6.5集群搭建
+安装yum
+
+
+yum clean all
+yum makecache
+yum install telnet
+
+CentOS 6.5集群搭建
+安装JDK 1.7
+
+
+1、将jdk-7u60-linux-i586.rpm通过WinSCP上传到虚拟机中
+2、安装JDK：rpm -ivh jdk-7u65-linux-i586.rpm
+3、配置jdk相关的环境变量
+vi .bashrc
+export JAVA_HOME=/usr/java/latest
+export PATH=$PATH:$JAVA_HOME/bin
+source .bashrc
+4、测试jdk安装是否成功：java -version
+
+
+
+
+CentOS 6.5集群搭建
+安装另外两台虚拟机
+
+1、按照上述步骤，再安装两台一模一样环境的虚拟机，唯一的区别是内存为1024MB。
+2、另外两台机器的hostname分别设置为spark2upgrade02和spark2upgrade03即可。
+3、在安装的时候，另外两台虚拟机的centos镜像文件必须重新拷贝一份，使用自己的镜像文件。
+4、虚拟机的硬盘文件也重新选择一个新的目录。
+5、安装好之后，要在三台机器的/etc/hosts文件中，配置全三台机器的ip地址到hostname的映射
+6、在windows的hosts文件中也要配置全三台机器的ip地址到hostname的映射。
+
+
+
+
+CentOS 6.5集群搭建
+配置集群的SSH免密码通信
+
+1、首先在三台机器上配置对本机的ssh免密码登录
+ssh-keygen -t rsa
+生成本机的公钥，过程中不断敲回车即可，ssh-keygen命令默认会将公钥放在/root/.ssh目录下
+cd /root/.ssh
+cp id_rsa.pub authorized_keys
+将公钥复制为authorized_keys文件，此时使用ssh连接本机就不需要输入密码了
+
+2、接着配置三台机器互相之间的ssh免密码登录
+使用ssh-copy-id -i spark命令将本机的公钥拷贝到指定机器的authorized_keys文件中
+
+
+
+Hadoop 2.4集群搭建
+部署hadoop安装包
+1、使用课程提供的hadoop-2.4.1.tar.gz，使用WinSCP上传到CentOS的/usr/local目录下。
+2、将hadoop包进行解压缩：tar -zxvf hadoop-2.4.1.tar.gz
+3、对hadoop目录进行重命名：mv hadoop-2.4.1 hadoop
+4、配置hadoop相关环境变量
+vi .bashrc
+export HADOOP_HOME=/usr/local/hadoop
+export PATH=$HADOOP_HOME/bin:$HADOOP_HOME/sbin
+source .bashrc
+5、在/usr/local目录下创建data目录
+
+
+
+
+Hadoop 2.4集群搭建
+修改core-site.xml配置文件
+
+
+
+<property>
+  <name>fs.default.name</name>
+  <value>hdfs://spark2upgrade01:9000</value>
+</property>
+
+修改hdfs-site.xml配置文件
+
+<property>
+  <name>dfs.name.dir</name>
+  <value>/usr/local/data/namenode</value>
+</property>
+<property>
+  <name>dfs.data.dir</name>
+  <value>/usr/local/data/datanode</value>
+</property>
+<property>
+  <name>dfs.tmp.dir</name>
+  <value>/usr/local/data/tmp</value>
+</property>
+<property>
+  <name>dfs.replication</name>
+  <value>3</value>
+</property>
+
+
+
+Hadoop 2.4集群搭建
+修改mapred-site.xml配置文件
+<property>
+  <name>mapreduce.framework.name</name>
+  <value>yarn</value>
+</property>
+
+Hadoop 2.4集群搭建
+修改yarn-site.xml配置文件
+
+<property>
+  <name>yarn.resourcemanager.hostname</name>
+  <value>spark2upgrade01</value>
+</property>
+<property>
+  <name>yarn.nodemanager.aux-services</name>
+  <value>mapreduce_shuffle</value>
+</property>
+
+
+Hadoop 2.4集群搭建
+修改slaves配置文件
+spark2upgrade01
+spark2upgrade02
+spark2upgrade03
+
+
+
+Hadoop 2.4集群搭建
+在另外两台机器上部署hadoop
+
+1、使用scp命令将spark2upgrade01上面的hadoop安装包和.bashrc配置文件都拷贝过去。
+2、要记得对.bashrc文件进行source，以让它生效。
+3、记得在另外两台机器的/usr/local目录下创建data目录。
+
+
+
+
+
+Hadoop 2.4集群搭建
+启动hdfs集群
+
+1、格式化namenode：在spark2upgrade01上执行以下命令hdfs namenode -format
+2、启动hdfs集群：start-dfs.sh3、验证启动是否成功：jps、50070端口
+spark2upgrade01：namenode、datanode、secondarynamenode
+spark2upgrade02：datanode
+spark2upgrade03：datanode
+
+
+
+
+Hadoop 2.4集群搭建
+启动yarn集群
+1、启动yarn集群：start-yarn.sh2、验证启动是否成功：jps、8088端口
+spark2upgrade01：resourcemanager、nodemanager
+spark2upgrade02：nodemanager
+spark2upgrade03：nodemanager
+
+
+
+
+
+
+
+Hive 0.13搭建
+部署hive安装包
+
+1、将课程提供的apache-hive-0.13.1-bin.tar.gz使用WinSCP上传到spark1的/usr/local目录下。
+2、解压缩hive安装包：tar -zxvf apache-hive-0.13.1-bin.tar.gz。
+3、重命名hive目录：mv apache-hive-0.13.1-bin hive
+4、配置hive相关的环境变量
+vi .bashrc
+export HIVE_HOME=/usr/local/hive
+export PATH=$HIVE_HOME/bin
+source .bashrc
+
+
+
+
+
+
+安装mysql
+
+
+1、在spark2upgrade01上安装mysql。
+2、使用yum安装mysql server。
+yum install -y mysql-server
+service mysqld start
+chkconfig mysqld on
+3、使用yum安装mysql connector
+yum install -y mysql-connector-java
+4、将mysql connector拷贝到hive的lib包中
+cp /usr/share/java/mysql-connector-java-5.1.17.jar /usr/local/hive/lib
+5、在mysql上创建hive元数据库，并对hive进行授权
+create database if not exists hive_metadata;
+grant all privileges on hive_metadata.* to 'hive'@'%' identified by 'hive';
+grant all privileges on hive_metadata.* to 'hive'@'localhost' identified by 'hive';
+grant all privileges on hive_metadata.* to 'hive'@'spark2upgrade01' identified by 'hive';
+flush privileges;
+use hive_metadata;
+
+
+
+
+
+
+修改hive-site.xml配置文件
+
+mv hive-default.xml.template hive-site.xml
+vi hive-site.xml
+<property>
+  <name>javax.jdo.option.ConnectionURL</name>
+  <value>jdbc:mysql://spark2upgrade01:3306/hive_metadata?createDatabaseIfNotExist=true</value>
+</property>
+<property>
+  <name>javax.jdo.option.ConnectionDriverName</name>
+  <value>com.mysql.jdbc.Driver</value>
+</property>
+<property>
+  <name>javax.jdo.option.ConnectionUserName</name>
+  <value>hive</value>
+</property>
+<property>
+  <name>javax.jdo.option.ConnectionPassword</name>
+  <value>hive</value>
+</property>
+
+
+
+配置hive-env.sh和hive-config.sh
+
+mv hive-env.sh.template hive-env.sh
+
+vi /usr/local/hive/bin/hive-config.sh
+export JAVA_HOME=/usr/java/latest
+export HIVE_HOME=/usr/local/hive
+export HADOOP_HOME=/usr/local/hadoop
+
+
+
+
+验证安装是否成功
+
+
+直接输入hive命令，可以进入hive命令行
+
+
+Spark 2.0集群搭建
+安装scala 2.11
+
+1、将课程提供的scala-2.11.4.tgz使用WinSCP拷贝到spark1的/usr/local目录下。
+2、对scala-2.11.4.tgz进行解压缩：tar -zxvf scala-2.11.4.tgz。
+3、对scala目录进行重命名：mv scala-2.11.4 scala
+4、配置scala相关的环境变量
+vi .bashrc
+export SCALA_HOME=/usr/local/scala
+export PATH=$SCALA_HOME/bin
+source .bashrc
+5、查看scala是否安装成功：scala -version
+6、在另外两台机器上都安装scala，使用scp将scala和.bashrc拷贝到过去即可。
+
+
+部署spark 2.0安装包
+
+
+1、将spark-2.0.0-bin-hadoop2.4.tgz使用WinSCP上传到/usr/local目录下。自己在http://spark.apache.org/downloads.html上下载即可。
+2、解压缩spark包：tar zxvf spark-2.0.0-bin-hadoop2.4.tgz。
+3、更改spark目录名：mv spark-2.0.0-bin-hadoop2.4.tgz spark
+4、设置spark环境变量
+vi .bashrc
+export SPARK_HOME=/usr/local/spark
+export PATH=$SPARK_HOME/bin
+export CLASSPATH=.:$CLASSPATH:$JAVA_HOME/lib:$JAVA_HOME/jre/lib
+source .bashrc
+
+配置spark-env.sh
+1、cd /usr/local/spark/conf
+2、cp spark-env.sh.template spark-env.sh
+3、vi spark-env.sh
+export JAVA_HOME=/usr/java/latest
+export SCALA_HOME=/usr/local/scala
+export SPARK_MASTER_HOST=spark2upgrade01
+export SPARK_WORKER_MEMORY=500m
+export HADOOP_CONF_DIR=/usr/local/hadoop/etc/hadoop
+
+
+
+
+配置slaves
+spark2upgrade01
+spark2upgrade02
+spark2upgrade03
+
+
+
+
+
+在另外两台机器上部署spark 2.0
+
+
+在另外两个节点进行一模一样的配置，使用scp将spark和.bashrc拷贝到过去即可。
+
+
+
+
+配置spark可以使用hive
+
+1、将hive-site.xml放置到spark的conf目录下
+2、修改spark/conf和hive/conf下的hive-site.xml
+<property>
+  <name>hive.metastore.uris</name>
+  <value>thrift://spark2upgrade01:9083</value>
+</property>
+3、启动hive metastore service
+hive --service metastore &
+4、cp hive/lib/mysql-connector-java-5.1.17.jar spark/jars/
+5、hdfs dfs -chmod 777 /tmp/hive-root
+
+
+
+启动spark集群
+1、在spark目录下的sbin目录
+2、执行./start-all.sh
+3、使用jsp和8080端口可以检查集群是否启动成功
+4、进入spark-shell查看是否正常
+
+
+
+
+检查spark集群能否与hdfs整合使用
+
+
+1、使用 spark-shell --master spark://spark2upgrade01:7077 --driver-memory 500m --executor-memory 500m启动
+2、手工创建一份文件，上传到hdfs上去，放在/test_data/wordcount.txt中
+3、在spark-shell中，基于hdfs上的文件，编写与运行一个wordcount程序
+val lines = sc.textFile(“hdfs://spark2upgrade01:9000/test_data/wordcount.txt”)
+val words = lines.flatMap(_.split(“ ”))
+val pairs = words.map((_, 1))
+val wordCounts = pairs.reduceByKey(_ + _)
+wordCounts.collect().foreach(println(_))
+4、观察是否有正确的结果
+5、在spark web ui中检查是否有运行的作业记录
+
+
+
+
+检查spark集群能否与hive整合使用
+1、创建一份文件，students.txt，每行是一个学生的信息
+2、CREATE TABLE students(name string, age int, score double)
+3、LOAD DATA LOCAL INPATH '/usr/local/test_data/students.txt' INTO TABLE students
+4、spark-shell --master spark://spark2upgrade01:7077 --driver-memory 500m --executor-memory 500m
+5、在spark-shell中，运行针对hive的sql语句
+spark.sql(“select * from students”).show();
+spark.sql(“select name from students where score>=90;”).show();
+spark.sql(“select name from students where age<=15;”).show();
+6、观察是否有正确的结果
+7、在spark web ui中检查是否有运行的作业记录
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
