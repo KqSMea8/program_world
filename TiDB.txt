@@ -1,0 +1,426 @@
+https://www.pingcap.com
+
+https://pingcap.com/docs-cn/overview/
+
+
+Tispark是一个很薄的层，用于在tidb/tikv上运行ApacheShark，以回答复杂的OLAP查询。它利用Spark平台和分布式Tikv集群的优势，同时无缝地连接到分布式OLTP数据库TIDB，以提供混合事务/分析处理（HTAP），并作为在线事务和分析的一站式解决方案。
+
+TiDB 是 PingCAP 公司设计的开源分布式 HTAP (Hybrid Transactional and Analytical Processing) 数据库，结合了传统的 RDBMS 和 NoSQL 的最佳特性。TiDB 兼容 MySQL，支持无限的水平扩展，具备强一致性和高可用性。TiDB 的目标是为 OLTP (Online Transactional Processing) 和 OLAP (Online Analytical Processing) 场景提供一站式的解决方案。
+
+TiDB 具备如下特性：
+
+高度兼容 MySQL
+
+大多数情况下，无需修改代码即可从 MySQL 轻松迁移至 TiDB，分库分表后的 MySQL 集群亦可通过 TiDB 工具进行实时迁移。
+
+水平弹性扩展
+
+通过简单地增加新节点即可实现 TiDB 的水平扩展，按需扩展吞吐或存储，轻松应对高并发、海量数据场景。
+
+分布式事务
+
+TiDB 100% 支持标准的 ACID 事务。
+
+真正金融级高可用
+
+相比于传统主从 (M-S) 复制方案，基于 Raft 的多数派选举协议可以提供金融级的 100% 数据强一致性保证，且在不丢失大多数副本的前提下，可以实现故障的自动恢复 (auto-failover)，无需人工介入。
+
+一站式 HTAP 解决方案
+
+TiDB 作为典型的 OLTP 行存数据库，同时兼具强大的 OLAP 性能，配合 TiSpark，可提供一站式 HTAP 解决方案，一份存储同时处理 OLTP & OLAP，无需传统繁琐的 ETL 过程。
+
+云原生 SQL 数据库
+
+TiDB 是为云而设计的数据库，支持公有云、私有云和混合云，使部署、配置和维护变得十分简单。
+
+TiDB 的设计目标是 100% 的 OLTP 场景和 80% 的 OLAP 场景，更复杂的 OLAP 分析可以通过 TiSpark 项目来完成。
+
+TiDB 对业务没有任何侵入性，能优雅的替换传统的数据库中间件、数据库分库分表等 Sharding 方案。同时它也让开发运维人员不用关注数据库 Scale 的细节问题，专注于业务开发，极大的提升研发的生产力。
+
+
+说存储
+说计算
+谈调度
+部署方式
+TiDB 可以部署在本地和云平台上，支持公有云、私有云和混合云。你可以根据实际场景或需求，选择相应的方式来部署 TiDB 集群：
+
+使用 Ansible 部署：如果用于生产环境，须使用 Ansible 部署 TiDB 集群。
+
+使用 Ansible 离线部署：如果部署环境无法访问网络，可使用 Ansible 进行离线部署。
+
+使用 Docker Compose 部署：如果你只是想测试 TiDB、体验 TiDB 的特性，或者用于开发环境，可以使用 Docker Compose 在本地快速部署 TiDB 集群。该部署方式不适用于生产环境。
+使用 Docker 部署：你可以使用 Docker 部署 TiDB 集群，但该部署方式不适用于生产环境。
+
+
+TiDB 整体架构
+要深入了解 TiDB 的水平扩展和高可用特点，首先需要了解 TiDB 的整体架构。TiDB 集群主要包括三个核心组件：TiDB Server，PD Server 和 TiKV Server。此外，还有用于解决用户复杂 OLAP 需求的 TiSpark 组件。
+
+TiDB Architecture
+
+TiDB Server
+TiDB Server 负责接收 SQL 请求，处理 SQL 相关的逻辑，并通过 PD 找到存储计算所需数据的 TiKV 地址，与 TiKV 交互获取数据，最终返回结果。TiDB Server 是无状态的，其本身并不存储数据，只负责计算，可以无限水平扩展，可以通过负载均衡组件（如LVS、HAProxy 或 F5）对外提供统一的接入地址。
+
+PD Server
+Placement Driver (简称 PD) 是整个集群的管理模块，其主要工作有三个：一是存储集群的元信息（某个 Key 存储在哪个 TiKV 节点）；二是对 TiKV 集群进行调度和负载均衡（如数据的迁移、Raft group leader 的迁移等）；三是分配全局唯一且递增的事务 ID。
+
+PD 通过 Raft 协议保证数据的安全性。Raft 的 leader server 负责处理所有操作，其余的 PD server 仅用于保证高可用。建议部署奇数个 PD 节点。
+
+TiKV Server
+TiKV Server 负责存储数据，从外部看 TiKV 是一个分布式的提供事务的 Key-Value 存储引擎。存储数据的基本单位是 Region，每个 Region 负责存储一个 Key Range（从 StartKey 到 EndKey 的左闭右开区间）的数据，每个 TiKV 节点会负责多个 Region。TiKV 使用 Raft 协议做复制，保持数据的一致性和容灾。副本以 Region 为单位进行管理，不同节点上的多个 Region 构成一个 Raft Group，互为副本。数据在多个 TiKV 之间的负载均衡由 PD 调度，这里也是以 Region 为单位进行调度。
+
+TiSpark
+TiSpark 作为 TiDB 中解决用户复杂 OLAP 需求的主要组件，将 Spark SQL 直接运行在 TiDB 存储层上，同时融合 TiKV 分布式集群的优势，并融入大数据社区生态。至此，TiDB 可以通过一套系统，同时支持 OLTP 与 OLAP，免除用户数据同步的烦恼。
+
+
+TiDB 核心特性
+本文详细介绍 TiDB 的两大核心特性：水平扩展与高可用。
+
+水平扩展
+无限水平扩展是 TiDB 的一大特点，这里说的水平扩展包括两方面：计算能力和存储能力。TiDB Server 负责处理 SQL 请求，随着业务的增长，可以简单的添加 TiDB Server 节点，提高整体的处理能力，提供更高的吞吐。TiKV 负责存储数据，随着数据量的增长，可以部署更多的 TiKV Server 节点解决数据 Scale 的问题。PD 会在 TiKV 节点之间以 Region 为单位做调度，将部分数据迁移到新加的节点上。所以在业务的早期，可以只部署少量的服务实例（推荐至少部署 3 个 TiKV， 3 个 PD，2 个 TiDB），随着业务量的增长，按照需求添加 TiKV 或者 TiDB 实例。
+
+高可用
+高可用是 TiDB 的另一大特点，TiDB/TiKV/PD 这三个组件都能容忍部分实例失效，不影响整个集群的可用性。下面分别说明这三个组件的可用性、单个实例失效后的后果以及如何恢复。
+
+TiDB
+
+TiDB 是无状态的，推荐至少部署两个实例，前端通过负载均衡组件对外提供服务。当单个实例失效时，会影响正在这个实例上进行的 Session，从应用的角度看，会出现单次请求失败的情况，重新连接后即可继续获得服务。单个实例失效后，可以重启这个实例或者部署一个新的实例。
+
+PD
+
+PD 是一个集群，通过 Raft 协议保持数据的一致性，单个实例失效时，如果这个实例不是 Raft 的 leader，那么服务完全不受影响；如果这个实例是 Raft 的 leader，会重新选出新的 Raft leader，自动恢复服务。PD 在选举的过程中无法对外提供服务，这个时间大约是3秒钟。推荐至少部署三个 PD 实例，单个实例失效后，重启这个实例或者添加新的实例。
+
+TiKV
+
+TiKV 是一个集群，通过 Raft 协议保持数据的一致性（副本数量可配置，默认保存三副本），并通过 PD 做负载均衡调度。单个节点失效时，会影响这个节点上存储的所有 Region。对于 Region 中的 Leader 结点，会中断服务，等待重新选举；对于 Region 中的 Follower 节点，不会影响服务。当某个 TiKV 节点失效，并且在一段时间内（默认 30 分钟）无法恢复，PD 会将其上的数据迁移到其他的 TiKV 节点上。
+
+TiSpark 用户指南
+TiSpark 是 PingCAP 为解决用户复杂 OLAP 需求而推出的产品。它借助 Spark 平台，同时融合 TiKV 分布式集群的优势，和 TiDB 一起为用户一站式解决 HTAP (Hybrid Transactional/Analytical Processing) 的需求。TiSpark 依赖于 TiKV 集群和 Placement Driver (PD)，也需要你搭建一个 Spark 集群。
+
+本文简单介绍如何部署和使用 TiSpark。本文假设你对 Spark 有基本认知。你可以参阅 Apache Spark 官网 了解 Spark 的相关信息。
+
+概述
+TiSpark 是将 Spark SQL 直接运行在分布式存储引擎 TiKV 上的 OLAP 解决方案。其架构图如下：
+
+TiSpark Architecture
+
+TiSpark 深度整合了 Spark Catalyst 引擎, 可以对计算提供精确的控制，使 Spark 能够高效的读取 TiKV 中的数据，提供索引支持以实现高速的点查。
+通过多种计算下推减少 Spark SQL 需要处理的数据大小，以加速查询；利用 TiDB 的内建的统计信息选择更优的查询计划。
+从数据集群的角度看，TiSpark + TiDB 可以让用户无需进行脆弱和难以维护的 ETL，直接在同一个平台进行事务和分析两种工作，简化了系统架构和运维。
+除此之外，用户借助 TiSpark 项目可以在 TiDB 上使用 Spark 生态圈提供的多种工具进行数据处理。例如，使用 TiSpark 进行数据分析和 ETL；使用 TiKV 作为机器学习的数据源；借助调度系统产生定时报表等等。
+环境准备
+现有 TiSpark 2.x 版本支持 Spark 2.3.x，但并不支持 Spark 2.3.x 以外的版本。如果你希望使用 Spark 2.1.x 版本，需使用 TiSpark 1.x。
+
+TiSpark 2.x 对于 Spark 2.3.x 的不同小版本做了些微的改动。默认的 TiSpark 支持 Spark 2.3.2，若希望使用 Spark 2.3.0 或者 Spark 2.3.1，则需要自行编译相关小版本的支持，以避免出现 API 的冲突。可以参见这个文档来获知如何从源码编译支持 Spark 2.3.x 的 TiSpark 。
+
+TiSpark 需要 JDK 1.8+ 以及 Scala 2.11（Spark2.0+ 默认 Scala 版本）。
+
+TiSpark 可以在 YARN，Mesos，Standalone 等任意 Spark 模式下运行。
+
+推荐配置
+本部分描述了 TiKV 与 TiSpark 集群分开部署、Spark 与 TiSpark 集群独立部署，以及TiSpark 与 TiKV 集群混合部署的建议配置。
+
+TiKV 与 TiSpark 集群分开部署的配置
+对于 TiKV 与 TiSpark 分开部署的场景，可以参考如下建议配置：
+
+硬件配置建议
+
+普通场景可以参考 TiDB 和 TiKV 硬件配置建议，但是如果是偏重分析的场景，可以将 TiKV 节点增加到至少 64G 内存。
+
+Spark 与 TiSpark 集群独立部署的配置
+关于 Spark 的详细硬件推荐配置请参考官网，如下是 TiSpark 所需环境的简单描述：
+
+Spark 推荐 32G 内存以上的配额。请在配置中预留 25% 的内存给操作系统。
+
+Spark 推荐每台计算节点配备 CPU 累计 8 到 16 核以上。你可以初始设定分配所有 CPU 核给 Spark。
+
+Spark 的具体配置方式也请参考官方说明。以下为根据 spark-env.sh 配置的范例：
+
+Copy
+SPARK_EXECUTOR_MEMORY=32g
+SPARK_WORKER_MEMORY=32g
+SPARK_WORKER_CORES=8
+在 spark-defaults.conf 中，增加如下配置：
+
+Copy
+spark.tispark.pd.addresses $your_pd_servers
+spark.sql.extensions org.apache.spark.sql.TiExtensions
+your_pd_servers 是用逗号分隔的 PD 地址，每个地址使用 地址:端口 的格式。
+
+例如你有一组 PD 在10.16.20.1，10.16.20.2，10.16.20.3，那么 PD 配置格式是10.16.20.1:2379,10.16.20.2:2379,10.16.20.3:2379。
+
+TiSpark 与 TiKV 集群混合部署的配置
+对于 TiKV 与 TiSpark 混合部署的场景，需在原有 TiKV 预留资源之外累加 Spark 所需部分，并分配 25% 的内存作为系统本身占用。
+
+部署 TiSpark
+TiSpark 的 jar 包可以在这里下载，解压并拷贝到合适的目录。
+
+已有 Spark 集群的部署方式
+如果在已有 Spark 集群上运行 TiSpark，无需重启集群。可以使用 Spark 的 --jars 参数将 TiSpark 作为依赖引入：
+
+Copy
+spark-shell --jars $TISPARK_FOLDER/tispark-core-${version}-SNAPSHOT-jar-with-dependencies.jar
+没有 Spark 集群的部署方式
+如果没有使用中的 Spark 集群，推荐使用 Saprk Standalone 方式部署。这里简单介绍下 Standalone 部署方式。如果遇到问题，可以去官网寻求帮助；也欢迎在我们的 GitHub 上提 issue。
+
+下载安装包并安装
+你可以在这里下载 Apache Spark。
+
+对于 Standalone 模式且无需 Hadoop 支持，则选择 Spark 2.3.x 且带有 Hadoop 依赖的 Pre-build with Apache Hadoop 2.x 任意版本。如有需要配合使用的 Hadoop 集群，则选择对应的 Hadoop 版本号。你也可以选择从源代码自行构建以配合官方 Hadoop 2.x 之前的版本。
+
+如果你已经有了 Spark 二进制文件，并且当前 PATH 为 SPARKPATH，需将 TiSpark jar 包拷贝到 ${SPARKPATH}/jars 目录下。
+
+启动 Master
+在选中的 Spark Master 节点执行如下命令：
+
+Copy
+cd $SPARKPATH
+./sbin/start-master.sh
+在这步完成以后，屏幕上会打印出一个 log 文件。检查 log 文件确认 Spark-Master 是否启动成功。你可以打开 http://spark-master-hostname:8080 查看集群信息（如果你没有改动 Spark-Master 默认 Port Numebr）。在启动 Spark-Slave 的时候，也可以通过这个面板来确认 Slave 是否已经加入集群。
+
+启动 Slave
+类似地，可以用如下命令启动 Spark-Slave 节点：
+
+Copy
+./sbin/start-slave.sh spark://spark-master-hostname:7077
+命令返回以后，即可通过刚才的面板查看这个 Slave 是否已经正确地加入了 Spark 集群。在所有 Slave 节点重复刚才的命令。确认所有的 Slave 都可以正确连接 Master，这样你就拥有了一个 Standalone 模式的 Spark 集群。
+
+Spark SQL shell 和 JDBC 服务器
+当前版本的 TiSpark 可以直接使用 spark-sql和 Spark 的 ThriftServer JDBC 服务器。
+
+一个使用范例
+假设你已经按照上述步骤成功启动了 TiSpark 集群，下面简单介绍如何使用 Spark SQL 来做 OLAP 分析。这里我们用名为 tpch 数据库中的 lineitem 表作为范例。
+
+假设你的 PD 节点位于 192.168.1.100，端口为 2379，在$SPARK_HOME/conf/spark-defaults.conf加入：
+
+Copy
+spark.tispark.pd.addresses 192.168.1.100:2379
+spark.sql.extensions org.apache.spark.sql.TiExtensions
+然后在 Spark-Shell 里像原生 Spark 一样输入下面的命令：
+
+Copy
+spark.sql("use tpch")
+spark.sql("select count(*) from lineitem").show
+结果为：
+
+Copy
++-------------+
+| Count (1)   |
++-------------+
+| 600000000   |
++-------------+
+Spark SQL 交互 Shell 和原生 Spark 一致：
+
+Copy
+spark-sql> use tpch;
+Time taken: 0.015 seconds
+
+spark-sql> select count(*) from lineitem;
+2000
+Time taken: 0.673 seconds, Fetched 1 row(s)
+SQuirreLSQL 和 hive-beeline 可以使用 JDBC 连接 Thrift 服务器。 例如，使用 beeline 连接：
+
+Copy
+./beeline
+Beeline version 1.2.2 by Apache Hive
+beeline> !connect jdbc:hive2://localhost:10000
+
+1: jdbc:hive2://localhost:10000> use testdb;
++---------+--+
+| Result  |
++---------+--+
++---------+--+
+No rows selected (0.013 seconds)
+
+select count(*) from account;
++-----------+--+
+| count(1)  |
++-----------+--+
+| 1000000   |
++-----------+--+
+1 row selected (1.97 seconds)
+TiSparkR
+TiSparkR 是为兼容 SparkR 而开发的组件。具体使用请参考这份文档。
+
+TiSpark on PySpark
+TiSpark on PySpark 是为兼容 PySpark 而开发的组件。具体使用请参考这份文档。
+
+和 Hive 一起使用 TiSpark
+TiSpark 可以和 Hive 混合使用。 在启动 Spark 之前，需要添加 HADOOP_CONF_DIR 环境变量指向 Hadoop 配置目录并且将 hive-site.xml 拷贝到 $SPARK_HOME/conf 目录下。
+
+Copy
+val tisparkDF = spark.sql("select * from tispark_table").toDF
+tisparkDF.write.saveAsTable("hive_table") // save table to hive
+spark.sql("select * from hive_table a, tispark_table b where a.col1 = b.col1").show // join table across Hive and Tispark
+通过 JDBC 将 DataFrame 写入 TiDB
+暂时 TiSpark 不支持直接将数据写入 TiDB 集群，但可以使用 Spark 原生的 JDBC 支持进行写入：
+
+Copy
+import org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions
+
+val customer = spark.sql("select * from customer limit 100000")
+// you might repartition source to make it balance across nodes
+// and increase concurrency
+val df = customer.repartition(32)
+df.write
+.mode(saveMode = "append")
+.format("jdbc")
+.option("driver", "com.mysql.jdbc.Driver")
+ // replace host and port as your and be sure to use rewrite batch
+.option("url", "jdbc:mysql://127.0.0.1:4000/test?rewriteBatchedStatements=true")
+.option("useSSL", "false")
+// As tested, 150 is good practice
+.option(JDBCOptions.JDBC_BATCH_INSERT_SIZE, 150)
+.option("dbtable", s"cust_test_select") // database name and table name here
+.option("isolationLevel", "NONE") // recommended to set isolationLevel to NONE if you have a large DF to load.
+.option("user", "root") // TiDB user here
+.save()
+推荐将 isolationLevel 设置为 NONE，否则单一大事务有可能造成 TiDB 服务器内存溢出。
+
+统计信息
+TiSpark 可以使用 TiDB 的统计信息：
+
+选择代价最低的索引或扫表访问
+估算数据大小以决定是否进行广播优化
+如果希望使用统计信息支持，需要确保所涉及的表已经被分析。请阅读这份文档了解如何进行表分析。
+
+从 TiSpark 2.0 开始，统计信息将会默认被读取。
+
+统计信息将在 Spark Driver 进行缓存，请确定 Driver 内存足够缓存统计信息。 可以在spark-defaults.conf中开启或关闭统计信息读取：
+
+Property Name	Default	Description
+spark.tispark.statistics.auto_load	true	是否默认进行统计信息读取
+TiSpark FAQ
+Q. 是独立部署还是和现有 Spark／Hadoop 集群共用资源？
+
+A. 可以利用现有 Spark 集群无需单独部署，但是如果现有集群繁忙，TiSpark 将无法达到理想速度。
+
+Q. 是否可以和 TiKV 混合部署？
+
+A. 如果 TiDB 以及 TiKV 负载较高且运行关键的线上任务，请考虑单独部署 TiSpark；并且考虑使用不同的网卡保证 OLTP 的网络资源不被侵占而影响线上业务。如果线上业务要求不高或者机器负载不大，可以考虑与 TiKV 混合部署。
+
+TiDB 3.0.0-rc.1 Release Notes
+发版日期：2019 年 5 月 10 日
+
+TiDB 版本：3.0.0-rc.1
+
+TiDB-Ansible 版本：3.0.0-rc.1
+
+Overview
+2019 年 5 月 10 日，TiDB 发布 3.0.0-rc.1 版，对应的 TiDB-Ansible 版本为 3.0.0-rc.1。相比 3.0.0-beta.1 版本，该版本对系统稳定性、易用性、功能、优化器、统计信息以及执行引擎做了很多改进。
+
+TiDB
+SQL 优化器
+
+利用列之间的顺序相关性提升代价估算准确度，并提供启发式参数 tidb_opt_correlation_exp_factor 用于控制在相关性无法被直接用于估算的场景下对索引扫描的偏好程度。#9839
+当过滤条件中包含相关列时，在抽取复合索引的访问条件时尽可能多地匹配索引的前缀列。#10053
+用动态规划决定连接的执行顺序，当参与连接的表数量不多于 tidb_opt_join_reorder_threshold 时启用。#8816
+在构造 Index Join 的的内表中，以复合索引作为访问条件时，尽可能多地匹配索引的前缀列。#8471
+提升对单列索引上值为 NULL 的行数估算准确度。#9474
+在逻辑优化阶段消除聚合函数时特殊处理 GROUP_CONCAT ，防止产生错误的执行结果。#9967
+当过滤条件为常量时，正确地将它下推到连接算子的子节点上。#9848
+在逻辑优化阶段列剪裁时特殊处理一些函数，例如 RAND() ，防止产生和 MySQL 不兼容的执行结果。#10064
+支持 FAST ANALYZE，通过tidb_enable_fast_analyze 变量控制。该特性通过用对 Region 进行采样取代扫描整个 region 的方式加速统计信息收集。#10258
+支持 SQL PLAN MANAGEMENT。该特性通过对 SQL 进行执行计划绑定，以确保执行稳定性。该特性目前处于测试阶段，仅支持对 SELECT 语句使用绑定的执行计划，不建议在生产场景中直接使用。#10284
+执行引擎
+
+支持对 TableReader、IndexReader 和 IndexLookupReader 算子进行内存追踪控制。#10003
+在慢日志中展示更多 COPROCESSOR 端执行任务相关细节。如 COPROCESSOR 任务数，平均/最长/90% 执行/等待时间，执行/等待时间最长的 TiKV 地址等。#10165
+支持 PREPARE 不含占位符的 DDL 语句。#10144
+Server
+
+TiDB 启动时，只允许 DDL owner 执行 bootstrap #10029
+新增 tidb_skip_isolation_level_check 变量控制检查隔离级别设置为 SERIALIZABLE 时不报错 #10065
+在慢日志中，将隐式提交的时间与 SQL 执行时间融合在一起 #10294
+RBAC 权限管理
+支持 SHOW GRANT #10016
+支持 SET DEFAULT ROLE #9949
+支持 GRANT ROLE #9721
+修正了插件退出时导致 TiDB 退出的问题 #9889
+修正只读语句被错误地放到事务历史中的问题 #9723
+kill 语句可以更快的结束 SQL 的执行，并快速释放资源 #9844
+增加启动选项 config-check 来检查配置文件的合法性 #9855
+修正非严格模式下对于写入 NULL 字段的合法性检查 #10161
+DDL
+
+为 CREATE TABLE 添加了 pre_split_regions 选项，该选项可以在建表时预先分配 Table Region，避免建表后大量写入造成的写热点 #10138
+优化了部分 DDL 语句的执行性能 #10170
+FULLTEXT KEY 新增不支持全文索引的 warning #9821
+修正了旧版本 TiDB 中，UTF8 和 UTF8MB4 编码的兼容性问题 #9820
+修正了一个表的 shard_row_id_bits 的潜在 BUG #9868
+修正了 ALTER TABLE Charset 后，Column Charset 不会跟随变化的 BUG #9790
+修正了使用 BINARY/BIT 作为 Column Default Value 时，SHOW COLUMN 可能出错的 BUG #9897
+修正了 SHOW FULL COLUMNS 语句中，CHARSET / COLLATION 显示的兼容性问题 #10007
+现在 SHOW COLLATIONS 语句只会列出 TiDB 所实际支持的 COLLATIONS #10186
+PD
+升级 ETCD 版本 #1452
+统一 etcd 的日志格式与 pd server 一致
+修复 prevote 可能无法选出 Leader 的问题
+快速 drop 掉会失败的 propose 和 read 请求，减少阻塞后面的请求时间
+修复 Lease 的死锁问题
+修复 store 读热点的 keys 统计不正确问题 #1487
+支持从单一 PD 节点强制重建 PD 集群 #1485
+修复 Scatter Region 产生无效 Operator Step 的问题 #1482
+修复 Region Merge Operator 超时时间过短的问题 #1495
+热点调度使用高优先级 #1492
+添加 PD server 端处理 TSO 请求的耗时 Metrics #1502
+添加相对应的 Store ID 和 Address 到 store 相关的 Metrics #1506
+支持 GetOperator 服务 #1477
+修复 Heartbeat stream 下发送 error 找不到 store 的问题 #1521
+TiKV
+Engine
+修复读流量统计不准确问题 #4436
+修复 prefix extractor panic 的问题 #4503
+优化内存管理，减少 Iterator Key Bound Option 的内存分配和拷贝 #4537
+修复 Merge Region 时未考虑 Learner log gap 造成的 panic 问题 #4559
+支持不同的 column families 共享 block cache #4612
+Server
+减少 batch commands 的上下文切换开销 #4473
+检查 seek iterator status 的合法性 #4470
+RaftStore
+可配置化 properties index distance #4517
+Coprocessor
+新增 batch index scan executor #4419
+新增向量化 evaluation 框架 #4322
+新增 batch 执行器统计框架 #4433
+构建 RPN expression 时检查 max column 以防止 evaluation 阶段 column offset 越界的问题 #4481
+实现 BatchLimitExecutor #4469
+ReadPool 使用 tokio-threadpool 替换原本的 futures-cpupool，减少 context switch #4486
+新增 batch 聚合框架 #4533
+新增 BatchSelectionExecutor #4562
+实现 batch aggression function AVG #4570
+实现 RPN function LogicalAnd #4575
+Misc
+支持选用 tcmalloc 为内存分配器 #4370
+Tools
+TiDB-Binlog
+修复 unsigned int 类型的主键列的 binlog 数据为负数，造成同步出错中断的问题 #573
+删除下游是 pb 时的压缩选项，修改下游名字 pb 成 file #559
+Pump 新增 storage.sync-log 配置项，支持 Pump 本地存储异步刷盘 #509
+Pump 和 Drainer 之间通讯支持流量压缩 #495
+Drainer 新增 syncer.sql-mode 配置项，支持使用不同 sql-mode 解析 DDL query #511
+Drainer 新增 syncer.ignore-table 配置项，支持过滤不需要同步的表 #520
+Lightning
+使用 row id 或者列的默认值填充 dump 文件中缺少的 column 数据 #170
+Importer 修复部分 SST 导入失败依然返回导入成功的 bug #4566
+Importer 支持 upload SST 到 TiKV 限速 #4412
+Lightning 优化导入表的顺序，按照表的数据大小顺序进行导入，减少导入过程中大表执行 checksum 和 Analyze 对集群的影响，并且提高 Checksum 和 Analyze 的成功率 #156
+提升 Lightning encode SQL 性能，性能提升 50%，直接解析数据源文件内容成 TiDB 的 types.Datum，省去 KV encoder 的多余解析工作 #145
+日志格式改为 Unified Log Format #162
+新增一些命令行选项，即使缺少配置文件也能使用。#157
+数据同步对比工具 (sync-diff-inspector)
+支持 checkpoint，记录校验状态，重启后从上次进度继续校验 #224
+增加配置项 only-use-checksum，只通过计算 checksum 来检查数据是否一致 #215
+TiDB-Ansible
+TiKV 监控变更以及更新 Ansible、Grafana、Prometheus 版本 #727
+summary 监控适用于用户查看集群状态
+trouble_shooting 监控适用于 DBA 排查问题
+details 监控适用于开发分析问题
+修复下载 Kafka 版本 Binlog 失败的 BUG #730
+修改操作系统版本限制，仅支持 CentOS 7.0 及以上，Red Hat 7.0 及以上版本的操作系统 #733
+滚动升级时的版本检测改为多并发 #736
+更新 README 中文档链接#740
+移除重复的 TiKV 监控项，新增 trouble shooting 监控项 #735
+优化 table-regions.py 脚本，按表显示 leader 分布 #739
+更新 drainer 配置文件 #745
+优化 TiDB 监控，新增以 SQL 类别显示延迟的监控项 #747
+更新 Lightning 配置文件，新增 tidb_lightning_ctl 脚本 #1e946f8

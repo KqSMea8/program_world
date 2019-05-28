@@ -1,0 +1,1364 @@
+网管产品需要从数据仓库的角度来看，才能获得完整的视图。数据集成真正从大数据的角度来看，才能明白其中的挑战。一个运行了20多年的数据架构，必然有其合理性。也正是因为年代久远，存量过多，才导致举步维艰。在Cloud和5G时代，超密度网络集成和大数据洞察需求给电信供应商带来新的挑战，从数据仓库到数据湖，不仅仅架构的变革，更是思维方式的升级。本文尝试梳理数据架构的演进过程。
+
+
+
+
+
+  01
+
+数据仓库历史沿革
+
+
+
+1970年，关系数据库的研究原型System R 和INGRES开始出现，这两个系统的设计目标都是面向on-line transaction processing (OLTP)的应用。关系数据库的真正可用产品直到1980年才出现，分别是DB2 和INGRES。
+
+
+
+其他的数据库，包括Sybase, Oracle, 和Informix都遵从了相同的数据库基本模型。关系数据库的特点是按照行存储关系表，使用B树或衍生的树结构作为索引和基于代价的优化器，提供ACID的属性保证。
+
+
+
+到1990年，一个新的趋势开始出现：企业为了商业智能的目的，需要把多个操作数据库中数据收集到一个数据仓库中。尽管投资巨大且功能有限，投资数据仓库的企业还是获得了不错的投资回报率。
+
+
+
+从此，数据仓库开始支撑各大企业的商业决策过程。数据仓库的关键技术包括数据建模，ETL技术，OLAP技术和报表技术等。
+
+
+
+目前主要的数据仓库产品供应商包括Oracle、IBM、Microsoft、SAS、Teradata、Sybase、Business Objects(已被SAP收购)等。
+
+
+
+电信行业是最早采用数据仓库技术的行业之一。由于电信公司运行在一个快速变化和高速竞争的环境，拥有大量的客户基础，从而产生和存储海量的高质量数据。
+
+
+
+电信公司利用数据挖掘技术降低营销成本，识别欺诈，并更好地管理其电信网络。
+
+
+
+ 02
+
+数据仓库概念
+
+
+
+数据仓库之父Bill Inmon在1991年出版的“Building the Data Warehouse”一书中所提出的定义被广泛接受——数据仓库（Data Warehouse）是一个面向主题的（Subject Oriented）、集成的（Integrated）、相对稳定的（Non-Volatile）、反映历史变化（Time Variant）的数据集合，用于支持管理决策(Decision Making Support)。
+
+
+
+这是一个偏向学术的定义，却非常准确的界定了数据仓库与其他数据库系统的本质区别。
+
+
+
+“A data warehouseis a subject-oriented, integrated, time-variant, and nonvolatile collection ofdata in support of management’s decision-making process.”
+
+—W. H. Inmon
+
+
+
+要理解数据仓库的概念，需要从与数据库的系统的对比来看。
+
+
+
+数据库是作为“所有处理的单一数据源”出现和定义的。
+
+
+
+数据库的出现有两个驱动因素，第一是70年代以前大量应用程序和主文件的分散存放导致一片混乱和大量冗余数据。第二是直接存取存储设备的出现使得按记录寻址成为可能。基于DBMS的在线事务处理为商业发展开辟全新的视野。
+
+
+
+数据库系统的设计目标是事务处理。数据库系统是为记录更新和事务处理而设计，数据的访问的特点是基于主键，大量原子，隔离的小事务，并发和可恢复是关键属性，最大事务吞吐量是关键指标，因此数据库的设计都反映了这些需求。
+
+
+
+数据仓库的设计目标是决策支持。历史的，摘要的，聚合的数据比原始的记录重要的多。查询负载主要集中在即席查询和包含连接，聚合等操作的复杂查询。
+
+
+
+相对于数据库系统来说，查询吞吐量和响应时间比事务处理吞吐量重要的多。
+
+
+
+数据仓库和数据库系统的区别，一言蔽之：OLAP和OLTP的区别。数据库支持是OLTP，数据仓库支持的是OLAP。
+
+
+
+
+
+
+
+对 OLTP 和OLAP 的区别还可以有一个维度，就是及时性需求。OLTP对事务的及时性需求较高，而OLAP 则不然。
+
+——曹洪伟
+
+
+
+数据仓库一般基于数据库实现，但是为部署和维护上是分离的。数据仓库可以是基于关系数据库实现的，这样的数据仓库被称为ROLAP。数据仓库也可以是基于多维数据结构实现的，这样的数据仓库被称为MOLAP。
+
+
+
+ 03
+
+数据仓库架构
+
+
+
+数据仓库是一种体系结构，而不是一种技术。数据仓库最为核心的内容分类两部分：
+
+
+
+基于关系数据库的多维建模（RDBMS-based dimensional modeling）
+
+
+
+基于数据立方体的OLAP查询（cube-based OLAP）
+
+
+
+
+
+
+
+数据仓库体系结构包含了从外部数据源或者数据库抽取数据的ETL工具。ETL还负责数据的转换，清洗，然后加载到数据仓库的存储中。一般来说，数据都会加载到存取速度较慢的存储中，以原始数据的方式保存下来。
+
+
+
+为了提高查询效率，原始数据会按主题分类，以聚合的方式存储到数据集市中，称之为聚合数据。
+
+
+
+参见下图，原始数据往往有多条聚合路径，时间维度是一个最基本的内置聚合路径，行政级别划分也是一种常见的聚合路径，产品属性也是常见的聚合路径。
+
+
+
+
+
+
+
+数据仓库体系结构中还包括前端的查询工具，报表工具和数据挖掘工具，被称为front-end。
+
+
+
+最后也是最重要的是，数据仓库体系结构中都会包含一个构建数据仓库的元数据仓库。
+
+
+
+元数据仓库包括数据库schema，view，用于ETL的metadata，用于数据聚合的metadata，用于报表呈现的metadata和SQL模板等。数据仓库往往采用meta data driven的架构设计，这个元数据仓库就至关重要。
+
+
+
+上文中提到的维度的概念。维度(dimension)是观察事物的角度，也是数据库事实表中用来描述数据分类的层次结构。维度在数据中就是表示为列，在SQL中用作过滤和分组。
+
+
+
+像上图这样对数据进行多个维度的抽象并借助于数据库的select，group by等基本操作形成的OLAP多维数据操作（roll up，drill down，slice and dice，pivot）被称为多维数据模型。
+
+
+
+为了方便复杂分析和可视化呈现，数据仓库中数据往往以多维模型建模。每一个维度被称为一个层级，三个维度构成一个数据立方体。维度也通常用来过滤和分组，所以数据立方体称之为group by的并。
+
+
+
+OLAP也被称为在基于数据仓库多维模型的基础上实现的面向分析的各类操作的集合。
+
+
+
+04
+
+数据立方体
+
+
+
+数据立方体只是多维模型的一个形象的说法。立方体其本身只有三维，但多维模型不仅限于三维模型，可以组合更多的维度。
+
+
+
+但一方面是出于更方便地解释和描述，同时也是给思维成像和想象的空间；另一方面是为了与传统关系型数据库的二维表区别开来，于是就有了数据立方体的称呼(见下图)。
+
+
+
+
+
+
+
+OLAP的操作是以查询——也就是数据库的SELECT操作为主，但是查询可以很复杂，比如基于关系数据库的查询可以多表关联，可以使用COUNT、SUM、AVG等聚合函数。
+
+
+
+OLAP的多维分析操作包括：钻取（Drill-down）、上卷（Roll-up）、切片（Slice）、切块（Dice）以及旋转（Pivot），逐一解释如下：
+
+
+
+Roll up (drill-up): summarize data by climbing up hierarchy or by dimension reduction
+Drill down (roll down): reverse of roll-up,from higher level summary to lower level summary or detailed data, or introducing new dimensions
+Slice and dice: project and select
+Pivot (rotate): reorient the cube, visualization, 3D to series of 2D planes
+
+
+
+看了上图中数据立方体的各种操作，有人觉得还是很抽象。下面给一个SQL的例子，说明数据立方体的具体操作。
+
+
+
+select//公式必须配合group by使用
+    tmp.time,
+    tmp.id1,
+    tmp.id2,
+    SUM(counter1) counter1,
+    SUM(counter2) counter2
+from//双层SQL，实现聚合路径
+    (
+        select//trunc实现时间维度的变化
+                trunc( p.time, 'min' ) time,
+                "country".country_id id1,
+                "city".city_id id2,
+                SUM(p.counter1) counter1,
+                SUM(p.counter2) counter2
+        from
+             table "country"，
+             table "city"，
+
+             table p
+
+        where//选择计算的城市
+                "city".city_id in ( '北京','上海','广州' )
+                and time >= to_date('2016/01/01 00:00:00', 'yyyy/mm/dd hh24:mi:ss')
+                and time < to_date('2017/01/01 00:00:00', 'yyyy/mm/dd hh24:mi:ss')
+        group by//改变行政维度
+                trunc( p.period_start_time, 'mi' ),
+                "country".country_id,
+                "city".city_id
+    ) tmp
+group by//行政维度可以不变
+    tmp.time,
+    tmp.id1,
+    tmp.id2
+
+
+
+OLAP的优势是基于数据仓库面向主题、集成的、保留历史及不可变更的数据存储，以及多维模型多视角多层次的数据组织形式，如果脱离的这两点，OLAP将不复存在，也就没有优势可言。
+
+
+
+基于多维模型的数据组织让数据的展示更加直观，它就像是我们平常看待各种事物的方式，可以从多个角度多个层面去发现事物的不同特性，而OLAP正是将这种寻常的思维模型应用到了数据分析上。
+
+
+
+05
+
+数据库建模
+
+
+
+如果把多维数据模型映射到关系数据库和SQL查询上（ROLAP），数据库该如何设计呢？
+
+
+
+大多数数据仓库都采用“星型模型”来表示多维数据模型。在星型模型中，只有一个事实表，并且每一个维度有一个单独的表。
+
+
+
+事实表中的每一个元组都是一个外键指向维度表的主键。每一个维度表的列是组成这个维度的所有属性。如下图所示。
+
+
+
+
+
+
+
+另外一个常见的数据库设计方法是“雪花模型”。雪花模型通过定义单独的维度表，改进了星型模型中没有明确提供维度层级的问题。是谓维度表的正则化，如下图。但星型模型更适合浏览维度层级。
+
+
+
+
+
+
+
+除了事实表和维度表，数据仓库还需要创建pre-aggregation 表用于存储挑选的摘要数据。
+
+
+
+06
+
+大数据架构
+
+
+
+1010data公司高级软件工程师ADAM JACOBS博士在ACM通讯发表的《大数据病理学》指出大数据的病理在于分析而不在于存储——我们期望从成年累月积累的数据中在几分钟或者几秒内获得分析结果！
+
+
+
+其实作者指出了关系数据库的在大数据时代的病理，如下图所示一个数据仓库分析操作的SQL在数据量超过100万条记录时的性能表现。
+
+
+
+The pathologies of big data are primarily those of analysis.
+
+
+
+
+
+
+
+因此，数据仓库被认为是对数据库查询性能问题的一个解决方案。在90年代，人们已经都面临一个数据爆炸的挑战，为了解决那个时代的“大数据”问题，数据仓库应运而生。
+
+
+
+在1980s早期，大数据是指数据集超出了磁带机的处理能力。
+
+在1990s，大数据是指数据集超出了Microsoft Excel或者桌面PC的处理能力。
+
+今天，大数据是指数据集超出了关系数据库的处理能力。
+
+
+
+站在大数据时代回望数据架构的发展历史，然后从技术的角度思考大数据的定义：
+
+
+
+当前流行的技术处理不了的数据，都是大数据。
+
+
+
+数据仓库的本质是把数据变小，一般有两个方法：
+
+第一是通过抽取，转换，加载，清洗。
+
+第二是通过pre-aggregation获得数据的一份单独拷贝。因此数据仓库被定义为：
+
+
+
+为了方便查询分析，把数据从关系数据库中单独拷贝一份出来，然后通过ETL或者ELT转换。
+
+
+
+对于大数据，仅仅简单构建一个数据仓库是不够的。数据应该如何结构化才能更便于分析？数据库和分析工具应该如何设计才能更高效的处理大数据？
+
+
+
+意识到大数据固有的时间属性和空间属性，是我们理解关系数据库处理大数据时存在性能问题的重要前提。
+
+
+
+如果说数据是我对世界的观察记录的话，大数据是我们对世界在时间和/或空间维度的重复观察。这就是大数据的时空特点，也是数据仓库多维模型的构建原理。
+
+
+
+当今的主流数据库模型是关系数据库，并且该模型显式地忽略表中的行的顺序。这将不可避免导致应用以非顺序的方式查询数据。
+
+
+
+在这种情况下，传统的数据架构可以通过引入缓存的方式缓解性能问题，而大数据则会大大放大了次优访问模式对性能的影响。
+
+
+
+如下图所示随机访问和顺序访问的差别。
+
+
+
+
+
+
+
+因此我们要引入，也是我们要推导的结论：逆正则化（逆规范化）和顺序存储，不可更改数据集（append only，immutable data set）。顺着存储栈往下走，直到数据存储格式。
+
+
+
+是时候放弃关系数据库了。
+
+
+
+简单解释一下逆正则化（逆规范化）。经典关系数据库介绍的所有范式指导思想都是正则化，减少重复数据，如果重复，则单独创建一个表，使用外键关联，目的是节省存储空间（那个时候存储很昂贵）。
+
+
+
+逆正则化则是允许列之间的重复。如下图所示。
+
+
+
+
+
+
+
+我有一个看法，NoSQL的键值存储即是用极简的非结构化来实现结构化存储的逆规范化。
+
+
+
+键值存储是极简的结构化，也是极简的非结构化。
+
+
+
+关于顺序存储，不可更改数据集，可以参考Pat Helland《Immutability Changes Everything》，和我上面的介绍是一致的。
+
+
+
+关于传统关系数据库的讨论还有数据库知名专家，2015年图灵奖得主Michael Stonebraker撰写的《One Size Fits All》，分别从数据仓库和流处理两个方面探讨了数据库25年来一招不变的灵丹妙药已经不再适合现在的业务发展。
+
+
+
+文章的中心思想和Pat Helland提出lambda架构也有异曲同工之妙。
+
+
+
+
+
+
+
+speed layer
+(i) compensates for the high latency of updates to the serving layer
+(ii) deals with recent data only
+
+
+
+serving layer
+(i) indexes the batch views
+(ii) Can be queried in low-latency, ad-hoc way
+
+
+
+batch layer
+(i) managing the master dataset (an immutable, append-only set of raw data),
+(ii) pre-compute the batch views
+
+
+
+Lambda架构统一了传统数据仓库时代的半实时在线查询，刚刚兴起的实时流处理（Online ），和批处理数据分析（Offline），给数据架构的设计人员提供了一个全面的参考。
+
+
+
+再结合半结构化，结构化数据存储，SQL and No-SQL混合，我们可以得到下面一个典型的数据架构：
+
+
+
+
+
+
+
+上面的讨论是架构的微观考虑，让我们回到大数据架构的宏观指导上来。
+
+
+
+目前业界对大数据的一个共识的定义是5个V。如下图所示。
+
+
+
+
+
+从技术的角度需要专注于其中的三个V，通过阅读大量文献，我得到下面一个范型：
+
+借力开源软件处理数据多样性挑战
+
+使用分布式技术解决数据容量问题
+
+使用实时流处理技术解决数据速度问题
+
+
+
+
+
+
+
+传统的OLAP 而言，实时性需求不明显，实时分析的强需求是导致大数据技术的一个原因。
+
+——曹洪伟
+
+
+
+基于此，我个人推荐的大数据架构是BDAS, the Berkeley Data Analytics Stack。这个架构中不仅包含上面提到的三个思考维度，还提供了整个大数据架构blueprint。内容很多，使用时各个击破，在此不赘述。
+
+
+
+
+
+
+
+谈了那么多，总结一下大数据架构的几个要点：
+
+分布式计算
+
+实时流处理
+
+Online和Offline
+
+SQL和No-SQL：混合架构也是演进路径之一
+
+逆正则化（逆规范化）和顺序存储，不可更改数据集
+
+
+
+07
+
+数据湖架构
+
+
+
+Pentaho的CTO James Dixon 在2011年提出了“Data Lake”的概念。在面对大数据挑战时，他声称：不要想着数据的“仓库”概念，想想数据 的“湖”概念。数据“仓库”概念和数据湖概念的重大区别是：数据仓库中数据在进入仓库之前需要是事先归类，以便于未来的分析。这在OLAP时代很常见，但是对于离线分析却没有任何意义，不如把大量的原始数据线保存下来，而现在廉价的存储提供了这个可能。
+
+
+
+Nearly unlimited potential for operational insight and data discovery. As data volumes, data variety, and metadata richness grow, so does the benefit.
+
+
+
+形象的来看，如下图所示，数据湖架构保证了多个数据源的集成，并且不限制schema，保证了数据的精确度。数据湖可以满足实时分析的需要，同时也可以作为数据仓库满足批处理数据挖掘的需要。数据湖还为数据科学家从数据中发现更多的灵感提供了可能。
+
+
+
+
+
+
+
+和数据仓库对比来看，数据仓库是高度结构化的架构，数据在转换之前是无法加载到数据仓库的，用户可以直接获得分析数据。而在数据湖中，数据直接加载到数据湖中，然后根据分析的需要再转换数据。
+
+
+
+
+
+
+
+下面我整理了数据仓库和数据湖在多个维度的详细对比。
+
+
+
+
+
+
+
+总结起来，数据湖架构有一下几个显著的特点：
+
+
+
+数据存储：大容量低成本
+
+
+
+数据保真度：数据湖以原始的格式保存数据
+
+
+
+数据使用：数据湖中的数据可以方便的被使用
+
+
+
+延迟绑定：数据湖提供灵活的，面向任务的数据绑定，不需要提前定义数据模型
+
+
+
+
+
+
+
+当然，对于数据湖架构的批评也是不绝于耳。有人批评说，汇集各种杂乱的数据，应该就是数据沼泽。Martin Fowler也对数据湖中数据的安全性和私密性提出了质疑。
+
+
+
+08
+
+电信运营大数据特点
+
+
+
+电信运营大数据对应于TMN/FCAPS模型中的电信设备管理数据。如下图所示。
+
+
+
+Fault Management
+
+Configuration Management
+
+Accounting Management
+
+Performance Management
+
+Security Management
+
+
+
+
+
+电信运营数据的特点是数据多样化要求不高，大多数数据是结构化数据，数据容量要求不是特别高，数据的实时处理要求最高。
+
+
+
+
+
+
+
+电信运行数据架构强调演进。步步为营，向前兼容，不是一蹴而就的。
+
+
+
+
+
+
+
+09
+
+演进路径实践
+
+
+
+现在的架构是一个典型的数据仓库架构。如下图所示。现在的架构设计有以下几个要点：
+
+
+
+ROLAP：基于Oracle数据库，但并没有用Oracle的数据仓库，单独构建数据仓库。
+
+
+
+Meta Data Driven的架构设计：Meta Data覆盖整个数据pipe。当新的数据需要集成，只需要编辑新的Meta Data，系统不需要做任何改变。
+
+
+
+Schema设计：主要有两类表：原始数据表和聚合表； 每类表都有三层结构：表，用作聚合的视图，用作报表的视图。不同的应用使用不同的视图来操作数据。当原始的数据表结构变化时，可以根据需要更改不同层次的视图。
+
+
+
+Schema的演化。这是一个比较大的主题，关系数据是schema on write的，任何列的增加都需要alter表结构，这会带来客户系统很长时间的downtime。因此原始表采用1000列的设计（Oracle支持的最大列数），并且列只增加，不减少，避免了数据库schema的变化，降低不同release之间migration的成本。
+
+
+
+数据存储：定期清除原始数据，只保留聚合数据。
+
+
+
+
+
+
+
+为什么现在的架构需要演进呢？
+
+
+
+首先当前架构面临扩展性的挑战。数据库扩展性主要依赖于Oracle RAC解决方案，Oracle RAC不是一个线性的扩展方案，同时也增加了很多管理和维护成本。并且由于硬件的限制，垂直性扩展不是一个长期的解决方案。
+
+
+
+其次，当前的存储成本太昂贵，因此去IOE成为目标。
+
+
+
+第三，实时处理需求也是驱动架构演进的重要因素。
+
+
+
+然后，架构变成了这样子：
+
+
+
+
+
+
+
+传统 SQL 基于云平台重新定义为 NewSQL，那么 Data Warehouse 也可以重新定义 New Data Warehouse。
+
+——曹洪伟
+
+
+
+这样的架构是不是New Data Warehouse，我不知道，可能是。在这样的架构下，最大的变化就是更换Oracle数据为HDFS，并使用SQL on Hadoop（比如Hive SQL，Spark SQL）等保持SQL接口，维持了前端分析引擎的不变。Meta Data部分依然保持了原来的数据建模，并没有改变数据集成方式。这样的架构继承了经典的仓库架构，提高系统扩展性，在满足业务需求的同时，最大化的保护已有投资。
+
+
+
+在架构演进这个过程中，有一些lesson learned：
+
+
+
+SQL on Hadoop是必须的。客户希望保持SQL接口的连续性。
+
+
+
+混合数据仓库架构：针对不同的业务采用不同存储方案（Oracle 和 HDFS），数据量大的采用HDFS存储，数据量不够大的（不存在扩展性挑战的）可以依然使用关系型数据库。
+
+
+
+逆规范化对性能的影响重大。通过对逆规范设计，可以达到关系数据库的查询性能。但是对于逆规范化是否存在其他影响，还需要研究。
+
+
+
+相对于sequence files 和RC files，ORC文件格式的性能是最好的。
+
+
+
+实时pipe使用storm和Kafka实现。
+
+
+
+就像 NewSQL 那样，可以有 New Data Warehouse 的。就是 Data Warehouse与云计算的融合，即数据仓库的存储层在云平台，采用分布式系统。
+
+
+
+对应用侧而言， 原有的方式依旧有效，这样就不会资产浪费，而是有效的继承， 也是通往数据湖的一个较稳妥的步骤。
+
+——曹洪伟
+
+
+
+老曹这么一说，豁然开朗。我们在谈数据仓库架构向大数据架构演进的时候，其实我们在谈New Data Warehouse架构。
+
+
+
+就像当初数据仓库的出现是对数据库系统存在的限制进行补充一样，目前的大数据平台是对数据仓库系统存在的问题进行补充。
+
+
+
+他们的技术思路，技术架构，用户需求某种程度上是一致的，或者说核心的思想是一致的。不一致的地方仅仅是为了满足性能而做的技术方案的调整。
+
+
+
+首先看数据集成架构。如下图，基于Hadoop的数据集成架构和基于关系数据库的传统数据集成架构是一致的。
+
+
+
+不同地方在于由于数据量的增大，左边的架构采用具有逆正则化（逆规范化）和顺序存储，不可更改数据集等特点的Hadoop平台存储数据。
+
+
+
+
+
+
+
+其次看数据分析方法。虽然说基于Hadoop的数据集成架构采用了Hadoop数据存储平台（内置MapRdecue数据处理引擎）。
+
+
+
+其数据操作，数据分析方法在思想上是一致的——从大量的数据集中获得由价值的信息——如下图所示，数据仓库的操作语句（group-by-aggregation）与MapRdecue的操作函数对应关系。
+
+
+
+
+
+
+
+所以MapRdecue的核心思想就是在数据分片的基础上把数据仓库中的group-by-aggregation操作转换成分布式执行，MapRdecue和传统数据仓库的思想是一致的。
+
+
+
+The Map-Reduce programming model provides a good abstraction of group-by-aggregation operations over a cluster of machines.
+
+
+The programmer provides a map function that performs grouping and a reduce function that performs aggregation.
+
+
+The underlying run-time system achieves parallelism by partitioning the data and processing different partitions concurrently using multiple machines.
+
+
+
+所谓创新，继承和发展，大概如此吧。怪不得Michael Stonebraker撰文《MapReduce: A major step backwards》指出MapReduce是一个巨大倒退，并引发了他和DeWitt之间的大论战。
+
+
+
+Google在2010年还为MapRdecue申请了专利，但我认为MapReduce不算是重大基础性创新，本质上还是云时代的数据仓库技术（New Data Warehouse）。但其作为Google三架马车的风头让人们大大忽略了传统数据仓库的技术思想，误导了很多年轻学子的技术崇拜。
+
+
+
+所以本文尝试提供一个技术脉络：Data Warehouse->New Data Warehouse->Data Lake，阐述大数据技术背后的技术架构演进，抛砖引玉，欢迎批评指正。
+
+
+
+A giant step backward in the programming paradigm for large-scale data intensive applications.
+
+
+
+Not novel at all -- it represents a specific implementation of well known techniques developed nearly 25 years ago.
+
+
+
+To draw an analogy to SQL, map is like the group-by clause of an aggregate query. Reduce is analogous to the aggregate function (e.g., average) that is computed over all the rows with the same group-by attribute.
+
+
+
+在New Data Warehouse架构的基础上，如何向Data Lake演进？对电信行业来说，NFV和SDN正在推动电信网络设备控制平面和数据平面的分离，电信设备数据会走向数据湖架构。
+
+
+
+电信设备数据融合，运营数据融合，最终会走向一个大融合。总结起来，电信大数据对于数据湖架构的拥抱，来自于以下四个方面的驱动。我用四个推导公式，如下：
+
+
+
+5G->BigData (Semi-Structured and Unstructured) -> Modern Data Architecture for Enterprise -> Data Lake Storage Architecture -> Data Lake
+
+Cloud -> Network Function Cloudification -> Network Function Virtualization -> stateless VNF -> Distributed Sharing Storage -> Data Lake
+
+Distributed analytics -> Data Lake
+
+Hierarchy architecture -> Flat operations architecture -> Data Lake
+
+
+
+我们尝试过在数据加载过程中自学习的产生数据库schema，证明这个思路是可行的。基于结构化的数据，这个过程非常容易。但对于非结构化的数据，还是存在很大的挑战。
+
+
+
+使用机器学习的方式，模型训练成本恐怕和人工抽取schema的工作量是相当大的。但是我也看到在一些CMDB的数据库宣称已经支持数据库schema的自动升级，等我调研一下再说。
+
+　Pentaho公司的创始人兼首席技术官詹姆斯·狄克逊(James Dixon)发明了这个术语，他表示，其中一方面是由于对数据湖应该是什么存在着误解。他从来就没有打算用数据湖来描述从所有企业应用程序获取数据的巨大的Hadoop存储库。
+
+　　数据湖是什么东东?
+
+　　狄克逊说：“有人问数据湖是什么时，我告诉他们，它就是你以前在磁带上拥有的东西。拿来你在磁带上的东西，把它倒入到数据湖，然后开始探索该数据。我们的看法是，只把需要的数据倒入到Hadoop;如果你想结合来自数据湖的信息和客户关系管理(CRM)系统里面的信息，我们就进行连接，只有需要时才执行这番数据结合。”
+
+　　尽管狄克森的初衷并非如此，但这个术语具有更广泛的含义，而且有着更大的希望。人们开始将大数据湖视作通过把所有数据放入到一个超快、易于访问的存储库，解决集成难题的一种方法。
+
+　　实际上，存储库反而变成了一个缓慢、僵化的数据沼泽。大数据需要特殊的专长来分析数据。使用原始数据得出的结论在数据质量和治理方面发出了危险信号。
+
+　　尼克·霍德克(Nick Heudecker)是Gartner的IT领导者数据和分析部门的数据管理研究人员，他说：“每个人都想把数据湖视作IT行业的银弹。之前有没有这样的一种银弹?我还在等待。我认为，一旦你跨过了那个发现阶段，就需要做更多工作。就数据湖而言，那同一基础设施有所帮助，但是一旦你使用该数据来回答你生成的问题，就需要更深入地探究专业信息管理世界。”
+
+　　所以鉴于数据湖现状，你如何利用它们、为贵企业带来最大优势?专家们表示，数据湖有四个关键的最佳实践：
+
+　　·了解数据湖的使用场合
+
+　　·别忘了现有的数据管理最佳实践，比如确立强大的数据管理
+
+　　·知道数据湖的业务理由，因为这将决定合适的架构
+
+　　·要注意元数据
+
+　　1. 了解数据湖的使用场合
+
+　　想建立一个成功的数据湖，企业需要摈弃这种想法：数据湖让你可以在一个地方收集所有数据。数据湖并非取代企业数据管理系统和实践――至少从大数据的现状来看不是这样，明白这一点同样很重要。
+
+　　MapR公司的数据和应用程序高级副总裁杰克·诺里斯(Jack Norris)说：“企业组织仍在谈论数据湖，但它们也认识到，不是所有数据湖都一样。某些数量的功能是你所需要的，或者我们听人谈起过数据沼泽，很难让数据流进流出，数据就停滞在那里。”
+
+　　考虑到数据湖没有按计划那样奏效，它仍然切实可行吗?专家们表示，是的，前提是你得了解其局限性。
+
+　　霍德克说：“在我看来，它就是数据科学沙盒。你在这里处理数据，试图找到新的洞察力。一旦你找到了那新的洞察力，任由数据处于原始格式合理吗?我会认为，这并不合理，因为你现在需要优化数据。你需要确保数据得到治理，确保数据在语义上一致，并满足业务使用者的要求，所以在我看来，数据湖好比实验室。你可以用它处理其他事情，不过对我来说，我在建议客户时，我会尽量建议他们这么考虑其数据湖。”
+
+　　这不像听起来那么有局限性。比如说，霍德克特别指出，企业使用数据湖从部署的物联网获取洞察力。TDWI Research的数据管理研究主任菲利普·拉索姆(Philip Russom)表示，数据湖身兼多职，比如为敏捷数据仓库和报告提供更大的灵活性。数据湖还经常为Hadoop集群和数据集成充当数据着陆区和集结区。
+
+　　拉索姆在电子邮件中说：“在极端状态下，数据湖直接从数据源摄取原始状态的数据，不经过任何清理、标准化、重新建模和改动等操作。处理原始的、未改动的详细源数据的目的在于，新的、独特的分析需求出现时，可以在运行时实时改动数据。这假设，一旦你改变数据用于特定的用途，输出数据对其他用途而言就有点局限性。”
+
+　　2. 运用现有的数据管理最佳实践
+
+　　拉索姆补充道，可以跨越这些比较简单的使用场合，但那需要的不仅仅是将数据倒入到数据湖。
+
+　　他在邮件中写道：“现在有些用户多年来一直在使用某种形式的数据湖(甚至是在新的Hadoop上)，我们可以从它们成熟的运用中学到经验。用户已明白，如果要求数据湖的一些部分(很少是整个数据湖)采用某种结构，就能够从数据湖得到更大的用途(即商业价值)。”
+
+　　这也意味着，企业组织在分析数据湖存储系统或与企业应用程序集成时，不能忽视过去二三十年好不容易获取的数据经验教训。审计跟踪记录、数据完整性、数据管理、数据治理和数据所有权，这些都仍然适用。
+
+　　3. 知道数据湖的业务理由
+
+　　技术专家们喜欢说，IT项目应该始于业务，但在这里，这是确定如何构建数据湖的关键的第一步。业务理由并不是仅仅影响架构，而是决定架构。
+
+　　比如说，狄克逊特别指出，该公司采访Hadoop集群的早期采用者后，80%到90%的使用场合针对结构化数据，而不是非结构化数据。想确定你的数据是否可以建立在传统关系数据库、Hadoop集群或另一种NoSQL替代数据库，关键在于知道自己的业务使用场合将是什么，它需要哪种类型的数据。据霍德克声称，比如说，关系数据库就适合物联网传感器数据，这意味着你可以节省招聘NoSQL人才的成本。
+
+　　业务理由还将决定你要不要使用任何NoSQL解决方案上的某种SQL支持。如果数据将被转移到企业分析工具，那么你要考虑如何支持数据最佳实践。
+
+　　诺里斯说：“重点绝不仅仅是数据，而是始终关于你要做什么工作。使用场合是什么，你可以运用什么应用程序来处理该数据以便从中受益。”
+
+　　4. 支持元数据
+
+　　最后，要注意元数据。元数据一再出现，它是确保数据湖是可行战略而不是数据墓地的关键。这里的好消息是，大数据和分析厂商在推出将元数据添加到数据湖及其他大数据存储系统的新工具。比如说，元数据注入就是Pentaho Business Analytics 6.1的一个关键部分。
+
+　　狄克逊说：“现阶段，人们认识到大数据确实带来了其他数据存储系统无法带来的东西。现在它的表现要像其他企业级应用程序。现在它需要，需要监控、日志和审计，它需要元数据，变得更稳健、更实用、更人性化。我认为，这是它变得更像是企业IT的标准工具的结果。”
+
+　　霍德克表示，元数据也是Gartner发现的一个新趋势的关键：对数据进行“联系，而不是收集”。相比将数据转移到越来越大的集群或数据仓库，让数据待在原地来得更省钱、更容易、更高效。
+
+　　他说：“最大的挑战是元数据和元数据管理，这也是企业应该最关注的方面。如果你非常清楚地了解数据的元数据，就能解决你在忙于工作时可能会延迟或延期的许多事情。所以，只要拥有良好的元数据，你就能搞定治理，就能搞定安全，就能搞定任何数据质量问题。”
+
+　　“只要你专注于此，那么就能建立坚实的基础，然后在需求不断变化，你对使用场合的了解变得更明确时，不断夯实这个基础。”
+
+
+
+
+
+
+随着软硬件各方面条件的成熟，数据湖(Data Lake)已经越来越受到各大企业的青睐, 与传统的数仓实践不一样的是，数据湖不需要专门的“入仓”的过程，数据在哪里，我们就从哪里读取数据进行分析。这样的好处在于：一来数据可以保存在很便宜的存储上面(比如阿里云的OSS 上面), 给企业节省预算，而需要分析的时候又可以分析；另一方面，因为省去了入仓的流程，对于中小型企业来说人员投入更少，更容易上手。
+
+今天我们就给大家介绍一下，如何基于阿里云的数据湖分析引擎: DataLake Analytics(后面简称DLA) 对用户保存在 OSS 里面的数据建立数据湖，对数据进行各个维度的分析，分析完成得到业务洞见之后再把这些产生的结果再回流到的 RDS 里面供前台业务决策使用。
+
+开通DLA
+在开始之前我们要有一个 DLA 的账号，目前 DLA 正在公测，直接申请试用就好了。试用审批成功之后，你会获得一个用户名和密码, 然后在控制台登录就可以使用:
+
+控制台1
+
+或者如果你是极客，更偏爱命令行，你也可以使用普通的 MySQL 客户端就可以连接 DLA 了:
+
+mysql -hservice.cn-shanghai.datalakeanalytics.aliyuncs.com
+      -P10000
+      -u<your-user-name>
+      -p<your-password>
+在这篇文章里面，我会使用 MySQL 命令行给大家演示 DLA 的功能。
+
+另外你还需要在您的OSS上准备一些测试数据, 我这里准备的是著名的 TPCH 测试数据集:
+
+OSS数据集
+
+用DLA分析OSS上的数据
+DLA 是一个以 SQL 作为查询语言的数据湖引擎，为了能够让 DLA 能够对 OSS 上的数据进行查询，我们需要以某种方式告诉 DLA 我们 OSS 数据的结构。为了让用户使用更方便，DLA 使用了传统的 数据库, 表 的概念来维护这些数据的元信息，也就说，OSS的文件结构的数据映射到 DLA 变成了一个数据库和一堆表。
+
+以 TPCH 数据集来举个例子，我们知道 TPCH 数据集里面包含了如下几块信息: 用户(customer), 订单(orders), 订单的详情(lineitem) 等等，这些数据整体属于一块业务，我们建立一个数据库来对应:
+
+CREATE SCHEMA oss_tpch with DBPROPERTIES(
+  CATALOG = 'oss',
+  LOCATION = 'oss://public-datasets-cn-hangzhou/tpch/1x/'
+);
+这每块数据对应到OSS上一个目录的多个文件，拿 订单 来说，它对应的是 orders_text 目录下面的 1 个文件(这个例子里面只有一个文件，实际使用中，这里可以有多个文件):
+
+Orders对应的文件
+
+我们把这个 orders_text 目录映射到我们的数据库 oss_tpch 下面的一张表:
+
+use oss_tpch;
+
+CREATE EXTERNAL TABLE IF NOT EXISTS orders (
+    O_ORDERKEY INT,
+    O_CUSTKEY INT,
+    O_ORDERSTATUS STRING,
+    O_TOTALPRICE DOUBLE,
+    O_ORDERDATE DATE,
+    O_ORDERPRIORITY STRING,
+    O_CLERK STRING,
+    O_SHIPPRIORITY INT,
+    O_COMMENT STRING
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY '|'
+STORED AS TEXTFILE
+LOCATION 'oss://public-datasets-cn-hangzhou/tpch/1x/orders_text/';
+这样我们就可以通过 DLA 对OSS上的进行数据分析了, 比如我们先来查个前十条看看:
+
+mysql> select * from orders limit 10;
++------------+-----------+---------------+--------------+-------------+-----------------+-----------------+----------------+---------------------------------------------------------------------------+
+| o_orderkey | o_custkey | o_orderstatus | o_totalprice | o_orderdate | o_orderpriority | o_clerk         | o_shippriority | o_comment                                                                 |
++------------+-----------+---------------+--------------+-------------+-----------------+-----------------+----------------+---------------------------------------------------------------------------+
+|          1 |   3689999 | O             |    224560.83 | 1996-01-02  | 5-LOW           | Clerk#000095055 |              0 | nstructions sleep furiously among                                         |
+|          2 |   7800163 | O             |     75388.65 | 1996-12-01  | 1-URGENT        | Clerk#000087916 |              0 |  foxes. pending accounts at the pending, silent asymptot                  |
+|          3 |  12331391 | F             |    255287.36 | 1993-10-14  | 5-LOW           | Clerk#000095426 |              0 | sly final accounts boost. carefully regular ideas cajole carefully. depos |
+|          4 |  13677602 | O             |     43119.84 | 1995-10-11  | 5-LOW           | Clerk#000012340 |              0 | sits. slyly regular warthogs cajole. regular, regular theodolites acro    |
+|          5 |   4448479 | F             |    125809.76 | 1994-07-30  | 5-LOW           | Clerk#000092480 |              0 | quickly. bold deposits sleep slyly. packages use slyly                    |
+|          6 |   5562202 | F             |      56408.2 | 1992-02-21  | 4-NOT SPECIFIED | Clerk#000005798 |              0 | ggle. special, final requests are against the furiously specia            |
+|          7 |   3913430 | O             |    240358.24 | 1996-01-10  | 2-HIGH          | Clerk#000046961 |              0 | ly special requests                                                       |
+|         32 |  13005694 | O             |    136666.23 | 1995-07-16  | 2-HIGH          | Clerk#000061561 |              0 | ise blithely bold, regular requests. quickly unusual dep                  |
+|         33 |   6695788 | F             |    183460.23 | 1993-10-27  | 3-MEDIUM        | Clerk#000040860 |              0 | uriously. furiously final request                                         |
+|         34 |   6100004 | O             |     52842.63 | 1998-07-21  | 3-MEDIUM        | Clerk#000022278 |              0 | ly final packages. fluffily final deposits wake blithely ideas. spe       |
++------------+-----------+---------------+--------------+-------------+-----------------+-----------------+----------------+---------------------------------------------------------------------------+
+10 rows in set (0.21 sec)
+我们再来看看用户 36901 的前十条订单:
+
+mysql> select * from orders where o_custkey= '36901' limit 10;
++------------+-----------+---------------+--------------+-------------+-----------------+-----------------+----------------+------------------------------------------------------------------+
+| o_orderkey | o_custkey | o_orderstatus | o_totalprice | o_orderdate | o_orderpriority | o_clerk         | o_shippriority | o_comment                                                        |
++------------+-----------+---------------+--------------+-------------+-----------------+-----------------+----------------+------------------------------------------------------------------+
+|    1243264 |     36901 | F             |    103833.45 | 1992-03-23  | 2-HIGH          | Clerk#000000922 |              0 | nts haggle. even, even theodolites are. blithely                 |
+|    1274530 |     36901 | O             |    181977.58 | 1997-04-29  | 2-HIGH          | Clerk#000000232 |              0 | bold foxes along the carefully expres                            |
+|    1599527 |     36901 | F             |    322352.11 | 1993-10-16  | 2-HIGH          | Clerk#000000674 |              0 | the slyly even dependencies.                                     |
+|    1837477 |     36901 | F             |    101653.62 | 1993-05-27  | 5-LOW           | Clerk#000000891 |              0 | lyly special requests. express foxes sleep fu                    |
+|    1994082 |     36901 | O             |     77952.78 | 1995-07-05  | 3-MEDIUM        | Clerk#000000525 |              0 | luffily ironic courts. bold, e                                   |
+|    2224802 |     36901 | F             |    243852.76 | 1993-01-14  | 1-URGENT        | Clerk#000000827 |              0 | sly final requests. pending, regular ideas among the furiously u |
+|    4957636 |     36901 | F             |      5741.32 | 1992-05-20  | 5-LOW           | Clerk#000000230 |              0 | ackages. fluffily even packages solve carefully dolphins. unusua |
+|    5078467 |     36901 | F             |    119823.03 | 1994-04-29  | 4-NOT SPECIFIED | Clerk#000000402 |              0 |  regular asymptotes cajo                                         |
+|    5173859 |     36901 | F             |    103624.02 | 1994-05-28  | 3-MEDIUM        | Clerk#000000335 |              0 |  regular dependencies poach quickly. unusu                       |
+|    5525574 |     36901 | O             |     136098.0 | 1998-02-16  | 4-NOT SPECIFIED | Clerk#000000425 |              0 | cial pinto beans wake. slyly even warthogs use. bo               |
++------------+-----------+---------------+--------------+-------------+-----------------+-----------------+----------------+------------------------------------------------------------------+
+10 rows in set (1.07 sec)
+再来查一查订单量最多的前是个人:
+
+mysql> select o_custkey, count(*) as cnt from orders group by o_custkey order by cnt desc limit 10;
++-----------+------+
+| o_custkey | cnt  |
++-----------+------+
+|      3451 |   41 |
+|    102022 |   41 |
+|    102004 |   41 |
+|     79300 |   40 |
+|    117082 |   40 |
+|    122623 |   40 |
+|     69682 |   39 |
+|    143500 |   39 |
+|    142450 |   38 |
+|     53302 |   38 |
++-----------+------+
+10 rows in set (2.69 sec)
+恩，这些人就是我们要重点服务好的客户啊，我们要把这些用户的ID回写到前台的 RDS 数据库里面让我们的营销同学做一些针对性的营销活动，没问题，DLA支持把分析好的数据回流到RDS
+
+数据回流 RDS
+映射 MySQL 数据库信息进 DLA
+要把分析好的数据回流到RDS我们首先一种机制来告诉 DLA 数据回流的目的地，得益于DLA统一的设计，我们就像映射 OSS 的数据一样，我们映射一个 MySQL 数据库进来就好了，比如我们要把数据写到如下的数据库里面:
+
+ mysql -habcde.mysql.rds.aliyuncs.com -P3306 -uhello -pworld -Dmarketing
+那么我们在 DLA 里面建一个映射的库:
+
+CREATE SCHEMA `mysql_marketing` WITH DBPROPERTIES
+(
+  CATALOG = 'mysql',
+  LOCATION = 'jdbc:mysql://abcde.mysql.rds.aliyuncs.com:3306/marketing',
+  USER='hello',
+  PASSWORD='world',
+  INSTANCE_ID = '<your-rds-instance-id>',
+  VPC_ID = '<your-vpc-id-where-your-rds-lives>'
+);
+这里需要解释一下的是 VPC_ID 和 INSTANCE_ID, 我们知道为了安全的原因在阿里云上购买的 RDS 我们一般都会把它放在一个单独的VPC里面，以保证只有我们自己可以访问，这里为了让 DLA 能够访问到我们的 MySQL 数据库以进行数据回流，我们需要告诉 DLA 这个 RDS的相关信息。
+
+其中 INSTANCE_ID 和 VPC_ID 在 RDS的详情页面都可以找到, 比如 VPC_ID :
+
+
+
+INSTANCE_ID :
+
+
+
+由于 RDS 的安全组会对访问的来源IP进行控制，我们需要把DLA相关的地址段 100.104.0.0/16 IP地址段加入到你的RDS的白名单列表，如下图:
+
+
+
+到这里为止，准备工作就完成了，我们的 mysql 数据库建好了。
+
+映射 MySQL 结果表进 DLA
+我们要保存的结果很简单，就是下单量前 10 的用户, 这个表在 MySQL 数据库里面的建表语句如下:
+
+create table top10_user (
+    custkey int,
+    order_cnt bigint
+);
+而为了把这个表映射进 DLA 我们建一个对应的表，建表语句几乎一样:
+
+use mysql_marketing;
+create external table top10_user (
+    custkey int,
+    order_cnt bigint
+);
+ETL
+下面我们就可以把查出来的数据进行回流了:
+
+mysql> insert into mysql_marketing.top10_user
+    -> select o_custkey, count(*) as cnt from oss_tpch.orders
+    -> group by o_custkey order by cnt desc limit 10;
++------+
+| rows |
++------+
+|   10 |
++------+
+1 row in set (4.71 sec)
+
+mysql> select * from mysql_marketing.top10_user;
++---------+-----------+
+| custkey | order_cnt |
++---------+-----------+
+|  143500 |        39 |
+|  102004 |        41 |
+|   53302 |        38 |
+|    3451 |        41 |
+|  122623 |        40 |
+|  129637 |        38 |
+|  102022 |        41 |
+|  117082 |        40 |
+|   69682 |        39 |
+|   79300 |        40 |
++---------+-----------+
+10 rows in set (0.14 sec)
+总结
+在这篇文章里面，我带大家一起体验了一下如何用 DLA 建立基于 OSS 的数据湖，对数据库里面的数据进行各个维度的分析，分析完成之后把分析得到的关键数据再回写到我们的RDS里面去。例子里面很多地方写的比较简单，如果想进一步了解更多相关详细信息可以参考以下资料:
+
+
+基于 DataLakeAnalytics 的数据湖实践
+96  xumingmingv
+ 1.1 2018.09.04 10:53 字数 1584 阅读 1246评论 0喜欢 7
+随着软硬件各方面条件的成熟，数据湖(Data Lake)已经越来越受到各大企业的青睐, 与传统的数仓实践不一样的是，数据湖不需要专门的“入仓”的过程，数据在哪里，我们就从哪里读取数据进行分析。这样的好处在于：一来数据可以保存在很便宜的存储上面(比如阿里云的OSS 上面), 给企业节省预算，而需要分析的时候又可以分析；另一方面，因为省去了入仓的流程，对于中小型企业来说人员投入更少，更容易上手。
+
+今天我们就给大家介绍一下，如何基于阿里云的数据湖分析引擎: DataLake Analytics(后面简称DLA) 对用户保存在 OSS 里面的数据建立数据湖，对数据进行各个维度的分析，分析完成得到业务洞见之后再把这些产生的结果再回流到的 RDS 里面供前台业务决策使用。
+
+开通DLA
+在开始之前我们要有一个 DLA 的账号，目前 DLA 正在公测，直接申请试用就好了。试用审批成功之后，你会获得一个用户名和密码, 然后在控制台登录就可以使用:
+
+控制台1
+或者如果你是极客，更偏爱命令行，你也可以使用普通的 MySQL 客户端就可以连接 DLA 了:
+
+mysql -hservice.cn-shanghai.datalakeanalytics.aliyuncs.com
+      -P10000
+      -u<your-user-name>
+      -p<your-password>
+在这篇文章里面，我会使用 MySQL 命令行给大家演示 DLA 的功能。
+
+另外你还需要在您的OSS上准备一些测试数据, 我这里准备的是著名的 TPCH 测试数据集:
+
+OSS数据集
+用DLA分析OSS上的数据
+DLA 是一个以 SQL 作为查询语言的数据湖引擎，为了能够让 DLA 能够对 OSS 上的数据进行查询，我们需要以某种方式告诉 DLA 我们 OSS 数据的结构。为了让用户使用更方便，DLA 使用了传统的 数据库, 表 的概念来维护这些数据的元信息，也就说，OSS的文件结构的数据映射到 DLA 变成了一个数据库和一堆表。
+
+以 TPCH 数据集来举个例子，我们知道 TPCH 数据集里面包含了如下几块信息: 用户(customer), 订单(orders), 订单的详情(lineitem) 等等，这些数据整体属于一块业务，我们建立一个数据库来对应:
+
+CREATE SCHEMA oss_tpch with DBPROPERTIES(
+  CATALOG = 'oss',
+  LOCATION = 'oss://public-datasets-cn-hangzhou/tpch/1x/'
+);
+这每块数据对应到OSS上一个目录的多个文件，拿 订单 来说，它对应的是 orders_text 目录下面的 1 个文件(这个例子里面只有一个文件，实际使用中，这里可以有多个文件):
+
+Orders对应的文件
+我们把这个 orders_text 目录映射到我们的数据库 oss_tpch 下面的一张表:
+
+use oss_tpch;
+
+CREATE EXTERNAL TABLE IF NOT EXISTS orders (
+    O_ORDERKEY INT,
+    O_CUSTKEY INT,
+    O_ORDERSTATUS STRING,
+    O_TOTALPRICE DOUBLE,
+    O_ORDERDATE DATE,
+    O_ORDERPRIORITY STRING,
+    O_CLERK STRING,
+    O_SHIPPRIORITY INT,
+    O_COMMENT STRING
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY '|'
+STORED AS TEXTFILE
+LOCATION 'oss://public-datasets-cn-hangzhou/tpch/1x/orders_text/';
+这样我们就可以通过 DLA 对OSS上的进行数据分析了, 比如我们先来查个前十条看看:
+
+mysql> select * from orders limit 10;
++------------+-----------+---------------+--------------+-------------+-----------------+-----------------+----------------+---------------------------------------------------------------------------+
+| o_orderkey | o_custkey | o_orderstatus | o_totalprice | o_orderdate | o_orderpriority | o_clerk         | o_shippriority | o_comment                                                                 |
++------------+-----------+---------------+--------------+-------------+-----------------+-----------------+----------------+---------------------------------------------------------------------------+
+|          1 |   3689999 | O             |    224560.83 | 1996-01-02  | 5-LOW           | Clerk#000095055 |              0 | nstructions sleep furiously among                                         |
+|          2 |   7800163 | O             |     75388.65 | 1996-12-01  | 1-URGENT        | Clerk#000087916 |              0 |  foxes. pending accounts at the pending, silent asymptot                  |
+|          3 |  12331391 | F             |    255287.36 | 1993-10-14  | 5-LOW           | Clerk#000095426 |              0 | sly final accounts boost. carefully regular ideas cajole carefully. depos |
+|          4 |  13677602 | O             |     43119.84 | 1995-10-11  | 5-LOW           | Clerk#000012340 |              0 | sits. slyly regular warthogs cajole. regular, regular theodolites acro    |
+|          5 |   4448479 | F             |    125809.76 | 1994-07-30  | 5-LOW           | Clerk#000092480 |              0 | quickly. bold deposits sleep slyly. packages use slyly                    |
+|          6 |   5562202 | F             |      56408.2 | 1992-02-21  | 4-NOT SPECIFIED | Clerk#000005798 |              0 | ggle. special, final requests are against the furiously specia            |
+|          7 |   3913430 | O             |    240358.24 | 1996-01-10  | 2-HIGH          | Clerk#000046961 |              0 | ly special requests                                                       |
+|         32 |  13005694 | O             |    136666.23 | 1995-07-16  | 2-HIGH          | Clerk#000061561 |              0 | ise blithely bold, regular requests. quickly unusual dep                  |
+|         33 |   6695788 | F             |    183460.23 | 1993-10-27  | 3-MEDIUM        | Clerk#000040860 |              0 | uriously. furiously final request                                         |
+|         34 |   6100004 | O             |     52842.63 | 1998-07-21  | 3-MEDIUM        | Clerk#000022278 |              0 | ly final packages. fluffily final deposits wake blithely ideas. spe       |
++------------+-----------+---------------+--------------+-------------+-----------------+-----------------+----------------+---------------------------------------------------------------------------+
+10 rows in set (0.21 sec)
+我们再来看看用户 36901 的前十条订单:
+
+mysql> select * from orders where o_custkey= '36901' limit 10;
++------------+-----------+---------------+--------------+-------------+-----------------+-----------------+----------------+------------------------------------------------------------------+
+| o_orderkey | o_custkey | o_orderstatus | o_totalprice | o_orderdate | o_orderpriority | o_clerk         | o_shippriority | o_comment                                                        |
++------------+-----------+---------------+--------------+-------------+-----------------+-----------------+----------------+------------------------------------------------------------------+
+|    1243264 |     36901 | F             |    103833.45 | 1992-03-23  | 2-HIGH          | Clerk#000000922 |              0 | nts haggle. even, even theodolites are. blithely                 |
+|    1274530 |     36901 | O             |    181977.58 | 1997-04-29  | 2-HIGH          | Clerk#000000232 |              0 | bold foxes along the carefully expres                            |
+|    1599527 |     36901 | F             |    322352.11 | 1993-10-16  | 2-HIGH          | Clerk#000000674 |              0 | the slyly even dependencies.                                     |
+|    1837477 |     36901 | F             |    101653.62 | 1993-05-27  | 5-LOW           | Clerk#000000891 |              0 | lyly special requests. express foxes sleep fu                    |
+|    1994082 |     36901 | O             |     77952.78 | 1995-07-05  | 3-MEDIUM        | Clerk#000000525 |              0 | luffily ironic courts. bold, e                                   |
+|    2224802 |     36901 | F             |    243852.76 | 1993-01-14  | 1-URGENT        | Clerk#000000827 |              0 | sly final requests. pending, regular ideas among the furiously u |
+|    4957636 |     36901 | F             |      5741.32 | 1992-05-20  | 5-LOW           | Clerk#000000230 |              0 | ackages. fluffily even packages solve carefully dolphins. unusua |
+|    5078467 |     36901 | F             |    119823.03 | 1994-04-29  | 4-NOT SPECIFIED | Clerk#000000402 |              0 |  regular asymptotes cajo                                         |
+|    5173859 |     36901 | F             |    103624.02 | 1994-05-28  | 3-MEDIUM        | Clerk#000000335 |              0 |  regular dependencies poach quickly. unusu                       |
+|    5525574 |     36901 | O             |     136098.0 | 1998-02-16  | 4-NOT SPECIFIED | Clerk#000000425 |              0 | cial pinto beans wake. slyly even warthogs use. bo               |
++------------+-----------+---------------+--------------+-------------+-----------------+-----------------+----------------+------------------------------------------------------------------+
+10 rows in set (1.07 sec)
+再来查一查订单量最多的前是个人:
+
+mysql> select o_custkey, count(*) as cnt from orders group by o_custkey order by cnt desc limit 10;
++-----------+------+
+| o_custkey | cnt  |
++-----------+------+
+|      3451 |   41 |
+|    102022 |   41 |
+|    102004 |   41 |
+|     79300 |   40 |
+|    117082 |   40 |
+|    122623 |   40 |
+|     69682 |   39 |
+|    143500 |   39 |
+|    142450 |   38 |
+|     53302 |   38 |
++-----------+------+
+10 rows in set (2.69 sec)
+恩，这些人就是我们要重点服务好的客户啊，我们要把这些用户的ID回写到前台的 RDS 数据库里面让我们的营销同学做一些针对性的营销活动，没问题，DLA支持把分析好的数据回流到RDS
+
+数据回流 RDS
+映射 MySQL 数据库信息进 DLA
+要把分析好的数据回流到RDS我们首先一种机制来告诉 DLA 数据回流的目的地，得益于DLA统一的设计，我们就像映射 OSS 的数据一样，我们映射一个 MySQL 数据库进来就好了，比如我们要把数据写到如下的数据库里面:
+
+ mysql -habcde.mysql.rds.aliyuncs.com -P3306 -uhello -pworld -Dmarketing
+那么我们在 DLA 里面建一个映射的库:
+
+CREATE SCHEMA `mysql_marketing` WITH DBPROPERTIES
+(
+  CATALOG = 'mysql',
+  LOCATION = 'jdbc:mysql://abcde.mysql.rds.aliyuncs.com:3306/marketing',
+  USER='hello',
+  PASSWORD='world',
+  INSTANCE_ID = '<your-rds-instance-id>',
+  VPC_ID = '<your-vpc-id-where-your-rds-lives>'
+);
+这里需要解释一下的是 VPC_ID 和 INSTANCE_ID, 我们知道为了安全的原因在阿里云上购买的 RDS 我们一般都会把它放在一个单独的VPC里面，以保证只有我们自己可以访问，这里为了让 DLA 能够访问到我们的 MySQL 数据库以进行数据回流，我们需要告诉 DLA 这个 RDS的相关信息。
+
+其中 INSTANCE_ID 和 VPC_ID 在 RDS的详情页面都可以找到, 比如 VPC_ID :
+
+image
+INSTANCE_ID :
+
+image
+由于 RDS 的安全组会对访问的来源IP进行控制，我们需要把DLA相关的地址段 100.104.0.0/16 IP地址段加入到你的RDS的白名单列表，如下图:
+
+image
+到这里为止，准备工作就完成了，我们的 mysql 数据库建好了。
+
+映射 MySQL 结果表进 DLA
+我们要保存的结果很简单，就是下单量前 10 的用户, 这个表在 MySQL 数据库里面的建表语句如下:
+
+create table top10_user (
+    custkey int,
+    order_cnt bigint
+);
+而为了把这个表映射进 DLA 我们建一个对应的表，建表语句几乎一样:
+
+use mysql_marketing;
+create external table top10_user (
+    custkey int,
+    order_cnt bigint
+);
+ETL
+下面我们就可以把查出来的数据进行回流了:
+
+mysql> insert into mysql_marketing.top10_user
+    -> select o_custkey, count(*) as cnt from oss_tpch.orders
+    -> group by o_custkey order by cnt desc limit 10;
++------+
+| rows |
++------+
+|   10 |
++------+
+1 row in set (4.71 sec)
+
+mysql> select * from mysql_marketing.top10_user;
++---------+-----------+
+| custkey | order_cnt |
++---------+-----------+
+|  143500 |        39 |
+|  102004 |        41 |
+|   53302 |        38 |
+|    3451 |        41 |
+|  122623 |        40 |
+|  129637 |        38 |
+|  102022 |        41 |
+|  117082 |        40 |
+|   69682 |        39 |
+|   79300 |        40 |
++---------+-----------+
+10 rows in set (0.14 sec)
+总结
+在这篇文章里面，我带大家一起体验了一下如何用 DLA 建立基于 OSS 的数据湖，对数据库里面的数据进行各个维度的分析，分析完成之后把分析得到的关键数据再回写到我们的RDS里面去。例子里面很多地方写的比较简单，如果想进一步了解更多相关详细信息可以参考以下资料:
+
+Data Lake Analytics + OSS数据文件格式处理大全: https://yq.aliyun.com/articles/623246
+Data Lake Analytics中OSS LOCATION的使用说明: https://yq.aliyun.com/articles/623247
+如何使用Data Lake Analytics创建分区表: https://yq.aliyun.com/articles/624151
+基于Data Lake Analytics来分析OTS上的数据: https://yq.aliyun.com/articles/618501
+使用Data Lake Analytics从OSS清洗数据到AnalyticDB: https://yq.aliyun.com/articles/623401
+使用Data Lake Analytics读/写RDS数据: https://yq.aliyun.com/articles/629046
+
+
+什么是数据湖？
+以任意规模将您的所有数据存储在一个集中式存储库中
+
+
+什么是数据湖？
+数据湖是一个集中式存储库，允许您以任意规模存储所有结构化和非结构化数据。您可以按原样存储数据（无需先对数据进行结构化处理），并运行不同类型的分析 – 从控制面板和可视化到大数据处理、实时分析和机器学习，以指导做出更好的决策。
+
+数据湖示意图
+为什么需要数据湖？
+通过数据成功创造商业价值的组织将胜过同行。Aberdeen 的一项调查表明，实施数据湖的组织比同类公司在有机收入增长方面高出 9%。这些领导者能够进行新类型的分析，例如通过日志文件、来自点击流的数据、社交媒体以及存储在数据湖中的互联网连接设备等新来源的机器学习。这有助于他们通过吸引和留住客户、提高生产力、主动维护设备以及做出明智的决策来更快地识别和应对业务增长机会。
+
+数据湖与数据仓库相比 – 两种不同的方法
+根据要求，典型的组织将需要数据仓库和数据湖，因为它们可满足不同的需求和使用案例。
+
+数据仓库是一个优化的数据库，用于分析来自事务系统和业务线应用程序的关系数据。事先定义数据结构和 Schema 以优化快速 SQL 查询，其中结果通常用于操作报告和分析。数据经过了清理、丰富和转换，因此可以充当用户可信任的“单一信息源”。
+
+数据湖有所不同，因为它存储来自业务线应用程序的关系数据，以及来自移动应用程序、IoT 设备和社交媒体的非关系数据。捕获数据时，未定义数据结构或 Schema。这意味着您可以存储所有数据，而不需要精心设计也无需知道将来您可能需要哪些问题的答案。您可以对数据使用不同类型的分析（如 SQL 查询、大数据分析、全文搜索、实时分析和机器学习）来获得见解。
+
+随着使用数据仓库的组织看到数据湖的优势，他们正在改进其仓库以包括数据湖，并启用各种查询功能、数据科学使用案例和用于发现新信息模型的高级功能。Gartner 将此演变称为“分析型数据管理解决方案”或“DMSA”。
+
+特性	数据仓库	数据湖
+数据	来自事务系统、运营数据库和业务线应用程序的关系数据	来自 IoT 设备、网站、移动应用程序、社交媒体和企业应用程序的非关系和关系数据
+Schema	设计在数据仓库实施之前（写入型 Schema）	写入在分析时（读取型 Schema）
+性价比	更快查询结果会带来较高存储成本	更快查询结果只需较低存储成本
+数据质量
+可作为重要事实依据的高度监管数据	任何可以或无法进行监管的数据（例如原始数据）
+用户	业务分析师	数据科学家、数据开发人员和业务分析师（使用监管数据）
+分析	批处理报告、BI 和可视化	机器学习、预测分析、数据发现和分析
+数据湖和分析解决方案的基本要素
+组织构建数据湖和分析平台时，他们需要考虑许多关键功能，包括：
+
+数据移动
+数据湖允许您导入任何数量的实时获得的数据。您可以从多个来源收集数据，并以其原始形式将其移入到数据湖中。此过程允许您扩展到任何规模的数据，同时节省定义数据结构、Schema 和转换的时间。
+
+安全地存储和编目数据
+数据湖允许您存储关系数据（例如，来自业务线应用程序的运营数据库和数据）和非关系数据（例如，来自移动应用程序、IoT 设备和社交媒体的运营数据库和数据）。它们还使您能够通过对数据进行爬网、编目和建立索引来了解湖中的数据。最后，必须保护数据以确保您的数据资产受到保护。
+
+分析
+数据湖允许组织中的各种角色（如数据科学家、数据开发人员和业务分析师）通过各自选择的分析工具和框架来访问数据。这包括 Apache Hadoop、Presto 和 Apache Spark 等开源框架，以及数据仓库和商业智能供应商提供的商业产品。数据湖允许您运行分析，而无需将数据移至单独的分析系统。
+
+机器学习
+数据湖将允许组织生成不同类型的见解，包括报告历史数据以及进行机器学习（构建模型以预测可能的结果），并建议一系列规定的行动以实现最佳结果。
+
+数据湖的价值
+能够在更短的时间内从更多来源利用更多数据，并使用户能够以不同方式协同处理和分析数据，从而做出更好、更快的决策。数据湖具有增值价值的示例包括：
+
+改善客户互动
+数据湖可以将来自 CRM 平台的客户数据与社交媒体分析相结合，有一个包括购买历史记录和事故单的营销平台，使企业能够了解最有利可图的客户群、客户流失的原因以及将提升忠诚度的促销活动或奖励。
+
+改善研发创新选择
+数据湖可以帮助您的研发团队测试其假设，改进假设并评估结果 – 例如在产品设计中选择正确的材料从而提高性能，进行基因组研究从而获得更有效的药物，或者了解客户为不同属性付费的意愿。
+
+提高运营效率
+物联网 (IoT) 引入了更多方式来收集有关制造等流程的数据，包括来自互联网连接设备的实时数据。使用数据湖，可以轻松地存储，并对机器生成的 IoT 数据进行分析，以发现降低运营成本和提高质量的方法。
+
+数据湖的挑战
+数据湖架构的主要挑战是存储原始数据而不监督内容。对于使数据可用的数据湖，它需要有定义的机制来编目和保护数据。没有这些元素，就无法找到或信任数据，从而导致出现“数据沼泽”。 满足更广泛受众的需求需要数据湖具有管理、语义一致性和访问控制。
+
+
+
+在云中部署数据湖
+数据湖是要在云中部署的理想工作负载，因为云提供性能、可扩展性、可靠性、可用性、各种分析引擎以及大型规模经济。ESG 研究发现，39% 的调查对象认为云部署主要用于分析，41% 认为用于数据仓库，43% 认为用于 Spark。客户认为云作为数据湖的优势的主要原因是更好的安全性、更快的部署、更好的可用性、更频繁的特性/功能更新、更具弹性、更广的地理覆盖范围以及与实际利用率相关的成本。
+
+
+
+基于 AWS 在云中构建数据湖
+AWS 提供最安全、可扩展、全面且经济高效的服务组合，使客户能够在云中构建数据湖，以及使用机器学习等各种分析方法分析所有数据，包括来自 IoT 设备的数据。因此，在 AWS 上运行数据湖和分析的组织越来越多，而且超过了其他任何地方信任 AWS 来运行其业务关键型分析工作负载的客户，如 NETFLIX、Zillow、NASDAQ、Yelp、iRobot 和 FINRA。了解更
+
+
+到百度首页百度首页小宇宙zrr123
+每个数据分析师都需要了解数据湖和数据仓库之间的差异
+
+CPDA数据分析师培训
+
+01-2514:29
+
+
+数据湖和数据仓库是品牌可以收集和管理所有数据的两种方式，但两者之间的区别是什么？与从业者交谈，了解他们如何区分这两者。
+
+
+数据湖作为一个集中的存储库，可以在其中存储任意规模的所有结构化和非结构化数据。在数据湖中，可以存储数据不需要对其进行结构化，就可以运行不同类型的分析。
+
+
+数据湖的创建通常没有特定的目的。它包含来自各种数据源的所有源数据，包括：非结构化的或半结构化的，这使得它在潜在的用例中更加灵活。数据湖通常建立在低成本的商品硬件上，这使得它在经济上行存储TB级甚至PB级数据。
+
+
+
+
+数据仓库，也称为企业数据仓库，是一种数据存储系统，它将来自不同来源的结构化数据聚合起来，用于业务智能领域的比较和分析，数据仓库是包含多种数据的存储库，并且是高度建模的。换句话说，在数据仓库中找到的任何数据都将与数据仓库中的所有其他数据密切相关。此外，仓库中的数据往往是高度标准化和非常“干净”的。
+
+
+一个数据湖可以被认为是一个巨大的原始数据池，其中的目的没有定义。数据仓库是结构化和已定义数据的存储库，这些数据已经为特定目的进行了处理。
+
+
+数据湖和数据仓库之间最大的区别是原始数据和处理数据的结构不同。数据湖主要存储未经处理的原始数据，而数据仓库是存储经过处理的和精炼的数据。
+
+
+
+
+由于数据湖主要存储原始和未处理的数据，所存储的数据可以用于任何目的，这使其成为人工智能(Al)、机器学习和数据科学的理想选择。然而，未处理的数据确实需要很大的存储容量，而且还存在数据治理的问题。
+
+
+然而数据湖，作为廉价的原始存储，缺点在于数据的处理。如何处理数据湖中的元数据，安全性和治理？这在成本可能上升很多。
+
+
+因此，“数据湖泊可以更快地产生结果，因为已有大量数据存在。但是，数据湖对用户负有更多的责任来探索数据并查找用例。
+
+
+数据湖可以更快地产生结果，因为那里已经有很多数据了。然而，数据湖把更多的责任放在用户身上，让他们去探索数据和发现用例。
+
+
+对于数据仓库来说，由于存储的数据是结构化的，并且已经被处理过了，这使得企业更容易发现和理解数据。但是数据仓库的这一显著优势提供的灵活性很小，并且确实需要大量的劳动力。
+
+
+另一方面，数据仓库适合为企业提供可重复流程的一致数据。
+
+
+尽管数据湖和数据仓库是截然不同的，但在大多数公司都需要。

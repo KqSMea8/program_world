@@ -4744,5 +4744,3 @@ textDS.flatMap(new FlatMapFunction<String, WordWithCount>() {
 Pulsar 和 Flink 对应用程序在数据和计算级别如何处理数据的视图基本一致，将“批”作为“流”的特殊情况进行“流式优先”处理。通过 Pulsar 的 Segmented Streams 方法和 Flink 在一个框架下统一批处理和流处理工作负载的几个步骤，可以应用多种方法融合两种技术，提供大规模的弹性数据处理。欢迎订阅 Apache Flink 和 Apache Pulsar 邮件，及时了解领域最新发展，或在社区分享您的想法和建议。
 
 
-
-更多 Pulsar 干货和动态分享，请关注微信公众号StreamNative，我们将在后续文章中推送更多优质内容。
