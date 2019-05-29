@@ -1,0 +1,48 @@
+public class org.apache.rocketmq.spring.boot.VolitaleTest {
+  volatile int num;
+
+  public org.apache.rocketmq.spring.boot.VolitaleTest();
+    Code:
+       0: aload_0
+       1: invokespecial #1                  // Method java/lang/Object."<init>":()V
+       4: aload_0
+       5: iconst_0
+       6: putfield      #2                  // Field num:I
+       9: return
+}
+
+D:\program-src\disruptor-3.4.2\examples\spring-boot-starter-disruptor-master\target\test-classes\org\apache\rocketmq\spring\boot>javap -c VolitaleTest.class
+Compiled from "VolitaleTest.java"
+public class org.apache.rocketmq.spring.boot.VolitaleTest {
+  static volatile int num;
+
+  public org.apache.rocketmq.spring.boot.VolitaleTest();
+    Code:
+       0: aload_0
+       1: invokespecial #1                  // Method java/lang/Object."<init>":()V
+       4: return
+
+  public static void main(java.lang.String[]);
+    Code:
+       0: iconst_0
+       1: istore_1
+       2: iload_1
+       3: bipush        100
+       5: if_icmpge     29
+       8: new           #2                  // class java/lang/Thread
+      11: dup
+      12: new           #3                  // class org/apache/rocketmq/spring/boot/VolitaleTest$1
+      15: dup
+      16: invokespecial #4                  // Method org/apache/rocketmq/spring/boot/VolitaleTest$1."<init>":()V
+      19: invokespecial #5                  // Method java/lang/Thread."<init>":(Ljava/lang/Runnable;)V
+      22: pop
+      23: iinc          1, 1
+      26: goto          2
+      29: return
+
+  static {};
+    Code:
+       0: iconst_0
+       1: putstatic     #6                  // Field num:I
+       4: return
+}
