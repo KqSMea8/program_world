@@ -28,6 +28,491 @@
 第23章　扩展Kettle 424
 
 
+  KETTLE 开发规范
+
+
+
+
+
+
+[说明：
+1. 本文件中“[]”中内容为举例和说明文字，请在文件拟制时替换或删除；
+2. 若文中某章节内容可省略、不需要或适用，请保留该标题，并根据实际在内容部分写明“略”、“勿需”或“不适用”等，同时适当说明原因。
+3. 请作者注意在文档右上角修改该文档的密级。
+文件修订历史
+修订时间 修订概要 作者 审核 批准
+2013-10-08 初建 王勇 杜灵强
+2013-12-10 V2.0 王勇 杜灵强
+2014-06-20 V2.0 王勇 杜灵强
+2014-08-21 V3.0 王勇 杜灵强
+
+
+
+
+
+
+
+
+
+
+
+
+模板修订历史
+
+版本 生效时间 变更概要 作者 审核 批准
+1.0 2013-10-13 创建模板文档 王勇  杜灵强
+2.0 2013-12-10 V2.0 王勇  杜灵强
+2.1 2014-03-10 完善V2.0的开发规范 王勇  杜灵强
+
+
+
+
+
+
+目录
+一、 名词解释 5
+1. TRANSFORMATION 5
+2. JOB 5
+3. 功能TRANSFORMATION 5
+4. 功能JOB 5
+5. 主控JOB 5
+二、 客户端准备 5
+1. KETTLE服务器 5
+2. KETTLE客户端： 8
+3. 设置独立的JAVA环境变量 8
+4. 添加JDBC驱动 8
+5. KETTLE开发桌面 9
+6. 添加资源库 9
+7. 启动KETTLE开发桌面 9
+8. 登陆资源库 10
+9. 配置项设置 11
+三、 工程创建 11
+1. 申请工程 11
+2. 数据库用户 11
+3. 验证防火墙 11
+4. 申请发布单元 11
+四、 开发规范 12
+1. 命名规范 12
+2. 设计代码存放目录 12
+3. 外部文件临时目录 12
+4. 功能TRANSFORMATION开发 12
+5. 功能JOB开发 15
+6. 主控JOB介绍 17
+7. JOB并发 17
+8. 调试方法 18
+9. 程序说明文档移交 19
+ 程序代码移交 19
+11. 移交代码扫描 19
+12. 移交部署说明 19
+13. 测试 20
+14. 运营 20
+五、 调度规范 21
+1. 调度申明 21
+2. 调度方式 21
+3. 调度时间 21
+4. 调度频率 21
+六、 监控规范 21
+1. 平台监控 21
+2. 数据监控 22
+3. 综合监控 22
+七、 附录：关于MONGODB的KETTLE开发 22
+1. 关于MONGODB开发的特点 22
+2. MONGODB参考文档 23
+3. MONGODB JOB开发 23
+4. MONGODB 转换开发 24
+5. MONGODB调试 26
+ 
+一、 名词解释
+1. Transformation
+实现数据流的程序，在datastage中和JOB类似
+
+2. JOB
+实现控制流的程序，在datastage中和sequence类似
+
+3. 功能transformation
+实现具体业务流程转换的程序，必须能够在参数一致（IncStart和IncEnd）的情况下多次执行补跑而产生的结果是一致的，所有的业务数据流转只能在这个步骤中处理，而且一个转换只允许处理一个目标表的数据。
+
+4. 功能JOB
+实现具体业务需要按顺序调用不同的功能transformation时使用，一般情况下，必须间接通过主控MainControl调度功能transformation。此JOB仅仅作为流程控制进而顺序调度功能transformation使用。
+
+5. 主控JOB
+主控JOB实现的功能是通过GetConn转换程序获取配置文件/wls/kettle/config/config.cfg中对应数据库选择器（PreParam）的数据库连接串，以及登陆数据库的用户名和密码，然后调度对应的功能transformation以达到业务数据流转功能的实现。
+
+ 主要包括：MainControl、MainJob、MultiJob
+
+二、 客户端准备
+1. Kettle服务器
+kettle服务器是采用C/S架构，目前包括5个平台，如下：kettle公共平台、mis-kettle平台、集团投资kettle平台、天下通SF区kettle平台、天下通天下通区kettle平台
+
+kettle公共平台服务器环境：
+
+环境类型 所在地 KETTLE IP KETTLE SID 机器类型 CPU MEM 存储
+开发 深圳 20.12.55 public-dev 开发云 4 16G 100G
+测试 上海 31.102.130 public-stg 虚拟机 8 32G 200G
+生产 深圳 33.96.211 public-prd1 虚拟机 8 32G 500G
+ 深圳 33.96.212 public-prd2 虚拟机 8 32G 500G
+ 上海 31.32.97 public-prd3 虚拟机 8 32G 500G
+
+Mis-kettle平台服务器环境：
+
+环境类型 所在地 KETTLE IP KETTLE SID 机器类型 CPU MEM 存储
+开发 深圳 20.12.55 public-dev 开发云 4 16G 100G
+测试 上海 31.24.14 mis-stg1 虚拟机 4 16G 400G
+ 上海 31.24.15 mis-stg2 虚拟机 4 16G 400G
+生产 深圳 31.32.34 mis-prd1 虚拟机 4 16G 500G
+
+集团投资kettle平台服务器环境：
+
+环境类型 所在地 KETTLE IP KETTLE SID 机器类型 CPU MEM 存储
+开发 深圳 20.13.196 pagi-dev1 开发云 2 4G 16G
+ 深圳 20.13.197 pagi-dev2 开发云 2 4G 16G
+测试 深圳 31.93.40 pagi-stg1 虚拟机 4 4G 20G
+ 深圳 31.93.41 pagi-stg2 虚拟机 4 4G 20G
+生产 深圳 33.95.22 pagi-prd1 虚拟机 4 4G 50G
+ 深圳 33.95.23 pagi-prd2 虚拟机 4 4G 50G
+
+天下通SF区kettle平台服务器环境：
+
+环境类型 所在地 KETTLE IP KETTLE SID 机器类型 CPU MEM 存储
+开发 深圳 20.12.55 public-dev 开发云 4 16G 100G
+测试 深圳 31.92.115 sfhm-stg1 虚拟机 8 16G 200G
+ 深圳 31.92.116 sfhm-stg2 虚拟机 8 16G 200G
+生产 深圳 33.95.25 sfhm-prd1 虚拟机 8 16G 500G
+ 深圳 33.95.26 sfhm-prd2 虚拟机 8 16G 500G
+
+天下通天下通区kettle平台服务器环境：
+
+环境类型 所在地 KETTLE IP KETTLE SID 机器类型 CPU MEM 存储
+开发 深圳 20.12.55 public-dev 开发云 4 16G 100G
+测试 深圳 172.24.254.47 genhm-stg1 物理机 8 32G 500G
+ 深圳 172.24.254.48 genhm-stg1 物理机 8 32G 500G
+生产 深圳 33.96.212 genhm-prd1 物理机 8 16G 500G
+ 深圳 31.32.97 genhm-prd2 物理机 8 16G 500G
+
+备注：
+1、 银行与科技的文件交互是通过ufep软件通讯，在kettle公共平台的31.32.97和33.96.211都有节点，开发和测试链路都是通的
+2、 银行与GBD项目也有一个节点，是在hadoop平台服务器上，机器为33.24.20和33.24.16
+3、 GBD项目的33.24.20有以无密的ssh方式获取天下通kettle平台33.95.25上的数据，目前的kettle工程为toccore
+4、 天下通项目，SF区和天下通区，是通过windows中转服务器上的sftp功能通讯的，windows中转服务器的运营同事余海燕，IP为35.216.197和202.69.21.105
+5、 集团投资kettle平台有与银行的文件交互数据，目前是kettle工程pagirdms从银行获取文件，通过33.96.211上的定时任务FileScp无密传输文件至33.95.22
+6、 集团ETL公共平台33.96.77也有程序往集团投资平台33.95.22、23和kettle公共平台33.96.211上SCP传输文件
+7、 所有的定时任务都应该迁移到opktl上去
+
+
+2. kettle客户端：
+kettle客户端软件是一款绿色软件，直接下载介质pdi-ee-client-4.4.2-GA.zip（ http://cnsz020234:34567/kettle/安装介质/client/pdi-ee-client-4.4.2-GA.zip），解压即可
+
+备注：这是企业版客户端软件，也需要注册同样有效的license才能使用！
+
+3. 设置独立的Java环境变量
+【解压客户端后，若能正常启用spoon.bat程序即可以跳过此步骤】
+使用版本4.4.2的客户端软件，使用JAVA环境为1.6.0版本，在服务器上添加用户变量
+PENTAHO_JAVA_HOME:   C:\Program Files\Java\jdk1.6.0_18
+
+4. 添加JDBC驱动
+在kettle客户端相对目录data-integration\libext\JDBC下添加oracle，PostgreSQL，MSSQL以及MySQL的JDBC驱动：
+MySQL：mysql-connector-java-5.1.27-bin.jar
+Oracle：ojdbc6.jar
+Sqlserver：sqljdbc4.jar
+PG：postgresql-9.4-1201.jdbc41.jar【删除原来的：postgresql-8.4-702.jdbc3.jar】
+Mongodb: mongo-java-driver-2.13.1.jar
+[备注：删除原来的，更新：~\data-integration\plugins\pentaho-mongodb-plugin\lib]
+注意：添加此驱动文件之后，要重启kettle客户端才能正常使用。请从http://cnsz020234:34567/kettle/安装介质/JDBC下载驱动文件。
+
+5. Kettle开发桌面
+通过执行data-integration\spoon.bat启动kettle开发界面，会提示需要加载license，直接通过右上角的绿色“+”号选择：http://cnsz020234:34567/kettle/安装介质/license/Pentaho PDI Enterprise Edition.jar
+
+ 然后关闭kettle客户端
+
+6. 添加资源库
+进入kettle解压目录，点击运行spoon.bat，选择“ADD”按钮，新增资源库（在第一次登陆需要新建工程之后，以后可以直接登陆），并选择“Enterprise Repository”，然后确定，如图：
+
+
+备注：public-dev这个是服务器的kettle服务实例名，具体服务器实例名参考前面的kettle服务器信息。
+
+
+7. 启动kettle开发桌面
+进入kettle解压目录，点击运行spoon.bat，并选择“Tools——>资源库——>连接资源库”看到以下图标
+
+
+8. 登陆资源库
+点击“OK”按钮，并使用管理员分配的账号密码登陆工程进行开发，见图：
+
+
+在kettle工程未创建时，可以使用测试账号test/test登录kettle开发环境public-dev，并在测试工程test下尝试开发了，不过在开发时要注意以下两点：
+1）、不是自己开发的程序千万不要删除，是自己开发的程序，在确认没有存在必要时，确保要尽快删除
+2）、测试工程test是在/public目录下的test目录，/home目录是无效的目录
+3）、开发参考案例： JOB为红色的test/ggmon/JobTest
+     Transformation为蓝色的test/ggmon/JobTest
+
+9. 配置项设置
+Tools——>选项，配置如下：
+
+
+三、 工程创建
+
+1. 申请工程
+前期以邮件形式，把架构评审邮件及EOA签报提交至王勇（WANGYONG326）或者杜灵强（DULINGQIANG001）申请工程，以及kettle用户
+
+备注：在申请工程时，要确定源数据库和目标数据库的地理位置，原则上安排调度的工程所在的服务器和目标数据库需要在同一个地址。
+
+
+2. 数据库用户
+原则上kettle平台使用独立的数据库用户访问对应的数据库，请申请对应的数据库帐户，命名规则为：对方业务相关信息+ktl。并在申请时标注为：生产环境密码需反馈给wangyong326。
+
+3. 验证防火墙
+
+请提前邮件通知王勇，本工程需要使用到的数据库连接串，并请验证防火墙是否已开通，在反馈为不通的情况下，需要开发同事提防火墙申请开通
+
+4. 申请发布单元
+
+需要申请一个独立的kettle程序发布单元支持kettle程序移交！
+ *申请建立ETL工具KETTLE版本移交通道子系统（内部工作签报）
+ *申请建立ETL工具KETTLE版本移交通道SVN流程（内部工作签报）
+
+四、 开发规范
+
+1. 命名规范
+1）、以有实际意义的简写英文单词串组合并且按首字母大写其余字母小写的规则，不允许有下划线等特殊字符。
+2）、一个转换只能加工一个目标表，当要操作多张表目标表时，分拆多个转换
+3）、转换的命名以目标表名称为前缀命名。（若没其他需要，直接以全表名命名）
+
+2. 设计代码存放目录
+在kettle使用用户的/public/工程名目录下开发设计代码，按照业务相关概念可以另建子目录以区分子功能用途，原则上一个系统使用一个工程目录
+
+3. 外部文件临时目录
+每个工程都对应一个临时数据文件存储目录/wls/kettle/txt/工程名、配置文件存储目录/wls/kettle/config/工程名以及日志文件存储目录/wls/kettle/log/工程名、文本文件加载异常日志记入/wls/kettle/log/工程名/
+
+ 备注：若有可能需要使用50G以上的空间时，请向数据集成平台分组申请！
+
+4. 功能transformation开发
+1）、功能transformation开发，需要在parameters中申明下面12个参数:
+Ssname
+Sdbport
+Sdbname
+Suser
+Spwd
+Tsname
+Tdbport
+Tdbname
+Tuser
+Tpwd
+IncStart      ----格式为string，如20130923
+IncEnd  ----格式为string，如20130923
+如图：
+
+2）、在功能transformation中仅能使用以下两个时间参数（IncStart和IncEnd）,使用参数以及变量的方法为“${变量}”（推荐）或者“%%变量%%”。
+ 此两个参数是字符串类型，如20140821
+
+
+
+3）、在开发环境开发时，可以创建具体的数据库连接串（注意：不能创建和下面10个名称类似的数据库连接串，以防止其他同事看错。比如：soucedb等）。但，在服务器上测试和移交时，数据库连接串需要调整为下面的数据库连接串，而且不能修改。按照自己的需求对应选择，一个数据库选择器不能超过两个不同的数据库连接串。
+sourcedb：  Oracle数据库源库
+targetdb：  Oracle数据库目标库
+sourcerac：  Oracle数据库rac库源库
+targetrac：  Oracle数据库rac库目标库
+sourcemysql： MySQL数据库源库
+targetmysql：  MySQL数据库目标库
+sourcesql：    MS SQL数据库源库
+targetsql：  MS SQL数据库目标库
+sourcepg：    PostgreSQL数据库源库
+targetpg：  PostgreSQL数据库目标库
+
+4）、此类JOB必须允许多次重复调度而不导致结果错误。（可参照test工程中的/public/test/ggmon/JobTest.ktr开发）
+
+5）、强烈建议一切使用英文来表达
+
+5. 功能JOB开发
+
+1）、在功能JOB开发中，需要在parameters中申明以下两个参数：
+IncStart
+IncEnd
+如图：
+
+
+2）、必须先以一个“START”组件开始，并通过主控JOB（MainControl）来调度具体的转换，如下图：
+
+备注：对“START”组件不要有任何操作
+3）、功能JOB中的“MainControl”step介绍，如下两图：
+
+（图1）
+
+（图2）
+备注：图1和图2的配置先参照配置，然后修改TransName的值，修改为你需要调度的转换的相对路径，以及修改PreParam的值，这个值是数据集成平台分组反馈给你的数据库选择器。
+
+6. 主控JOB介绍
+主控JOB实现的功能是读取配置文件提供数据库的连接串，获取登陆数据库的用户名和密码后，调度对应的转换程序transformation，以及记录执行JOB运行结果的日志。主要包括一个JOB：MainControl、一个transformation：GetConn，以及一批记录日志的shell脚本。
+ 功能JOB，必须通过主控来调度相应的功能transformation
+
+ PS：开发同事可以不予了解，会使用即可。
+
+7. JOB并发
+
+JOB的设计，有一种并发功能，通过右键上一个step，选择“launch next entries in parallel”即选择了并发，原则上我们平台管理组是不允许使用此功能的，若有充足的理由（如：需要通过并发才能保证程序在规定的时间之内完成）要求使用，请找我们数据集成平台组的同事评估通过之后，方可使用。
+如下图设计的并发，请禁止使用：
+
+
+8. 调试方法
+1、以opktl/paic1234用户通过ssh软件登陆到PDI server服务器20.12.55上，并进入目录/wls/opktl/config，调用对应的执行程序即可！
+
+2、若要查看这些命令如何使用，直接sh 【命令脚本】，不带入任何参数，然后执行即有提示。
+
+
+3、查看日志：
+当运行JOB或者transformation时，会记录此JOB或transformation的运行状态到每个工程下当天的状态日志文件中，如：/wls/kettle/log/test/status_20131123.log中，这里只记录此JOB执行是否成功，要查看具体的日志，要到/wls/kettle/log/test/具体目录下的具体日志中，如下图：
+
+
+PS：运行状态日志也会记录数据库中，可以使用ktreader/kt1234登录20.128.36:1526/d0monit查看日志表ktmgr.kettle_log
+
+9. 程序说明文档移交
+
+在每次版本移交是请按照附件的格式填写
+
+参考文档：~/kettle转换移交说明V2.0.0.xml
+
+ 程序代码移交
+请以transformation或者job为单位来移交，不要以整个工程移交。
+
+导出方法：文件——>Export——>导出到XML文件
+
+备注：
+1、请在导出JOB时，要保持客户端与服务端是正常的连接状态。
+2、有可能存在不同目录有同名的JOB，所以，建议在移交时，导出对应的JOB到对应的目录中，通过之前申请的发布单元移交！
+
+11. 移交代码扫描
+
+在移交代码前，先进行代码扫描，能够提前发现不符合规范的程序代码，避免移交之后需要重新移交的困境。
+1）、通过用户opktl/paic1234把代码上传到kettle服务器20.12.55的/wls/opktl任意目录下，如新创建/wls/opktl/wangyong/
+2）、扫描代码。执行命令：sh /wls/opktl/config/check_dir.sh /wls/opktl/wangyong/,若没有任何错误提示，则可移交；若遇到提示，而不明白的请咨询数据集成平台分组。
+
+12. 移交部署说明
+
+在移交平台上有特别说明步骤，要说明部署哪个平台，以及是否是mongodb程序。
+1、部署在哪个平台，比如puducms工程，则移交时，
+在部署测试时，要说明：请部署在测试环境public-stg
+在发布生产时，要说明：请发布在生产环境pubic-prd1/pubic-prd2/public-prd3
+2、因mongodb程序开发和普通kettle程序开发不一致，保存目录也不一致，所以，这部分程序还是我部署，在移交时要说明：此部分为mongodb程序，请提request给王勇部署
+
+13. 测试
+测试环境类似开发环境，也会给测试同事创建对应的kettle登录账号查看kettle程序设计代码（没有修改的权限），下面以kettle公共平台举例说明：
+1、 因测试环境与办公网络不通，所以，需要通过中转服务器MTKF上的kettle客户端（C:\pdi-ee-client-4.4.2-GA\data-integration）登录到测试服务器（公共平台为31.102.130，kettle SID：public-stg）
+2、 Kettle测试环境的登录帐户不清楚，可以报case给数据集成平台分组的王勇，把kettle平台及kettle工程说明清楚，要求提供测试kettle账号
+3、 通过以上两个步骤，可以查看kettle版本是否发布及版本发布是否正确
+4、 测试环境调试，用系统账号opktl/Paic1234登录到31.102.130执行kettle的脚本程序（这个步骤不熟悉，可以咨询开发同事），检查数据库数据是否正常。
+
+备注：kettle公共平台的开发和测试环境因服务器资源有限，不设置定时调度任务，可以手工执行模拟定时调度即可。
+
+14. 运营
+生产环境也有类似开发环境的操作，会给运营同事创建对应的kettle登录账号查看kettle程序设计代码（没有修改的权限），下面以kettle公共平台举例说明：
+1、 因生产环境与办公网络不通，所以，需要通过中转服务器mtyy-group上的kettle客户端（D:\kettle\data-integration或者双击桌面上的spoon图标）登录到生产服务器（公共平台有三台服务器）
+2、 Kettle生产环境的登录帐户不清楚，可以报case给数据集成平台分组的王勇，把kettle平台及kettle工程说明清楚，要求提供生产kettle账号
+3、 通过以上两个步骤，可以查看kettle版本是否发布及版本发布是否正确
+4、 生产环境kettle执行，用系统账号opktl/xxxxx登录到31.32.97执行kettle的脚本程序（这个步骤不熟悉，可以咨询开发同事），检查数据库数据是否正常。
+5、 设置定时调度任务：确认要设置的服务器，使用Linux的crontab语法，参考如下：
+[opktl@CNSZ042074 ~]$ crontab -l
+#17 */1 * * * sh /wls/opktl/config/RunJob.sh hm/TalkingData/JobSHshellI d >/dev/null 2>&1 &
+00 03 * * * sh /wls/opktl/config/RunJob.sh hm/TalkingData/JobCatchSHTDshell d >/dev/null 2>&1 &
+[opktl@CNSZ042074 ~]$
+
+
+五、 调度规范
+
+1. 调度申明
+因多套多台生产服务器对应一套开发和测试环境，所以，相对负载来说，开发和测试服务器更高，而且，开发和测试服务器的配置相对生产环境的单台服务器也要低，所以，不要在开发和测试环境设置定时调度任务。要实现功能，可以通过手动调度来模拟实现。
+
+
+2. 调度方式
+在生产环境设置调度时，有三种调度方式，分别是按天、周、月调度
+当按天调度时
+IncStart的值为昨天日期，类型为字符串，格式为yyyymmdd
+IncEnd的值为今天日期，类型为字符串，格式为yyyymmdd
+当按周调度时
+IncStart的值为上周一，类型为字符串，格式为yyyymmdd
+IncEnd的值为这周一，类型为字符串，格式为yyyymmdd
+当按月调度时
+IncStart的值为上月1日，类型为字符串，格式为yyyymmdd
+IncEnd的值为本月1日，类型为字符串，格式为yyyymmdd
+
+3. 调度时间
+
+需要预留系统维护时间（工作日9：00~11：00），原则上不能在此时间有任何调度任务，而且所有调度任务需要考虑在9点之前完成。若有特殊需求时，须走特批。
+
+4. 调度频率
+
+Kettle调度是属于非实时的ETL工具，建议调度频率大于4小时/次，可适当有部分任务调度频率在2~4小时/次，若调度频率小于2小时/次，须走特批。
+
+六、 监控规范
+
+1. 平台监控
+在kettle平台级别包括了任务执行错误，任何执行超时（超24小时）的告警邮件，大约4小时监控一次，目前只包括数据集成平台分组同事接收，有问题会跟各工程负责人联系
+
+2. 数据监控
+各项目负责人自行开发与监控，主要是从数据层面来看kettle是否正常执行，比如：数据缺失，数量不对等。数据集成平台分组不参与
+
+3. 综合监控
+各项目负责人与数据集成平台分组同事一起完善的监控程序，目前提供给个项目负责人的监控接口是在Oracle日志库中的ktmgr.kettle_log日志表，各项目负责人可以在此基础上，开发自己负责项目的监控程序
+
+开发环境：20.128.36:1526/d0monit
+测试环境：31.9.242:1561/t0mnt
+生产环境：monitor.db.paic.com.cn:1534/monitor
+
+登录用户为：ktreader/kt1234
+日志表为：ktmgr.kettle_log
+查看特征：flag字段为非0，则表示异常
+
+
+
+七、 附录：关于mongodb的kettle开发
+要会使用kettle操作mongodb数据库，首先要理解前面普通开发的规范，mongodb开发整体上来说，规则差不多，稍微复杂一点。
+
+1. 关于mongodb开发的特点
+（下面表格列出了与普通kettle开发的异同点。）
+
+类型
+项目 rdbms mongodb
+程序路径 /public/工程名 /wls/kettle/config/工程名
+主控程序路径 /public/MainConrol /wls/kettle/config/MainControl
+DB参数 直接选择sourcedb、targetdb等 需要配置${Ssname}、${Sdbname}等
+调度命令 RunJob.sh等 每个命令多个File，比如RunFileJob.sh等
+开发与移交 要保持与kettle服务器连接状态 要与kettle服务器断开，并且直接COPY程序文件
+扫描 需要通过/wls/opktl/config/check_dir.sh扫描通过方可移交 不需要扫描直接移交
+开发环境 直接开发 本地开发后，邮件通知王勇部署至开发环境
+测试环境 走版本 走版本
+生产环境 走版本 走版本
+
+2. Mongodb参考文档
+
+http://wiki.pentaho.com/display/EAI/MongoDB+Output
+
+
+3. mongodb JOB开发
+
+参数设置：
+
+
+主控设置：
+
+
+转换设置:
+
+
+4. Mongodb 转换开发
+
+参数设置;
+
+
+数据库配置：
+
+
+
+
+
+5. Mongodb调试
+
+请参考第四章第8节的调试方法，关于mongodb的程序调试方法和普通kettle程序一致，唯一的区别是调度命令中多字符File，如RunJob.sh则对应RunFileJob.sh
+
+
+
 Kettle简介：Kettle是一款国外开源的ETL工具，纯java编写，可以在Window、Linux、Unix上运行，数据抽取高效稳定。Kettle 中文名称叫水壶，该项目的主程序员MATT 希望把各种数据放到一个壶里，然后以一种指定的格式流出。Kettle这个ETL工具集，它允许你管理来自不同数据库的数据，通过提供一个图形化的用户环境来描述你想做什么，而不是你想怎么做。Kettle中有两种脚本文件，transformation和job，transformation完成针对数据的基础转换，job则完成整个工作流的控制。（引用百度百科）
 
 1、Kettle的下载与安装（在本文中使用的kettle版本为6.1.0.1-196）

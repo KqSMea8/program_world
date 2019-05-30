@@ -1,0 +1,3171 @@
+操作系统这个话题其实很早就想拿出来和大家分享，拖到现在一方面是因为对其中各种理论理解并不十分透彻，怕讲不好；另一方面是这个问题好像一直以来都很少有人关注，这里算是给这个话题开个头。其实这几个参数前前后后看过好些次，但却一直没有吃透，前段时间趁着休假又把这些理论翻出来过了一遍，有了进一步的理解，这里权当整理梳理。下图是HBase官方文档上对操作系统环境的几点配置要求：
+
+
+
+
+
+
+
+
+先不着急解释每个配置的具体含义，在这之前需要重点研究一个概念：swap，对，就这个大家或多或少听说过的名词，负责任的说，上述几个参数或多或少都与swap有些关联。
+
+
+swap是干嘛的？
+在Linux下，SWAP的作用类似Windows系统下的“虚拟内存”。当物理内存不足时，拿出部分硬盘空间当SWAP分区（虚拟成内存）使用，从而解决内存容量不足的情况。
+
+SWAP意思是交换，顾名思义，当某进程向OS请求内存发现不足时，OS会把内存中暂时不用的数据交换出去，放在SWAP分区中，这个过程称为SWAP OUT。当某进程又需要这些数据且OS发现还有空闲物理内存时，又会把SWAP分区中的数据交换回物理内存中，这个过程称为SWAP IN。
+
+当然，swap大小是有上限的，一旦swap使用完，操作系统会触发OOM-Killer机制，把消耗内存最多的进程kill掉以释放内存。
+
+
+数据库系统为什么嫌弃swap？
+显然，swap机制的初衷是为了缓解物理内存用尽而选择直接粗暴OOM进程的尴尬。但坦白讲，几乎所有数据库对swap都不怎么待见，无论MySQL、Oracal、MongoDB抑或HBase，为什么？这主要和下面两个方面有关：
+
+1. 数据库系统一般都对响应延迟比较敏感，如果使用swap代替内存，数据库服务性能必然不可接受。对于响应延迟极其敏感的系统来讲，延迟太大和服务不可用没有任何区别，比服务不可用更严重的是，swap场景下进程就是不死，这就意味着系统一直不可用……再想想如果不使用swap直接oom，是不是一种更好的选择，这样很多高可用系统直接会主从切换掉，用户基本无感知。
+
+2. 另外对于诸如HBase这类分布式系统来说，其实并不担心某个节点宕掉，而恰恰担心某个节点夯住。一个节点宕掉，最多就是小部分请求短暂不可用，重试即可恢复。但是一个节点夯住会将所有分布式请求都夯住，服务器端线程资源被占用不放，导致整个集群请求阻塞，甚至集群被拖垮。
+
+从这两个角度考虑，所有数据库都不喜欢swap还是很有道理的！
+
+
+swap的工作机制
+既然数据库们对swap不待见，那是不是就要使用swapoff命令关闭磁盘缓存特性呢？非也，大家可以想想，关闭磁盘缓存意味着什么？实际生产环境没有一个系统会如此激进，要知道这个世界永远不是非0即1的，大家都会或多或少选择走在中间，不过有些偏向0，有些偏向1而已。很显然，在swap这个问题上，数据库必然选择偏向尽量少用。HBase官方文档的几点要求实际上就是落实这个方针：尽可能降低swap影响。知己知彼才能百战不殆，要降低swap影响就必须弄清楚Linux内存回收是怎么工作的，这样才能不遗漏任何可能的疑点。
+
+
+先来看看swap是如何触发的？
+
+简单来说，Linux会在两种场景下触发内存回收，一种是在内存分配时发现没有足够空闲内存时会立刻触发内存回收；一种是开启了一个守护进程（swapd进程）周期性对系统内存进行检查，在可用内存降低到特定阈值之后主动触发内存回收。第一种场景没什么可说，来重点聊聊第二种场景，如下图所示：
+
+
+
+
+
+
+
+
+这里就要引出我们关注的第一个参数：vm.min_free_kbytes，代表系统所保留空闲内存的最低限watermark[min]，并且影响watermark[low]和watermark[high]。简单可以认为：
+
+
+
+watermark[min] = min_free_kbytes
+watermark[low] = watermark[min] * 5 / 4 = min_free_kbytes * 5 / 4
+watermark[high] = watermark[min] * 3 / 2 = min_free_kbytes * 3 / 2
+watermark[high] - watermark[low] = watermark[low] - watermark[min] = min_free_kbytes / 4
+可见，LInux的这几个水位线与参数min_free_kbytes密不可分。min_free_kbytes对于系统的重要性不言而喻，既不能太大，也不能太小。
+
+
+min_free_kbytes如果太小，［min,low］之间水位的buffer就会很小，在kswapd回收的过程中一旦上层申请内存的速度太快（典型应用：数据库），就会导致空闲内存极易降至watermark[min]以下，此时内核就会进行direct reclaim（直接回收），直接在应用程序的进程上下文中进行回收，再用回收上来的空闲页满足内存申请，因此实际会阻塞应用程序，带来一定的响应延迟。当然，min_free_kbytes也不宜太大，太大一方面会导致应用程序进程内存减少，浪费系统内存资源，另一方面还会导致kswapd进程花费大量时间进行内存回收。再看看这个过程，是不是和Java垃圾回收机制中CMS算法中老生代回收触发机制神似，想想参数-XX:CMSInitiatingOccupancyFraction，是不是？官方文档中要求min_free_kbytes不能小于1G（在大内存系统中设置8G），就是不要轻易触发直接回收。
+
+
+至此，基本解释了Linux的内存回收触发机制以及我们关注的第一个参数vm.min_free_kbytes。接下来简单看看Linux内存回收都回收些什么。Linux内存回收对象主要分为两种：
+
+1. 文件缓存，这个容易理解，为了避免文件数据每次都要从硬盘读取，系统会将热点数据存储在内存中，提高性能。如果仅仅将文件读出来，内存回收只需要释放这部分内存即可，下次再次读取该文件数据直接从硬盘中读取即可（类似HBase文件缓存）。那如果不仅将文件读出来，而且对这些缓存的文件数据进行了修改（脏数据），回收内存就需要将这部分数据文件写会硬盘再释放（类似MySQL文件缓存）。
+
+2. 匿名内存，这部分内存没有实际载体，不像文件缓存有硬盘文件这样一个载体，比如典型的堆、栈数据等。这部分内存在回收的时候不能直接释放或者写回类似文件的媒介中，这才搞出来swap这个机制，将这类内存换出到硬盘中，需要的时候再加载出来。
+
+
+具体Linux使用什么算法来确认哪些文件缓存或者匿名内存需要被回收掉，这里并不关心，有兴趣可以参考这里。但是有个问题需要我们思考：既然有两类内存可以被回收，那么在这两类内存都可以被回收的情况下，Linux到底是如何决定到底是回收哪类内存呢？还是两者都会被回收？这里就牵出来了我们第二个关心的参数：swappiness，这个值用来定义内核使用swap的积极程度，值越高，内核就会积极地使用swap，值越低，就会降低对swap的使用积极性。该值取值范围在0～100，默认是60。这个swappiness到底是怎么实现的呢？具体原理很复杂，简单来讲，swappiness通过控制内存回收时，回收的匿名页更多一些还是回收的文件缓存更多一些来达到这个效果。swappiness等于100，表示匿名内存和文件缓存将用同样的优先级进行回收，默认60表示文件缓存会优先被回收掉，至于为什么文件缓存要被优先回收掉，大家不妨想想（回收文件缓存通常情况下不会引起IO操作，对系统性能影响较小）。对于数据库来讲，swap是尽量需要避免的，所以需要将其设置为0。此处需要注意，设置为0并不代表不执行swap哦！
+
+
+至此，我们从Linux内存回收触发机制、Linux内存回收对象一直聊到swap，将参数min_free_kbytes以及swappiness进行了解释。接下来看看另一个与swap有关系的参数：zone_reclaim_mode，文档说了设置这个参数为0可以关闭NUMA的zone reclaim，这又是怎么回事？提起NUMA，数据库们又都不高兴了，很多DBA都曾经被坑惨过。那这里简单说明三个小问题：NUMA是什么？NUMA和swap有什么关系？zone_reclaim_mode的具体意义？
+
+NUMA（Non-Uniform Memory Access）是相对UMA来说的，两者都是CPU的设计架构，早期CPU设计为UMA结构，如下图(图片来自网络)所示：
+
+
+
+
+
+
+为了缓解多核CPU读取同一块内存所遇到的通道瓶颈问题，芯片工程师又设计了NUMA结构，如下图（图片来自网络）所示：
+
+
+
+
+
+
+
+这种架构可以很好解决UMA的问题，即不同CPU有专属内存区，为了实现CPU之间的”内存隔离”，还需要软件层面两点支持：
+
+1. 内存分配需要在请求线程当前所处CPU的专属内存区域进行分配。如果分配到其他CPU专属内存区，势必隔离性会受到一定影响，并且跨越总线的内存访问性能必然会有一定程度降低。
+
+2. 另外，一旦local内存（专属内存）不够用，优先淘汰local内存中的内存页，而不是去查看远程内存区是否会有空闲内存借用。
+
+
+这样实现，隔离性确实好了，但问题也来了：NUMA这种特性可能会导致CPU内存使用不均衡，部分CPU专属内存不够使用，频繁需要回收，进而可能发生大量swap，系统响应延迟会严重抖动。而与此同时其他部分CPU专属内存可能都很空闲。这就会产生一种怪现象：使用free命令查看当前系统还有部分空闲物理内存，系统却不断发生swap，导致某些应用性能急剧下降。见叶金荣老师的MySQL案例分析：《找到MySQL服务器发生SWAP罪魁祸首》。
+
+
+所以，对于小内存应用来讲，NUMA所带来的这种问题并不突出，相反，local内存所带来的性能提升相当可观。但是对于数据库这类内存大户来说，NUMA默认策略所带来的稳定性隐患是不可接受的。因此数据库们都强烈要求对NUMA的默认策略进行改进，有两个方面可以进行改进：
+
+1. 将内存分配策略由默认的亲和模式改为interleave模式，即会将内存page打散分配到不同的CPU zone中。通过这种方式解决内存可能分布不均的问题，一定程度上缓解上述案例中的诡异问题。对于MongoDB来说，在启动的时候就会提示使用interleave内存分配策略：
+
+
+WARNING: You are running on a NUMA machine.
+We suggest launching mongod like this to avoid performance problems:
+numactl –interleave=all mongod [other options]
+
+2. 改进内存回收策略：此处终于请出今天的第三个主角参数zone_reclaim_mode，这个参数定义了NUMA架构下不同的内存回收策略，可以取值0/1/3/4，其中0表示在local内存不够用的情况下可以去其他的内存区域分配内存；1表示在local内存不够用的情况下本地先回收再分配；3表示本地回收尽可能先回收文件缓存对象；4表示本地回收优先使用swap回收匿名内存。可见，HBase推荐配置zone_reclaim_mode＝0一定程度上降低了swap发生的概率。
+
+
+不都是swap的事
+至此，我们探讨了三个与swap相关的系统参数，并且围绕Linux系统内存分配、swap以及NUMA等知识点对这三个参数进行了深入解读。除此之外，对于数据库系统来说，还有两个非常重要的参数需要特别关注：
+
+1. IO调度策略：这个话题网上有很多解释，在此并不打算详述，只给出结果。通常对于sata盘的OLTP数据库来说，deadline算法调度策略是最优的选择。
+
+2. THP（transparent huge pages）特性关闭。THP特性笔者曾经疑惑过很久，主要疑惑点有两点，其一是THP和HugePage是不是一回事，其二是HBase为什么要求关闭THP。经过前前后后多次查阅相关文档，终于找到一些蛛丝马迹。这里分四个小点来解释THP特性：
+
+（1）什么是HugePage？
+
+网上对HugePage的解释有很多，大家可以检索阅读。简单来说，计算机内存是通过表映射（内存索引表）的方式进行内存寻址，目前系统内存以4KB为一个页，作为内存寻址的最小单元。随着内存不断增大，内存索引表的大小将会不断增大。一台256G内存的机器,如果使用4KB小页, 仅索引表大小就要4G左右。要知道这个索引表是必须装在内存的，而且是在CPU内存，太大就会发生大量miss，内存寻址性能就会下降。
+
+HugePage就是为了解决这个问题，HugePage使用2MB大小的大页代替传统小页来管理内存，这样内存索引表大小就可以控制的很小，进而全部装在CPU内存，防止出现miss。
+
+（2）什么是THP（Transparent Huge Pages）?
+
+HugePage是一种大页理论，那具体怎么使用HugePage特性呢？目前系统提供了两种使用方式，其一称为Static Huge Pages，另一种就是Transparent Huge Pages。前者根据名称就可以知道是一种静态管理策略，需要用户自己根据系统内存大小手动配置大页个数，这样在系统启动的时候就会生成对应个数的大页，后续将不再改变。而Transparent Huge Pages是一种动态管理策略，它会在运行期动态分配大页给应用，并对这些大页进行管理，对用户来说完全透明，不需要进行任何配置。另外，目前THP只针对匿名内存区域。
+
+（3）HBase（数据库）为什么要求关闭THP特性？
+
+THP是一种动态管理策略，会在运行期分配管理大页，因此会有一定程度的分配延时，这对追求响应延时的数据库系统来说不可接受。除此之外，THP还有很多其他弊端，可以参考这篇文章《why-tokudb-hates-transparent-hugepages》
+
+（4）THP关闭/开启对HBase读写性能影响有多大？
+
+为了验证THP开启关闭对HBase性能的影响到底有多大，本人在测试环境做了一个简单的测试：测试集群仅一个RegionServer，测试负载为读写比1:1。THP在部分系统中为always以及never两个选项，在部分系统中多了一个称为madvise的选项。可以使用命令 echo never/always > /sys/kernel/mm/transparent_hugepage/enabled 来关闭/开启THP。测试结果如下图所示：
+
+
+如上图，TPH关闭场景下（never）HBase性能最优，比较稳定。而THP开启的场景（always），性能相比关闭的场景有30%左右的下降，而且曲线抖动很大。可见，HBase线上切记要关闭THP。
+
+
+总结
+任何数据库系统的性能表现都与诸多因素相关，这里面有数据库本身的各种因素，比如数据库配置、客户端使用、容量规划、表scheme设计等，除此之外，基础系统对其的影响也至关重要，比如操作系统、JVM等。很多时候数据库遇到一些性能问题，左查右查都定位不了具体原因，这个时候就要看看操作系统的配置是否都合理了。本文从HBase官方文档要求的几个参数出发，详细说明了这些参数的具体意义。内容涉及相对比较多，有兴趣的同学可以详细查看文章最后参考文章。
+
+=================
+
+
+
+================================================
+
+
+HBase是一个写快读慢的系统(当然，这里的慢是相对于写来说的)。若生产环境是一个read heavy场景，可对HBase做读优化，主要手段是：1）增强系统IO能力(HDFS层面); 2)增大BlockCache; 3) 调整Major Compaction策略。若随机读为主，还可以调小blocksize。具体的性能指标可以参考Yahoo ycsb论文： http://labs.yahoo.com/news/yahoo-cloud-serving-benchmark/发布于 2013-11-14​赞同 33​​4 条评论​分享​收藏​感谢杨肉读书够多，想得更多，自由太少，钱更少22 人赞同了该回答谢邀国内用HBase的公司很多啊，生产环境用当然不是问题。有个人的回答说HBase不行用hdfs的不行得用rocksdb，我只能说，他提到的那些公司除了百度外都也用HBase。。。百度我不确定有没有用，但内部造的有的轮子也是bigtable的架构，底下一样是分布式文件系统。。。更别说如果简单搞个主从是最终一致性了。。至于说延迟如何要不要用缓存抗，这个你得自己测，不同场景不同硬件测出来的数据完全不一样，大多数场景其实也不需要缓存因为HBase本来也有cache。最后不得不对好几个人说一句，不懂别强答了。。编辑于 2017-06-20​赞同 22​​2 条评论​分享​收藏​感谢网易云​已认证的官方帐号22 人赞同了该回答基于这个问题，推荐我厂范欣欣同学的一篇文章，这篇文章笔者以读延迟优化为核心内容展开，具体分析HBase进行读延迟优化的那些套路，以及这些套路之后的具体原理。希望对题主有所帮助，原文如下：任何系统都会有各种各样的问题，有些是系统本身设计问题，有些却是使用姿势问题。HBase也一样，在真实生产线上大家或多或少都会遇到很多问题，有些是HBase还需要完善的，有些是我们确实对它了解太少。总结起来，大家遇到的主要问题无非是Full GC异常导致宕机问题、RIT问题、写吞吐量太低以及读延迟较大。Full GC问题之前在一些文章里面已经讲过它的来龙去脉，主要的解决方案目前主要有两方面需要注意，一方面需要查看GC日志确认是哪种Full GC，根据Full GC类型对JVM参数进行调优，另一方面需要确认是否开启了BucketCache的offheap模式，建议使用LRUBlockCache的童鞋尽快转移到BucketCache来。当然我们还是很期待官方2.0.0版本发布的更多offheap模块。RIT问题，我相信更多是因为我们对其不了解，具体原理可以戳这里，解决方案目前有两个，优先是使用官方提供的HBCK进行修复（HBCK本人一直想拿出来分享，但是目前案例还不多，等后面有更多案例的话再拿出来说），使用之后还是解决不了的话就需要手动修复文件或者元数据表。而对于写吞吐量太低以及读延迟太大的优化问题，笔者也和很多朋友进行过探讨，这篇文章就以读延迟优化为核心内容展开，具体分析HBase进行读延迟优化的那些套路，以及这些套路之后的具体原理。希望大家在看完之后能够结合这些套路剖析自己的系统。一般情况下，读请求延迟较大通常存在三种场景，分别为：1. 仅有某业务延迟较大，集群其他业务都正常2. 整个集群所有业务都反映延迟较大3. 某个业务起来之后集群其他部分业务延迟较大这三种场景是表象，通常某业务反应延迟异常，首先需要明确具体是哪种场景，然后针对性解决问题。下图是对读优化思路的一点总结，主要分为四个方面：客户端优化、服务器端优化、列族设计优化以及HDFS相关优化，下面每一个小点都会按照场景分类，文章最后进行归纳总结。下面分别进行详细讲解：<img src="https://pic1.zhimg.com/50/v2-5b9915b56f2295e9ac31b9ff03204109_hd.jpg" data-caption="" data-size="normal" data-rawwidth="770" data-rawheight="471" class="origin_image zh-lightbox-thumb" width="770" data-original="https://pic1.zhimg.com/v2-5b9915b56f2295e9ac31b9ff03204109_r.jpg"/>HBase客户端优化和大多数系统一样，客户端作为业务读写的入口，姿势使用不正确通常会导致本业务读延迟较高实际上存在一些使用姿势的推荐用法，这里一般需要关注四个问题：1. scan缓存是否设置合理？优化原理：在解释这个问题之前，首先需要解释什么是scan缓存，通常来讲一次scan会返回大量数据，因此客户端发起一次scan请求，实际并不会一次就将所有数据加载到本地，而是分成多次RPC请求进行加载，这样设计一方面是因为大量数据请求可能会导致网络带宽严重消耗进而影响其他业务，另一方面也有可能因为数据量太大导致本地客户端发生OOM。在这样的设计体系下用户会首先加载一部分数据到本地，然后遍历处理，再加载下一部分数据到本地处理，如此往复，直至所有数据都加载完成。数据加载到本地就存放在scan缓存中，默认100条数据大小。通常情况下，默认的scan缓存设置就可以正常工作的。但是在一些大scan（一次scan可能需要查询几万甚至几十万行数据）来说，每次请求100条数据意味着一次scan需要几百甚至几千次RPC请求，这种交互的代价无疑是很大的。因此可以考虑将scan缓存设置增大，比如设为500或者1000就可能更加合适。笔者之前做过一次试验，在一次scan扫描10w+条数据量的条件下，将scan缓存从100增加到1000，可以有效降低scan请求的总体延迟，延迟基本降低了25%左右。优化建议：大scan场景下将scan缓存从100增大到500或者1000，用以减少RPC次数2. get请求是否可以使用批量请求？优化原理：HBase分别提供了单条get以及批量get的API接口，使用批量get接口可以减少客户端到RegionServer之间的RPC连接数，提高读取性能。另外需要注意的是，批量get请求要么成功返回所有请求数据，要么抛出异常。优化建议：使用批量get进行读取请求3. 请求是否可以显示指定列族或者列？优化原理：HBase是典型的列族数据库，意味着同一列族的数据存储在一起，不同列族的数据分开存储在不同的目录下。如果一个表有多个列族，只是根据Rowkey而不指定列族进行检索的话不同列族的数据需要独立进行检索，性能必然会比指定列族的查询差很多，很多情况下甚至会有2倍～3倍的性能损失。优化建议：可以指定列族或者列进行精确查找的尽量指定查找4. 离线批量读取请求是否设置禁止缓存？优化原理：通常离线批量读取数据会进行一次性全表扫描，一方面数据量很大，另一方面请求只会执行一次。这种场景下如果使用scan默认设置，就会将数据从HDFS加载出来之后放到缓存。可想而知，大量数据进入缓存必将其他实时业务热点数据挤出，其他业务不得不从HDFS加载，进而会造成明显的读延迟毛刺优化建议：离线批量读取请求设置禁用缓存，scan.setBlockCache(false)HBase服务器端优化一般服务端端问题一旦导致业务读请求延迟较大的话，通常是集群级别的，即整个集群的业务都会反映读延迟较大。可以从4个方面入手：5. 读请求是否均衡？优化原理：极端情况下假如所有的读请求都落在一台RegionServer的某几个Region上，这一方面不能发挥整个集群的并发处理能力，另一方面势必造成此台RegionServer资源严重消耗（比如IO耗尽、handler耗尽等），落在该台RegionServer上的其他业务会因此受到很大的波及。可见，读请求不均衡不仅会造成本身业务性能很差，还会严重影响其他业务。当然，写请求不均衡也会造成类似的问题，可见负载不均衡是HBase的大忌。观察确认：观察所有RegionServer的读请求QPS曲线，确认是否存在读请求不均衡现象优化建议：RowKey必须进行散列化处理（比如MD5散列），同时建表必须进行预分区处理6. BlockCache是否设置合理？优化原理：BlockCache作为读缓存，对于读性能来说至关重要。默认情况下BlockCache和Memstore的配置相对比较均衡（各占40%），可以根据集群业务进行修正，比如读多写少业务可以将BlockCache占比调大。另一方面，BlockCache的策略选择也很重要，不同策略对读性能来说影响并不是很大，但是对GC的影响却相当显著，尤其BucketCache的offheap模式下GC表现很优越。另外，HBase 2.0对offheap的改造（HBASE-11425）将会使HBase的读性能得到2～4倍的提升，同时GC表现会更好！观察确认：观察所有RegionServer的缓存未命中率、配置文件相关配置项一级GC日志，确认BlockCache是否可以优化优化建议：JVM内存配置量 < 20G，BlockCache策略选择LRUBlockCache；否则选择BucketCache策略的offheap模式；期待HBase 2.0的到来！7. HFile文件是否太多？优化原理：HBase读取数据通常首先会到Memstore和BlockCache中检索（读取最近写入数据&热点数据），如果查找不到就会到文件中检索。HBase的类LSM结构会导致每个store包含多数HFile文件，文件越多，检索所需的IO次数必然越多，读取延迟也就越高。文件数量通常取决于Compaction的执行策略，一般和两个配置参数有关：hbase.hstore.compactionThreshold和hbase.hstore.compaction.max.size，前者表示一个store中的文件数超过多少就应该进行合并，后者表示参数合并的文件大小最大是多少，超过此大小的文件不能参与合并。这两个参数不能设置太’松’（前者不能设置太大，后者不能设置太小），导致Compaction合并文件的实际效果不明显，进而很多文件得不到合并。这样就会导致HFile文件数变多。观察确认：观察RegionServer级别以及Region级别的storefile数，确认HFile文件是否过多优化建议：hbase.hstore.compactionThreshold设置不能太大，默认是3个；设置需要根据Region大小确定，通常可以简单的认为hbase.hstore.compaction.max.size = RegionSize / hbase.hstore.compactionThreshold8. Compaction是否消耗系统资源过多？优化原理：Compaction是将小文件合并为大文件，提高后续业务随机读性能，但是也会带来IO放大以及带宽消耗问题（数据远程读取以及三副本写入都会消耗系统带宽）。正常配置情况下Minor Compaction并不会带来很大的系统资源消耗，除非因为配置不合理导致Minor Compaction太过频繁，或者Region设置太大情况下发生Major Compaction。观察确认：观察系统IO资源以及带宽资源使用情况，再观察Compaction队列长度，确认是否由于Compaction导致系统资源消耗过多优化建议：（1）Minor Compaction设置：hbase.hstore.compactionThreshold设置不能太小，又不能设置太大，因此建议设置为5～6；hbase.hstore.compaction.max.size = RegionSize / hbase.hstore.compactionThreshold（2）Major Compaction设置：大Region读延迟敏感业务（ 100G以上）通常不建议开启自动Major Compaction，手动低峰期触发。小Region或者延迟不敏感业务可以开启Major Compaction，但建议限制流量；（3）期待更多的优秀Compaction策略，类似于stripe-compaction尽早提供稳定服务HBase列族设计优化HBase列族设计对读性能影响也至关重要，其特点是只影响单个业务，并不会对整个集群产生太大影响。列族设计主要从两个方面检查：9. Bloomfilter是否设置？是否设置合理？优化原理：Bloomfilter主要用来过滤不存在待检索RowKey或者Row-Col的HFile文件，避免无用的IO操作。它会告诉你在这个HFile文件中是否可能存在待检索的KV，如果不存在，就可以不用消耗IO打开文件进行seek。很显然，通过设置Bloomfilter可以提升随机读写的性能。Bloomfilter取值有两个，row以及rowcol，需要根据业务来确定具体使用哪种。如果业务大多数随机查询仅仅使用row作为查询条件，Bloomfilter一定要设置为row，否则如果大多数随机查询使用row+cf作为查询条件，Bloomfilter需要设置为rowcol。如果不确定业务查询类型，设置为row。优化建议：任何业务都应该设置Bloomfilter，通常设置为row就可以，除非确认业务随机查询类型为row+cf，可以设置为rowcolHDFS相关优化HDFS作为HBase最终数据存储系统，通常会使用三副本策略存储HBase数据文件以及日志文件。从HDFS的角度望上层看，HBase即是它的客户端，HBase通过调用它的客户端进行数据读写操作，因此HDFS的相关优化也会影响HBase的读写性能。这里主要关注如下三个方面：10. Short-Circuit Local Read功能是否开启？优化原理：当前HDFS读取数据都需要经过DataNode，客户端会向DataNode发送读取数据的请求，DataNode接受到请求之后从硬盘中将文件读出来，再通过TPC发送给客户端。Short Circuit策略允许客户端绕过DataNode直接读取本地数据。（具体原理参考此处）优化建议：开启Short Circuit Local Read功能，具体配置戳这里11. Hedged Read功能是否开启？优化原理：HBase数据在HDFS中一般都会存储三份，而且优先会通过Short-Circuit Local Read功能尝试本地读。但是在某些特殊情况下，有可能会出现因为磁盘问题或者网络问题引起的短时间本地读取失败，为了应对这类问题，社区开发者提出了补偿重试机制 – Hedged Read。该机制基本工作原理为：客户端发起一个本地读，一旦一段时间之后还没有返回，客户端将会向其他DataNode发送相同数据的请求。哪一个请求先返回，另一个就会被丢弃。 优化建议：开启Hedged Read功能，具体配置参考这里12. 数据本地率是否太低？数据本地率：HDFS数据通常存储三份，假如当前RegionA处于Node1上，数据a写入的时候三副本为(Node1,Node2,Node3)，数据b写入三副本是(Node1,Node4,Node5)，数据c写入三副本(Node1,Node3,Node5)，可以看出来所有数据写入本地Node1肯定会写一份，数据都在本地可以读到，因此数据本地率是100%。现在假设RegionA被迁移到了Node2上，只有数据a在该节点上，其他数据（b和c）读取只能远程跨节点读，本地率就为33%（假设a，b和c的数据大小相同）。优化原理：数据本地率太低很显然会产生大量的跨网络IO请求，必然会导致读请求延迟较高，因此提高数据本地率可以有效优化随机读性能。数据本地率低的原因一般是因为Region迁移（自动balance开启、RegionServer宕机迁移、手动迁移等）,因此一方面可以通过避免Region无故迁移来保持数据本地率，另一方面如果数据本地率很低，也可以通过执行major_compact提升数据本地率到100%。优化建议：避免Region无故迁移，比如关闭自动balance、RS宕机及时拉起并迁回飘走的Region等；在业务低峰期执行major_compact提升数据本地率HBase读性能优化归纳在本文开始的时候提到读延迟较大无非三种常见的表象，单个业务慢、集群随机读慢以及某个业务随机读之后其他业务受到影响导致随机读延迟很大。了解完常见的可能导致读延迟较大的一些问题之后，我们将这些问题进行如下归类，读者可以在看到现象之后在对应的问题列表中进行具体定位：<img src="https://pic4.zhimg.com/50/v2-e4727f20715ae775cecdc77ef0618807_hd.jpg" data-caption="" data-size="normal" data-rawwidth="735" data-rawheight="211" class="origin_image zh-lightbox-thumb" width="735" data-original="https://pic4.zhimg.com/v2-e4727f20715ae775cecdc77ef0618807_r.jpg"/><img src="https://pic3.zhimg.com/50/v2-02248531fedaaca1541bc2abf22cfac7_hd.jpg" data-caption="" data-size="normal" data-rawwidth="739" data-rawheight="232" class="origin_image zh-lightbox-thumb" width="739" data-original="https://pic3.zhimg.com/v2-02248531fedaaca1541bc2abf22cfac7_r.jpg"/><img src="https://pic1.zhimg.com/50/v2-8e1301c6c485b51d500fad470637c4bc_hd.jpg" data-caption="" data-size="normal" data-rawwidth="746" data-rawheight="162" class="origin_image zh-lightbox-thumb" width="746" data-original="https://pic1.zhimg.com/v2-8e1301c6c485b51d500fad470637c4bc_r.jpg"/>HBase读性能优化总结性能优化是任何一个系统都会遇到的话题，每个系统也都有自己的优化方式。 HBase作为分布式KV数据库，优化点又格外不同，更多得融入了分布式特性以及存储系统优化特性。文中总结了读优化的基本突破点，有什么不对的地方还望指正，有补充的也可以一起探讨交流！相关阅读：HBase最佳实践－写性能优化策略HBase最佳实践-管好你的操作系统HBase最佳实践之列族设计优化【大数据】
+
+
+HBase 写性能优化
+96  博弈史密斯
+ 0.1 2018.08.06 09:12 字数 3817 阅读 683评论 0喜欢 3
+本文转载自：http://hbasefly.com/2016/12/10/hbase-parctice-write/
+
+
+和读相比，HBase写数据流程倒是显得很简单：数据先顺序写入HLog，再写入对应的缓存Memstore，当Memstore中数据大小达到一定阈值（128M）之后，系统会异步将Memstore中数据flush到HDFS形成小文件。
+
+HBase数据写入通常会遇到两类问题，
+一类是写性能较差，
+
+另一类是数据根本写不进去。这两类问题的切入点也不尽相同，如下图所示：
+
+
+写性能优化切入点
+1. 是否需要写WAL？WAL是否需要同步写入？
+优化原理：数据写入流程可以理解为一次顺序写WAL+一次写缓存，通常情况下写缓存延迟很低，因此提升写性能就只能从WAL入手。WAL机制一方面是为了确保数据即使写入缓存丢失也可以恢复，另一方面是为了集群之间异步复制。默认WAL机制开启且使用同步机制写入WAL。首先考虑业务是否需要写WAL，通常情况下大多数业务都会开启WAL机制（默认），但是对于部分业务可能并不特别关心异常情况下部分数据的丢失，而更关心数据写入吞吐量，比如某些推荐业务，这类业务即使丢失一部分用户行为数据可能对推荐结果并不构成很大影响，但是对于写入吞吐量要求很高，不能造成数据队列阻塞。这种场景下可以考虑关闭WAL写入，写入吞吐量可以提升2x~3x。退而求其次，有些业务不能接受不写WAL，但可以接受WAL异步写入，也是可以考虑优化的，通常也会带来1x～2x的性能提升。
+
+优化推荐：根据业务关注点在WAL机制与写入吞吐量之间做出选择
+
+其他注意点：对于使用Increment操作的业务，WAL可以设置关闭，也可以设置异步写入，方法同Put类似。相信大多数Increment操作业务对WAL可能都不是那么敏感～
+
+2. Put是否可以同步批量提交？
+优化原理：HBase分别提供了单条put以及批量put的API接口，使用批量put接口可以减少客户端到RegionServer之间的RPC连接数，提高写入性能。另外需要注意的是，批量put请求要么全部成功返回，要么抛出异常。
+
+优化建议：使用批量put进行写入请求
+
+3. Put是否可以异步批量提交？
+优化原理：业务如果可以接受异常情况下少量数据丢失的话，还可以使用异步批量提交的方式提交请求。提交分为两阶段执行：用户提交写请求之后，数据会写入客户端缓存，并返回用户写入成功；当客户端缓存达到阈值（默认2M）之后批量提交给RegionServer。需要注意的是，在某些情况下客户端异常的情况下缓存数据有可能丢失。
+
+优化建议：在业务可以接受的情况下开启异步批量提交
+
+使用方式：setAutoFlush(false)
+
+4. Region是否太少？
+优化原理：当前集群中表的Region个数如果小于RegionServer个数，即Num(Region of Table) < Num(RegionServer)，可以考虑切分Region并尽可能分布到不同RegionServer来提高系统请求并发度，如果Num(Region of Table) > Num(RegionServer)，再增加Region个数效果并不明显。
+
+优化建议：在Num(Region of Table) < Num(RegionServer)的场景下切分部分请求负载高的Region并迁移到其他RegionServer；
+
+5. 写入请求是否不均衡？
+优化原理：另一个需要考虑的问题是写入请求是否均衡，如果不均衡，一方面会导致系统并发度较低，另一方面也有可能造成部分节点负载很高，进而影响其他业务。分布式系统中特别害怕一个节点负载很高的情况，一个节点负载很高可能会拖慢整个集群，这是因为很多业务会使用Mutli批量提交读写请求，一旦其中一部分请求落到该节点无法得到及时响应，就会导致整个批量请求超时。因此不怕节点宕掉，就怕节点奄奄一息！
+
+优化建议：检查RowKey设计以及预分区策略，保证写入请求均衡。
+
+6. 写入KeyValue数据是否太大？
+KeyValue大小对写入性能的影响巨大，一旦遇到写入性能比较差的情况，需要考虑是否由于写入KeyValue数据太大导致。KeyValue大小对写入性能影响曲线图如下：
+
+72
+图中横坐标是写入的一行数据（每行数据10列）大小，左纵坐标是写入吞吐量，右坐标是写入平均延迟（ms）。可以看出随着单行数据大小不断变大，写入吞吐量急剧下降，写入延迟在100K之后急剧增大。
+
+说到这里，有必要和大家分享两起在生产线环境因为业务KeyValue较大导致的严重问题，一起是因为大字段业务写入导致其他业务吞吐量急剧下降，另一起是因为大字段业务scan导致RegionServer宕机。
+
+案件一：大字段写入导致其他业务吞吐量急剧下降
+
+部分业务反馈集群写入忽然变慢、数据开始堆积的情况，查看集群表级别的数据读写QPS监控，发现问题的第一个关键点：业务A开始写入之后整个集群其他部分业务写入QPS都几乎断崖式下跌，初步怀疑黑手就是业务A。
+
+下图是当时业务A的写入QPS（事后发现脑残忘了截取其他表QPS断崖式下跌的惨象），但是第一感觉是QPS并不高啊，凭什么去影响别人！
+
+73
+于是就继续查看其他监控信息，首先确认系统资源（主要是IO）并没有到达瓶颈，其次确认了写入的均衡性，直至看到下图，才追踪到影响其他业务写入的第二个关键点：RegionServer的handler（配置150）被残暴耗尽：
+
+74
+对比上面两张图，是不是发现出奇的一致，那就可以基本确认是由于该业务写入导致这台RegionServer的handler被耗尽，进而其他业务拿不到handler，自然写不进去。那问题来了，为什么会这样？正常情况下handler在处理完客户端请求之后会立马释放，唯一的解释是这些请求的延迟实在太大。
+
+试想，我们去汉堡店排队买汉堡，有150个窗口服务，正常情况下大家买一个很快，这样150个窗口可能只需要50个服务。假设忽然来了一批大汉，要定制超大汉堡，好了，所有的窗口都工作起来，而且因为大汉堡不好制作导致服务很慢，这样必然会导致其他排队的用户长时间等待，直至超时。
+
+可回头一想这可是写请求啊，怎么会有这么大的请求延迟！和业务方沟通之后确认该表主要存储语料库文档信息，都是平均100K左右的数据，是不是已经猜到了结果，没错，就是因为这个业务KeyValue太大导致。KeyValue太大会导致HLog文件写入频繁切换、flush以及compaction频繁触发，写入性能急剧下降。
+
+目前针对这种较大KeyValue写入性能较差的问题还没有直接的解决方案，好在社区已经意识到这个问题，在接下来即将发布的下一个大版本HBase 2.0.0版本会针对该问题进行深入优化，详见HBase MOB，优化后用户使用HBase存储文档、图片等二进制数据都会有极佳的性能体验。
+
+案件二：大字段scan导致RegionServer宕机
+
+案件现场：有段时间有个0.98集群的RegionServer经常频繁宕机，查看日志是由于”java.lang.OutOfMemoryError: Requested array size exceeds VM limit”，如下图所示：
+
+76
+原因分析：通过查看源码以及相关文档，确认该异常发生在scan结果数据回传给客户端时由于数据量太大导致申请的array大小超过JVM规定的最大值（ Interge.Max_Value-2）。造成该异常的两种最常见原因分别是：
+
+表列太宽（几十万列或者上百万列），并且scan返回没有对列数量做任何限制，导致一行数据就可能因为包含大量列而数据超过array大小阈值
+KeyValue太大，并且scan返回没有对返回结果大小做任何限制，导致返回数据结果大小超过array大小阈值
+有的童鞋就要提问啦，说如果已经对返回结果大小做了限制，在表列太宽的情况下是不是就可以不对列数量做限制呢。这里需要澄清一下，如果不对列数据做限制，数据总是一行一行返回的，即使一行数据大小大于设置的返回结果限制大小，也会返回完整的一行数据。在这种情况下，如果这一行数据已经超过array大小阈值，也会触发OOM异常。
+
+解决方案：目前针对该异常有两种解决方案，其一是升级集群到1.0，问题都解决了。其二是要求客户端访问的时候对返回结果大小做限制(scan.setMaxResultSize(210241024))、并且对列数量做限制(scan.setBatch(100))，当然，0.98.13版本以后也可以对返回结果大小在服务器端进行限制，设置参数hbase.server.scanner.max.result.size即可
+
+写异常问题检查点
+上述几点主要针对写性能优化进行了介绍，除此之外，在一些情况下还会出现写异常，一旦发生需要考虑下面两种情况（GC引起的不做介绍）：
+
+Memstore设置是否会触发Region级别或者RegionServer级别flush操作？
+问题解析：以RegionServer级别flush进行解析，HBase设定一旦整个RegionServer上所有Memstore占用内存大小总和大于配置文件中upperlimit时，系统就会执行RegionServer级别flush，flush算法会首先按照Region大小进行排序，再按照该顺序依次进行flush，直至总Memstore大小低至lowerlimit。这种flush通常会block较长时间，在日志中会发现“Memstore is above high water mark and block 7452 ms”，表示这次flush将会阻塞7s左右。
+
+问题检查点：
+
+Region规模与Memstore总大小设置是否合理？如果RegionServer上Region较多，而Memstore总大小设置的很小（JVM设置较小或者upper.limit设置较小），就会触发RegionServer级别flush。集群规划相关内容可以参考文章《HBase最佳实践－集群规划》
+
+列族是否设置过多，通常情况下表列族建议设置在1～3个之间，最好一个。如果设置过多，会导致一个Region中包含很多Memstore，导致更容易触到高水位upperlimit
+
+Store中HFile数量是否大于配置参数blockingStoreFile?
+问题解析：对于数据写入很快的集群，还需要特别关注一个参数：hbase.hstore.blockingStoreFiles，此参数表示如果当前hstore中文件数大于该值，系统将会强制执行compaction操作进行文件合并，合并的过程会阻塞整个hstore的写入。通常情况下该场景发生在数据写入很快的情况下，在日志中可以发现”Waited 3722ms on a compaction to clean up ‘too many store files“
+
+问题检查点：
+
+参数设置是否合理？hbase.hstore.compactionThreshold表示启动compaction的最低阈值，该值不能太大，否则会积累太多文件，一般建议设置为5～8左右。hbase.hstore.blockingStoreFiles默认设置为7，可以适当调大一些。
+写性能还能再提高么？
+上文已经从写性能优化以及写异常诊断两个方面对HBase中数据写入可能的问题进行了详细的解释，相信在0.98版本的基础上对写入来说已经是最好的解决方案了。但是有些业务可能依然觉得不够快，毕竟”更快”是所有存储系统活着的动力，那还有提高空间吗？当然，接下来简单介绍HBase之后版本对写性能优化的两点核心改进：
+
+Utilize Flash storage for WAL(HBASE-12848)
+这个特性意味着可以将WAL单独置于SSD上，这样即使在默认情况下（WALSync），写性能也会有很大的提升。需要注意的是，该特性建立在HDFS 2.6.0+的基础上，HDFS以前版本不支持该特性。具体可以参考官方jira：https://issues.apache.org/jira/browse/HBASE-12848
+
+Multiple WALs(HBASE-14457)
+该特性也是对WAL进行改造，当前WAL设计为一个RegionServer上所有Region共享一个WAL，可以想象在写入吞吐量较高的时候必然存在资源竞争，降低整体性能。针对这个问题，社区小伙伴（阿里巴巴大神）提出Multiple WALs机制，管理员可以为每个Namespace下的所有表设置一个共享WAL，通过这种方式，写性能大约可以提升20%～40%左右。具体可以参考官方jira：https://issues.apache.org/jira/browse/HBASE-14457
+
+===============
+
+提高HBase表读写效率的技巧总结
+
+提高HBase响应速度的技巧有许多，将个人经验大致整理成了以下三个模块。
+
+一. 建表技巧
+1. 合理设计列族
+一张HBase表的列族数量最好控制在三个以内，因为当一个列族的MemStore中的数据量达到阈值时，会引起同一个region的所有columnFamily的MemStore进行flush操作，即使其中某些列族MemStore中的数据量还很小。因此，如果有很多列族的话，会产生许多小文件，可能会引起很多不必要的flush和compact操作，导致不必要的I/O负载。因此，在设计表结构时，尽可能使用一个列族，除非每次查询的时候，查询粒度是列，而不是行。
+
+如果有一个数据量小的列族经常要做全表扫描，那么这个列族最好不要和数据量大的列族放在同一张表。因为不同列族的分区数是一致的，如果有一个列族的数据量很大，导致表被分割成了多个分区，那么数据量很小列族的数据会分布在很多分区，导致做该列族做全表扫描的时候，效率低下。如果大部分是随机取的情况，数据量小的列和数据量大的列尽量不要放在同一列族中，尤其在我们经常做列查找，而不是行查找的情况下。举个例子，列A和列B属于同一列族，其中列B的数据量远大于列A，当客户端查找列A中某一行的所有记录，迫使HBase扫描所有底层文件以找到所有属于该行的记录，因为同一列族中的数据会被写入同一个底层文件，HBase在扫描列A的同时，实际上也扫描了列B的所有数据，做了大量无用功。
+
+2. 使用块缓存
+HBase的所有存储文件都被划分成了若干个小存储块，存储块的默认大小是64KB[1]。当HBase顺序地读取一个数据块到内存缓存中时，其读取相邻的数据时就可以在内存中读取，而不需要再次读取磁盘，可以有效减少磁盘I/O的次数，提高了I/O效率。这个参数默认为true，意味着每次读取的块都会缓存到内存中。但是，如果用户需要顺序读取列族，最好将这个属性设置为false，从而禁止其使用块缓存，以免有用的缓存流失。
+
+3. 在内存中
+除了利用缓存块来提高连续访问的效率以外，还有一个在内存中（in-memory）标志，默认值为false。当这个参数设置true时，并不意味着整个列族的所有存储块都会被加载到内存中，也不意味这内存中的数据会被长期保留，而代表一种高优先级的承诺。在正常的数据读取过程中，块数据会被加载到缓存区并长期驻留在内存中，除非堆压力过大，才会从内存中强制卸载这部分数据。需要注意的是，这个参数通常适合数据量较小的列族，例如保存登陆账号和密码的用户表，将这个参数设置为true有利于提升这个环节的处理速度。
+
+4. 布隆过滤器
+布隆过滤器属于HBase系统中的高级功能，能够减少特定访问模式下的查询时间，有需要的话，可以参考我的另一篇博文《布隆过滤器在HBase中的应用》。但是，布隆过滤器加重了内存和存储的负担，因此默认情况下是关闭的状态。
+
+5. 生存期TTL
+HBase不仅可以设置每个值能保存的最大版本数，也支持处理版本数据保存时间。在major合并过程中，时间戳被判定为超过TTL的数据会被删除。
+
+6. 使用压缩
+压缩的作用是减小存储文件的大小，一方面可以节省存储空间，更重要的是，因为文件变小了，文件读入内存的速度也提高了。当然，压缩和解压也会耗费一定的时间（也会导致compact操作的时间变长），因此需要小心衡量性能瓶颈是在IO还是在CPU。不同的算法压缩率也有所不同，压缩率越高的算法，需要耗费的时间也越长，因此应该根据实际情况，选择合适的压缩算法。
+
+在这里补充一点，对一个已经存在的表，可以通过alter table的方式，开启压缩或者更改压缩算法。然而，这个操作并不会立刻起作用，因为之前产生的存储文件依然保持更改之前的状态。若想强制重写这些文件，可以通过major_compact强制进行major合并，新产生的文件自然是我们想要的格式。
+
+7. 预拆分Region
+HBase可以自动管理region拆分，当region中的数据量达到一定阈值，HBase会将其拆分成两个region继续工作。然而，设想当用户所有的region以相同的速率增长，最后它们会在同一时间发生region拆分，拆分过程中需要重写底层文件（compaction），引起磁盘I/O上升，影响集群响应速度，这就是俗称的“split/compaction storms”（拆分/合并风暴）。
+
+为了避免这个问题，解决方案之一是，关闭拆分功能（将拆分阈值设成无限大），然后由用户手动调用命令进行region拆分。这样做的好处是，用户可以控制拆分的时间，拆分可以在集群或者表空闲的时间进行，并且如果不同的region在不同时间拆分，能够分散I/O负载。第二种方法是，在创建表的时候，就预先将表按照给定的行键，划分成多个分区。这样做的好处是，当用户能预先估计到表会增长到很大规模时，预先拆分成多个分区，可以有效避免拆分合并风暴；另一方面，多个分区会交给多个regionServer管理，通过在行键前面添加分区号，可以将读写压力均匀地分配到多个server，可以解决读写热点问题。
+
+二. 查询技巧
+1. 多并发读写提升吞吐量
+HBase的优势不在于对单条请求的响应速度，而在于整个集群的吞吐量高。因此，倘若想提高客户端读写速度，最直接的一个方法就是多并发读写。
+
+2. 批量处理请求
+和其它数据库类似，HBase提供了批量处理操作的API，批量处理请求可以利用好RPC时间，提高单个客户端的处理效率。
+
+3. 全表扫描时关闭块缓存功能
+HBase提供了读缓存，当读取一条记录时，会将对应的块读到读内存中。对于某些频繁访问的行，这个功能可以提高读取速度。然而，当用户需要做全表扫描时，应记得关闭这个功能，避免读缓存扰动、缓存命中率下降。
+
+4. 扫描时使用扫描缓存
+HBase的扫描器在获取数据时，会为每行数据生成一个单独的RPC请求，即使用户显式指定了要获取n行的数据，扫描器也会向服务器发送n个RPC请求。为了一次RPC请求可以获取多行数据，用户必须显式开启扫描器的扫描缓存功能。
+
+5. 严格限制查找范围
+使用行键查找对应的值无疑是效率最高的查找方式。不过，如果在查找请求中添加一些额外的条件，也有助于提高查找效率：限定列族可以避免扫描其它列族的存储文件；限定时间戳在4小时以内，可以跳过一些最后修改时间在4小时之前的文件；限定列名可以控制返回给客户端的数据量，降低传输时间和网络流量。
+
+三. 其它
+1. 定期触发major_compact
+太频繁地major_compact会给集群带来I/O压力，不过当表中有太多的已删除数据影响了查找速度的话，执行major_compact彻底删除这些数据无疑是最佳选择。目前，我们在使用的是hbase-1.0.0-cdh5.4.5版本，默认的major_compact周期是7天，用户也可以通过命令行或者客户端API手动触发compact操作。
+
+2. 尽量使用简短的列名
+HBase的数据存储是key-value的形式，也就是<行键-列族-列-时间戳，值>。换句话说，为每一个单元格，HBase都存储了列名，因此使用较简短的列名也是一个好习惯。
+
+*注：[ 1 ] * 注意，HFile的块和HDFS的块没有直接关系。HDFS的块用于拆分大文件以提供分布式存储，另外便于MR框架进行并行计算；而HBase的块主要用于高效加载和缓存数据，并不依赖于HDFS的块大小，并且只用于HBase内部。
+
+===============
+
+hbase读写性能测试调优_初稿
+2017年12月08日 17:08:59 zx8167107 阅读数：7024
+
+
+Hbase读写性能测试调优
+
+
+
+日期
+
+版本
+
+修订
+
+审批
+
+修订说明
+
+2016.9.23
+
+1.0
+
+章鑫
+
+
+
+初始版本
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1        前言
+本篇文章主要讲的是hbase读写性能调优过程中遇到的一些技巧和配置项的修改，对于hbase本身的原理和框架不会做太多的介绍。该文档中涉及到ycsb配置和使用方面的内容需要结合ycsb工具使用文档阅读理解。
+
+
+
+2        配置
+2.1  集群配置
+[root@node1 ~]#uname -a
+
+Linux node1.dcom 3.10.0-327.el7.x86_64 #1 SMP Thu Nov 19 22:10:57 UTC 2015 x86_64 x86_64 x86_64 GNU/Linux
+
+
+
+
+
+[root@node1 ~]# top
+
+top - 10:02:40 up 51 days, 12:39, 11 users,  load average: 1.42, 1.23, 1.04
+
+Tasks: 414 total,   1 running, 413 sleeping,   0 stopped,   0 zombie
+
+%Cpu(s):  1.6 us,  0.4 sy,  0.0 ni, 97.9 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+
+KiB Mem : 65772144 total, 23124796 free,  8079632 used, 34567716 buff/cache
+
+KiB Swap:        0 total,        0 free,        0 used. 56828368 avail Mem
+
+
+
+
+
+[root@node1 ~]# free  -m   #64G内存
+
+              total        used        free      shared  buff/cache   available
+
+Mem:          64230        7899       23391         475       32939       55486
+
+Swap:             0           0           0
+
+
+
+[root@node1 ~]# df  -Th
+
+Filesystem              Type      Size  Used Avail Use% Mounted on
+
+/dev/mapper/centos-root xfs       231G   11G  221G   5% /
+
+devtmpfs                devtmpfs   32G     0   32G   0% /dev
+
+tmpfs                   tmpfs      32G   24K   32G   1% /dev/shm
+
+tmpfs                   tmpfs      32G  588M   31G   2% /run
+
+tmpfs                   tmpfs      32G     0   32G   0% /sys/fs/cgroup
+
+/dev/sda1               xfs       494M  130M  364M  27% /boot
+
+/dev/mapper/centos-var  xfs       100G  6.7G   94G   7% /var
+
+/dev/mapper/centos-opt  xfs       600G  733M  599G   1% /opt
+
+tmpfs                   tmpfs     6.3G     0  6.3G   0% /run/user/0
+
+/dev/sdc                xfs       932G   66G  866G   8% /opt/hdata
+
+/dev/sdb1               xfs       932G   63G  869G   7% /opt/hdata2
+
+/dev/sdd1               xfs       932G   65G  867G   7% /opt/hdata3
+
+/dev/sde1               xfs       932G   67G  866G   8% /opt/hdata4
+
+
+
+#Hdfs的datanode目录磁盘是sdb、sdc、sdd和sde，也就是说hbase存储在这四块磁盘上。总的大小大概是4T不到一点，4台设备的集群总大小大约在14.5T左右。
+
+
+
+       [root@node1~]# cat  /proc/cpuinfo  #24核
+
+……………………
+
+       processor : 23
+
+vendor_id       : GenuineIntel
+
+cpu family      : 6
+
+model            : 62
+
+model name    : Intel(R) Xeon(R) CPU E5-2620 v2 @ 2.10GHz
+
+stepping  : 4
+
+microcode      : 0x428
+
+cpu MHz        : 1211.109
+
+cache size       : 15360 KB
+
+physical id      : 1
+
+siblings   : 12
+
+core id           : 5
+
+cpu cores : 6
+
+apicid             : 43
+
+initial apicid   : 43
+
+fpu         : yes
+
+fpu_exception : yes
+
+cpuid level      : 13
+
+wp          : yes
+
+flags              : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc aperfmperf eagerfpu pni pclmulqdq dtes64 monitor ds_cpl vmx smx est tm2 ssse3 cx16 xtpr pdcm pcid dca sse4_1 sse4_2 x2apic popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm arat epb pln pts dtherm tpr_shadow vnmi flexpriority ept vpid fsgsbase smep erms xsaveopt
+
+bogomips       : 4204.89
+
+clflush size     : 64
+
+cache_alignment     : 64
+
+address sizes   : 46 bits physical, 48 bits virtual
+
+power management:
+
+
+
+
+
+
+
+[root@node1 ~]# ethtool  bond0 #网卡信息
+
+Settings for bond0:
+
+Supported ports: [ ]
+
+Supported link modes:   Not reported
+
+Supported pause frame use: No
+
+Supports auto-negotiation: No
+
+Advertised link modes:  Not reported
+
+Advertised pause frame use: No
+
+Advertised auto-negotiation: No
+
+Speed: 2000Mb/s
+
+Duplex: Full
+
+Port: Other
+
+PHYAD: 0
+
+Transceiver: internal
+
+Auto-negotiation: off
+
+Link detected: yes
+
+
+
+[root@node1 ~]# hadoop  version  #hadoop版本
+
+Hadoop 2.7.1.2.4.2.0-258
+
+Subversion git@github.com:hortonworks/hadoop.git -r 13debf893a605e8a88df18a7d8d214f571e05289
+
+Compiled by jenkins on 2016-04-25T05:46Z
+
+Compiled with protoc 2.5.0
+
+From source with checksum 2a2d95f05ec6c3ac547ed58cab713ac
+
+This command was run using /usr/hdp/2.4.2.0-258/hadoop/hadoop-common-2.7.1.2.4.2.0-258.jar
+
+
+
+[root@node1 ~]# hbase  version  #hbase版本
+
+2016-09-06 14:52:19,070 INFO  [main] util.VersionInfo: HBase 1.1.2.2.4.2.0-258
+
+2016-09-06 14:52:19,071 INFO  [main] util.VersionInfo: Source code repository file:///grid/0/jenkins/workspace/HDP-build-centos6/bigtop/build/hbase/rpm/BUILD/hbase-1.1.2.2.4.2.0 revision=Unknown
+
+2016-09-06 14:52:19,071 INFO  [main] util.VersionInfo: Compiled by jenkins on Mon Apr 25 06:36:21 UTC 2016
+
+2016-09-06 14:52:19,071 INFO  [main] util.VersionInfo: From source with checksum 4f661ee4f9f148ce7bfcad5b0d667c27
+
+
+
+[root@node1 ~]# hdfs  version    #hdfs版本
+
+Hadoop 2.7.1.2.4.2.0-258
+
+Subversion git@github.com:hortonworks/hadoop.git -r 13debf893a605e8a88df18a7d8d214f571e05289
+
+Compiled by jenkins on 2016-04-25T05:46Z
+
+Compiled with protoc 2.5.0
+
+From source with checksum 2a2d95f05ec6c3ac547ed58cab713ac
+
+This command was run using /usr/hdp/2.4.2.0-258/hadoop/hadoop-common-2.7.1.2.4.2.0-258.jar
+
+
+
+Hadoop集群共有相同配置的4个node节点，在其他相同配置的集群以外的node节点上运行ycsb测试进程，hadoop集群是通过ambari软件运行维护的，对应的很多配置都是在ambari的web界面上去完成的。
+
+
+
+2.2  hadoop配置
+这里的hadoop配置主要包括了hbase和hdfs两类配置，读写在具体配置时会有稍许不同，这个在具体的地方会具体指明。
+
+在后面第4、5章中介绍读写配置时没有单独指出介绍的配置项一般在两种情况下都较为适用，而且几乎都已经调到了最大值，在这里会统一介绍。
+
+
+
+2.2.1       hbase配置
+[root@node1 test]# cat /usr/hdp/current/hbase-client/conf/hbase-site.xml
+
+<configuration>
+
+
+
+#Todo
+
+    <property>
+
+      <name>dfs.domain.socket.path</name>
+
+      <value>/var/lib/hadoop-hdfs/dn_socket</value>
+
+    </property>
+
+
+
+#Todo
+
+    <property>
+
+      <name>hbase.bulkload.staging.dir</name>
+
+      <value>/apps/hbase/staging</value>
+
+    </property>
+
+
+
+    #每条记录的最大大小为1MB
+
+    <property>
+
+      <name>hbase.client.keyvalue.maxsize</name>
+
+      <value>1048576</value>
+
+    </property>
+
+
+
+#hbase client操作失败重新请求数为35
+
+    <property>
+
+      <name>hbase.client.retries.number</name>
+
+      <value>35</value>
+
+    </property>
+
+
+
+    #当一次scan操作不在本地内存时，需要从disk中获取时，缓存的条数，这里设置为100000条，该值不能大于下文中hbase.client.scanner.timeout.period配置项的值
+
+    <property>
+
+      <name>hbase.client.scanner.caching</name>
+
+      <value>100000</value>
+
+    </property>
+
+
+
+下图中的第一个配置项hbase.client.scanner.timeout.period对应的是上文中的Number of Fetched Rows when Scanning from Disk，它的值必须小于下图中的第一个配置项才行。
+
+第二个配置项的话默认是true的，无需额外配置，之前在解决一个相关问题时，将它置为了false。
+
+
+
+    <property>
+
+      <name>hbase.client.scanner.timeout.period</name>
+
+      <value>120000</value>
+
+    </property>
+
+
+
+#hbase是否配置为分布式
+
+    <property>
+
+      <name>hbase.cluster.distributed</name>
+
+      <value>true</value>
+
+    </property>
+
+
+
+#Todo
+
+    <property>
+
+      <name>hbase.coprocessor.master.classes</name>
+
+      <value></value>
+
+    </property>
+
+
+
+#Todo
+
+    <property>
+
+      <name>hbase.coprocessor.region.classes</name>
+
+      <value>org.apache.hadoop.hbase.security.access.SecureBulkLoadEndpoint</value>
+
+    </property>
+
+
+
+#设置为ture，忽略对默认hbase版本的检查（设置为false的话在maven工程的编译过程中可能会遇到版本相关的问题）
+
+    <property>
+
+      <name>hbase.defaults.for.version.skip</name>
+
+      <value>true</value>
+
+    </property>
+
+
+
+#设置系统进行1次majorcompaction的启动周期，如果设置为0，则系统不会主动出发MC过程，默认为7天
+
+    <property>
+
+      <name>hbase.hregion.majorcompaction</name>
+
+      <value>604800000</value>
+
+    </property>
+
+
+
+#用来作为计算MC时间周期，与hbase.hregion.majorcompaction相结合，计算出一个浮动的MC时间。默认是0.50，简单来说如果当前store中hfile的最早更新时间早于某个MCTime，就会触发major compaction，hbase通过这种机制定期删除过期数据。MCTime是一个浮动值，浮动区间为[ hbase.hregion.majorcompaction - hbase.hregion.majorcompaction * hbase.hregion.majorcompaction.jitter , hbase.hregion.majorcompaction + hbase.hregion.majorcompaction * hbase.hregion.majorcompaction.jitter ]
+
+    <property>
+
+      <name>hbase.hregion.majorcompaction.jitter</name>
+
+      <value>0.50</value>
+
+    </property>
+
+
+
+    #单个region的大小为10G，当region大于这个值的时候，一个region就会split为两个，适当的增加这个值的大小可以在写操作时减少split操作的发生，从而减少系统性能消耗而增加写操作的性能，默认是10G，官方建议10G~30G
+
+    <property>
+
+      <name>hbase.hregion.max.filesize</name>
+
+      <value>10737418240</value>
+
+    </property>
+
+
+
+    #当一个region的memstore总量达到hbase.hregion.memstore.block.multiplier * hbase.hregion.memstore.flush.size (默认2*128M)时，会阻塞这个region的写操作，并强制刷写到HFile，触发这个刷新操作只会在Memstore即将写满hbase.hregion.memstore.flush.size时put了一个巨大的记录的情况，这时候会阻塞写操作，强制刷新成功才能继续写入
+
+    <property>
+
+      <name>hbase.hregion.memstore.block.multiplier</name>
+
+      <value>8</value>
+
+    </property>
+
+
+
+#每个单独的memstore的大小（默认128M），这里调成了256M，每个列族columnfamily在每个region中都分配有它单独的memstore，当memstore超过该值时，就会发生flush操作，将memstore中的内容刷成一个hfile，每一次memstore的flush操作，都会为每一次columnfamily创建一个新的hfile；调高该值可以减少flush的操作次数，减少每一个region中的hfile的个数，这样就会减少minor compaction的次数和split的次数，从而降低了系统性能损耗，提升了写性能，也提升了读性能（因为读操作的时候，首先要去memstore中查数据，查找不到的话再去hfile，hflie存储在hdfs中，这就涉及到了对性能要求较高的io操作了）。当然这个值变大了之后，每次flush操作带来的性能消耗也就更大。
+
+    <property>
+
+      <name>hbase.hregion.memstore.flush.size</name>
+
+      <value>268435456</value>
+
+    </property>
+
+
+
+#mslab特性是在分析了HBase产生内存碎片后的根因后给出了解决方案，这个方案虽然不能够完全解决Full GC带来的问题，但在一定程度上延缓了Full GC的产生间隔，总之减少了内存碎片导致的full gc，提高整体性能。
+
+    <property>
+
+      <name>hbase.hregion.memstore.mslab.enabled</name>
+
+      <value>true</value>
+
+    </property>
+
+
+
+#当任意一个store中有超过hbase.hstore.blockingStoreFiles个数的storefiles时，这个store所在region的update操作将会被阻塞，除非这个region的compaction操作完成或者hbase.hstore.blockingWaitTime超时。
+
+Block操作会严重影响当前regionserver的响应时间，但过多的storefiles会影响读性能，站在实际使用的角度，为了获取较为平滑的响应时间，可以将该值设得很大，甚至无限大。默认值为7，这里暂时调大到100。
+
+    <property>
+
+      <name>hbase.hstore.blockingStoreFiles</name>
+
+      <value>100</value>
+
+    </property>
+
+
+
+#一次minor compaction的最大file数
+
+    <property>
+
+      <name>hbase.hstore.compaction.max</name>
+
+      <value>10</value>
+
+    </property>
+
+
+
+#一次minor compaction的最小file数
+
+    <property>
+
+      <name>hbase.hstore.compactionThreshold</name>
+
+      <value>4</value>
+
+    </property>
+
+
+
+#本地文件目录用来作为hbase在本地的存储
+
+    <property>
+
+      <name>hbase.local.dir</name>
+
+      <value>${hbase.tmp.dir}/local</value>
+
+    </property>
+
+
+
+#todo
+
+#与前文配置项图中第二红线标注的配置项重复
+
+    <property>
+
+      <name>hbase.master.distributed.log.splitting</name>
+
+      <value>ture</value>
+
+    </property>
+
+
+
+#hbase master web界面绑定的IP地址（任何网卡的ip都可以访问）
+
+    <property>
+
+      <name>hbase.master.info.bindAddress</name>
+
+      <value>0.0.0.0</value>
+
+    </property>
+
+
+
+#hbase master web界面绑定端口
+
+    <property>
+
+      <name>hbase.master.info.port</name>
+
+      <value>16010</value>
+
+    </property>
+
+
+
+#todo
+
+    <property>
+
+      <name>hbase.master.port</name>
+
+      <value>16000</value>
+
+    </property>
+
+
+
+#分配1%的regionserver的内存给写操作当作缓存，这个参数和下面的hfile.block.cache.size（读缓存）息息相关，二者之和不能超过总内存的80%，读操作时，该值最好为0，但是这里有个bug，取不到0，所以取值1%即0.01，系统尽可能的把内存给读操作用作缓存
+
+    <property>
+
+      <name>hbase.regionserver.global.memstore.size</name>
+
+      <value>0.01</value>
+
+    </property>
+
+
+
+#regionserver处理IO请求的线程数，默认是30这里调高到240
+
+    <property>
+
+      <name>hbase.regionserver.handler.count</name>
+
+      <value>240</value>
+
+    </property>
+
+
+
+#regionserver 信息 web界面接口
+
+    <property>
+
+      <name>hbase.regionserver.info.port</name>
+
+      <value>16030</value>
+
+    </property>
+
+
+
+#regionserver服务端口
+
+    <property>
+
+      <name>hbase.regionserver.port</name>
+
+      <value>16020</value>
+
+    </property>
+
+
+
+#todo
+
+    <property>
+
+      <name>hbase.regionserver.wal.codec</name>
+
+      <value>org.apache.hadoop.hbase.regionserver.wal.WALCellCodec</value>
+
+    </property>
+
+
+
+#hbase所有表的文件存放在hdfs中的路径，用户可以在hdfs的web页面和后台命令行中查看，若要彻底删除表，现在hbase中删除，然后在hdfs中删除源文件即可，drop命令运行过后hdfs上内容没有删除情况下。
+
+    <property>
+
+      <name>hbase.rootdir</name>
+
+      <value>hdfs://node1.dcom:8020/apps/hbase/data</value>
+
+    </property>
+
+
+
+#todo
+
+    <property>
+
+      <name>hbase.rpc.protection</name>
+
+      <value>authentication</value>
+
+    </property>
+
+
+
+#hbase rpc操作超时时间
+
+    <property>
+
+      <name>hbase.rpc.timeout</name>
+
+      <value>90000</value>
+
+    </property>
+
+
+
+#todo
+
+    <property>
+
+      <name>hbase.security.authentication</name>
+
+      <value>simple</value>
+
+    </property>
+
+
+
+       #todo
+
+    <property>
+
+      <name>hbase.security.authorization</name>
+
+      <value>false</value>
+
+    </property>
+
+
+
+#todo
+
+    <property>
+
+      <name>hbase.superuser</name>
+
+      <value>hbase</value>
+
+    </property>
+
+
+
+#本地文件系统上的临时目录，最好不要使用/tmp下的目录，以免重启后丢失文件
+
+    <property>
+
+      <name>hbase.tmp.dir</name>
+
+      <value>/tmp/hbase-${user.name}</value>
+
+    </property>
+
+
+
+#zookeeper配置文件zoo.cfg中定义的内容，zookeeper 客户端通过该port连接上zookeeper服务
+
+    <property>
+
+      <name>hbase.zookeeper.property.clientPort</name>
+
+      <value>2181</value>
+
+    </property>
+
+
+
+#zookeeper服务的节点数目和各节点名称
+
+    <property>
+
+      <name>hbase.zookeeper.quorum</name>
+
+      <value>node1.dcom,node2.dcom,node3.dcom</value>
+
+    </property>
+
+
+
+#zookeeper支持多重update
+
+    <property>
+
+      <name>hbase.zookeeper.useMulti</name>
+
+      <value>true</value>
+
+    </property>
+
+
+
+    #将regionserver的内存的79%分配作为读缓存，默认是40%，这里因为是单独的读操作性能调优所以调到了79%，上文中提到了一个bug，不能调为最高的80%。该配置项与上文中的hbase.regionserver.global.memstore.size关系密切，二者的总和不能大于regionserver内存的80%，读操作为主时就将该值调高，写操作为主时就将hbase.regionserver.global.memstore.size调高
+
+    <property>
+
+      <name>hfile.block.cache.size</name>
+
+      <value>0.79</value>
+
+    </property>
+
+
+
+#todo
+
+    <property>
+
+      <name>phoenix.query.timeoutMs</name>
+
+      <value>60000</value>
+
+    </property>
+
+
+
+#zookeeper session会话超时时间
+
+    <property>
+
+      <name>zookeeper.session.timeout</name>
+
+      <value>90000</value>
+
+    </property>
+
+
+
+#znode 存放root region的地址
+
+#todo
+
+    <property>
+
+      <name>zookeeper.znode.parent</name>
+
+      <value>/hbase-unsecure</value>
+
+    </property>
+
+
+
+  </configuration>
+
+
+
+# RegionServers maximum value for –Xmn 新生代jvm内存大小，默认是1024，这里调到了4096，这个参数影响到regionserver 的jvm的CMS  GC，64G内存的话建议1~3G，最大为4G，regionserver –Xmn in –Xmx ratio配置项也密切相关，该比例设置的太大或者太小都不好，这方面涉及到的内容太多，后续再详细介绍。
+
+# Number of Fetched Rows when Scanning from Disk这个就是上文中提到的hbase.client.scanner.caching
+
+# Maximum Store Files before Minor Compaction 在执行Minor Compaction合并操作前Store Files的最大数目，默认是3，这里调到了4
+
+
+
+    # The maximum amount of heap to use, in MB. Default is 1000.
+
+#export HBASE_HEAPSIZE=3000 分配给hbase服务的内存，默认是1000，由于hbase较耗内存，所以提高到了3000
+
+    这个地方有疑问：这里配置这么小的内存到底是给谁用的？
+
+
+
+
+
+
+
+
+
+2.2.2       hdfs配置
+相关配置介绍：
+
+(1)   NameNode directories
+
+这里配置了4个namenode目录，分别挂载在不同的硬盘上。Namenode的目录，只在namenode节点上有内容，datanode节点上该目录为空，且namenode节点上该目录的内容都是一样的（其他的作为备份）。
+
+
+
+(2)   DataNode directories
+
+这里配置了4个datanode目录，分别挂载在不同的硬盘上。Datanode目录在每个datanode节点上都有实际的内容，存储着真正的hdfs数据和备份。
+
+
+
+(3)   Namenode_heapsize
+
+Namenode节点的java运行内存，默认1G，这里调高到了3G。
+
+
+
+(4)   dtnode_heapsize
+
+默认为1G，这里调大到了12G，也不能太大，否则datanode启动时会因为无法分配足够内存而报错。
+
+
+
+(5)   Dfs.datanode.max.transfer.threads
+
+Datanode传输数据线程数，默认16384调大到了48000。
+
+
+
+2.2.3       其他配置
+（1）另外还有几个重要的配置参数介绍一下（这里其实是我遇到个一个疑问）
+
+       Hbase.regionserver.global.memstore.uppperLimit默认0.4
+
+Hbase.regionserver.global.memstore.lowerLimit默认0.35
+
+一个regionserver会有多个region，多个memstore，所以可能单个region并没有超过阈值，但是整个regionserver的内存占用已经非常多了，上面这两个参数也会去控制和影响内存的刷写，当regionserver上全部的memstore占用超过heap（heap的值在hbase-env.sh中设置，HBASE_HEAPSIZE默认为1000，我们这里设置为3000）的40%时，强制阻塞所有的写操作，将所有的memstore刷写到HFile；当所有的memstore占用超过heap的35%时，会选择一些占用内存比较大的memstore阻塞写操作并进行flush。
+
+注意：
+
+这两个配置项，在当前的环境中并未找到！怀疑是直接当作默认值，用户可以自行添加修改？
+
+
+
+3        测试步骤
+这里简单介绍下具体测试时的大体步骤，关于ycsb工具使用的细节需要结合ycsb使用文档阅读理解。
+
+
+
+3.1.1       预分区和建表
+Hbase shell 操作：
+
+
+
+hbase(main):033:0>n_splits=200
+
+=> 200           #200个region分区
+
+
+
+hbase(main):032:0>                create
+
+'a',{NAME=>'cf'},{SPLITS=>(1...n_splits).map{|i|"user#{1000000+i*(9999999-1000000)/n_splits}"}}
+
+0 row(s) in28.4070 seconds
+
+
+
+=>Hbase::Table – a              #建立名为a，列族1个名为cf，分区region200个，并通过一定的算法使得rowkey的分布呈一定的规律
+
+
+
+采用预分区和rowkey均匀分布的方式建立表格能够很大程度上提高hbase的读写性能。
+
+
+
+3.1.2       装载初始化数据库
+插入数据 ycsb的load阶段（测试写入性能）。
+
+[root@node5test]# sh ycsb_load.sh load
+
+******Loadingtest begin******
+
+******Loadingtest end******
+
+Load文件即为执行load阶段时ycsb的配置文件
+
+
+
+3.1.3       对数据库进行操作
+ycsb的run阶段（配置参数例如read、scan操作可测试读取性能）。
+
+[root@node5test]# sh ycsb_run.sh run
+
+******runningtest begin******
+
+******runningtest end******
+
+run文件即为执行run阶段时ycsb的配置文件
+
+
+
+4        读性能测试与调优
+4.1  Scan操作
+Hbase集群四台节点的top、iostat和带宽记录值以及ycsb配置文件见本文档附带的文件目录。
+
+YCSB  scan操作扫描hbase数据库，测试结果：
+
+　操作
+
+分区数
+
+value长度
+
+速度 条/秒
+
+集群节点数
+
+ycsb client节点数
+
+带宽
+
+操作数
+
+瓶颈
+
+扫描scan
+
+200 regions
+
+9216bytes
+
+85000~90000左右
+
+4
+
+4
+
+1500~1600Mb/s
+
+200000
+
+带宽、ycsb clinet 内存
+
+扫描scan
+
+200 regions
+
+9216bytes
+
+20000左右
+
+4
+
+1
+
+1850Mb/s
+
+200000
+
+带宽
+
+Scan操作选取了两个结果，第一个运行了4个ycsb client，第二个只有1个ycsb client第二个的瓶颈明显是带宽。
+
+由于ycsb 和hbase 的scan操作特点所以这里具体的操作速度都是通过带宽估算出来的。
+
+
+
+4.1.1       配置调优重点
+Hbase的scan操作是一种批量读取的操作，scan与read不同，scan一次性请求大量数据，默认的话是读取全表，这就需要在客户端的本地占用很大的内存来缓存一次批量拉取的数据，下面介绍一下几个关系密切的配置项。
+
+读取hbase数据的顺序是：
+
+先去memstore中查找，找不到再去blockcahe中，如果没有就去hdfs中查找，找到之后读取的同时保存一份到blockcahe中便于下次查找。
+
+memstore和blockcahe都是在内存中查找速度很快，延时很低，性能很好，而在hdfs中查找和读取就涉及到磁盘的读取操作，磁盘IO消耗性能较大。
+
+（1）hadoop配置
+
+#当一次scan操作不在本地内存时，需要从disk中获取时，缓存的条数，这里设置为100000条，该值不能大于下文中hbase.client.scanner.timeout.period配置项的值。该数值也并不是越高越好，太高的话scan超时时间就会很长，影响性能，一次性获取条数固然多，但由于带宽和其他的限制并不能很好的消化掉，太低当然也不行，配置时需要根据具体情况具体设置。
+
+一条数据长度为9k的话，一次缓存100000条就需要900MB，所以对ycsb client端有较高的内存要求。
+
+
+
+ <property>
+
+   <name>hbase.client.scanner.caching</name>
+
+   <value>100000</value>
+
+ </property>
+
+
+
+#Scanner超时时间，必须大于hbase.client.scanner.caching的数值。这个参数是在配置hbase.client.scanner.caching后hadoop报错之后我自己加的。
+
+<property>
+
+  <name>hbase.client.scanner.timeout.period</name>
+
+  <value>120000</value>
+
+</property>
+
+
+
+（2）ycsb配置
+
+这里有必要解释一下ycsb在scan时的原理：
+
+Ycsb利用自己的hash算法生成一个rowkey，然后每次在1~ maxscanlength里选取一个值作为本次要扫描的条数。
+
+       ycsb配置文件关键项：
+
+##节选 ycsb配置文件
+
+maxscanlength=20000  #每次最多能扫描的条数
+
+
+
+#scanlengthdistribution=zipfian     #获取scanlength的概率分布，默认是uniform等概率随机分布
+
+
+
+requestdistribution=latest       #读取最近更新过的数据，存在热点数据，但根据LRU blockcache原理这种选择性能更好
+
+##节选 ycsb配置文件
+
+
+
+4.1.2       Ycsb client状态
+一共有4个ycsb client节点，四个系统状态基本一致，可能在某些参数上有少许差别，ycsbclient上没有对磁盘进行操作，所以没有记录iostat命令。
+
+（1）Top命令：
+
+[root@node7 test]# top
+
+top - 02:44:17 up 49 days, 16:20,  8 users,  load average: 2.28, 1.51, 1.24
+
+Tasks: 372 total,   1 running, 371 sleeping,   0 stopped,   0 zombie
+
+%Cpu(s):  4.6 us,  0.1 sy,  0.0 ni, 95.2 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+
+KiB Mem : 65772144 total,  7317380 free, 54500600 used,  3954164 buff/cache
+
+KiB Swap:        0 total,        0 free,        0 used. 10777744 avail Mem
+
+
+
+  PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
+
+20073  root        20   0    64.803g   0.049t   14944 S   62.5   80.4  483:46.18 java
+
+11669 root      20   0  148356   2152   1384 R   6.2  0.0   0:00.01 top
+
+17433 root      20   0  978192  35864   5000 S   6.2  0.1  21:02.36 python
+
+    1 root      20   0   49520  11668   2064 S   0.0  0.0   9:13.75 systemd
+
+    2 root      20   0       0      0      0 S   0.0  0.0   0:00.34 kthreadd
+
+    3 root      20   0       0      0      0 S   0.0  0.0   0:02.20 ksoftirqd/0
+
+    5 root       0 -20       0      0      0 S   0.0  0.0   0:00.00 kworker/0:0H
+
+    7 root      rt   0       0      0      0 S   0.0  0.0   0:01.77 migration/0
+
+可知，scan读状态下主要消耗的是系统的内存，达到了80%以上将近52G，但cpu占用很低。
+
+
+
+（2）带宽
+
+[Tue Sep 13 02:44:08 CST 2016] IN: 1389094904Bps(1324Mbps)  OUT: 7091152Bps(6Mbps)
+
+[Tue Sep 13 02:44:09 CST 2016] IN: 1404023672Bps(1338Mbps)  OUT: 7577184Bps(7Mbps)
+
+[Tue Sep 13 02:44:10 CST 2016] IN: 1508430248Bps(1438Mbps)  OUT: 7674216Bps(7Mbps)
+
+[Tue Sep 13 02:44:11 CST 2016] IN: 1437603968Bps(1371Mbps)  OUT: 7205992Bps(6Mbps)
+
+[Tue Sep 13 02:44:12 CST 2016] IN: 720413848Bps(687Mbps)  OUT: 3720896Bps(3Mbps)
+
+[Tue Sep 13 02:44:13 CST 2016] IN: 1259848896Bps(1201Mbps)  OUT: 6752184Bps(6Mbps)
+
+[Tue Sep 13 02:44:14 CST 2016] IN: 1291553552Bps(1231Mbps)  OUT: 7213832Bps(6Mbps)
+
+[Tue Sep 13 02:44:15 CST 2016] IN: 1250500584Bps(1192Mbps)  OUT: 6809800Bps(6Mbps)
+
+[Tue Sep 13 02:44:16 CST 2016] IN: 1245858144Bps(1188Mbps)  OUT: 6811296Bps(6Mbps)
+
+[Tue Sep 13 02:44:17 CST 2016] IN: 1290120160Bps(1230Mbps)  OUT: 6957832Bps(6Mbps)
+
+[Tue Sep 13 02:44:18 CST 2016] IN: 1309091656Bps(1248Mbps)  OUT: 6893712Bps(6Mbps)
+
+[Tue Sep 13 02:44:19 CST 2016] IN: 1231891208Bps(1174Mbps)  OUT: 6519600Bps(6Mbps)
+
+[Tue Sep 13 02:44:20 CST 2016] IN: 1200068072Bps(1144Mbps)  OUT: 6494376Bps(6Mbps)
+
+[Tue Sep 13 02:44:21 CST 2016] IN: 1232850840Bps(1175Mbps)  OUT: 6436968Bps(6Mbps)
+
+[Tue Sep 13 02:44:22 CST 2016] IN: 1248240840Bps(1190Mbps)  OUT: 6216216Bps(5Mbps)
+
+[Tue Sep 13 02:44:23 CST 2016] IN: 1071171808Bps(1021Mbps)  OUT: 5650304Bps(5Mbps)
+
+[Tue Sep 13 02:44:24 CST 2016] IN: 1268564440Bps(1209Mbps)  OUT: 6902568Bps(6Mbps)
+
+[Tue Sep 13 02:44:25 CST 2016] IN: 1264221552Bps(1205Mbps)  OUT: 6871656Bps(6Mbps)
+
+[Tue Sep 13 02:44:26 CST 2016] IN: 1256361264Bps(1198Mbps)  OUT: 6637352Bps(6Mbps)
+
+此刻这台设备的IN带宽大概在1200~1300Mbps左右。
+
+
+
+（3）ycsb配置
+
+# The thread count
+
+threadcount=300    #300个线程
+
+
+
+# The number of fields in a record
+
+fieldcount=1
+
+
+
+# The size of each field (in bytes)
+
+fieldlength=9216    #一条记录长度为9KB
+
+
+
+# Number of Records will be loaded
+
+recordcount=20000000
+
+
+
+# Number of Operations will be handle in run parsh
+
+operationcount=2000000      #scan操作2百万次
+
+readallfields=true
+
+insertorder=hashed
+
+#insertstart=0
+
+#insertcount=500000000
+
+
+
+# Control Porption of hbase operation type
+
+readproportion=0
+
+updateproportion=0
+
+scanproportion=1   #完全scan操作
+
+insertproportion=0
+
+
+
+# The following param always be fixed
+
+# The table name
+
+table=usertable
+
+
+
+# The colume family
+
+columnfamily=cf
+
+
+
+# The workload class
+
+workload=com.yahoo.ycsb.workloads.CoreWorkload
+
+
+
+# The measurement type
+
+measurementtype=raw
+
+
+
+clientbuffering=true
+
+
+
+writebuffersize=12582912
+
+
+
+#requestdistribution=zipfian
+
+
+
+maxscanlength=20000
+
+
+
+#hbase.usepagefilter=false
+
+
+
+#scanlengthdistribution=zipfian
+
+
+
+requestdistribution=latest   #请求最近读取过的数据，与LRU读缓存结合较好
+
+
+
+
+
+4.1.3       Hbase节点状态
+4台设备组成的hbase集群，这里选取其中1台的系统状态，其余3台的状态基本与选取的状态一致。
+
+
+
+（1）Iostat
+
+09/13/2016 02:44:54 AM
+
+avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+
+           7.81    0.00    0.66    0.85    0.00   90.69
+
+
+
+Device:         rrqm/s   wrqm/s     r/s     w/s    rMB/s    wMB/s avgrq-sz avgqu-sz   await r_await w_await  svctm  %util
+
+sdd               0.06     0.00   25.52    0.01     3.17     0.00   254.14     0.13    5.23    5.23    8.33   2.58   6.58
+
+sda               0.00     0.29    0.02    2.25     0.00     0.02    16.64     0.01    3.13   11.54    3.05   1.85   0.42
+
+sdc               0.11     0.00   29.00    0.00     3.76     0.00   265.38     0.19    6.69    6.69    0.00   2.97   8.61
+
+sdb               0.12     0.00   30.55    0.11     4.14     0.00   276.66     0.21    6.80    6.80    7.08   2.91   8.92
+
+sde               0.08     0.00   24.61    0.00     2.97     0.00   247.51     0.13    5.14    5.14    0.00   2.66   6.55
+
+dm-0              0.00     0.00    0.02    1.26     0.00     0.01    12.47     0.00    2.81   11.54    2.66   1.24   0.16
+
+dm-1              0.00     0.00    0.00    0.11     0.00     0.00    10.46     0.00    3.89    0.00    3.89   3.14   0.03
+
+dm-2              0.00     0.00    0.00    1.06     0.00     0.01    19.57     0.00    3.40    0.00    3.40   2.20   0.23
+
+可知，在读状态下，由于设置了较大的读缓存blockcache和scan本身的特性，所以对磁盘的io操作并不多。
+
+
+
+（2）Top
+
+[root@node1 ~]# top
+
+top - 02:42:14 up 6 days, 11:15,  5 users,  load average: 1.35, 1.66, 1.81
+
+Tasks: 401 total,   1 running, 394 sleeping,   6 stopped,   0 zombie
+
+%Cpu(s):  2.9 us,  0.4 sy,  0.0 ni, 96.3 id,  0.4 wa,  0.0 hi,  0.0 si,  0.0 st
+
+KiB Mem : 65773904 total,   358628 free, 54028200 used, 11387076 buff/cache
+
+KiB Swap:        0 total,        0 free,        0 used. 11329324 avail Mem
+
+
+
+  PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
+
+28879  hbase       20   0    52.267g  0.046t    29116 S   143.8  74.9   1346:45 java
+
+18644 root      20   0  146272   2164   1352 R   6.2  0.0   0:00.01 top
+
+    1 root      20   0   45288   7428   1988 S   0.0  0.0   2:15.42 systemd
+
+    2 root      20   0       0      0      0 S   0.0  0.0   0:00.18 kthreadd
+
+    3 root      20   0       0      0      0 S   0.0  0.0   0:00.95 ksoftirqd/0
+
+    5 root       0 -20       0      0      0 S   0.0  0.0   0:00.00 kworker/0:0H
+
+    7 root      rt   0       0      0      0 S   0.0  0.0   0:02.31 migration/0
+
+    8 root      20   0       0      0      0 S   0.0  0.0   0:00.00 rcu_bh
+
+主要是内存的消耗，cpu占用不多，内存大小由用户维护的hbase-site.xml中的hbase_regionserver_heapsize决定，这里已接近用掉了50G的内存，很大一部分用作了读缓存。
+
+
+
+（3）带宽
+
+[Tue Sep 13 02:44:11 CST 2016] IN: 22436840Bps(21Mbps)  OUT: 1471864896Bps(1403Mbps)
+
+[Tue Sep 13 02:44:12 CST 2016] IN: 13982576Bps(13Mbps)  OUT: 1353348496Bps(1290Mbps)
+
+[Tue Sep 13 02:44:13 CST 2016] IN: 41001296Bps(39Mbps)  OUT: 1415041312Bps(1349Mbps)
+
+[Tue Sep 13 02:44:14 CST 2016] IN: 24540680Bps(23Mbps)  OUT: 1251462792Bps(1193Mbps)
+
+[Tue Sep 13 02:44:15 CST 2016] IN: 23827832Bps(22Mbps)  OUT: 1320654496Bps(1259Mbps)
+
+[Tue Sep 13 02:44:16 CST 2016] IN: 19069888Bps(18Mbps)  OUT: 1281471968Bps(1222Mbps)
+
+[Tue Sep 13 02:44:17 CST 2016] IN: 40502944Bps(38Mbps)  OUT: 1290429472Bps(1230Mbps)
+
+[Tue Sep 13 02:44:18 CST 2016] IN: 15378312Bps(14Mbps)  OUT: 1298991384Bps(1238Mbps)
+
+[Tue Sep 13 02:44:19 CST 2016] IN: 23261504Bps(22Mbps)  OUT: 1231679168Bps(1174Mbps)
+
+[Tue Sep 13 02:44:20 CST 2016] IN: 20102808Bps(19Mbps)  OUT: 1205856648Bps(1149Mbps)
+
+[Tue Sep 13 02:44:21 CST 2016] IN: 27994376Bps(26Mbps)  OUT: 1162188960Bps(1108Mbps)
+
+[Tue Sep 13 02:44:22 CST 2016] IN: 20662608Bps(19Mbps)  OUT: 995859928Bps(949Mbps)
+
+[Tue Sep 13 02:44:23 CST 2016] IN: 31011776Bps(29Mbps)  OUT: 1285450232Bps(1225Mbps)
+
+[Tue Sep 13 02:44:24 CST 2016] IN: 14276128Bps(13Mbps)  OUT: 1127933176Bps(1075Mbps)
+
+[Tue Sep 13 02:44:25 CST 2016] IN: 50224704Bps(47Mbps)  OUT: 1179008864Bps(1124Mbps)
+
+[Tue Sep 13 02:44:26 CST 2016] IN: 26989040Bps(25Mbps)  OUT: 1386031752Bps(1321Mbps)
+
+[Tue Sep 13 02:44:27 CST 2016] IN: 26029776Bps(24Mbps)  OUT: 1383180992Bps(1319Mbps)
+
+[Tue Sep 13 02:44:28 CST 2016] IN: 73159800Bps(69Mbps)  OUT: 1392148184Bps(1327Mbps)
+
+[Tue Sep 13 02:44:29 CST 2016] IN: 27760800Bps(26Mbps)  OUT: 1339476496Bps(1277Mbps)
+
+[Tue Sep 13 02:44:30 CST 2016] IN: 19761192Bps(18Mbps)  OUT: 1207076944Bps(1151Mbps)
+
+[Tue Sep 13 02:44:31 CST 2016] IN: 19563336Bps(18Mbps)  OUT: 1242348416Bps(1184Mbps)
+
+与ycsb client节点类似，此刻的OUT带宽在1200~1300Mbps左右。
+
+
+
+4.2  Read操作
+Read操作和scan操作有一些类似，都是客户端向hbase server端请求数据，不同的是read一次只请求一条，而scan一次可以请求多条即批量读取，因此scan操作对hbase client的内存有较高的要求。
+
+在当前设备环境中，单台服务器上Ycsb client执行读read操作时，最多大约可以开启30000个threads。采用越多的ycsb threads的话，在真正对数据进行操作前的准备时间也就越长，会影响最终获得的每秒操作数。30000的threads大概read 20000t/s，带宽已达到极限1850Mb/s，测试结果如下：
+
+
+分区数
+
+value长度
+
+速度 条/秒
+
+集群节点数
+
+ycsb client节点数
+
+带宽
+
+操作数
+
+瓶颈
+
+读取read
+
+200 regions
+
+9216bytes
+
+45000~50000左右
+
+4
+
+4
+
+1100~1200Mb/s
+
+20000000
+
+hbase clinet 内存
+
+读取read
+
+200 regions
+
+9216bytes
+
+20000左右
+
+4
+
+1
+
+1850Mb/s
+
+20000000
+
+带宽
+
+       这里也选取了两个结果，第一个运行了4个ycsb client，第二个运行1个ycsb client很明显单个ycsb client进行read读取操作时的瓶颈在于带宽。
+
+
+
+4.2.1       配置调优要点
+Hbase本身提供了读缓存，具体可以查看上面hbase-site.xml文件解析，本集群环境中每个regionserver可提供最多40G左右的读缓存。
+
+       简单介绍下Hbase读操作read的原理，首先去memstore中查找，查不到就在读缓存blockcache中查找，再查不到就去hdfs也就是硬盘中查，并且将查到的结果放置在读缓存blockcache中以便下次查找。Blockcache是一个LRU，当blockcache达到上限（heapsize*hfile.block.cache.size*0.85）时，会启动淘汰机制，淘汰掉最老的一批数据。
+
+       Scan操作可以设置每次scan取到的条数，一次读的越大每条数据消耗的RPC也就越少，性能也就相应会提高，但是设置的越大对内存的要求也就越高，应根据实际设备性能调整大小。
+
+       （1）hadoop配置
+
+       这里介绍几个关键配置：
+
+#分配1%的regionserver的内存给写操作当作缓存，这个参数和下面的hfile.block.cache.size（读缓存）息息相关，二者之和不能超过总内存的80%，读操作时，该值最好为0，但是这里有个bug，取不到0，所以取值1%即0.01，系统尽可能的把内存给读操作用作缓存。
+
+   <property>
+
+     <name>hbase.regionserver.global.memstore.size</name>
+
+     <value>0.01</value>
+
+   </property>
+
+
+
+#将regionserver的内存的79%分配作为读缓存，默认是40%，这里因为是单独的读操作性能调优所以调到了79%，上文中提到了一个bug，不能调为最高的80%。该配置项与上文中的hbase.regionserver.global.memstore.size关系密切，二者的总和不能大于regionserver内存的80%，读操作为主时就将该值调高，写操作为主时就将hbase.regionserver.global.memstore.size调高。
+
+    <property>
+
+     <name>hfile.block.cache.size</name>
+
+      <value>0.79</value>
+
+    </property>
+
+
+
+（2）ycsb配置
+
+Ycsb 配置文件关键项：
+
+##ycsb 配置文件节选
+
+requestdistribution=latest  #数据请求模式，最近访问的数据，非等概率与LRU缓存结合较好
+
+##ycsb 配置文件节选
+
+
+
+4.2.2       ycsb client状态
+一共有4个ycsb client节点，四个系统状态基本一致，可能在某些参数上有少许差别，ycsbclient上没有对磁盘进行操作，所以没有记录iostat命令
+
+这里的话ycsb client的thread数几乎已经到了极限（20000、30000）。下面分析的是跑了4个ycsb client的情况，单独1个ycsb client暂不分析。
+
+
+
+（1）top
+
+top - 16:28:13 up 71 days,  7:20,  6 users,  load average: 3.52, 3.50, 3.17
+
+Tasks: 395 total,   1 running, 394 sleeping,   0 stopped,   0 zombie
+
+%Cpu(s):  2.0 us,  0.4 sy,  0.0 ni, 97.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+
+KiB Mem : 65772144 total, 28988184 free, 30913756 used,  5870204 buff/cache
+
+KiB Swap: 33030140 total, 32722816 free,   307324 used. 34177996 avail Mem
+
+
+
+  PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
+
+ 4721  root        20   0     82.531g   0.021t  14956 S   288.9  33.8  95:40.78 java
+
+ 1985 root      20   0  148356   2148   1384 R  11.1  0.0   0:00.03 top
+
+ 8520 hbase     20   0  505952   8864   2624 S   5.6  0.0 707:06.23 python2.7
+
+24980 yarn      20   0 2069392 337560  24480 S   5.6  0.5  20:29.57 java
+
+    1 root      20   0  203556  18160   2144 S   0.0  0.0  17:05.19 systemd
+
+    2 root      20   0       0      0      0 S   0.0  0.0   0:01.37 kthreadd
+
+    3 root      20   0       0      0      0 S   0.0  0.0   0:07.33 ksoftirqd/0
+
+    5 root       0 -20       0      0      0 S   0.0  0.0   0:00.00 kworker/0:0H
+
+由上可知，read操作对于cpu和内存的压力都不是很大。
+
+
+
+（2）带宽
+
+[Tue Sep 13 16:28:04 CST 2016] IN: 1090692056Bps(1040Mbps)  OUT: 28791808Bps(27Mbps)
+
+[Tue Sep 13 16:28:05 CST 2016] IN: 1050596840Bps(1001Mbps)  OUT: 27955120Bps(26Mbps)
+
+[Tue Sep 13 16:28:06 CST 2016] IN: 1455753528Bps(1388Mbps)  OUT: 37571904Bps(35Mbps)
+
+[Tue Sep 13 16:28:07 CST 2016] IN: 1431038136Bps(1364Mbps)  OUT: 36814408Bps(35Mbps)
+
+[Tue Sep 13 16:28:08 CST 2016] IN: 87732120Bps(83Mbps)  OUT: 52472Bps(0Mbps)
+
+[Tue Sep 13 16:28:09 CST 2016] IN: 58797728Bps(56Mbps)  OUT: 1438416Bps(1Mbps)
+
+[Tue Sep 13 16:28:10 CST 2016] IN: 1630987592Bps(1555Mbps)  OUT: 42776208Bps(40Mbps)
+
+[Tue Sep 13 16:28:11 CST 2016] IN: 771773360Bps(736Mbps)  OUT: 19205928Bps(18Mbps)
+
+[Tue Sep 13 16:28:12 CST 2016] IN: 1240965184Bps(1183Mbps)  OUT: 32610560Bps(31Mbps)
+
+[Tue Sep 13 16:28:13 CST 2016] IN: 1310319648Bps(1249Mbps)  OUT: 33690016Bps(32Mbps)
+
+[Tue Sep 13 16:28:14 CST 2016] IN: 1481654992Bps(1413Mbps)  OUT: 38381168Bps(36Mbps)
+
+[Tue Sep 13 16:28:15 CST 2016] IN: 1342465440Bps(1280Mbps)  OUT: 35507448Bps(33Mbps)
+
+[Tue Sep 13 16:28:16 CST 2016] IN: 991861888Bps(945Mbps)  OUT: 25188448Bps(24Mbps)
+
+[Tue Sep 13 16:28:17 CST 2016] IN: 1455500744Bps(1388Mbps)  OUT: 38124632Bps(36Mbps)
+
+[Tue Sep 13 16:28:18 CST 2016] IN: 1562847648Bps(1490Mbps)  OUT: 40131136Bps(38Mbps)
+
+[Tue Sep 13 16:28:19 CST 2016] IN: 1353514144Bps(1290Mbps)  OUT: 34863296Bps(33Mbps)
+
+[Tue Sep 13 16:28:20 CST 2016] IN: 990938744Bps(945Mbps)  OUT: 25207296Bps(24Mbps)
+
+[Tue Sep 13 16:28:21 CST 2016] IN: 1352270600Bps(1289Mbps)  OUT: 36755976Bps(35Mbps)
+
+[Tue Sep 13 16:28:22 CST 2016] IN: 1342217736Bps(1280Mbps)  OUT: 35219184Bps(33Mbps)
+
+总体带宽平均在1100Mbps左右。
+
+
+
+（3）ycsb 配置
+
+# The thread count
+
+threadcount=20000 #起2万个线程，当前环境最多起30000个左右
+
+
+
+# The number of fields in a record
+
+fieldcount=1
+
+
+
+# The size of each field (in bytes)
+
+fieldlength=9216    #一条数据长度为9KB
+
+
+
+# Number of Records will be loaded
+
+recordcount=20000000
+
+
+
+# Number of Operations will be handle in run parsh
+
+operationcount=20000000    #读取2千万条数据
+
+readallfields=true
+
+insertorder=hashed
+
+#insertstart=0
+
+#insertcount=500000000
+
+
+
+# Control Porption of hbase operation type
+
+readproportion=1
+
+updateproportion=0
+
+scanproportion=0
+
+insertproportion=0
+
+
+
+# The following param always be fixed
+
+# The table name
+
+table=usertable
+
+
+
+# The colume family
+
+columnfamily=cf
+
+
+
+# The workload class
+
+workload=com.yahoo.ycsb.workloads.CoreWorkload
+
+
+
+# The measurement type
+
+measurementtype=raw
+
+
+
+clientbuffering=true
+
+
+
+writebuffersize=12582912
+
+
+
+#requestdistribution=zipfian
+
+
+
+maxscanlength=20000
+
+
+
+#hbase.usepagefilter=false
+
+
+
+#scanlengthdistribution=zipfian
+
+
+
+requestdistribution=latest #数据请求模式，最近访问的数据，非等概率与LRU缓存结合较好
+
+
+
+4.2.3       hbase节点状态
+4台设备组成的hbase集群，这里选取其中1台的系统状态，其余3台的状态基本与选取的状态一致。
+
+（1）       iostat
+
+09/13/2016 04:28:36 PM
+
+avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+
+          13.57    0.00    1.45   21.11    0.00   63.86
+
+
+
+Device:         rrqm/s   wrqm/s     r/s     w/s    rMB/s    wMB/s avgrq-sz avgqu-sz   await r_await w_await  svctm  %util
+
+sdd               0.12     0.00   70.17    0.05    10.23     0.00   298.41     4.99   71.00   71.04   23.33   9.24  64.90
+
+sda               0.00     0.20    0.05    1.98     0.00     0.02    16.52     0.01    2.49    0.33    2.55   1.82   0.37
+
+sdc               0.05     0.00   75.37    0.05    11.14     0.00   302.59     6.68   88.59   88.54  164.33   9.15  69.03
+
+sdb               0.05     0.00   67.18    0.05     9.83     0.00   299.35     4.13   61.34   61.36   30.00   8.91  59.90
+
+sde               0.02     0.00   62.60    0.13     9.19     0.00   300.02     2.51   40.07   40.11   21.25   7.88  49.42
+
+dm-0              0.00     0.00    0.05    1.10     0.00     0.01    12.06     0.00    1.30    0.33    1.35   0.99   0.11
+
+dm-1              0.00     0.00    0.00    0.05     0.00     0.00     8.00     0.00    6.00    0.00    6.00   6.00   0.03
+
+dm-2              0.00     0.00    0.00    0.93     0.00     0.01    20.71     0.00    3.59    0.00    3.59   2.43   0.23
+
+可知，4块hdfs磁盘的读压力不是很大，这是因为设置了较大的LRU缓存。
+
+
+
+（2）top
+
+top - 16:28:44 up 7 days,  1:02,  5 users,  load average: 26.92, 70.49, 67.85
+
+Tasks: 419 total,   2 running, 411 sleeping,   6 stopped,   0 zombie
+
+%Cpu(s):  3.5 us,  0.4 sy,  0.0 ni, 95.4 id,  0.7 wa,  0.0 hi,  0.0 si,  0.0 st
+
+KiB Mem : 65773904 total,   432196 free, 53853744 used, 11487964 buff/cache
+
+KiB Swap:        0 total,        0 free,        0 used. 11494572 avail Mem
+
+
+
+  PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
+
+28879    hbase     20   0     52.273g   0.046t   6756 S   1819   74.9   3266:44 java
+
+28970 ambari-+  20   0 4843484  20372   8148 S  75.0  0.0   0:00.13 java
+
+ 1184 root      20   0    4372    584    488 S  12.5  0.0 117:57.11 rngd
+
+ 2941 root      20   0 2273740  43784   2972 S   6.2  0.1 341:08.54 python
+
+29452 root      20   0  146408   2188   1352 R   6.2  0.0   0:00.02 top
+
+    1 root      20   0   45700   7776   1964 S   0.0  0.0   2:24.08 systemd
+
+    2 root      20   0       0      0      0 S   0.0  0.0   0:00.20 kthreadd
+
+    3 root      20   0       0      0      0 S   0.0  0.0   0:01.14 ksoftirqd/0
+
+    5 root       0 -20       0      0      0 S   0.0  0.0   0:00.00 kworker/0:0H
+
+    7 root      rt   0       0      0      0 S   0.0  0.0   0:02.69 migration/0
+
+可知，hbase server节点的内存占用较高，这是因为我们手动配置了较多的内存，cpu的话占用并不多。
+
+
+
+（3）带宽
+
+[Tue Sep 13 16:28:35 CST 2016] IN: 22483256Bps(21Mbps)  OUT: 661447256Bps(630Mbps)
+
+[Tue Sep 13 16:28:36 CST 2016] IN: 23613704Bps(22Mbps)  OUT: 656564224Bps(626Mbps)
+
+[Tue Sep 13 16:28:37 CST 2016] IN: 22772616Bps(21Mbps)  OUT: 647350776Bps(617Mbps)
+
+[Tue Sep 13 16:28:38 CST 2016] IN: 18973704Bps(18Mbps)  OUT: 605782640Bps(577Mbps)
+
+[Tue Sep 13 16:28:39 CST 2016] IN: 20327680Bps(19Mbps)  OUT: 632839840Bps(603Mbps)
+
+[Tue Sep 13 16:28:40 CST 2016] IN: 25086640Bps(23Mbps)  OUT: 883033808Bps(842Mbps)
+
+[Tue Sep 13 16:28:41 CST 2016] IN: 22399624Bps(21Mbps)  OUT: 670929048Bps(639Mbps)
+
+[Tue Sep 13 16:28:42 CST 2016] IN: 20382304Bps(19Mbps)  OUT: 656173848Bps(625Mbps)
+
+[Tue Sep 13 16:28:43 CST 2016] IN: 22866432Bps(21Mbps)  OUT: 612133800Bps(583Mbps)
+
+[Tue Sep 13 16:28:44 CST 2016] IN: 8875152Bps(8Mbps)  OUT: 55318144Bps(52Mbps)
+
+[Tue Sep 13 16:28:45 CST 2016] IN: 22386368Bps(21Mbps)  OUT: 476991368Bps(454Mbps)
+
+[Tue Sep 13 16:28:46 CST 2016] IN: 24189632Bps(23Mbps)  OUT: 872880840Bps(832Mbps)
+
+[Tue Sep 13 16:28:47 CST 2016] IN: 6160408Bps(5Mbps)  OUT: 208640776Bps(198Mbps)
+
+[Tue Sep 13 16:28:48 CST 2016] IN: 12127112Bps(11Mbps)  OUT: 598652792Bps(570Mbps)
+
+[Tue Sep 13 16:28:49 CST 2016] IN: 21815088Bps(20Mbps)  OUT: 813550904Bps(775Mbps)
+
+[Tue Sep 13 16:28:50 CST 2016] IN: 15003336Bps(14Mbps)  OUT: 705601072Bps(672Mbps)
+
+[Tue Sep 13 16:28:51 CST 2016] IN: 20196840Bps(19Mbps)  OUT: 693023464Bps(660Mbps)
+
+[Tue Sep 13 16:28:52 CST 2016] IN: 12980888Bps(12Mbps)  OUT: 459208480Bps(437Mbps)
+
+[Tue Sep 13 16:28:53 CST 2016] IN: 14621152Bps(13Mbps)  OUT: 433819432Bps(413Mbps)
+
+[Tue Sep 13 16:28:54 CST 2016] IN: 9265656Bps(8Mbps)  OUT: 14933976Bps(14Mbps)
+
+       此刻的带宽基本在700Mbps左右。
+
+
+
+5        写性能测试与调优
+利用ycsb工具进行写性能测试的话，其实就是先建立空表然后执行ycsb 的load阶段即可，具体方案的话分为单个节点写入和多个节点写入。
+
+
+
+5.1  单节点写入
+只执行一个yscb client进行写入操作。测试的结果如下：
+
+
+分区数
+
+value长度
+
+速度 条/秒
+
+集群节点数
+
+ycsb client节点数
+
+带宽
+
+操作数
+
+瓶颈
+
+插入insert
+
+200 regions
+
+9216bytes
+
+11000左右
+
+4
+
+1
+
+1200Mb/s 不稳定
+
+5000000
+
+ycsb client cpu、磁盘IO
+
+插入insert
+
+200 regions
+
+9216bytes
+
+9000左右
+
+4
+
+1
+
+1000Mb/s 不稳定
+
+40000000
+
+ycsb client cpu、磁盘IO
+
+这里保存了2次单点插入的结果，第一次这里只作为结果对比，第一次与第二次的配置除了写入条数有较大差异之外，其他几乎相同，我分析的原因是写入时间越久，rpc消耗越多，磁盘flush延时越久，hbase本身的compaction和spilts操作以及jvm GC操作也就越多这些操作是很消耗系统性能的。因此写入时间越长，性能相应的也会下降一些，所以第二次插入40000000条结果只有9000sec/opc。
+
+
+
+5.1.1       配置调优要点
+本次测试一条数据长度为9KB，共写入40000000条，大概有1TB左右，集群总共是200个region，每个region大小为默认的10G，集群总大小为2TB。集群总量足够，rowkey分布均匀的话不会发生集群的splits操作。
+
+
+
+（1）这里简单介绍下hbase 写流程和原理：
+
+客户端流程解析：
+
+a) 用户提交put请求后，HBase客户端会将put请求添加到本地buffer中，符合一定条件就会通过 AsyncProcess异步批量提交。HBase默认设置autoflush=true，表示put请求直接会提交给服务器进行处理；用户可以设置autoflush=false，这样的话put请求会首先放到本地buffer，等到本地buffer大小超过一定阈值（默认为2M，可以通过配置文件配置）之后才会提交。很显然，后者采用groupcommit机制提交请求，可以极大地提升写入性能，但是因为没有保护机制，如果客户端崩溃的话会导致提交的请求丢失。
+
+b) 在提交之前，HBase会在元数据表.meta.中根据rowkey找到它们归属的region server，这个定位的过程是通过HConnection的locateRegion方法获得的。如果是批量请求的话还会把这些rowkey按照 HRegionLocation分组，每个分组可以对应一次RPC请求。
+
+c) HBase会为每个HRegionLocation构造一个远程RPC请求 MultiServerCallable<Row>，然后通过rpcCallerFactory.<MultiResponse> newCaller()执行调用，忽略掉失败重新提交和错误处理，客户端的提交操作到此结束。
+
+
+
+服务器端流程解析
+
+a) 服务器端RegionServer接收到客户端的写入请求后，首先会反序列化为Put对象，然后执行各种检查操作，比如检查region是否是只读、memstore大小是否超过blockingMemstoreSize等。检查完成之后，就会执行如下核心操作：
+
+
+
+b) 获取行锁、Region更新共享锁：HBase中使用行锁保证对同一行数据的更新都是互斥操作，用以保证更新的原子性，要么更新成功，要么失败。
+
+c) 开始写事务：获取write number，用于实现MVCC，实现数据的非锁定读，在保证读写一致性的前提下提高读取性能。
+
+d) 写缓存memstore：HBase中每列都会对应一个store，用来存储该列数据。每个store都会有个写缓存memstore，用于缓存写入数据。HBase并不会直接将数据落盘，而是先写入缓存，等缓存满足一定大小之后再一起落盘。
+
+e) Append HLog：HBase使用WAL机制保证数据可靠性，即首先写日志再写缓存，即使发生宕机，也可以通过恢复HLog还原出原始数据。该步骤就是将数据构造为WALEdit对象，然后顺序写入HLog中，此时不需要执行sync操作。0.98版本采用了新的写线程模式实现HLog日志的写入，可以使得整个数据更新性能得到极大提升。
+
+f) 释放行锁以及共享锁
+
+g) Sync HLog：HLog真正sync到HDFS，在释放行锁之后执行sync操作是为了尽量减少持锁时间，提升写性能。如果Sync失败，执行回滚操作将memstore中已经写入的数据移除。
+
+h) 结束写事务：此时该线程的更新操作才会对其他读请求可见，更新才实际生效。
+
+i) flush memstore：当写缓存满256M之后，会启动flush线程将数据刷新到硬盘。刷新操作涉及到HFile相关结构可参考相关资料，这里不细说。
+
+
+
+（2）hadoop配置
+
+#当一个region的memstore总量达到hbase.hregion.memstore.block.multiplier* hbase.hregion.memstore.flush.size (默认2*128M)时，会阻塞这个region的写操作，并强制刷写到HFile，触发这个刷新操作只会在Memstore即将写满hbase.hregion.memstore.flush.size时put了一个巨大的记录的情况，这时候会阻塞写操作，强制刷新成功才能继续写入。
+
+该配置项默认为2，调大至8，降低block发生的概率。
+
+    <property>
+
+     <name>hbase.hregion.memstore.block.multiplier</name>
+
+     <value>8</value>
+
+    </property>
+
+
+
+#每个单独的memstore的大小（默认128M），这里调成了256M，每个列族columnfamily在每个region中都分配有它单独的memstore，当memstore超过该值时，就会发生flush操作，将memstore中的内容刷成一个hfile，每一次memstore的flush操作，都会为每一次columnfamily创建一个新的hfile；调高该值可以减少flush的操作次数，减少每一个region中的hfile的个数，这样就会减少minor compaction的次数和split的次数，从而降低了系统性能损耗，提升了写性能，也提升了读性能（因为读操作的时候，首先要去memstore中查数据，查找不到的话再去hfile，hflie存储在hdfs中，这就涉及到了对性能要求较高的io操作了）。当然这个值变大了之后，每次flush操作带来的性能消耗也就更大。
+
+    <property>
+
+     <name>hbase.hregion.memstore.flush.size</name>
+
+     <value>268435456</value>
+
+    </property>
+
+
+
+#分配75%的regionserver的内存给写操作当作缓存，这个参数和下面的hfile.block.cache.size（读缓存）息息相关，二者之和不能超过总内存的80%，追求写入性能时，该值尽量设置的大一些；追求读操作性能时，该值尽量取得小一些，但这里有个bug，该值取不到0，现将该值设置为0.75。
+
+    <property>
+
+       <name>hbase.regionserver.global.memstore.size</name>
+
+       <value>0.75</value>
+
+    </property>
+
+
+
+#与上面相呼应，将regionserver的内存的5%分配作为读缓存，默认是40%，上文中提到了一个bug，不能调为最高的80%。该配置项与上文中的hbase.regionserver.global.memstore.size关系密切，二者的总和不能大于regionserver内存的80%，读操作为主时就将该值调高，写操作为主时就将hbase.regionserver.global.memstore.size调高。
+
+    <property>
+
+       <name>hfile.block.cache.size</name>
+
+       <value>0.05</value>
+
+    </property>
+
+
+
+其他的配置的话基本上都已调到了最大值，上文中hadoop配置都有介绍，不了解的话可以翻看前文内容。
+
+
+
+（3）ycsb配置
+
+       #ycsb配置文件节选
+
+insertorder=hashed  #前面提到过，建表的时候采用的是预分区和rowkey均匀分布，所以这里插入的顺序需要配置成较为随机的hashed模式而非默认的order模式
+
+
+
+clientbuffering=true   #没有关闭auto flush，而是打开了ycsb端的缓存，效果和原理是一样的
+
+
+
+writebuffersize=12582912  #默认就是12MB，试过了多个数据大小，12MB性能最好
+
+       #ycsb配置文件节选
+
+
+
+（4）其他配置说明
+
+这里没有关闭wal机制（其实是指wal中的写hlog）以获得更好的性能，一是因为暂时没在hbase-site.xml中找到相应配置项（可通过代码中调用wal的相关api来实现）；二是因为在实际使用中必须要用到wal以保证hbase的可靠性。
+
+另外建表时采用的预分区和rowkey随机分布模式对写入性能也很关键。
+
+5.1.2       Ycsb client状态
+由于ycsb client上只进行了对hbase集群的插入操作，它本身不涉及到硬盘相关的操作，所以未记录iostat的数据。
+
+（1）      Top
+
+top - 20:00:21 up 63 days,  9:36,  8 users,  load average: 58.52, 57.87, 54.67
+
+Tasks: 389 total,   2 running, 387 sleeping,   0 stopped,   0 zombie
+
+%Cpu(s):  4.0 us,  0.2 sy,  0.0 ni, 95.8 id,  0.1 wa,  0.0 hi,  0.0 si,  0.0 st
+
+KiB Mem : 65772144 total, 28196656 free, 18563928 used, 19011560 buff/cache
+
+KiB Swap:        0 total,        0 free,        0 used. 46689236 avail Mem
+
+
+
+  PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
+
+  575  root       20    0   29.235g   0.016t  15004  S   2229   25.7  853:18.36 java
+
+   33 root      20   0       0      0      0 S   5.9  0.0  44:18.02 rcu_sched
+
+30866 root      20   0  148356   2208   1384 R   5.9  0.0   0:00.02 top
+
+    1 root      20   0   50712  12892   2064 S   0.0  0.0  12:22.47 systemd
+
+    2 root      20   0       0      0      0 S   0.0  0.0   0:00.41 kthreadd
+
+    3 root      20   0       0      0      0 S   0.0  0.0   0:03.16 ksoftirqd/0
+
+    5 root       0 -20       0      0      0 S   0.0  0.0   0:00.00 kworker/0:0H
+
+    7 root      rt   0       0      0      0 S   0.0  0.0   0:01.97 migration/0
+
+    8 root      20   0       0      0      0 S   0.0  0.0   0:00.00 rcu_bh
+
+可见ycsb client设备上cpu几乎已经用完，而内存占用不高，瓶颈之一便是ycsb客户端的cpu。
+
+（2）      Ycsb 配置
+
+# The thread count
+
+threadcount=60  #写入时线程数不能设置太多，否则cpu长期占用太高
+
+
+
+# The number of fields in a record
+
+fieldcount=1
+
+
+
+# The size of each field (in bytes)
+
+fieldlength=9216
+
+
+
+# Number of Records will be loaded
+
+recordcount=40000000
+
+
+
+# Number of Operations will be handle in run parsh
+
+operationcount=40000000
+
+readallfields=true
+
+insertorder=hashed
+
+#insertstart=0
+
+#insertcount=500000000
+
+
+
+# Control Porption of hbase operation type
+
+readproportion=1
+
+updateproportion=0
+
+scanproportion=0
+
+insertproportion=0
+
+
+
+# The following param always be fixed
+
+# The table name
+
+table=a
+
+
+
+# The colume family
+
+columnfamily=cf
+
+
+
+# The workload class
+
+workload=com.yahoo.ycsb.workloads.CoreWorkload
+
+
+
+# The measurement type
+
+measurementtype=raw
+
+
+
+clientbuffering=true   #开启ycsb client缓存
+
+
+
+writebuffersize=12582912   #缓存大小为12MB，即写满12MB之后才提交一次put
+
+
+
+requestdistribution=latest
+
+
+
+maxscanlength=30000
+
+
+
+#hbase.usepagefilter=false
+
+
+
+#scanlengthdistribution=zipfian
+
+
+
+#requestdistribution=zipfian
+
+
+
+（3）      带宽
+
+[Mon Sep 26 20:00:11 CST 2016] IN: 4988752Bps(4Mbps)  OUT: 839334032Bps(800Mbps)
+
+[Mon Sep 26 20:00:12 CST 2016] IN: 6514928Bps(6Mbps)  OUT: 1088183680Bps(1037Mbps)
+
+[Mon Sep 26 20:00:14 CST 2016] IN: 8717768Bps(8Mbps)  OUT: 1410373848Bps(1345Mbps)
+
+[Mon Sep 26 20:00:15 CST 2016] IN: 929808Bps(0Mbps)  OUT: 101317320Bps(96Mbps)
+
+[Mon Sep 26 20:00:16 CST 2016] IN: 3039288Bps(2Mbps)  OUT: 505524416Bps(482Mbps)
+
+[Mon Sep 26 20:00:17 CST 2016] IN: 4603112Bps(4Mbps)  OUT: 709229680Bps(676Mbps)
+
+[Mon Sep 26 20:00:18 CST 2016] IN: 5055904Bps(4Mbps)  OUT: 836841368Bps(798Mbps)
+
+[Mon Sep 26 20:00:19 CST 2016] IN: 4320296Bps(4Mbps)  OUT: 600734144Bps(572Mbps)
+
+[Mon Sep 26 20:00:20 CST 2016] IN: 5017200Bps(4Mbps)  OUT: 690111416Bps(658Mbps)
+
+[Mon Sep 26 20:00:22 CST 2016] IN: 1684920Bps(1Mbps)  OUT: 186839352Bps(178Mbps)
+
+[Mon Sep 26 20:00:23 CST 2016] IN: 4994136Bps(4Mbps)  OUT: 724239776Bps(690Mbps)
+
+[Mon Sep 26 20:00:24 CST 2016] IN: 1762232Bps(1Mbps)  OUT: 202245440Bps(192Mbps)
+
+[Mon Sep 26 20:00:25 CST 2016] IN: 5015744Bps(4Mbps)  OUT: 809145376Bps(771Mbps)
+
+[Mon Sep 26 20:00:26 CST 2016] IN: 10445648Bps(9Mbps)  OUT: 1724724832Bps(1644Mbps)
+
+[Mon Sep 26 20:00:27 CST 2016] IN: 5497880Bps(5Mbps)  OUT: 891578624Bps(850Mbps)
+
+[Mon Sep 26 20:00:28 CST 2016] IN: 5338080Bps(5Mbps)  OUT: 900875672Bps(859Mbps)
+
+[Mon Sep 26 20:00:29 CST 2016] IN: 6025912Bps(5Mbps)  OUT: 939329000Bps(895Mbps)
+
+[Mon Sep 26 20:00:31 CST 2016] IN: 4176824Bps(3Mbps)  OUT: 599762176Bps(571Mbps)
+
+可见，ycsb client 的out带宽最高能达到1644Mbps的极限值，最低也有96Mbps，写入时由于写入机制的原因，所以带宽起伏比较大，在某些时候，带宽也可能成为瓶颈。
+
+
+
+5.1.3       Hbase 节点状态
+在本集群中Hbase client 一共有4个，由于负载均衡的原因，4台设备的情况差不多，所以这里只取其中一台来做简单分析。
+
+（1）      Top
+
+top - 20:00:45 up 24 days,  3:37,  8 users,  load average: 3.41, 3.91, 3.45
+
+Tasks: 400 total,   1 running, 399 sleeping,   0 stopped,   0 zombie
+
+%Cpu(s):  2.7 us,  0.3 sy,  0.0 ni, 96.6 id,  0.5 wa,  0.0 hi,  0.0 si,  0.0 st
+
+KiB Mem : 65773904 total,   399556 free, 49904428 used, 15469920 buff/cache
+
+KiB Swap:        0 total,        0 free,        0 used. 15470316 avail Mem
+
+
+
+  PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
+
+16637 hdfs       20   0    13.277g   467696    5788 S   150.0  0.7 164:58.31 java
+
+17860 ams       20   0 13.394g 798188   5852 S  50.0  1.2 458:36.00 java
+
+24800 hbase       20   0     52.121g    0.041t   5728 S  43.8  66.9 119:11.18 java
+
+ 1158 root      20   0    4372    472    376 S  18.8  0.0 264:00.04 rngd
+
+17799 ams       20   0 2585248 1.690g   5856 S  12.5  2.7   1458:47 java
+
+   51 root      20   0       0      0      0 S   6.2  0.0   1:49.17 rcuos/17
+
+  188 root      20   0       0      0      0 S   6.2  0.0  31:05.79 kswapd0
+
+26517 root      20   0       0      0      0 D   6.2  0.0   0:11.29 kworker/u48:4
+
+    1 root      20   0   43420   5072   1528 S   0.0  0.0   3:51.31 systemd
+
+    2 root      20   0       0      0      0 S   0.0  0.0   0:00.63 kthreadd
+
+    3 root      20   0       0      0      0 S   0.0  0.0   0:03.68 ksoftirqd/0
+
+    5 root       0 -20       0      0      0 S   0.0  0.0   0:00.00 kworker/0:0H
+
+    7 root      rt   0       0      0      0 S   0.0  0.0   0:03.74 migration/0
+
+    8 root      20   0       0      0      0 S   0.0  0.0   0:00.00 rcu_bh
+
+可见hbase client上hdfs和hbase的cpu和内存都处于正常范围内（与我们配置的值一致）。
+
+
+
+（2）      Iostat
+
+09/26/2016 08:00:36 PM
+
+avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+
+           5.26    0.00    4.01    5.79    0.00   84.94
+
+
+
+Device:         rrqm/s   wrqm/s     r/s     w/s    rMB/s    wMB/s avgrq-sz avgqu-sz   await r_await w_await  svctm  %util
+
+sdb              1.10     0.67   37.12   79.18     2.05    38.42   712.62    57.97  508.18   11.39  741.05   4.20  48.90
+
+sda               0.12     0.47    5.85    4.22     0.22     0.11    67.93     0.08    7.75    8.30    6.99   2.02   2.04
+
+sdc               1.00     0.58   70.77   79.35     5.43    38.67   601.68    60.85  405.38    4.69  762.73   3.42  51.30
+
+sdd               1.92     0.53   26.80   73.68     3.59    35.83   803.44    54.24  539.81    6.80  733.67   4.60  46.24
+
+sde               1.58     1.02   30.90   76.40     4.07    37.06   784.91    44.08  410.85    5.58  574.76   3.70  39.66
+
+dm-0              0.00     0.00    4.70    3.48     0.15     0.10    62.45     0.05    6.58    6.65    6.48   1.78   1.46
+
+dm-1              0.00     0.00    0.00    0.12     0.00     0.00    10.29     0.00   21.71    0.00   21.71   8.29   0.10
+
+dm-2              0.00     0.00    1.27    0.90     0.07     0.01    79.20     0.03   11.90   15.18    7.28   4.68   1.01
+
+Hdfs的datanode目录磁盘是sdb、sdc、sdd和sde，可见在这一时刻磁盘的写性能还没有完全达到瓶颈（这里是一分钟统计一次，在实际写入的过程中磁盘其实性能很多时刻已经接近瓶颈了）。
+
+
+
+（3）      带宽
+
+[Mon Sep 26 20:00:31 CST 2016] IN: 1210087048Bps(1154Mbps)  OUT: 1245843600Bps(1188Mbps)
+
+[Mon Sep 26 20:00:32 CST 2016] IN: 1122776616Bps(1070Mbps)  OUT: 1108381680Bps(1057Mbps)
+
+[Mon Sep 26 20:00:33 CST 2016] IN: 971949568Bps(926Mbps)  OUT: 843617520Bps(804Mbps)
+
+[Mon Sep 26 20:00:34 CST 2016] IN: 927039152Bps(884Mbps)  OUT: 849902544Bps(810Mbps)
+
+[Mon Sep 26 20:00:35 CST 2016] IN: 366340304Bps(349Mbps)  OUT: 381034384Bps(363Mbps)
+
+[Mon Sep 26 20:00:36 CST 2016] IN: 399862576Bps(381Mbps)  OUT: 471332992Bps(449Mbps)
+
+[Mon Sep 26 20:00:37 CST 2016] IN: 413687768Bps(394Mbps)  OUT: 391028384Bps(372Mbps)
+
+[Mon Sep 26 20:00:38 CST 2016] IN: 680225704Bps(648Mbps)  OUT: 431916984Bps(411Mbps)
+
+[Mon Sep 26 20:00:39 CST 2016] IN: 780438024Bps(744Mbps)  OUT: 438607464Bps(418Mbps)
+
+[Mon Sep 26 20:00:40 CST 2016] IN: 958073136Bps(913Mbps)  OUT: 308162872Bps(293Mbps)
+
+[Mon Sep 26 20:00:41 CST 2016] IN: 615614080Bps(587Mbps)  OUT: 163420880Bps(155Mbps)
+
+[Mon Sep 26 20:00:42 CST 2016] IN: 838286960Bps(799Mbps)  OUT: 407006984Bps(388Mbps)
+
+[Mon Sep 26 20:00:43 CST 2016] IN: 1202815176Bps(1147Mbps)  OUT: 869450448Bps(829Mbps)
+
+[Mon Sep 26 20:00:44 CST 2016] IN: 1496259744Bps(1426Mbps)  OUT: 1058140352Bps(1009Mbps)
+
+[Mon Sep 26 20:00:45 CST 2016] IN: 1737074056Bps(1656Mbps)  OUT: 1441636832Bps(1374Mbps)
+
+[Mon Sep 26 20:00:46 CST 2016] IN: 1560269944Bps(1487Mbps)  OUT: 1162835360Bps(1108Mbps)
+
+[Mon Sep 26 20:00:47 CST 2016] IN: 1112355128Bps(1060Mbps)  OUT: 1107538248Bps(1056Mbps)
+
+[Mon Sep 26 20:00:48 CST 2016] IN: 956544592Bps(912Mbps)  OUT: 757010040Bps(721Mbps)
+
+[Mon Sep 26 20:00:49 CST 2016] IN: 937077248Bps(893Mbps)  OUT: 413743160Bps(394Mbps)
+
+[Mon Sep 26 20:00:50 CST 2016] IN: 602041384Bps(574Mbps)  OUT: 66556848Bps(63Mbps)
+
+[Mon Sep 26 20:00:51 CST 2016] IN: 753859744Bps(718Mbps)  OUT: 454967144Bps(433Mbps)
+
+这一时刻Hbase client的in带宽平均在900~1000Mbps左右，out带宽在500Mbs左右，由于写入机制的原因，所以带宽表现很不稳定，所以在某些时刻，带宽也可能成为瓶颈。
+
+
+
+5.2  多节点写入
+集群一共有四个节点，ycsb client多节点写入时，这里也配置了4个节点写入，测试的结果表名，4个ycsb client的各项性能数据是几乎是一样的（具体性能数据可以查看附录中给出的测试过程记录文件）。
+
+测试结果：
+
+
+分区数
+
+value长度
+
+速度 条/秒
+
+集群节点数
+
+ycsb client节点数
+
+带宽
+
+操作数
+
+瓶颈
+
+插入insert
+
+200 regions
+
+9216bytes
+
+9100左右
+
+4
+
+4
+
+1000Mb/s 不稳定
+
+40000000
+
+ycsb client cpu、磁盘IO
+
+
+
+5.2.1       配置调优要点
+多节点写入和单节点写入配置要点除了ycsb配置文件有不同外其他均相同，这里只介绍ycsb配置文件中需要注意的点。
+
+4个ycsb client写入，每个节点写入10000000条。
+
+
+
+##ycsb配置文件
+
+# Number of Records will be loaded
+
+recordcount=40000000         #总共写入40000000条
+
+
+
+# Number of Operations will be handle in run parsh
+
+operationcount=40000000
+
+readallfields=true
+
+insertorder=hashed
+
+insertstart=0                    #第一个写入的节点从第0条开始写
+
+insertcount=10000000    #每个ycsb client只写入10000000条
+
+##ycsb配置文件
+
+
+
+5.2.2       Ycsb client状态
+由于ycsb client上只进行了对hbase集群的插入操作，它本身不涉及到硬盘相关的操作，所以未记录iostat的数据。
+
+上文说过，4个ycsb client性能数据都是一致的，所以这里只选择其中一台分析。
+
+
+
+（1）      top
+
+top - 12:00:57 up 64 days,  1:37,  8 users,  load average: 28.11, 28.21, 28.40
+
+Tasks: 386 total,   2 running, 384 sleeping,   0 stopped,   0 zombie
+
+%Cpu(s):  4.0 us,  0.2 sy,  0.0 ni, 95.7 id,  0.1 wa,  0.0 hi,  0.0 si,  0.0 st
+
+KiB Mem : 65772144 total, 33683104 free, 13066860 used, 19022180 buff/cache
+
+KiB Swap:        0 total,        0 free,        0 used. 52188600 avail Mem
+
+
+
+  PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
+
+31443  root       20   0    29.227g   0.011t   15016 S   2276  17.4   1251:05 java
+
+17433 root      20   0 1051924  36208   5000 S  17.6  0.1 439:39.24 python
+
+   39 root      20   0       0      0      0 S   5.9  0.0   6:21.77 rcuos/5
+
+32074 root      20   0  113252   1572   1264 S   5.9  0.0   0:04.43 sh
+
+    1 root      20   0   50812  12980   2064 S   0.0  0.0  12:31.21 systemd
+
+    2 root      20   0       0      0      0 S   0.0  0.0   0:00.41 kthreadd
+
+    3 root      20   0       0      0      0 S   0.0  0.0   0:03.17 ksoftirqd/0
+
+    5 root       0 -20       0      0      0 S   0.0  0.0   0:00.00 kworker/0:0H
+
+    7 root      rt   0       0      0      0 S   0.0  0.0   0:02.00 migration/0
+
+    8 root      20   0       0      0      0 S   0.0  0.0   0:00.00 rcu_bh
+
+Cpu占用几乎已达到了极限，内存占用很少，瓶颈是ycsb client上的cpu。
+
+
+
+（2）      带宽
+
+[Tue Sep 27 12:00:48 CST 2016] IN: 45232Bps(0Mbps)  OUT: 5504Bps(0Mbps)
+
+[Tue Sep 27 12:00:49 CST 2016] IN: 42608Bps(0Mbps)  OUT: 0Bps(0Mbps)
+
+[Tue Sep 27 12:00:50 CST 2016] IN: 19712Bps(0Mbps)  OUT: 2656Bps(0Mbps)
+
+[Tue Sep 27 12:00:51 CST 2016] IN: 752960Bps(0Mbps)  OUT: 101177576Bps(96Mbps)
+
+[Tue Sep 27 12:00:52 CST 2016] IN: 871192Bps(0Mbps)  OUT: 100964520Bps(96Mbps)
+
+[Tue Sep 27 12:00:54 CST 2016] IN: 749272Bps(0Mbps)  OUT: 101177000Bps(96Mbps)
+
+[Tue Sep 27 12:00:55 CST 2016] IN: 2500864Bps(2Mbps)  OUT: 404391184Bps(385Mbps)
+
+[Tue Sep 27 12:00:56 CST 2016] IN: 755264Bps(0Mbps)  OUT: 100997440Bps(96Mbps)
+
+[Tue Sep 27 12:00:57 CST 2016] IN: 1980824Bps(1Mbps)  OUT: 303891608Bps(289Mbps)
+
+[Tue Sep 27 12:00:58 CST 2016] IN: 1267472Bps(1Mbps)  OUT: 215759664Bps(205Mbps)
+
+[Tue Sep 27 12:00:59 CST 2016] IN: 2814136Bps(2Mbps)  OUT: 492450312Bps(469Mbps)
+
+[Tue Sep 27 12:01:00 CST 2016] IN: 3533136Bps(3Mbps)  OUT: 506166008Bps(482Mbps)
+
+[Tue Sep 27 12:01:01 CST 2016] IN: 2232616Bps(2Mbps)  OUT: 303978808Bps(289Mbps)
+
+[Tue Sep 27 12:01:02 CST 2016] IN: 64312Bps(0Mbps)  OUT: 528Bps(0Mbps)
+
+[Tue Sep 27 12:01:04 CST 2016] IN: 736720Bps(0Mbps)  OUT: 183792Bps(0Mbps)
+
+[Tue Sep 27 12:01:05 CST 2016] IN: 103144Bps(0Mbps)  OUT: 3504Bps(0Mbps)
+
+[Tue Sep 27 12:01:06 CST 2016] IN: 1304368Bps(1Mbps)  OUT: 190653920Bps(181Mbps)
+
+可见out的带宽占用很少，很多时候带宽为0，由于写hbase机制的原因导致写入的时候性能不够稳定，且在总的每秒能够写入的条数既定的情况下，平均分给每个ycsb client的数目就比较少了。
+
+
+
+（3）      ycsb配置
+
+# The thread count
+
+threadcount=30    #写入不能设的太大，否则容易出现写错误，导致写入数据不完整影响后续的run操作
+
+
+
+# The number of fields in a record
+
+fieldcount=1
+
+
+
+# The size of each field (in bytes)
+
+fieldlength=9216
+
+
+
+# Number of Records will be loaded
+
+recordcount=40000000
+
+
+
+# Number of Operations will be handle in run parsh
+
+operationcount=40000000
+
+readallfields=true
+
+insertorder=hashed
+
+insertstart=0
+
+insertcount=10000000    #每个ycsb client只写入10000000条
+
+
+
+# Control Porption of hbase operation type
+
+readproportion=1
+
+updateproportion=0
+
+scanproportion=0
+
+insertproportion=0
+
+
+
+# The following param always be fixed
+
+# The table name
+
+table=a
+
+
+
+# The colume family
+
+columnfamily=cf
+
+
+
+# The workload class
+
+workload=com.yahoo.ycsb.workloads.CoreWorkload
+
+
+
+# The measurement type
+
+measurementtype=raw
+
+
+
+clientbuffering=true
+
+
+
+writebuffersize=12582912
+
+
+
+requestdistribution=latest
+
+
+
+maxscanlength=30000
+
+
+
+#hbase.usepagefilter=false
+
+
+
+#scanlengthdistribution=zipfian
+
+
+
+#requestdistribution=zipfian
+
+
+
+5.2.3       Hbase 节点状态
+Hbase 集群中的4个节点由于负载均衡的缘故，每个节点性能数据也不会有太大差别，这里也只选取其中一个分析。
+
+（1）      Iostat
+
+09/27/2016 12:00:38 PM
+
+avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+
+           7.43    0.00    4.34    6.83    0.00   81.40
+
+
+
+Device:         rrqm/s   wrqm/s     r/s     w/s    rMB/s    wMB/s avgrq-sz avgqu-sz   await r_await w_await  svctm  %util
+
+sdb               1.18     0.75   50.62   86.05     6.29    41.78   720.25    96.77  687.11   15.31 1082.27   5.21  71.25
+
+sda               0.10     1.20   14.17    7.03     0.71     0.12    79.83     0.21   10.05    4.99   20.23   1.49   3.16
+
+sdc               0.72     0.85   20.57   92.98     2.66    45.39   866.68    68.79  616.00    7.34  750.63   5.23  59.40
+
+sdd               1.37     0.80   74.12   93.70     4.48    45.63   611.55    73.64  438.84   11.48  776.88   3.50  58.80
+
+sde               0.60     0.68   24.55   81.77     3.14    39.91   829.34    45.93  424.30    4.17  550.44   3.85  40.95
+
+dm-0              0.00     0.00   11.60    7.03     0.59     0.11    77.04     0.21   11.32    3.43   24.34   1.19   2.22
+
+dm-1              0.00     0.00    0.00    0.12     0.00     0.00    10.29     0.00    2.14    0.00    2.14   1.57   0.02
+
+dm-2              0.00     0.00    2.67    0.90     0.12     0.01    71.66     0.04   10.36   12.23    4.80   3.10   1.11
+
+Hdfs的datanode目录磁盘是sdb、sdc、sdd和sde，可见在这一时刻磁盘的写性能还没有完全达到瓶颈（这里是一分钟统计一次，实际上在很多时刻性能已经接近瓶颈了）。
+
+
+
+（2）      top
+
+top - 12:00:51 up 24 days, 19:37,  8 users,  load average: 4.09, 4.26, 3.97
+
+Tasks: 401 total,   1 running, 400 sleeping,   0 stopped,   0 zombie
+
+%Cpu(s):  2.7 us,  0.3 sy,  0.0 ni, 96.6 id,  0.5 wa,  0.0 hi,  0.0 si,  0.0 st
+
+KiB Mem : 65773904 total,   392076 free, 49955132 used, 15426696 buff/cache
+
+KiB Swap:        0 total,        0 free,        0 used. 15422596 avail Mem
+
+
+
+  PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
+
+16637  hdfs        20   0   13.277g   512876   5632 S  100.0  0.8  269:32.82 java
+
+24800  hbase       20   0   52.121g   0.041t    5512 S  50.0   66.9  190:32.63 java
+
+21660 root      20   0 1450572 493904   5592 S  25.0  0.8 323:19.53 splunkd
+
+  188 root      20   0       0      0      0 S  12.5  0.0  34:16.28 kswapd0
+
+17799 ams       20   0 2585248 1.720g   5668 S  12.5  2.7   1767:16 java
+
+ 9648 root      20   0       0      0      0 S   6.2  0.0   0:37.22 kworker/2:2
+
+23753 root      20   0  146272   2132   1352 R   6.2  0.0   0:00.02 top
+
+    1 root      20   0   43540   5120   1528 S   0.0  0.0   3:57.51 systemd
+
+    2 root      20   0       0      0      0 S   0.0  0.0   0:00.65 kthreadd
+
+    3 root      20   0       0      0      0 S   0.0  0.0   0:03.98 ksoftirqd/0
+
+    5 root       0  -20       0      0      0 S   0.0  0.0   0:00.00 kworker/0:0H
+
+    7 root      rt   0       0      0      0 S   0.0  0.0   0:05.65 migration/0
+
+可见，在hbase client上内存和cpu都未达到瓶颈（hbase内存与预先配置的值一致）。
+
+
+
+（3）      带宽
+
+[Tue Sep 27 12:00:42 CST 2016] IN: 1373615064Bps(1309Mbps)  OUT: 1445021992Bps(1378Mbps)
+
+[Tue Sep 27 12:00:43 CST 2016] IN: 1336094184Bps(1274Mbps)  OUT: 1695614248Bps(1617Mbps)
+
+[Tue Sep 27 12:00:44 CST 2016] IN: 1061823192Bps(1012Mbps)  OUT: 1509200960Bps(1439Mbps)
+
+[Tue Sep 27 12:00:45 CST 2016] IN: 1199476784Bps(1143Mbps)  OUT: 1262087768Bps(1203Mbps)
+
+[Tue Sep 27 12:00:46 CST 2016] IN: 1238180664Bps(1180Mbps)  OUT: 1070946320Bps(1021Mbps)
+
+[Tue Sep 27 12:00:47 CST 2016] IN: 1114114816Bps(1062Mbps)  OUT: 1082001232Bps(1031Mbps)
+
+[Tue Sep 27 12:00:48 CST 2016] IN: 925406000Bps(882Mbps)  OUT: 922874832Bps(880Mbps)
+
+[Tue Sep 27 12:00:49 CST 2016] IN: 303008648Bps(288Mbps)  OUT: 309360352Bps(295Mbps)
+
+[Tue Sep 27 12:00:50 CST 2016] IN: 115133960Bps(109Mbps)  OUT: 27696024Bps(26Mbps)
+
+[Tue Sep 27 12:00:51 CST 2016] IN: 1138637952Bps(1085Mbps)  OUT: 729543344Bps(695Mbps)
+
+[Tue Sep 27 12:00:52 CST 2016] IN: 1191545232Bps(1136Mbps)  OUT: 794576104Bps(757Mbps)
+
+[Tue Sep 27 12:00:53 CST 2016] IN: 1299891096Bps(1239Mbps)  OUT: 805488592Bps(768Mbps)
+
+[Tue Sep 27 12:00:54 CST 2016] IN: 1327530600Bps(1266Mbps)  OUT: 850532632Bps(811Mbps)
+
+[Tue Sep 27 12:00:55 CST 2016] IN: 1373236368Bps(1309Mbps)  OUT: 258604392Bps(246Mbps)
+
+[Tue Sep 27 12:00:56 CST 2016] IN: 494876368Bps(471Mbps)  OUT: 135714176Bps(129Mbps)
+
+[Tue Sep 27 12:00:57 CST 2016] IN: 812250304Bps(774Mbps)  OUT: 275401936Bps(262Mbps)
+
+[Tue Sep 27 12:00:58 CST 2016] IN: 1162702224Bps(1108Mbps)  OUT: 1108739560Bps(1057Mbps)
+
+[Tue Sep 27 12:00:59 CST 2016] IN: 1000194016Bps(953Mbps)  OUT: 1340316848Bps(1278Mbps)
+
+[Tue Sep 27 12:01:00 CST 2016] IN: 1276394448Bps(1217Mbps)  OUT: 1627286296Bps(1551Mbps)
+
+进出IN和OUT带宽都在1000Mbps左右，未达到瓶颈。
+
+
+
+6        测试调优总结
+本文的题目是测试与调优，其实主要是测试的结果和分析，由于本人一开始对hbase的框架原理等知识的理解和研究不够，所以调优的过程持续了太长时间，而且调优过程中的很多细节也没有记录的必要。
+
+本文中的大部分配置其实是调优之后得到的结果。Hbase的读写本身就是一个动态的均衡的追求综合性能的过程，所以很多时候需要根据具体的使用场景来设置对应的参数，所以测试调优的目的在于理解和掌握hbase相关知识和配置并在实际使用中得到较好的性能。
+
+本文得到的结果是在调优之后取得的尽可能的最大值，由于当前水平有限，应该在性能上还有一些提升的空间，但综合来看，目前的性能数据也算是较为客观的反映了我们当前使用的hadoop集群中hbase的性能了。
+
+
+
+
+分区数
+
+value长度
+
+速度 条/秒
+
+集群节点数
+
+ycsb client节点数
+
+带宽
+
+操作数
+
+瓶颈
+
+插入insert
+
+200 regions
+
+9216bytes
+
+11000左右
+
+4
+
+1
+
+1200Mb/s 不稳定
+
+5000000
+
+ycsb client cpu、磁盘IO
+
+插入insert
+
+200 regions
+
+9216bytes
+
+9000左右
+
+4
+
+1
+
+1000Mb/s 不稳定
+
+40000000
+
+ycsb client cpu、磁盘IO
+
+插入insert
+
+200 regions
+
+9216bytes
+
+9100左右
+
+4
+
+4
+
+1000Mb/s 不稳定
+
+40000000
+
+磁盘IO、ycsb client cpu
+
+扫描scan
+
+200 regions
+
+9216bytes
+
+85000~90000左右
+
+4
+
+4
+
+1500~1600Mb/s
+
+200000
+
+带宽、ycsb clinet 内存
+
+扫描scan
+
+200 regions
+
+9216bytes
+
+20000左右
+
+4
+
+1
+
+1850Mb/s
+
+200000
+
+带宽
+
+读取read
+
+200 regions
+
+9216bytes
+
+45000~50000左右
+
+4
+
+4
+
+1100~1200Mb/s
+
+20000000
+
+ycsb clinet 内存
+
+读取read
+
+200 regions
+
+9216bytes
+
+20000左右
+
+4
+
+1
+
+1850Mb/s
+
+20000000
+
+带宽
+
+       到目前为止，调优的重点集中在ycsb工具的研究与使用和hbase、hdfs大部分配置项的设置。因为某些原因还有一些内容没有去做太大的调整和研究，例如jvm GC调优和wal机制的研究，由于自己暂时水平还没达到，所以一些很深入很细致的内容还处于研究之中，这篇文章也只是初稿，接下来会深入研究代码并结合实际环境和网络资料来提升自身对hbase的理解和研究水平，回过头来再继续更新这篇文档。
+
+===========

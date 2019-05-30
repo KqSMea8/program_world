@@ -1,0 +1,35 @@
+mysqlslap
+
+MySQL Benchmark Suite （sql-bench）
+
+Super Smack
+
+Database Test Suite
+
+Percona's TPCC-MySQL Tool
+
+sysbench
+
+有一些有用的工具可以测试MySQL 和基于MySQL 的系统的性能。这里将演示如何利用这些工具进行测试。
+
+mysqlslap
+　　mysqlslap可以模拟服务器的负载，并输出计时信息。它包含在MySQL 5.1 的发行包中，应该在MySQL 4.1或者更新的版本中都可以使用。测试时可以执行并发连接数，并指定SQL 语句（可以在命令行上执行，也可以把SQL 语句写入到参数文件中）。如果没有指定SQL 语句，mysqlslap 会自动生成查询schema 的SELECT 语句。
+
+MySQL Benchmark Suite （sql-bench）
+　　在MySQL 的发行包中也提供了一款自己的基准测试套件，可以用于在不同数据库服务器上进行比较测试。它是单线程的，主要用于测试服务器执行查询的速度。结果会显示哪种类型的操作在服务器上执行得更快。
+
+　　这个测试套件的主要好处是包含了大量预定义的测试，容易使用，所以可以很轻松地用于比较不同存储引擎或者不同配置的性能测试。其也可以用于高层次测试，比较两个服务器的总体性能。当然也可以只执行预定义测试的子集（例如只测试UPDATE 的性能）。这些测试大部分是CPU 密集型的，但也有些短时间的测试需要大量的磁盘I/O 操作。
+
+　　这个套件的最大缺点主要有：它是单用户模式的，测试的数据集很小且用户无法使用指定的数据，并且同一个测试多次运行的结果可能会相差很大。因为是单线程且串行执行的，所以无法测试多CPU 的能力，只能用于比较单CPU 服务器的性能差别。使用这个套件测试数据库服务器还需要Perl 和BDB 的支持，相关文档请参考.
+
+Super Smack
+　　Super Smack是一款用于MySQL 和PostgreSQL的基准测试工具，可以提供压力测试和负载生成。这是一个复杂而强大的工具，可以模拟多用户访问，可以加载测试数据到数据库，并支持使用随机数据填充测试表。测试定义在"smack"文件中，smack 文件使用一种简单的语法定义测试的客户端、表、查询等测试要素。
+
+Database Test Suite
+　　Database Test Suite 是由开源软件开发实验室（OSDL,Open Source DevelopmentLabs）设计的，发布在SourceForge 网站上，这是一款类似某些工业标准测试的测试工具集，例如由事务处理性能委员会（TPC,Transaction Processing Performance Council）制定的各种标准。特别值得一提的是，其中的dbt2 就是一款免费的TPC-C OLTP 测试工具（未认证）。之前本书作者经常使用该工具，不过现在已经使用自己研发的专用于MySQL 的测试工具替代了。
+
+Percona's TPCC-MySQL Tool
+　　我们开发了一个类似TPC-C 的基准测试工具集，其中有部分是专门为MySQL 测试开发的。在评估大压力下MySQL 的一些行为时，我们经常会利用这个工具进行测试（简单的测试，一般会采用sysbench 替代），在源码库中有一个简单的文档说明。
+
+sysbench
+　　sysbench是一款多线程系统压测工具。它可以根据影响数据库服务器性能的各种因素来评估系统的性能。例如，可以用来测试文件I/O、操作系统调度器、内存分配和传输速度、POSIX 线程，以及数据库服务器等。sysbench 支持Lua 脚本语言，Lua 对于各种测试场景的设置可以非常灵活。sysbench 是我们非常喜欢的一种全能测试工具，支持MySQL、操作系统和硬件的硬件测试。（节选自《高性能MySQL》）

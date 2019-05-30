@@ -1905,6 +1905,1222 @@ C概率分布409
   </dependencies>
 </project>
 
+============
+
+
+ 个银传统分红产品保单信息下载
+
+个险年金产品保单信息下载
+ 常量
+  --个银传统红利交清增额保单
+    const_ind_pol_pua pol_ben_ind.input_index%TYPE := 'PUA';
+    --万能追加保险费信息
+    const_uv_pol_basic pol_ben_ind.input_index%TYPE := 'BASIC';
+    --万能基本保单信息
+    const_uv_pol_top pol_ben_ind.input_index%TYPE := 'TOP';
+
+    --机构库常量
+    const_lbs_brch_gz VARCHAR2(2) := 'GZ';
+
+    --处理过程常量
+    const_proc_pol_2005 pol_ben_log.process_code%TYPE := 'pol_ben_main-01-2005';
+    const_proc_pol_773  pol_ben_log.process_code%TYPE := 'pol_ben_main-02-773';
+    const_proc_pol_783  pol_ben_log.process_code%TYPE := 'pol_ben_main-03-783';
+    const_proc_pol_905  pol_ben_log.process_code%TYPE := 'pol_ben_main-04-905';
+    const_proc_pol_921  pol_ben_log.process_code%TYPE := 'pol_ben_main-05-921';
+    const_proc_pol_834  pol_ben_log.process_code%TYPE := 'pol_ben_main-06-834';
+    const_proc_pol_916  pol_ben_log.process_code%TYPE := 'pol_ben_main-07-916';
+    const_proc_pol_920  pol_ben_log.process_code%TYPE := 'pol_ben_main-08-920';
+    const_proc_pol_940  pol_ben_log.process_code%TYPE := 'pol_ben_main-09-940';
+    const_proc_pol_990  pol_ben_log.process_code%TYPE := 'pol_ben_main-10-990';
+    const_proc_pol_991  pol_ben_log.process_code%TYPE := 'pol_ben_main-11-991';
+    const_proc_pol_996  pol_ben_log.process_code%TYPE := 'pol_ben_main-12-996';
+    const_proc_pol_1101 pol_ben_log.process_code%TYPE := 'pol_ben_main-13-1101';
+    const_proc_pol_hw   pol_ben_log.process_code%TYPE := 'pol_ben_main-14-760-76701W';
+    const_proc_pol_hi   pol_ben_log.process_code%TYPE := 'pol_ben_main-15-760-76701';
+    const_proc_pol_all  pol_ben_log.process_code%TYPE := 'pol_ben_main-16-main_comm';
+    const_proc_pol_1142 pol_ben_log.process_code%TYPE := 'pol_ben_main-17-1142';
+    const_proc_pol_791  pol_ben_log.process_code%TYPE := 'pol_ben_main-18-791';
+    const_proc_pol_3052 pol_ben_log.process_code%TYPE := 'pol_ben_main-19-3052';
+    const_proc_pol_1253 pol_ben_log.process_code%TYPE := 'pol_ben_main-20-1253';
+    const_proc_pol_651  pol_ben_log.process_code%TYPE  := 'pol_ben_main-21-651';
+
+    const_proc_pol_main      pol_ben_log.process_code%TYPE := 'pol_ben_main';
+    const_proc_pol_goat      pol_ben_log.process_code%TYPE := 'goat';
+    const_proc_pol_pua       pol_ben_log.process_code%TYPE := 'pua';
+    const_proc_pol_lbs       pol_ben_log.process_code%TYPE := 'tra';
+    const_proc_pol_ulink     pol_ben_log.process_code%TYPE := 'ulink';
+    const_proc_pol_universal pol_ben_log.process_code%TYPE := 'universal';
+    const_proc_pol_top       pol_ben_log.process_code%TYPE := 'top';
+    const_proc_pol_885_878   pol_ben_log.process_code%TYPE := '885_878';
+    const_proc_pol_guar      pol_ben_log.process_code%TYPE := 'guar';
+    const_proc_pol_irr       pol_ben_log.process_code%TYPE := 'irr';
+    const_proc_pol_ann       pol_ben_log.process_code%TYPE := 'ann';
+    const_proc_pol_short     pol_ben_log.process_code%TYPE := 'short';
+
+    const_proc_univ_get_pol_val           pol_ben_log.process_code%TYPE := 'universal-01-univ_get_polval';
+    const_proc_univ_get_chg_pol_va        pol_ben_log.process_code%TYPE := 'universal-02-univ_get_chg_polval';
+    const_proc_univ_calc_pol_val          pol_ben_log.process_code%TYPE := 'universal-03-univ_calc_last_polval';
+    const_proc_univ_get_curr_act          pol_ben_log.process_code%TYPE := 'universal-04-univ_get_curr_act';
+    const_proc_univ_acct_rider            pol_ben_log.process_code%TYPE := 'universal-05-univ_acct_rider';
+    const_proc_univ_pol_892               pol_ben_log.process_code%TYPE := 'universal-06-univ_pol_892';
+    const_proc_univ_pol_2007              pol_ben_log.process_code%TYPE := 'universal-07-univ_pol_2007';
+    const_proc_univ_pol_844               pol_ben_log.process_code%TYPE := 'universal-08-univ_pol_844';
+
+    const_proc_pol_actuary_synch         pol_ben_log.process_code%TYPE := 'auto_update_pol_ben_actuary';
+
+    --处理过程名
+    const_pname_pol_2005 pol_ben_log.process_name%TYPE := '个银传统分红2005等产品保单信息生成';
+    const_pname_pol_1142 pol_ben_log.process_name%TYPE := '个银传统分红1142等产品保单信息生成';
+    const_pname_pol_783  pol_ben_log.process_name%TYPE := '个银传统分红783等产品保单信息生成';
+    const_pname_pol_905  pol_ben_log.process_name%TYPE := '个银传统分红905等产品保单信息生成';
+    const_pname_pol_921  pol_ben_log.process_name%TYPE := '个银传统分红921等产品保单信息生成';
+    const_pname_pol_all  pol_ben_log.process_name%TYPE := '个银传统分红主要产品保单信息生成';
+    const_pname_pol_834  pol_ben_log.process_name%TYPE := '个银传统分红834等产品保单信息生成';
+    const_pname_pol_916  pol_ben_log.process_name%TYPE := '个银传统分红916等产品保单信息生成';
+    const_pname_pol_920  pol_ben_log.process_name%TYPE := '个银传统分红920等产品保单信息生成';
+    const_pname_pol_940  pol_ben_log.process_name%TYPE := '个银传统分红940等产品保单信息生成';
+    const_pname_pol_990  pol_ben_log.process_name%TYPE := '个银传统分红990等产品保单信息生成';
+    const_pname_pol_991  pol_ben_log.process_name%TYPE := '个银传统分红991等产品保单信息生成';
+    const_pname_pol_996  pol_ben_log.process_name%TYPE := '个银传统分红996等产品保单信息生成';
+    const_pname_pol_1101 pol_ben_log.process_name%TYPE := '个银传统分红1101等产品保单信息生成';
+    const_pname_pol_773  pol_ben_log.process_name%TYPE := '个银传统分红773等产品保单信息生成';
+    const_pname_pol_hi   pol_ben_log.process_name%TYPE := '个银传统分红760-76701等产品普通状态保单信息生成';
+    const_pname_pol_hw   pol_ben_log.process_name%TYPE := '个银传统分红760-76701等产品W状态保单信息生成';
+    const_pname_pol_791  pol_ben_log.process_name%TYPE := '个银传统分红791等产品W状态保单信息生成';
+    const_pname_pol_3052 pol_ben_log.process_name%TYPE := '个银传统分红3052等产品保单信息生成';
+    const_pname_pol_1253 pol_ben_log.process_name%TYPE := '个银传统分红1253等产品保单信息生成';
+    const_pname_pol_651  pol_ben_log.process_name%TYPE := '个银传统分红651等产品保单信息生成';
+
+    const_pname_pol_main      pol_ben_log.process_name%TYPE := '个银传统分红产品保单信息生成';
+    const_pname_pol_goat      pol_ben_log.process_name%TYPE := '"山羊计划"保单信息生成';
+    const_pname_pol_pua       pol_ben_log.process_name%TYPE := '个银传统分红红利交清增额保单信息生成';
+    const_pname_pol_lbs       pol_ben_log.process_name%TYPE := 'GBS转LBS保单信息生成';
+    const_pname_pol_ulink     pol_ben_log.process_name%TYPE := '投连保单信息生成（不含885和878）';
+    const_pname_pol_universal pol_ben_log.process_name%TYPE := '万能保单信息生成';
+    const_pname_pol_top       pol_ben_log.process_name%TYPE := '万能追加保险费信息生成';
+    const_pname_pol_885_878   pol_ben_log.process_name%TYPE := '885和878保单信息生成';
+    const_pname_pol_guar      pol_ben_log.process_name%TYPE := '保证续保保单信息生成';
+    const_pname_pol_irr       pol_ben_log.process_name%TYPE := '投资合同应收净保费信息生成';
+    const_pname_pol_ann       pol_ben_log.process_name%TYPE := '个险年金产品保单信息生成';
+    const_pname_pol_short     pol_ben_log.process_name%TYPE := '短险保单信息生成';
+
+    const_pname_univ_get_pol_val           pol_ben_log.process_name%TYPE := '抓取万能保单账户价值';
+    const_pnam_univ_get_chg_pol_va         pol_ben_log.process_name%TYPE := '抓取万能保单变更的账户价值';
+    const_pname_univ_calc_pol_val          pol_ben_log.process_name%TYPE := '计算万能保单最终的账户价值';
+    const_pname_univ_get_curr_act          pol_ben_log.process_name%TYPE := '抓取万能保单信息';
+    const_pname_univ_acct_rider            pol_ben_log.process_name%TYPE := '万能主险保单信息下载';
+    const_pname_univ_pol_892               pol_ben_log.process_name%TYPE := '汇总万能初始账户价值并将附加重疾险的信息合并到主险保单信息中';
+    const_pname_univ_pol_2007              pol_ben_log.process_name%TYPE := '万能2007险种保单信息下载';
+    const_pname_univ_pol_844               pol_ben_log.process_name%TYPE := '万能844险种保单信息下载';
+
+    const_pname_pol_actuary_synch        pol_ben_log.process_name%TYPE := 'pol_ben_actuary自动更新';
+
+    --险种配置-文件夹
+    const_folder_goat pol_ben_plan_cfg.folder_in%TYPE := 'GOAT';
+    const_folder_main pol_ben_plan_cfg.folder_in%TYPE := 'POL_BEN_MAIN';
+    --const_folder_pua       pol_ben_plan_cfg.folder_in%TYPE := 'PUA';
+    const_folder_lbs       pol_ben_plan_cfg.folder_in%TYPE := 'TRA';
+    const_folder_ulink     pol_ben_plan_cfg.folder_in%TYPE := 'ULINK';
+    const_folder_universal pol_ben_plan_cfg.folder_in%TYPE := 'UNIVERSAL';
+    const_folder_top       pol_ben_plan_cfg.folder_in%TYPE := 'TOP';
+    const_folder_885_878   pol_ben_plan_cfg.folder_in%TYPE := '885_878';
+    const_folder_guar      pol_ben_plan_cfg.folder_in%TYPE := 'GUAR';
+    const_folder_irr       pol_ben_plan_cfg.folder_in%TYPE := 'IRR';
+    const_folder_ann       pol_ben_plan_cfg.folder_in%TYPE := 'ANN';
+    const_folder_short     pol_ben_plan_cfg.folder_in%TYPE := 'SHORT';
+    const_folder_651       pol_ben_plan_cfg.folder_in%TYPE := '651';
+
+    --险种配置-文件
+    const_file_goat1       pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN_GOAT1';
+    const_file_goat2       pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN_GOAT2';
+    const_file_main_773    pol_ben_plan_cfg.file_in%TYPE := 'EXEC773';
+    const_file_main_783    pol_ben_plan_cfg.file_in%TYPE := 'EXEC783';
+    const_file_main_905    pol_ben_plan_cfg.file_in%TYPE := 'EXEC905';
+    const_file_main_921    pol_ben_plan_cfg.file_in%TYPE := 'EXEC921';
+    const_file_main_polben pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN';
+    const_file_main_834    pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN_834';
+    const_file_main_916    pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN_916';
+    const_file_main_920    pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN_920';
+    const_file_main_940    pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN_940';
+    const_file_main_990    pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN_990';
+    const_file_main_991    pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN_991';
+    const_file_main_996    pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN_996';
+    const_file_main_1101   pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN_1101';
+    const_file_main_2005   pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN_2005';
+    const_file_main_1142   pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN_1142';
+    const_file_main_hi     pol_ben_plan_cfg.file_in%TYPE := 'POL_H_I';
+    const_file_main_hw     pol_ben_plan_cfg.file_in%TYPE := 'POL_H_W';
+    const_file_main_791    pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN_791';
+    const_file_main_3052   pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN_3052';
+    const_file_main_1253   pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN_1253';
+    const_file_main_651    pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN_651';
+
+    --const_file_pua         pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN_PUA';
+    const_file_lbs       pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN_TRA(LBS)';
+    const_file_ulink     pol_ben_plan_cfg.file_in%TYPE := 'POL_ULINK';
+    const_file_univ_892  pol_ben_plan_cfg.file_in%TYPE := 'EXEC892';
+    const_file_univ_2007 pol_ben_plan_cfg.file_in%TYPE := 'EXEC2007';
+    const_file_univ_844  pol_ben_plan_cfg.file_in%TYPE := 'EXEC844';
+    const_file_top       pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN_TOP';
+    const_file_885_878   pol_ben_plan_cfg.file_in%TYPE := 'POL_885_878';
+    const_file_guar      pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN_SHORT';
+    const_file_irr       pol_ben_plan_cfg.file_in%TYPE := 'POL_IRR';
+    const_file_ann       pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN_ANN';
+    const_file_short     pol_ben_plan_cfg.file_in%TYPE := 'POL_BEN_SHORT';
+    --异常处理常量
+    const_log_type_warn  lar_pala_trace_log.log_type%TYPE :='warn';
+    const_log_type_error  lar_pala_trace_log.log_type%TYPE :='error';
+    const_log_type_audit  lar_pala_trace_log.log_type%TYPE :='audit';
+ 变量
+  cur_pol_ann
+  r_pol_ann
+  v_proc_date DATE;
+      v_sno_arr               lar_pol_comm_pkg.type_sno_arr;
+      v_sno_switch            varchar2(50);
+      v_sno                   varchar2(3);
+      v_channel_mode          varchar2(6);
+ 逻辑
+  IF to_char(p_end_date, 'dd') >= '20' THEN
+      lar_pol_comm_pkg.proc_ann_curr_data(v_proc_date, const_lbs_brch_gz);
+   v_sno_switch := lar_pol_comm_pkg.switch_interface('AIO_MP_SNO_NEED_SWITCH');
+   if v_sno_switch = 'Y' then
+   OPEN cur_pol_ann(p_end_date);
+   if v_sno_switch = 'Y' then
+    INSERT INTO pol_ben_ann
+  更新日志
+  插入错误异常日志（记录开始时间）
+山羊计划保单下载
+ 变量
+  cur_goat_common
+  cur_goat_si
+   TYPE t_goat_common IS TABLE OF cur_goat_common%ROWTYPE INDEX BY PLS_INTEGER;
+      arr_goat_common t_goat_common;
+      TYPE t_goat_si IS TABLE OF cur_goat_si%ROWTYPE INDEX BY PLS_INTEGER;
+      arr_goat_si t_goat_si;
+    v_proc_date DATE;
+      v_sno_arr               lar_pol_comm_pkg.type_sno_arr;
+      v_sno_switch            varchar2(50);
+      v_sno                   varchar2(3);
+ 逻辑
+  IF to_char(p_end_date, 'dd') >= '20' THEN
+   lar_pol_comm_pkg.proc_goat_curr_data(v_proc_date, const_lbs_brch_bj);
+     v_sno_switch := lar_pol_comm_pkg.switch_interface('AIO_MP_SNO_NEED_SWITCH');
+    if v_sno_switch = 'Y' then
+   OPEN cur_goat_common;
+  OPEN cur_goat_si;
+  更新日志
+  插入错误异常日志（记录开始时间）
+个险年金产品保单信息下载
+ 变量
+  cur_pol_ann
+   r_pol_ann cur_pol_ann%ROWTYPE;
+   v_proc_date DATE;
+      v_sno_arr               lar_pol_comm_pkg.type_sno_arr;
+      v_sno_switch            varchar2(50);
+      v_sno                   varchar2(3);
+      v_channel_mode          varchar2(6);
+ 逻辑
+   IF to_char(p_end_date, 'dd') >= '20'
+  删除当月产生的旧的基本保单数据，以支持重复执行
+  开关打开，则从接口获取sno
+   if v_sno_switch = 'Y' then
+  OPEN cur_pol_ann(p_end_date);
+   Loop
+    if v_sno_switch = 'Y' then
+   INSERT INTO pol_ben_ann
+   lar_comm_logger_pkg.proc_update_pol_ben_log
+     lar_comm_logger_pkg.proc_insert_pala_trace_log
+投资合同应收净保费信息下载
+ 变量
+  数据量
+    r_pol_irr cur_pol_irr%ROWTYPE;
+      --v_suc_flag    VARCHAR2(10);
+      --v_err_message VARCHAR2(1000);
+      v_proc_date DATE;
+      v_sno_arr               lar_pol_comm_pkg.type_sno_arr;
+      v_sno_switch            varchar2(50);
+      v_sno                   varchar2(3);
+      v_channel_mode          varchar2(6);
+ 逻辑
+    v_proc_date := trunc(p_end_date, 'mm') - 1;
+  清除日志
+      lar_comm_logger_pkg.proc_insert_pol_ben_log
+     lar_pol_comm_pkg.proc_irr_history_data(v_proc_date, const_lbs_brch_bj);
+  lar_pol_comm_pkg.proc_irr_curr_data(v_proc_date, const_lbs_brch_bj);
+   v_sno_switch := lar_pol_comm_pkg.switch_interface('AIO_MP_SNO_NEED_SWITCH');
+   OPEN cur_pol_irr(p_end_date);
+   lar_comm_logger_pkg.proc_update_pol_ben_log
+  lar_comm_logger_pkg.proc_insert_pala_trace_log(v_proc_date,
+GBS转LBS保单信息下载
+ 变量
+   CURSOR cur_pol_gbs IS
+    TYPE t_pol_gbs IS TABLE OF cur_pol_gbs%ROWTYPE INDEX BY PLS_INTEGER;
+      arr_pol_gbs t_pol_gbs;
+    v_proc_date DATE;
+      v_sno_arr               lar_pol_comm_pkg.type_sno_arr;
+      v_sno_switch            varchar2(50);
+      v_sno                   varchar2(3);
+ 逻辑
+   IF to_char(p_end_date, 'dd') >= '20' THEN
+   清除日志
+   插入日志
+   ELSE
+    v_proc_date := trunc(p_end_date, 'mm') - 1;
+   清除日志
+    lar_comm_logger_pkg.proc_delete_pol_ben_log(v_proc_date, const_proc_pol_lbs, const_lbs_brch_bj);
+   插入日志（记录开始时间）
+     lar_pol_comm_pkg.proc_gbs_history_data(v_proc_date, const_lbs_brch_bj);
+    lar_pol_comm_pkg.proc_gbs_curr_data(v_proc_date, const_lbs_brch_bj);
+     v_sno_switch := lar_pol_comm_pkg.switch_interface('AIO_MP_SNO_NEED_SWITCH');
+  OPEN cur_pol_gbs;
+    LOOP
+   lar_comm_logger_pkg.proc_update_pol_ben_log(v_proc_date,
+  插入错误异常日志（记录开始时间）
+  个银传统分红红利交清增额保单信息下载
+ 变量
+   CURSOR cur_pol_pua(c_end_date IN DATE) IS
+    TYPE t_pol_pua IS TABLE OF cur_pol_pua%ROWTYPE INDEX BY PLS_INTEGER;
+    arr_pol_pua t_pol_pua;
+      v_proc_date DATE;
+   v_sno_arr               lar_pol_comm_pkg.type_sno_arr;
+      v_sno_switch            varchar2(50);
+      v_sno                   varchar2(3);
+ 逻辑
+   v_proc_date := trunc(p_end_date, 'mm') - 1;
+   lar_comm_logger_pkg.proc_delete_pol_ben_log(v_proc_date, const_proc_pol_pua, const_lbs_brch_bj);
+  插入日志（记录开始时间）
+  --历史数据处理
+   --删除当月产生的旧的基本保单数据，以支持重复执行
+  开关打开，则从接口获取sno
+      OPEN cur_pol_pua(p_end_date);
+    lar_comm_logger_pkg.proc_update_pol_ben_log
+     lar_comm_logger_pkg.proc_insert_pala_trace_log(v_proc_date
+投连保单信息下载（不含885和878）
+ 变量
+   CURSOR cur_pol_ul IS
+   CURSOR cur_ulink_unit_detail(c_proc_date IN DATE) IS
+   TYPE t_pol_ul IS TABLE OF cur_pol_ul%ROWTYPE INDEX BY PLS_INTEGER;
+   arr_pol_ul t_pol_ul;
+    v_proc_date DATE;
+      v_count     PLS_INTEGER;
+      v_sno_arr               lar_pol_comm_pkg.type_sno_arr;
+      v_sno_switch            varchar2(50);
+      v_sno                   varchar2(3);
+ 逻辑
+    v_proc_date := trunc(p_end_date, 'mm') - 1;
+   OPEN cur_ulink_unit_detail(v_proc_date);
+     lar_comm_logger_pkg.proc_delete_pol_ben_log(v_proc_date,
+   lar_comm_logger_pkg.proc_insert_pol_ben_log(v_proc_date,
+  投连机构库作业是否完成的判断，实质是判断lar_ulink_unit_detail_bj存在当月数据。
+    IF v_count > 0 THEN
+    历史数据清理
+      lar_pol_comm_pkg.proc_ulink_history_data(v_proc_date, const_lbs_brch_bj);
+    删除当月产生的旧的基本保单数据，以支持重复执行
+        lar_pol_comm_pkg.proc_ulink_curr_data(v_proc_date, const_lbs_brch_bj);
+   LOOP
+          DELETE FROM univ_ulink_rider_bj where rownum < 10001;
+     DELETE FROM ulink_received_prem WHERE lbs_brch = const_lbs_brch_bj;
+        DELETE FROM ulink_cooloff_prem WHERE lbs_brch = const_lbs_brch_bj;
+      proc_univ_ulink_rider;
+        proc_ulink_received_prem(p_end_date);
+        proc_ulink_cooling_off_prem(p_end_date);
+  OPEN cur_pol_ul;
+     lar_comm_logger_pkg.proc_update_pol_ben_log(v_proc_date,
+  插入错误异常日志（记录开始时间）
+投连885和878保单信息下载
+ 变量
+  CURSOR cur_pol_ul IS
+    CURSOR cur_ulife_pol_down(c_proc_date IN DATE) IS
+  TYPE t_pol_ul IS TABLE OF cur_pol_ul%ROWTYPE INDEX BY PLS_INTEGER;
+     arr_pol_ul t_pol_ul;
+    v_proc_date DATE;
+      v_count     PLS_INTEGER;
+      v_sno_arr               lar_pol_comm_pkg.type_sno_arr;
+      v_sno_switch            varchar2(50);
+      v_sno                   varchar2(3);
+ proc
+    v_proc_date := trunc(p_end_date, 'mm') - 1;
+    OPEN cur_ulife_pol_down(v_proc_date);
+  lar_comm_logger_pkg.proc_delete_pol_ben_log(v_proc_date, const_proc_pol_885_878, const_lbs_brch_bj);
+  lar_comm_logger_pkg.proc_insert_pol_ben_log(v_proc_date,
+   IF v_count > 0 THEN
+   历史数据清理
+   删除当月产生的旧的基本保单数据，以支持重复执行
+   -开关打开，则从接口获取sno
+      OPEN cur_pol_ul;
+    lar_comm_logger_pkg.proc_update_pol_ben_log(v_proc_date,
+  else
+     lar_comm_logger_pkg.proc_insert_pala_trace_log(v_proc_date,
+万能追加保险费信息下载
+ 变量
+  CURSOR cur_pol_top(c_end_date IN DATE, c_proc_date IN DATE) IS
+   r_pol_top cur_pol_top%ROWTYPE;
+   v_proc_date DATE;
+      v_sno_arr               lar_pol_comm_pkg.type_sno_arr;
+      v_sno_switch            varchar2(50);
+      v_sno                   varchar2(3);
+      v_channel_mode          varchar2(6);
+ proc
+    v_proc_date := trunc(p_end_date, 'mm') - 1;
+  lar_comm_logger_pkg.proc_delete_pol_ben_log(v_proc_date, const_proc_pol_top, const_lbs_brch_bj);
+    lar_comm_logger_pkg.proc_insert_pol_ben_log(v_proc_date,
+    lar_pol_comm_pkg.proc_top_history_data(v_proc_date, const_lbs_brch_bj);
+   lar_pol_comm_pkg.proc_top_curr_data(v_proc_date, const_lbs_brch_bj);
+   v_sno_switch := lar_pol_comm_pkg.switch_interface('AIO_MP_SNO_NEED_SWITCH');
+   OPEN cur_pol_top(p_end_date, v_proc_date);
+  更新日志
+   lar_comm_logger_pkg.proc_insert_pala_trace_log
+
+
+    dcs_ann
+ --添加0110任务
+年金产品自动DCS数据清洗(SNO)(spcode_selection:1)
+年金产品自动DCS数据清洗(DNO)(spcode_selection:2)
+年金产品自动DCS数据清洗(KAOHE)(spcode_selection:4)
+  任务从proc_batch_execute入口根据
+任务编码进入，分为并发和
+非并发（XX10和XX20）,按照保单位数
+进行拆分并发
+   经过一系列的清洗过程
+lar_dcs_ann_pkg
+    清洗结果表：lar_dcs_result_ann
+    无效单记录表：lar_dcs_invalid_log
+dcs_goat
+ --添加0210任务
+山羊goat自动dcs数据清洗
+dcs_651
+ --添加0310任务
+651产品自动DCS数据清洗(NORMAL)(spcode_selection:1)
+651产品自动DCS数据清洗(KAOHE)(spcode_selection:4)
+dcs_pol_ben_main
+ --添加0410任务
+个银传统分红(spcode_selection:1,2)
+个银传统分红kaohe(spcode_selection:4)
+dcs_tra
+ --添加0510任务
+年金产品自动DCS数据清洗(SNO)(spcode_selection:1)
+年金产品自动DCS数据清洗(DNO)(spcode_selection:2)
+年金产品自动DCS数据清洗(HIGHRATE)(spcode_selection:3)
+年金产品自动DCS数据清洗(KAOHE)(spcode_selection:4)
+dcs_pua
+ --添加0610任务
+个银传统分红红利交清增额保单DCS数据清洗
+dcs_ulink
+ --添加0710任务
+投连产品保单DCS(spcode_selection:1)
+投连产品保单DCS(ster)(spcode_selection:2)
+dcs_top888
+ --添加0740任务
+投连888TOP自动dcs数据清洗
+dcs_top
+ --添加0810任务
+万能追加保费TOP自动dcs数据清洗
+dcs_short
+ --添加0910任务
+短险short自动dcs数据清洗(spcode_selection:1)
+短险short自动dcs数据清洗kaohe(spcode_selection:2)
+dcs_universal
+ --添加1010任务
+万能保单PMI自动DCS数据清洗(SNO)(spcode_selection:1)
+万能保单PMI自动DCS数据清洗(DNO)(spcode_selection:2)
+万能保单PMI自动DCS数据清洗(KAOHE)(spcode_selection:4)
+dcs_guar
+ --添加1110任务
+保证续保自动DCS数据清洗(SNO)(spcode_selection:1)
+保证续保PM自动DCS数据清洗(DNO)(spcode_selection:2)
+保证续保PMI自动DCS数据清洗(KAOHE)(spcode_selection:4)
+dcs_wb
+ --添加1310任务
+外币自动DCS数据清洗(SNO)(spcode_selection:1)
+外币自动DCS数据清洗(DNO)(spcode_selection:2)
+外币自动DCS数据清洗(KAOHE)(spcode_selection:4)
+外币自动DCS数据清洗(NB)(spcode_selection:3)
+外币自动DCS数据清洗(NBIF)(spcode_selection:5)
+dcs_movement_ul
+ --添加2110任务
+投连ulink移动分析MP
+dcs_movement_uv
+ --添加2210任务
+投连ulink移动分析MP
+dcs_movement_wb
+ --添加2310任务
+外币wb移动分析MP
+dcs_movement_ind
+ --添加2410任务
+传统分红移动分析MP
+dcs_movement_guar
+ --添加2510任务
+保证续保移动分析
+dcs_movement_ann
+ --添加2610任务
+ANN移动分析
+dcs_movement_651
+ --添加2710任务
+651移动分析
+dcs_movement_tra
+ --添加2810任务
+TRA移动分析
+
+AIO-GROUPING
+ lar_grouping_ann_pkg
+  常量
+     const_grouping_proc_code         CONSTANT   lar_grouping_config.proc_code%TYPE := '0130';
+     const_log_type_error             CONSTANT   lar_pala_trace_log.log_type%TYPE := 'error';
+     c_proc_calc_main                 CONSTANT   pol_ben_log.process_code%TYPE := 'Ann-Grouping-Calc-00-Main';
+     c_proc_calc_pmi_6510_simple      CONSTANT   pol_ben_log.process_code%TYPE := 'Ann-Grouping-Calc-01-pmi_6510_simple';
+     c_proc_calc_pmi_group_simple     CONSTANT   pol_ben_log.process_code%TYPE := 'Ann-Grouping-Calc-01-pmi_group_simple';
+     c_name_calc_main                 CONSTANT   pol_ben_log.process_name%TYPE := 'Ann-Grouping-算法-00-主程序';
+     c_name_calc_pmi_6510_simple      CONSTANT   pol_ben_log.process_code%TYPE := 'Ann-Grouping-算法-01-pmi_6510_simple';
+     c_name_calc_pmi_group_simple     CONSTANT   pol_ben_log.process_code%TYPE := 'Ann-Grouping-算法-01-pmi_group_simple';
+  proc_grouping_calc_main
+   变量
+    字符串
+     v_table_name
+     v_run_stat
+     v_proc_pkg_name
+     v_multi_interface_name
+    记录
+     v_grouping_type
+     v_proc_date
+     v_process_code
+    数字
+     v_job_total_count
+     v_job_succ_count
+     v_task_count
+    日期
+     v_scheduler_start_date
+   变量初始化
+    v_table_name
+   获取分类SR_1248518
+    get_real_output_path
+   计算评估时点
+   判断前置DCS是否执行完成
+    v_job_succ_count, v_job_total_count
+   插入异常日志
+   判断程序是否正在执行 v_job_total_count
+   插入异常日志
+   删除当月产生的旧的日志
+   插入开始的日志
+   清理分区表历史数据
+    proc_del_history_data
+   创建子分区
+    proc_create_subpart
+     get_date_time
+   删除当月数据
+    proc_del_curr_data
+   删除当月数据失败改为删除
+   采用并行处理方式
+     v_proc_pkg_name := 'lar_grouping_ann_pkg.';
+        v_scheduler_start_date := SYSDATE;-- + 1/1440;
+    proc_calc_pmi_6510_simple算法
+     proc_calc_pmi_6510_simple
+    proc_calc_pmi_group_simple算法
+     proc_calc_pmi_group_simple
+      -将投连grouping插入到表中
+   判断并行任务是否执行结束
+   判断并行任务是否执行成功
+   获取所有算法数
+   更新日志
+   EXCEPTION
+ lar_grouping_651_pkg
+  常量
+    const_grouping_proc_code         CONSTANT   lar_grouping_config.proc_code%TYPE := '0330';
+     const_log_type_error             CONSTANT   lar_pala_trace_log.log_type%TYPE := 'error';
+     c_proc_calc_main                 CONSTANT   pol_ben_log.process_code%TYPE := '651-Grouping-Calc-00-Main';
+     c_proc_calc_pmi_651              CONSTANT   pol_ben_log.process_code%TYPE := '651-Grouping-Calc-01-pmi_651';
+     c_name_calc_main                 CONSTANT   pol_ben_log.process_name%TYPE := '651-Grouping-算法-00-主程序';
+     c_name_calc_pmi_651              CONSTANT   pol_ben_log.process_code%TYPE := '651-Grouping-算法-01-pmi_651';
+  变量
+   字符串
+     v_proc_pkg_name          VARCHAR2(60);
+        v_multi_interface_name   VARCHAR2(4000);
+     v_run_stat               VARCHAR2(1);
+     v_table_name             VARCHAR2(30);
+   数字
+    v_job_total_count        NUMBER(2);
+        v_job_succ_count         NUMBER(2);
+        v_task_count             NUMBER(2);
+   记录
+     v_process_code           pol_ben_log.process_code%TYPE;
+     v_grouping_type          lar_grouping_ind.output_path%TYPE;
+        v_proc_date              lar_dcs_result_ind.proc_date%TYPE;
+   日期
+     v_scheduler_start_date   DATE;
+  变量初始化
+   Grouping结果表
+   获取分类SR_1248518
+   计算评估时点
+   判断前置DCS是否执行完成
+   插入异常日志
+   判断程序是否正在执行
+   删除当月产生的旧的日志
+   插入开始的日志
+   删除分区表历史数据
+    proc_del_history_data
+   创建子分区
+    proc_create_subpart
+   删除当月数据
+    proc_del_curr_data
+   删除当月数据失败改为删除
+   采用并行处理方式
+    proc_calc_pmi_651
+     简单投连grouping(PMI_UL_Simple)
+   判断并行任务是否执行结束
+   判断并行任务是否执行成功
+   获取所有算法数
+   EXCEPTION
+ lar_grouping_goat_pkg
+  常量
+    const_grouping_proc_code        CONSTANT   lar_grouping_config.proc_code%TYPE := '0230';
+     const_log_type_error            CONSTANT   lar_pala_trace_log.log_type%TYPE := 'error';
+     c_proc_calc_main                CONSTANT   pol_ben_log.process_code%TYPE := 'Goat-Grouping-Calc-00-Main';
+     c_proc_calc_goat_00_pmi         CONSTANT   pol_ben_log.process_code%TYPE := 'Goat-Grouping-Calc-01-00_PMI';
+     c_proc_calc_goat_00_pmi_u_w     CONSTANT   pol_ben_log.process_code%TYPE := 'Goat-Grouping-Calc-02-00_PMI_UNIT_WEIGHT';
+     c_proc_calc_goat_00_pmi_u_w_01  CONSTANT   pol_ben_log.process_code%TYPE := 'Goat-Grouping-Calc-03-00_PMI_UNIT_WEIGHT_0.01';
+     c_proc_calc_goat_00_pmi_jl      CONSTANT   pol_ben_log.process_code%TYPE := 'Goat-Grouping-Calc-04-00_PMI_UNIT_WEIGHT_JL';
+     c_proc_calc_goat_00_pmi_a_p     CONSTANT   pol_ben_log.process_code%TYPE := 'Goat-Grouping-Calc-05-00_PMI_UNIT_WEIGHT_AGE_PAYMENT';
+     c_proc_calc_goat_pmi_simple     CONSTANT   pol_ben_log.process_code%TYPE := 'Goat-Grouping-Calc-06-PMI_UNIT_WEIGHT_SIMPLE';
+     c_name_calc_main                CONSTANT   pol_ben_log.process_name%TYPE := '山羊计划 Grouping-算法-00-主程序';
+     c_name_calc_goat_00_pmi         CONSTANT   pol_ben_log.process_name%TYPE := '山羊计划 Grouping-算法-01-00_PMI';
+     c_name_calc_goat_00_pmi_u_w     CONSTANT   pol_ben_log.process_name%TYPE := '山羊计划 Grouping-算法-02-00_PMI_UNIT_WEIGHT';
+     c_name_calc_goat_00_pmi_u_w_01  CONSTANT   pol_ben_log.process_name%TYPE := '山羊计划 Grouping-算法-03-00_PMI_UNIT_WEIGHT_0.01';
+     c_name_calc_goat_00_pmi_jl      CONSTANT   pol_ben_log.process_name%TYPE := '山羊计划 Grouping-算法-04-00_PMI_JL';
+     c_name_calc_goat_00_pmi_a_p     CONSTANT   pol_ben_log.process_name%TYPE := '山羊计划 Grouping-算法-05-00_PMI_UNIT_WEIGHT_AGE_PAYMENT';
+     c_name_calc_goat_pmi_simple     CONSTANT   pol_ben_log.process_name%TYPE := '山羊计划 Grouping-算法-06-PMI_UNIT_WEIGHT_SIMPLE';
+  proc_grouping_calc_main
+   变量
+    字符串
+       v_proc_pkg_name          VARCHAR2(60);
+         v_multi_interface_name   VARCHAR2(4000);
+       v_table_name             VARCHAR2(30);
+      v_run_stat               VARCHAR2(1);
+    数字
+      v_job_total_count        NUMBER(2);
+         v_job_succ_count         NUMBER(2);
+         v_task_count             NUMBER(2) := 5;--算法数
+    日期
+      v_scheduler_start_date   DATE;
+    记录
+      v_grouping_type          lar_grouping_goat.output_path%TYPE;
+         v_proc_date              lar_dcs_result_goat.proc_date%TYPE;
+      v_process_code           pol_ben_log.process_code%TYPE;
+   结果表
+     v_table_name := 'LAR_GROUPING_GOAT';
+    获取分类
+    计算评估时点
+     v_job_succ_count, v_job_total_count
+    判断程序是否正在执行
+    删除当月产生的旧的日志
+    插入开始的日志
+    删除历史数据
+    删除当月数据
+    删除当月数据失败改为删除
+   采用并行处理方式
+    proc_calc_goat_00_pmi
+    c_name_calc_goat_00_pmi_jl
+    c_proc_calc_goat_00_pmi_u_w
+    c_proc_calc_goat_00_pmi_u_w_01
+    c_name_calc_goat_00_pmi_a_p
+    c_name_calc_goat_pmi_simple
+   判断并行任务是否执行结束
+   判断并行任务是否执行成功
+   获取所有算法数
+   EXCEPTION
+ lar_grouping_guar_pkg
+  常量
+   const_grouping_proc_code        CONSTANT   lar_grouping_config.proc_code%TYPE := '1130';
+     const_log_type_error            CONSTANT   lar_pala_trace_log.log_type%TYPE := 'error';
+     c_proc_calc_main                CONSTANT   pol_ben_log.process_code%TYPE := 'GUAR-Grouping-Calc-00-Main';
+     c_proc_calc_guar_pmi_guar       CONSTANT   pol_ben_log.process_code%TYPE := 'GUAR-Grouping-Calc-01-PMI_GUAR';
+     c_name_calc_main                CONSTANT   pol_ben_log.process_name%TYPE := 'GUAR Grouping-算法-00-主程序';
+     c_name_calc_guar_pmi_guar       CONSTANT   pol_ben_log.process_code%TYPE := 'GUAR-Grouping-算法-01-PMI_GUAR';
+  proc_grouping_calc_main
+   变量
+    v_table_name             VARCHAR2(30);
+        v_grouping_type          lar_grouping_ind.output_path%TYPE;
+        v_proc_date              lar_dcs_result_ind.proc_date%TYPE;
+        v_run_stat               VARCHAR2(1);
+        v_job_total_count        NUMBER(2);
+        v_job_succ_count         NUMBER(2);
+        v_task_count             NUMBER(2) := 1;
+        v_process_code           pol_ben_log.process_code%TYPE;
+        v_proc_pkg_name          VARCHAR2(60);
+        v_multi_interface_name   VARCHAR2(4000);
+        v_scheduler_start_date   DATE;
+   初始化变量
+    Grouping结果表
+    --获取分类
+   计算评估时点
+   判断是否执行成功
+   插入异常日志
+   判断程序是否正在执行
+   插入异常日志
+   删除当月产生的旧的日志
+   插入开始的日志
+   删除历史数据
+   清理分区表历史数据
+   创建子分区
+   删除当月数据
+    清理当月数据
+   删除当月数据失败改为删除
+   采用并行处理方式
+   判断并行任务是否执行结束
+   判断并行任务是否执行成功
+   获取所有算法数
+   更新日志
+   EXCEPTION
+ lar_grouping_pol_ben_main_pkg
+  类型
+    TYPE typ_ind_data IS TABLE OF NUMBER(26,6) INDEX BY VARCHAR2(30);
+  定义常量
+    const_grouping_proc_code           CONSTANT   lar_grouping_config.proc_code%TYPE := '0430';
+     const_log_type_error               CONSTANT   lar_pala_trace_log.log_type%TYPE := 'error';
+     c_proc_rule_main                   CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Rule-00-Main';
+     c_proc_rule_concurrent             CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Rule-XX-Concurrent';
+     c_proc_calc_main                   CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-00-Main';
+     c_proc_calc_00_pmi                 CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-01-00_PMI';
+     c_proc_calc_00_pmi_1124            CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-02-00_PMI_1124';
+     c_proc_calc_00_pmi_1159            CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-03-00_PMI_1159';
+     c_proc_calc_00_pmi_age_payment     CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-04-00_PMI_AGE_PAYMENT';
+     c_proc_calc_00_pmi_jl              CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-05-00_PMI_JL';
+     c_proc_calc_00_pmi_jl_now_w        CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-06-00_PMI_JL_NON_';
+     c_proc_calc_00_pmi_jl_now_w_2d     CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-07-00_PMI_JL_NON_WEIGHTED_2D';
+     c_proc_calc_00_pmi_non_w           CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-08-00_PMI_NON_WEIGHTED';
+     c_proc_calc_00_pmi_non_w_ann_r     CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-09-00_PMI_NON_WEIGHTED_ANN_R';
+     c_proc_calc_00_pmi_non_w_telp      CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-10-00_PMI_NON_WEIGHTED_TELP';
+     c_proc_calc_00_pmi_sum_assd_m      CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-11-00_PMI_SUM_ASSD_M';
+     c_proc_calc_00_pmi_ulwp            CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-12-00_PMI_ULWP';
+     c_proc_calc_00_pmi_unit_w          CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-13-00_PMI_UNIT_WEIGHT';
+     c_proc_calc_00_pmi_unit_w_001      CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-14-00_PMI_UNIT_WEIGHT_0.01';
+     c_proc_calc_00_pmi_unit_w_773      CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-15-00_PMI_UNIT_WEIGHT_773';
+     c_proc_calc_00_pmi_non_w_2d        CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-16-00_PMI_NON_WEIGHTED_2D';
+     c_proc_calc_00_pmi_1170_p2dec      CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-17-00_PMI_1170_PREM2DEC';
+     c_proc_calc_pmi_simple             CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-18-PMI_SIMPLE';
+     c_proc_calc_pmi_ins_status_a_p     CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-19-PMI_INS_STATUS-AGE_PTYWTSA';
+     c_proc_calc_pmi_tele_simple        CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-20-PMI_TELE_SIMPLE';
+     c_proc_calc_pmi_tele_r_simple      CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-21-PMI_TELE_R_SIMPLE';
+     c_proc_calc_pmi_telp_simple        CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-22-PMI_TELP_SIMPLE';
+     c_proc_calc_pmi_jl_age_ptywtsa     CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-23-PMI_JL_AGE_PTYWTSA';
+     c_proc_calc_pmi_1124_agewtsa       CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-24-PMI_1124_AGEWTSA';
+     c_proc_calc_pmi_r_simple           CONSTANT   pol_ben_log.process_code%TYPE := 'Ind-Grouping-Calc-25-PMI_R_SIMPLE';
+     c_name_rule_main                   CONSTANT   pol_ben_log.process_name%TYPE := 'pol_ben_main Grouping-规则-00-主程序';
+     c_name_rule_concurrent             CONSTANT   pol_ben_log.process_name%TYPE := 'pol_ben_main Grouping-规则-XX-并发';
+     c_name_calc_main                   CONSTANT   pol_ben_log.process_name%TYPE := 'pol_ben_main Grouping-算法-00-主程序';
+     c_name_calc_00_pmi                 CONSTANT   pol_ben_log.process_name%TYPE := 'pol_ben_main Grouping-算法-01-00_PMI';
+     c_name_calc_00_pmi_1124            CONSTANT   pol_ben_log.process_name%TYPE := 'pol_ben_main Grouping-算法-02-00_PMI_1124';
+     c_name_calc_00_pmi_1159            CONSTANT   pol_ben_log.process_name%TYPE := 'pol_ben_main Grouping-算法-03-00_PMI_1159';
+     c_name_calc_00_pmi_age_payment     CONSTANT   pol_ben_log.process_name%TYPE := 'pol_ben_main Grouping-算法-04-00_PMI_AGE_PAYMENT';
+     c_name_calc_00_pmi_jl              CONSTANT   pol_ben_log.process_name%TYPE := 'pol_ben_main Grouping-算法-05-00_PMI_JL';
+     c_name_calc_00_pmi_jl_now_w        CONSTANT   pol_ben_log.process_name%TYPE := 'pol_ben_main Grouping-算法-06-00_PMI_JL_NON_WEIGHTED';
+     c_name_calc_00_pmi_jl_now_w_2d     CONSTANT   pol_ben_log.process_name%TYPE := 'pol_ben_main Grouping-算法-07-00_PMI_JL_NON_WEIGHTED_2D';
+     c_name_calc_00_pmi_non_w           CONSTANT   pol_ben_log.process_name%TYPE := 'pol_ben_main Grouping-算法-08-00_PMI_NON_WEIGHTED';
+     c_name_calc_00_pmi_non_w_ann_r     CONSTANT   pol_ben_log.process_name%TYPE := 'pol_ben_main Grouping-算法-09-00_PMI_NON_WEIGHTED_ANN_R';
+     c_name_calc_00_pmi_non_w_telp      CONSTANT   pol_ben_log.process_name%TYPE := 'pol_ben_main Grouping-算法-10-00_PMI_NON_WEIGHTED_TELP';
+     c_name_calc_00_pmi_sum_assd_m      CONSTANT   pol_ben_log.process_name%TYPE := 'pol_ben_main Grouping-算法-11-00_PMI_SUM_ASSD_M';
+     c_name_calc_00_pmi_ulwp            CONSTANT   pol_ben_log.process_name%TYPE := 'pol_ben_main Grouping-算法-12-00_PMI_ULWP';
+     c_name_calc_00_pmi_unit_w          CONSTANT   pol_ben_log.process_name%TYPE := 'pol_ben_main Grouping-算法-13-00_PMI_UNIT_WEIGHT';
+     c_name_calc_00_pmi_unit_w_001      CONSTANT   pol_ben_log.process_name%TYPE := 'pol_ben_main Grouping-算法-14-00_PMI_UNIT_WEIGHT_0.01';
+     c_name_calc_00_pmi_unit_w_773      CONSTANT   pol_ben_log.process_name%TYPE := 'pol_ben_main Grouping-算法-15-00_PMI_UNIT_WEIGHT_773';
+     c_name_calc_00_pmi_non_w_2d        CONSTANT   pol_ben_log.process_name%TYPE := 'pol_ben_main Grouping-算法-16-00_PMI_NON_WEIGHTED_2D';
+     c_name_calc_00_pmi_1170_p2dec      CONSTANT   pol_ben_log.process_code%TYPE := 'pol_ben_main Grouping-算法-17-00_PMI_1170_PREM2DEC';
+     c_name_calc_pmi_simple             CONSTANT   pol_ben_log.process_code%TYPE := 'pol_ben_main Grouping-算法-18-PMI_SIMPLE';
+     c_name_calc_pmi_ins_status_a_p     CONSTANT   pol_ben_log.process_code%TYPE := 'pol_ben_main Grouping-算法-19-PMI_INS_STATUS-AGE_PTYWTSA';
+     c_name_calc_pmi_tele_simple        CONSTANT   pol_ben_log.process_code%TYPE := 'pol_ben_main Grouping-算法-20-PMI_TELE_SIMPLE';
+     c_name_calc_pmi_tele_r_simple      CONSTANT   pol_ben_log.process_code%TYPE := 'pol_ben_main Grouping-算法-21-PMI_TELE_R_SIMPLE';
+     c_name_calc_pmi_telp_simple        CONSTANT   pol_ben_log.process_code%TYPE := 'pol_ben_main Grouping-算法-22-PMI_TELP_SIMPLE';
+     c_name_calc_pmi_jl_age_ptywtsa     CONSTANT   pol_ben_log.process_code%TYPE := 'pol_ben_main Grouping-算法-23-PMI_JL_AGE_PTYWTSA';
+     c_name_calc_pmi_1124_agewtsa       CONSTANT   pol_ben_log.process_code%TYPE := 'pol_ben_main Grouping-算法-24-PMI_1124_AGEWTSA';
+     c_name_calc_pmi_r_simple           CONSTANT   pol_ben_log.process_code%TYPE := 'pol_ben_main Grouping-算法-25-PMI_R_SIMPLE';
+  proc_grouping_rule_main
+   变量
+   Grouping结果表
+   获取分类
+    function get_real_output_path
+   计算评估时点
+   判断前置DCS是否执行完成
+   插入异常日志
+   判断程序是否正在执行
+   插入异常日志
+   删除当月产生的旧的日志
+   插入开始的日志
+   删除历史数据
+   删除当月数据
+   删除当月数据失败改为删除
+   创建定时任务,并行处理
+   判断并行任务是否执行结束
+   判断并行任务是否执行成功
+   更新日志
+   EXCEPTION
+   proc_grouping_rule_concurrent
+    变量
+    获取子分区ID
+    插入开始的日志
+    获取所有规则
+    c_get_ind
+    更新日志
+    EXCEPTION
+ lar_grouping_pua_pkg
+  proc_grouping_calc_main
+   变量
+     v_table_name             VARCHAR2(30);
+        v_grouping_type          lar_grouping_pua.output_path%TYPE;
+        v_proc_date              lar_dcs_result_pua.proc_date%TYPE;
+        v_run_stat               VARCHAR2(1);
+        v_job_total_count        NUMBER(2);
+        v_job_succ_count         NUMBER(2);
+        v_task_count             NUMBER(2) := 12;--算法数
+        v_process_code           pol_ben_log.process_code%TYPE;
+        v_proc_pkg_name          VARCHAR2(60);
+        v_multi_interface_name   VARCHAR2(4000);
+        v_scheduler_start_date   DATE;
+   Grouping结果表
+   获取分类
+   计算评估时点
+   判断前置DCS是否执行完成
+   插入异常日志
+   判断程序是否正在执行
+   插入异常日志
+   删除当月产生的旧的日志
+   插入开始的日志
+   删除历史数据
+   删除当月数据
+   删除当月数据失败改为删除
+   采用并行处理方式
+   00_PMI算法
+    proc_calc_pua_00_pmi
+      v_grouping_calc          lar_grouping_calculation.calc_name%TYPE := '00_PMI';
+         v_grouping_type          lar_grouping_pua.output_path%TYPE;
+       CURSOR c_get_pua
+      CURSOR c_get_prod
+     typ_result_pua
+      r_grouping_pua
+     v_prod_name
+     获取分类
+     插入开始的日志
+     因该算法数据太多,所以分产品计算,减少消耗,提高性能
+     更新日志
+     Exception
+   其他算法一个进程
+    proc_calc_pua_00_pmi_u_w
+    proc_calc_pua_00_pmi_u_w_01
+    proc_calc_pua_00_pmi_u_w_773
+    proc_calc_pua_00_pmi_n_w
+    proc_calc_pua_00_pmi_n_w_2d
+    proc_calc_pua_00_pmi_s_a_m
+    proc_calc_pua_00_pmi_jl
+    proc_calc_pua_00_pmi_a_p
+    proc_calc_pua_pmi_simple
+    proc_calc_pua_pmi_telp_simple
+    proc_calc_pmi_jl_age_ptywtsa
+    proc_calc_pua_00_pmi_1159
+   判断并行任务是否执行结束
+   判断并行任务是否执行成功
+   获取所有算法数
+   更新日志
+   EXCEPTION
+ lar_grouping_top_pkg
+  定义常量
+    const_grouping_proc_code         CONSTANT   lar_grouping_config.proc_code%TYPE := '0760';
+     const_log_type_error             CONSTANT   lar_pala_trace_log.log_type%TYPE := 'error';
+     c_proc_calc_main                 CONSTANT   pol_ben_log.process_code%TYPE := 'Top-Grouping-Calc-00-Main';
+     c_proc_calc_pmi_888           CONSTANT   pol_ben_log.process_code%TYPE := 'Top-Grouping-Calc-01-pmi_888';
+     c_name_calc_main                 CONSTANT   pol_ben_log.process_name%TYPE := 'Top-Grouping-算法-00-主程序';
+     c_name_calc_pmi_888           CONSTANT   pol_ben_log.process_code%TYPE := 'Top-Grouping-算法-01-pmi_888';
+  proc_grouping_calc_main
+   变量
+    v_table_name             VARCHAR2(30);
+        v_grouping_type          lar_grouping_ind.output_path%TYPE;
+        v_proc_date              lar_dcs_result_ind.proc_date%TYPE;
+        v_run_stat               VARCHAR2(1);
+        v_job_total_count        NUMBER(2);
+        v_job_succ_count         NUMBER(2);
+        v_task_count             NUMBER(2) := 4;
+        v_process_code           pol_ben_log.process_code%TYPE;
+        v_proc_pkg_name          VARCHAR2(60);
+        v_multi_interface_name   VARCHAR2(4000);
+        v_scheduler_start_date   DATE;
+   Grouping结果表
+   获取分类
+   计算评估时点
+   判断前置DCS是否执行完成
+   total_count
+   插入异常日志
+   判断程序是否正在执行
+   插入异常日志
+   删除当月产生的旧的日志
+   插入开始的日志
+   删除历史数据
+   创建子分区
+   删除当月数据
+   删除当月数据失败改为删除
+   采用并行处理方式
+   WB_00_PMI算法
+    proc_calc_pmi_888
+   判断并行任务是否执行结束
+   判断并行任务是否执行成功
+   获取所有算法数
+   更新日志
+   EXCEPTION
+ lar_grouping_short_pkg
+  定义常量
+   const_grouping_proc_code        CONSTANT   lar_grouping_config.proc_code%TYPE := '0930';
+     const_log_type_error            CONSTANT   lar_pala_trace_log.log_type%TYPE := 'error';
+     c_proc_calc_main                CONSTANT   pol_ben_log.process_code%TYPE := 'SHORT-Grouping-Calc-00-Main';
+     c_proc_calc_short_pmi_short     CONSTANT   pol_ben_log.process_code%TYPE := 'SHORT-Grouping-Calc-01-PMI_SHORT';
+     c_name_calc_main                CONSTANT   pol_ben_log.process_name%TYPE := 'SHORT Grouping-算法-00-主程序';
+     c_name_calc_short_pmi_short     CONSTANT   pol_ben_log.process_code%TYPE := 'SHORT-Grouping-算法-01-PMI_SHORT';
+  proc_grouping_calc_main
+   变量
+      v_table_name             VARCHAR2(30);
+        v_grouping_type          lar_grouping_ind.output_path%TYPE;
+        v_proc_date              lar_dcs_result_ind.proc_date%TYPE;
+        v_run_stat               VARCHAR2(1);
+        v_job_total_count        NUMBER(2);
+        v_job_succ_count         NUMBER(2);
+        v_task_count             NUMBER(2) := 1;
+        v_process_code           pol_ben_log.process_code%TYPE;
+        v_proc_pkg_name          VARCHAR2(60);
+        v_multi_interface_name   VARCHAR2(4000);
+        v_scheduler_start_date   DATE;
+   变量初始化
+    Grouping结果表
+       v_table_name := 'LAR_GROUPING_SHORT';
+    获取分类
+      v_grouping_type := lar_grouping_com_pkg.get_real_output_path(p_output_path);
+    计算评估时点
+    v_process_code
+    total_count
+   插入异常日志
+   判断程序是否正在执行
+   插入异常日志
+   删除当月产生的旧的日志
+   插入开始的日志
+   删除历史数据
+   创建子分区
+   删除当月数据
+   删除当月数据失败改为删除
+   采用并行处理方式
+    WB_00_PMI算法
+     proc_calc_pmi_short
+   判断并行任务是否执行结束
+   判断并行任务是否执行成功
+   获取所有算法数
+    EXCEPTION
+ lar_grouping_tra_pkg
+  定义常量
+   const_grouping_proc_code         CONSTANT   lar_grouping_config.proc_code%TYPE := '0530';
+     const_log_type_error             CONSTANT   lar_pala_trace_log.log_type%TYPE := 'error';
+     c_proc_calc_main                 CONSTANT   pol_ben_log.process_code%TYPE := 'TRA-Grouping-Calc-00-Main';
+     c_proc_calc_pmi_group_simple              CONSTANT   pol_ben_log.process_code%TYPE := 'TRA-Grouping-Calc-01-pmi_group_simple';
+     c_proc_calc_pmi_pens_exact_4              CONSTANT   pol_ben_log.process_code%TYPE := 'TRA-Grouping-Calc-01-pmi_pens_exact_4';
+     c_proc_calc_pmi_pens_exact_6              CONSTANT   pol_ben_log.process_code%TYPE := 'TRA-Grouping-Calc-01-pmi_pens_exact_6';
+     c_name_calc_main                 CONSTANT   pol_ben_log.process_name%TYPE := 'TRA-Grouping-算法-00-主程序';
+     c_name_calc_pmi_group_simple              CONSTANT   pol_ben_log.process_code%TYPE := 'TRA-Grouping-算法-01-pmi_group_simple';
+     c_name_calc_pmi_pens_exact_4              CONSTANT   pol_ben_log.process_code%TYPE := 'TRA-Grouping-算法-01-pmi_pens_exact_4';
+     c_name_calc_pmi_pens_exact_6              CONSTANT   pol_ben_log.process_code%TYPE := 'TRA-Grouping-算法-01-pmi_pens_exact_6';
+  proc_grouping_calc_main
+   变量
+     v_table_name             VARCHAR2(30);
+        v_grouping_type          lar_grouping_ind.output_path%TYPE;
+        v_proc_date              lar_dcs_result_ind.proc_date%TYPE;
+        v_run_stat               VARCHAR2(1);
+        v_job_total_count        NUMBER(2);
+        v_job_succ_count         NUMBER(2);
+        v_task_count             NUMBER(2);
+        v_process_code           pol_ben_log.process_code%TYPE;
+        v_proc_pkg_name          VARCHAR2(60);
+        v_multi_interface_name   VARCHAR2(4000);
+        v_scheduler_start_date   DATE;
+   变量初始化
+    Grouping结果表
+    获取分类SR_1248518
+   计算评估时点
+   判断前置DCS是否执行完成
+   total_count
+   插入异常日志
+   判断程序是否正在执行
+   插入异常日志
+   删除当月产生的旧的日志
+   插入开始的日志
+   删除历史数据
+   创建子分区
+   删除当月数据
+   删除当月数据失败改为删除
+   采用并行处理方式
+   PMI_GROUP_SIMPLE算法
+    简单TRA-grouping(PMI_GROUP_Simple)
+   PMI_PENSION-EXACT(407SERIES)算法
+    简单TRA-grouping(pmi_pens_exact_4)
+   PMI_PENSION-EXACT(631,641SERIES)算法
+    简单TRA-grouping(pmi_pens_exact_6)
+   判断并行任务是否执行结束
+   判断并行任务是否执行成功
+   获取所有算法数
+   插入异常日志
+  lar_grouping_ulink_pkg
+   定义常量
+     const_grouping_proc_code         CONSTANT   lar_grouping_config.proc_code%TYPE := '0730';
+      const_log_type_error             CONSTANT   lar_pala_trace_log.log_type%TYPE := 'error';
+      c_proc_calc_main                 CONSTANT   pol_ben_log.process_code%TYPE := 'Ulink-Grouping-Calc-00-Main';
+      c_proc_calc_pmi_ul_888           CONSTANT   pol_ben_log.process_code%TYPE := 'Ulink-Grouping-Calc-01-pmi_ul_888';
+      c_proc_calc_pmi_ul_888_group     CONSTANT   pol_ben_log.process_code%TYPE := 'Ulink-Grouping-Calc-02-pmi_ul_888_group';
+      --c_proc_calc_pmi_ul_888_guarOy=>c_proc_calc_pmi_ul_888_guar_only 由于定义名太长，编译通不过
+      c_proc_calc_pmi_ul_888_guarOy    CONSTANT   pol_ben_log.process_code%TYPE := 'Ulink-Grouping-Calc-03-pmi_ul_888_guar_only';
+      c_proc_calc_pmi_ul_simple        CONSTANT   pol_ben_log.process_code%TYPE := 'Ulink-Grouping-Calc-04-pmi_ul_simple';
+      c_name_calc_main                 CONSTANT   pol_ben_log.process_name%TYPE := 'Ulink-Grouping-算法-00-主程序';
+      c_name_calc_pmi_ul_888           CONSTANT   pol_ben_log.process_code%TYPE := 'Ulink-Grouping-算法-01-pmi_ul_888';
+      c_name_calc_pmi_ul_888_group     CONSTANT   pol_ben_log.process_code%TYPE := 'Ulink-Grouping-算法-02-pmi_ul_888_group';
+      --c_name_calc_pmi_ul_888_guar_Oy =>c_name_calc_pmi_ul_888_guar_only 由于定义名太长，编译通不过
+      c_name_calc_pmi_ul_888_guarOy   CONSTANT   pol_ben_log.process_code%TYPE := 'Ulink-Grouping-算法-03-pmi_ul_888_guar_only';
+      c_name_calc_pmi_ul_simple        CONSTANT   pol_ben_log.process_code%TYPE := 'Ulink-Grouping-算法-04-pmi_ul_simple';
+   proc_grouping_calc_main
+ lar_grouping_ulink_pkg
+  定义常量
+   const_grouping_proc_code         CONSTANT   lar_grouping_config.proc_code%TYPE := '0730';
+     const_log_type_error             CONSTANT   lar_pala_trace_log.log_type%TYPE := 'error';
+     c_proc_calc_main                 CONSTANT   pol_ben_log.process_code%TYPE := 'Ulink-Grouping-Calc-00-Main';
+     c_proc_calc_pmi_ul_888           CONSTANT   pol_ben_log.process_code%TYPE := 'Ulink-Grouping-Calc-01-pmi_ul_888';
+     c_proc_calc_pmi_ul_888_group     CONSTANT   pol_ben_log.process_code%TYPE := 'Ulink-Grouping-Calc-02-pmi_ul_888_group';
+   --c_proc_calc_pmi_ul_888_guarOy=>c_proc_calc_pmi_ul_888_guar_only 由于定义名太长，编译通不过
+     c_proc_calc_pmi_ul_888_guarOy    CONSTANT   pol_ben_log.process_code%TYPE := 'Ulink-Grouping-Calc-03-pmi_ul_888_guar_only';
+     c_proc_calc_pmi_ul_simple        CONSTANT   pol_ben_log.process_code%TYPE := 'Ulink-Grouping-Calc-04-pmi_ul_simple';
+    c_name_calc_main                 CONSTANT   pol_ben_log.process_name%TYPE := 'Ulink-Grouping-算法-00-主程序';
+     c_name_calc_pmi_ul_888           CONSTANT   pol_ben_log.process_code%TYPE := 'Ulink-Grouping-算法-01-pmi_ul_888';
+     c_name_calc_pmi_ul_888_group     CONSTANT   pol_ben_log.process_code%TYPE := 'Ulink-Grouping-算法-02-pmi_ul_888_group';
+    c_name_calc_pmi_ul_888_guarOy   CONSTANT   pol_ben_log.process_code%TYPE := 'Ulink-Grouping-算法-03-pmi_ul_888_guar_only';
+     c_name_calc_pmi_ul_simple        CONSTANT   pol_ben_log.process_code%TYPE := 'Ulink-Grouping-算法-04-pmi_ul_simple';
+  proc_grouping_calc_main
+   变量
+     v_table_name             VARCHAR2(30);
+        v_grouping_type          lar_grouping_ind.output_path%TYPE;
+        v_proc_date              lar_dcs_result_ind.proc_date%TYPE;
+        v_run_stat               VARCHAR2(1);
+        v_job_total_count        NUMBER(2);
+        v_job_succ_count         NUMBER(2);
+        v_task_count             NUMBER(2) := 4;
+        v_process_code           pol_ben_log.process_code%TYPE;
+        v_proc_pkg_name          VARCHAR2(60);
+        v_multi_interface_name   VARCHAR2(4000);
+        v_scheduler_start_date   DATE;
+   Grouping结果表
+       v_table_name := 'LAR_GROUPING_UL';
+   获取分类
+     v_grouping_type := lar_grouping_com_pkg.get_real_output_path(p_output_path);
+   计算评估时点
+     v_proc_date := trunc(p_end_date, 'mm') - 1;
+   判断前置DCS是否执行完成
+   插入异常日志
+   判断程序是否正在执行
+   插入异常日志
+   删除当月产生的旧的日志
+   插入开始的日志
+   删除历史数据
+   创建子分区
+   删除当月数据
+   删除当月数据失败改为删除
+   采用并行处理方式
+   WB_00_PMI算法
+    proc_calc_pmi_ul_888
+    proc_calc_pmi_ul_888_group
+    proc_calc_pmi_ul_888_guar_only
+    proc_calc_pmi_ul_simple
+   判断并行任务是否执行结束
+   判断并行任务是否执行成功
+   获取所有算法数
+   更新日志
+   EXCEPTION
+ lar_grouping_universal_pkg
+  定义常量
+    const_grouping_proc_code        CONSTANT   lar_grouping_config.proc_code%TYPE := '1030';
+     const_log_type_error            CONSTANT   lar_pala_trace_log.log_type%TYPE := 'error';
+     c_proc_calc_main                CONSTANT   pol_ben_log.process_code%TYPE := 'universal-Grouping-Calc-00-Main';
+     c_proc_calc_uv_00_pmi           CONSTANT   pol_ben_log.process_code%TYPE := 'universal-Grouping-Calc-01-UV_00_PMI';
+     c_proc_calc_uv_00_pmi_n_w       CONSTANT   pol_ben_log.process_code%TYPE := 'universal-Grouping-Calc-02-UV_00_PMI_NON_WEIGHTED';
+     c_proc_calc_uv_pmi_uv_simple    CONSTANT   pol_ben_log.process_code%TYPE := 'universal-Grouping-Calc-03-UV_PMI_UV_SIMPLE';
+     c_proc_calc_uv_pmi_uv_844_sp    CONSTANT   pol_ben_log.process_code%TYPE := 'universal-Grouping-Calc-04-UV_PMI_UV_844_Simple';
+     --c_proc_calc_uv_pmi_uv_860_sp    CONSTANT   pol_ben_log.process_code%TYPE := 'universal-Grouping-Calc-05-UV_PMI_UV_860_Simple';
+     c_name_calc_main                CONSTANT   pol_ben_log.process_name%TYPE := 'universal Grouping-算法-00-主程序';
+     c_name_calc_uv_00_pmi           CONSTANT   pol_ben_log.process_code%TYPE := 'universal-Grouping-算法-01-UV_00_PMI';
+     c_name_calc_uv_00_pmi_n_w       CONSTANT   pol_ben_log.process_code%TYPE := 'universal-Grouping-算法-02-UV_00_PMI_NON_WEIGHTED';
+     c_name_calc_uv_pmi_uv_simple    CONSTANT   pol_ben_log.process_code%TYPE := 'universal-Grouping-算法-03-UV_PMI_UV_SIMPLE';
+     c_name_calc_uv_pmi_uv_844_sp    CONSTANT   pol_ben_log.process_code%TYPE := 'universal-Grouping-算法-04-UV_PMI_UV_844_Simple';
+     --c_name_calc_uv_pmi_uv_860_sp    CONSTANT   pol_ben_log.process_code%TYPE := 'universal-Grouping-算法-05-UV_PMI_UV_860_Simple';
+  proc_grouping_calc_main
+    v_table_name             VARCHAR2(30);
+       v_grouping_type          lar_grouping_ind.output_path%TYPE;
+       v_proc_date              lar_dcs_result_ind.proc_date%TYPE;
+       v_run_stat               VARCHAR2(1);
+       v_job_total_count        NUMBER(2);
+       v_job_succ_count         NUMBER(2);
+       v_task_count             NUMBER(2) := 4;
+       v_process_code           pol_ben_log.process_code%TYPE;
+       v_proc_pkg_name          VARCHAR2(60);
+       v_multi_interface_name   VARCHAR2(4000);
+       v_scheduler_start_date   DATE;
+   初始化变量
+    Grouping结果表
+      v_table_name := 'LAR_GROUPING_UV';
+    获取分类
+    计算评估时点
+    判断前置DCS是否执行完成
+   插入异常日志
+   判断程序是否正在执行
+   插入异常日志
+   删除当月产生的旧的日志
+   插入开始的日志
+   删除历史数据
+   删除当月数据
+   删除当月数据失败改为删除
+   采用并行处理方式
+   UV_00_PMI算法
+    proc_calc_uv_00_pmi
+     定义变量
+        v_grouping_calc          lar_grouping_calculation.calc_name%TYPE := 'UV_00_PMI';
+          v_grouping_type          lar_grouping_ind.output_path%TYPE;
+      c_get_uv
+      c_get_prod
+      r_grouping_uv
+      v_prod_name
+     初始化变量
+      获取分类
+      插入开始的日志
+     因该算法数据太多,所以分产品计算,减少消耗,提高性能
+     更新日志
+     EXCEPTION WHEN OTHERS THEN
+      插入异常日志
+      更新日志
+    proc_calc_uv_pmi_uv_844_sp
+   UV_00_PMI_NON_WEIGHTED算法
+    proc_calc_uv_00_pmi_n_w
+   UV_00_PMI_NON_WEIGHTED算法
+    proc_calc_uv_pmi_uv_simple
+   判断并行任务是否执行结束
+   获取所有算法数
+    IF v_job_total_count = v_task_count THEN
+   EXCEPTION
+ lar_grouping_wb_pkg
+  常量
+    const_grouping_proc_code        CONSTANT   lar_grouping_config.proc_code%TYPE := '1330';
+     const_log_type_error            CONSTANT   lar_pala_trace_log.log_type%TYPE := 'error';
+     c_proc_calc_main                CONSTANT   pol_ben_log.process_code%TYPE := 'WB-Grouping-Calc-00-Main';
+     c_proc_calc_wb_00_pmi           CONSTANT   pol_ben_log.process_code%TYPE := 'WB-Grouping-Calc-01-WB_00_PMI';
+     c_proc_calc_pmi_jl_age_ptywtsa  CONSTANT   pol_ben_log.process_code%TYPE := 'WB-Grouping-Calc-02-PMI_JL_AGE_PTYWTSA';
+     c_name_calc_main                CONSTANT   pol_ben_log.process_name%TYPE := 'WB Grouping-算法-00-主程序';
+     c_name_calc_wb_00_pmi           CONSTANT   pol_ben_log.process_code%TYPE := 'WB-Grouping-算法-01-WB_00_PMI';
+     c_name_calc_pmi_jl_age_ptywtsa  CONSTANT   pol_ben_log.process_code%TYPE := 'WB-Grouping-算法-02-PMI_JL_AGE_PTYWTSA';
+  proc_grouping_calc_main
+   变量
+     v_table_name             VARCHAR2(30);
+        v_grouping_type          lar_grouping_ind.output_path%TYPE;
+        v_proc_date              lar_dcs_result_ind.proc_date%TYPE;
+        v_run_stat               VARCHAR2(1);
+        v_job_total_count        NUMBER(2);
+        v_job_succ_count         NUMBER(2);
+        v_task_count             NUMBER(2) := 2;
+        v_process_code           pol_ben_log.process_code%TYPE;
+        v_proc_pkg_name          VARCHAR2(60);
+        v_multi_interface_name   VARCHAR2(4000);
+        v_scheduler_start_date   DATE;
+   初始化变量
+    Grouping结果表
+    获取分类
+    计算评估时点
+    判断前置DCS是否执行完成
+    插入异常日志
+    判断程序是否正在执行
+    插入异常日志
+    删除当月产生的旧的日志
+    插入开始的日志
+   删除历史数据
+   删除当月数据
+   删除当月数据失败改为删除
+   采用并行处理方式
+      v_proc_pkg_name := 'lar_grouping_wb_pkg.';
+        v_scheduler_start_date := SYSDATE;-- + 1/1440;
+   WB_00_PMI算法
+    proc_calc_wb_00_pmi
+     变量
+      v_grouping_calc
+      v_grouping_type
+      c_get_wb
+      c_get_prod
+      r_grouping_wb
+      v_prod_name
+     获取分类
+     插入开始的日志
+      因该算法数据太多,所以分产品计算,减少消耗,提高性能
+     更新日志
+     EXCEPTION
+   判断并行任务是否执行结束
+   判断并行任务是否执行成功
+   获取所有算法数
+   更新日志
+   EXCEPTION
+
+   中心主题
+ 实际现金流的数据流
+  数据来源
+   财务制证表
+  数据范围
+   trunc(proc_date,mm)<=凭证日期 and add_months(trunc(proc_date,mm),1)>凭证日期
+  匹配科目内容
+   实际现金流与科目的匹配规则配置表
+  处理方法
+   取《实际现金流与科目的匹配规则配置表》的内容，含变量名称（字段名），业务含义，计量方法，财务科目，科目代码，通过科目代码与《财务制证表关联》，并且按照凭证日期筛选范围
+    select a.合同分组，a.科目代码,a.财务科目，a.金额 ,b.变量名称（字段名）,b.业务含义,b.计量方法
+from 财务制证表 a
+inner join 实际现金流与科目的匹配规则配置表 b
+on a.科目代码=b.科目代码 and a.计量方式=b.计量方法
+where trunc(proc_date,mm)<=a.凭证日期 and add_months(trunc(proc_date,mm),1)>a.凭证日期
+     生成临时表 tempA
+   在前面临时表的基础上，按照合同分组，变量名称（字段） 进行分组汇总，并且加上实现现金流的分类字段。
+    select a.合同分组，a.变量名称（字段）, sum(a.金额) 金额, '1-实际现金流' as 数据项目类别
+from tempA a
+group by a.合同分组,a.变量名称（字段）
+   把前面步骤的数据插入到表《实际现金流数据准备结果表》
+  输出结果
+   实际现金流数据准备结果表
+ 预期现金流
+  数据来源
+   prophet模型输出
+  模型数从SQL Server到数据平台
+  public class FileCopyUtil {
+    public static void main(String[] args) throws IOException {
+        String path = "D:\\workspace_new\\lcloud-ifp-fds-db\\branches\\LCLOUD-IFP-FDS-DB1.1.3\\db\\fds\\act\\common\\ddl\\1.1.3\\LCLOUD-IFP-FDS-DB#7";
+        Path start = FileSystems.getDefault().getPath(path);
+
+
+        Files.walk(start)
+                .filter(childpath -> childpath.toFile().isFile())
+                .filter(x -> {
+                    String fileName = x.getFileName().toString();
+                    if (!fileName.contains("_") || fileName.contains("svn")) {
+                        return false;
+                    }
+                    String num = fileName.substring(0, fileName.indexOf('_'));
+                    return Integer.parseInt(num) > 45;
+                })
+                .forEach(x -> {
+                    String fileName = x.getFileName().toString();
+                    String prefix = fileName.substring(0, fileName.indexOf("_tmp_fds_ex-wangjuan005.sql"));
+                    String newPolFileName = prefix + "_new"+"_tmp_fds_ex-zhangyongtian001.sql";
+                    String endroseFileName = prefix + "_edr"+"_tmp_fds_ex-zhangyongtian001.sql";
+                    System.out.println(newPolFileName);
+                    try {
+                        FileCopyUtils.copy(x.toFile(),new File("D:\\新建文件夹 (2)\\"+newPolFileName));
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    System.out.println(endroseFileName);
+                    try {
+                        FileCopyUtils.copy(x.toFile(),new File("D:\\新建文件夹 (2)\\"+endroseFileName));
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
+    }
+} 
 ========
 
 Spark SQL的Parquet那些事儿.docx
@@ -3266,12 +4482,110 @@ object CustomAccumulator {
     sc.stop()
   }
 }
-运行结果如下图：
+
+==============
+
+
+首先查看了spark的属性配置，发现我们使用spark.yarn.maxAppAttempts属性在提交程序时限制其重试次数，如：
+spark-submit --conf spark.yarn.maxAppAttempts=1
+1
+该属性在Spark源代码中的使用如下：
+//org.apache.spark.deploy.yarn.config.scala
+private[spark] val MAX_APP_ATTEMPTS = ConfigBuilder("spark.yarn.maxAppAttempts")
+    .doc("Maximum number of AM attempts before failing the app.")
+    .intConf
+
+因为我们使用的是Spark on Yarn，虽然由Yarn负责启动和管理AM以及分配资源，但是Spark有自己的AM实现，当Executor运行起来后，任务的控制是由Driver负责的。而重试上，Yarn只负责AM的重试。
+另外，在Spark对ApplicationMaster的实现里，Spark提供了参数 spark.yarn.max.executor.failures 来控制Executor的失败次数，当Executor的失败次数达到这个值的时候，整个Spark应该程序就失败了，判断逻辑如下：
 
 
 
-作者：若泽数据——呼呼呼
-原文：https://blog.csdn.net/lemonZhaoTao/article/details/81407782
+====================
+
+public class Test {
+    private static Logger log = Logger.getLogger(HelloWorld.class);
+    public static void main(String[] args) {
+        try {
+            System.setProperty("javax.xml.parsers.DocumentBuilderFactory",
+                    "com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderFactoryImpl");
+            System.setProperty("javax.xml.parsers.SAXParserFactory",
+                    "com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl");
+	    //项目内部自己的配置类，可以忽略，其实就是设置sparkConf，然后获取到JavaSparkContext
+            String sparkMaster = Configure.instance.get("sparkMaster");
+            String sparkJarAddress = Configure.instance.get("sparkJarAddress");
+            String sparkExecutorMemory = Configure.instance.get("sparkExecutorMemory");
+            String sparkCoresMax = Configure.instance.get("sparkCoresMax");
+            String sparkLocalDir = Configure.instance.get("sparkLocalDir");
+            log.info("initialize parameters");
+            log.info("sparkMaster:" + sparkMaster);
+            log.info("sparkJarAddress:" + sparkJarAddress);
+            log.info("sparkExecutorMemory:" + sparkExecutorMemory);
+            log.info("sparkCoresMax:" + sparkCoresMax);
+            log.info("sparkLocalDir:" + sparkLocalDir);
+            SparkConf sparkConf = new SparkConf().setAppName("dse load application in Java");
+            sparkConf.setMaster(sparkMaster);
+            if (!sparkJarAddress.isEmpty() && !sparkMaster.contains("local")) {
+                sparkConf.set("spark.executor.memory", sparkExecutorMemory); // 16g
+                sparkConf.set("spark.scheduler.mode", "FAIR");
+                sparkConf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer");
+                sparkConf.set("spark.kryo.registrator", "com.dahua.dse3.driver.dataset.DseKryoRegistrator");
+                sparkConf.set("spark.cores.max", sparkCoresMax);
+                sparkConf.set("spark.akka.threads", "12");
+                sparkConf.set("spark.local.dir", sparkLocalDir);
+                sparkConf.set("spark.shuffle.manager", "SORT");
+                sparkConf.set("spark.network.timeout", "120");
+                sparkConf.set("spark.rpc.lookupTimeout", "120");
+                sparkConf.set("spark.executor.extraClassPath", "/usr/dahua/spark/executelib/hbase-protocol-0.98.3-hadoop2.jar");
+                sparkConf.set("spark.executor.extraJavaOptions", "-verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps");
+                sparkConf.set("spark.driver.extraJavaOptions", "-XX:PermSize=256M -XX:MaxPermSize=512M");
+                sparkConf.set("spark.network.timeout", "120");
+
+            }
+            JavaSparkContext jsc = new JavaSparkContext(sparkConf);
+            if (!sparkJarAddress.isEmpty() && !sparkMaster.contains("local")) {
+                jsc.addJar(sparkJarAddress);
+            }
+
+            Configuration conf = HBaseConfiguration.create();
+            String zk = "172.25.3.160,172.25.3.161,172.25.3.162";
+            String tableName = "blog";
+            conf.set("hbase.zookeeper.quorum", zk);
+            HTable table = new HTable(conf, tableName);
+            conf.set(TableOutputFormat.OUTPUT_TABLE, tableName);
+            Job job = Job.getInstance(conf);
+            job.setMapOutputKeyClass(ImmutableBytesWritable.class);
+            job.setMapOutputValueClass(KeyValue.class);
+            HFileOutputFormat.configureIncrementalLoad(job, table);
+            String hdfsPath = "hdfs://mycluster/raw/hfile/blog.txt";
+            JavaRDD<String> lines = jsc.textFile(hdfsPath);
+            JavaPairRDD<ImmutableBytesWritable,KeyValue> hfileRdd = lines.mapToPair(new PairFunction<String, ImmutableBytesWritable, KeyValue>() {
+                public Tuple2<ImmutableBytesWritable, KeyValue> call(String v1) throws Exception {
+                    String[] tokens = v1.split(" ");
+                    String rowkey = tokens[0];
+                    String content = tokens[1];
+                    KeyValue keyValue = new KeyValue(Bytes.toBytes(rowkey), Bytes.toBytes("article"), Bytes.toBytes("value"), Bytes.toBytes(content));
+                    return new Tuple2<ImmutableBytesWritable, KeyValue>(new ImmutableBytesWritable(Bytes.toBytes(rowkey)), keyValue);
+                }
+            });
+            String hfilePath = "hdfs://mycluster/hfile/blog.hfile";
+            hfileRdd.saveAsNewAPIHadoopFile(hfilePath, ImmutableBytesWritable.class, KeyValue.class, HFileOutputFormat.class, conf);
+
+			//利用bulk load hfile
+            LoadIncrementalHFiles bulkLoader = new LoadIncrementalHFiles(conf);
+            bulkLoader.doBulkLoad(new Path(hfilePath), table);
+
+        }catch(Exception e){
+            e.printStackTrace();
+        }finally {
+            ;
+        }
+    }
+
+}
+
+
+
+============
 
 原创文章，更多关注公众号获取:
 
