@@ -1,0 +1,83 @@
+import re
+
+orcl_table_desc_file = 'orcl_table_desc.txt'
+
+tableName = 'LAR_DCS_RESULT_IND'.upper()
+#事故者涉及保单险种明细库
+
+dbtype='pala'
+
+sday= '01'
+stime= '03'
+
+
+res = []
+
+f = open(orcl_table_desc_file,encoding='utf-8')
+for l in f:
+    line = l.strip()
+
+    list =line.split("\t")
+
+    while 1==1:
+        if ('' in list):
+            list.remove('')
+        else:
+            break;
+    while 1==1:
+        if ('y' in list):
+            list.remove('y')
+        else:
+            break;
+    colName = list[0].upper()
+
+    dataType = list[1]
+
+    if len(list) > 2:
+        comment = list[2]
+    else:
+        comment = ''
+
+    # dataType00 = re.sub('varchar2\(\d*\)[^\,|^\n]*', 'Option[String]', dataType, 0)
+    # dataType01 = re.sub('char\(\d*\)[^\,|^\n]*', 'Option[String]', dataType00, 0)
+    # dataType02 = re.sub('date', 'Option[String]', dataType01, 0)
+    # dataType03 = re.sub('number\(\d*\)[^\,|^\n]*', 'Option[Double]', dataType02, 0)
+    # dataType04 = re.sub('number\(\d*\,\d*\)[^\,|^\n]*', 'Option[Double]', dataType03, 0)
+    # dataType05 = re.sub('number', 'Option[Double]', dataType04, 0)
+
+    dataType00 = re.sub('varchar2\(\d*\)[^\,|^\n]*', 'String', dataType, 0)
+    dataType01 = re.sub('char\(\d*\)[^\,|^\n]*', 'String', dataType00, 0)
+    dataType02 = re.sub('date', 'String', dataType01, 0)
+    dataType03 = re.sub('number\(\d*\)[^\,|^\n]*', 'String', dataType02, 0)
+    dataType04 = re.sub('number\(\d*\,\d*\)[^\,|^\n]*', 'String', dataType03, 0)
+    dataType05 = re.sub('number', 'String', dataType04, 0)
+
+    dataType_new = dataType05
+
+    if colName.endswith('#'):
+        colName = colName.replace('#', '')
+        dataType_new='STRING'
+
+    line_res = colName.lower()+':'+dataType_new+' ,//'+ ' \"'+comment+'\"'
+    res.append(line_res)
+f.close()
+
+
+resFile = 'caseclass/'+tableName
+
+f = open(resFile, 'w', encoding='utf-8')
+f.truncate()
+f.close()
+
+hql01='case class '+tableName+'('
+
+res.insert(0, hql01)
+res.append(')')
+
+
+for x in res:
+    f = open(resFile, 'a', encoding='utf-8')  # f:文件操作符 文件句柄 文件操作对象
+    f.write(x+"\n")
+    f.close()
+
+

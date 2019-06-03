@@ -1,0 +1,20 @@
+package com.pingan.lcloud.base.aop;
+
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+/**
+* @ClassName: TraceLogAop
+* @Description:TraceLogAop自定义注解
+* @author ZHANGXIN569
+* @date: 2019年4月1日 上午10:19:06
+*/
+@Documented
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface TraceLogAop {
+
+}

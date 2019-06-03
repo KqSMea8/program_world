@@ -1,0 +1,109 @@
+
+
+https://blog.csdn.net/doveyoung8/article/details/80014442
+
+hive UDTF函数
+
+之前说过HIVE，UDF(User-Defined-Function)函数的编写和使用，现在来看看UDTF的编写和使用。
+
+1. UDTF介绍
+
+UDTF(User-Defined Table-Generating Functions) 用来解决 输入一行输出多行(On-to-many maping) 的需求。
+
+2. 编写自己需要的UDTF
+
+继承org.apache.hadoop.hive.ql.udf.generic.GenericUDTF,实现initialize, process, close三个方法。
+
+UDTF首先会调用initialize方法，此方法返回UDTF的返回行的信息（返回个数，类型）。
+
+初始化完成后，会调用process方法,真正的处理过程在process函数中，在process中，每一次forward()调用产生一行；如果产生多列可以将多个列的值放在一个数组中，然后将该数组传入到forward()函数。
+
+最后close()方法调用，对需要清理的方法进行清理。
+
+
+下面是我写的一个用来切分”key:value;key:value;”这种字符串，返回结果为key, value两个字段。供参考：
+
+复制代码
+package com.hadoop.hive.udtf;
+
+import java.util.ArrayList;
+
+import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
+import org.apache.hadoop.hive.ql.exec.UDFArgumentLengthException;
+import org.apache.hadoop.hive.ql.metadata.HiveException;
+import org.apache.hadoop.hive.ql.udf.generic.GenericUDTF;
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
+import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
+
+public class UDTFExplode extends GenericUDTF {
+
+    @Override
+    public void close() throws HiveException {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void process(Object[] args) throws HiveException {
+        // TODO Auto-generated method stub
+        String input = args[0].toString();
+        String[] test = input.split(";");
+        for (int i = 0; i < test.length; i++) {
+            try {
+                String[] result = test[i].split(":");
+                forward(result);
+            } catch (Exception e) {
+                continue;
+            }
+        }
+
+    }
+
+    @Override
+    public StructObjectInspector initialize(ObjectInspector[] args) throws UDFArgumentException {
+        if (args.length != 1) {
+            throw new UDFArgumentLengthException("ExplodeMap takes only one argument");
+        }
+        if (args[0].getCategory() != ObjectInspector.Category.PRIMITIVE) {
+            throw new UDFArgumentException("ExplodeMap takes string as a parameter");
+        }
+
+        ArrayList<String> fieldNames = new ArrayList<String>();
+        ArrayList<ObjectInspector> fieldOIs = new ArrayList<ObjectInspector>();
+        fieldNames.add("col1");
+        fieldOIs.add(PrimitiveObjectInspectorFactory.javaStringObjectInspector);
+        fieldNames.add("col2");
+        fieldOIs.add(PrimitiveObjectInspectorFactory.javaStringObjectInspector);
+
+        return ObjectInspectorFactory.getStandardStructObjectInspector(fieldNames, fieldOIs);
+    }
+
+}
+复制代码
+3.使用方法
+
+将程序打成JAR包，然后上传服务器。添加UDF函数：
+
+
+
+UDTF有两种使用方法，一种直接放到select后面，一种和lateral view一起使用。
+
+1：直接select中使用
+
+
+
+select split_test('asd:123\;rtrt:3445\;vbvx:6787') as (col1,col2) from finance.dual;
+需要注意的是UDTF不可以添加其他字段使用，不可以嵌套调用，不可以和group by/cluster by/distribute by/sort by一起使用
+
+2：和lateral view一起使用
+
+
+
+select '1', mytable.col1, mytable.col2 from finance.dual lateral view split_test('asd:123\;rtrt:3445\;vbvx:6787') as (col1,col2) mytable as col1, col2;
+执行过程相当于单独执行了两次抽取，然后union到一个表里。
+
+
+
+

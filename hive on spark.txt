@@ -208,25 +208,6 @@ export PATH=$SCALA_HOME/bin:$PATH
 复制代码
 #配置/spark/conf/spark-env.sh
 
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
 export JAVA_HOME=/usr/app/jdk1.8.0
 export SCALA_HOME=/usr/app/scala
 export HADOOP_HOME=/usr/app/hadoop
@@ -264,136 +245,6 @@ spark.driver.memory              512m
 spark.executor.extraJavaOptions  -XX:+PrintGCDetails -Dkey=value -Dnumbers="one two three"
 #修改hive-site.xml(hive详细部署参考http://blog.csdn.net/xinfang520/article/details/77774522)
 
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
-23
-24
-25
-26
-27
-28
-29
-30
-31
-32
-33
-34
-35
-36
-37
-38
-39
-40
-41
-42
-43
-44
-45
-46
-47
-48
-49
-50
-51
-52
-53
-54
-55
-56
-57
-58
-59
-60
-61
-62
-63
-64
-65
-66
-67
-68
-69
-70
-71
-72
-73
-74
-75
-76
-77
-78
-79
-80
-81
-82
-83
-84
-85
-86
-87
-88
-89
-90
-91
-92
-93
-94
-95
-96
-97
-98
-99
-100
-101
-102
-103
-104
-105
-106
-107
-108
-109
-110
-111
-112
-113
-114
-115
-116
-117
-118
-119
-120
-121
-122
-123
-124
-125
-126
-127
-128
-129
-130
 <configuration>
 <property>
 <name>hive.metastore.schema.verification</name>
@@ -538,16 +389,13 @@ mkdir -p /usr/app/hive/logs
 
 #hive进入客户端
 
-1
-2
-3
+
 hive>set hive.execution.engine=spark; (将执行引擎设为Spark，默认是mr，退出hive CLI后，回到默认设置。若想让引擎默认为Spark，需要在hive-site.xml里设置）
 hive>create table test(ts BIGINT,line STRING); (创建表）
 hive>select count(*) from test;
 若整个过程没有报错，并出现正确结果，则Hive on Spark配置成功。
 
 http://192.168.66.66:18080
-
 
 
 

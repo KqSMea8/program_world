@@ -1,12 +1,88 @@
+
+在大规模数据量的数据分析及建模任务中，往往针对全量数据进行挖掘分析时会十分耗时和占用集群资源，因此一般情况下只需要抽取一小部分数据进行分析及建模操作。Hive提供了数据取样（SAMPLING）的功能，能够根据一定的规则进行数据抽样，目前支持数据块抽样，分桶抽样和随机抽样，具体如下所示：
+
+数据块抽样（tablesample()函数）
+1） tablesample(n percent) 根据hive表数据的大小按比例抽取数据，并保存到新的hive表中。如：抽取原hive表中10%的数据
+（注意：测试过程中发现，select语句不能带where条件且不支持子查询，可通过新建中间表或使用随机抽样解决）
+create table xxx_new as select * from xxx tablesample(10 percent)
+2）tablesample(n M) 指定抽样数据的大小，单位为M。
+3）tablesample(n rows) 指定抽样数据的行数，
+其中n代表每个map任务均取n行数据，
+map数量可通过hive表的简单查询语句确认（关键词：number of mappers: x)
+
+分桶抽样
+hive中分桶其实就是根据某一个字段Hash取模，放入指定数据的桶中，比如将表table_1按照ID分成100个桶，其算法是hash(id) % 100，这样，hash(id) % 100 = 0的数据被放到第一个桶中，hash(id) % 100 = 1的记录被放到第二个桶中。创建分桶表的关键语句为：CLUSTER BY语句。
+
+分桶抽样语法：
+TABLESAMPLE (BUCKET x OUT OF y [ON colname])
+其中x是要抽样的桶编号，桶编号从1开始，colname表示抽样的列，y表示桶的数量。
+例如：将表随机分成10组，抽取其中的第一个桶的数据
+select * from table_01 tablesample(bucket 1 out of 10 on rand())
+
+随机抽样（rand()函数）
+1）使用rand()函数进行随机抽样，limit关键字限制抽样返回的数据，其中rand函数前的distribute和sort关键字可以保证数据在mapper和reducer阶段是随机分布的，案例如下：
+select * from table_name where col=xxx distribute by rand() sort by rand() limit num;
+2）使用order 关键词
+案例如下：
+select * from table_name where col=xxx order by rand() limit num;
+经测试对比，千万级数据中进行随机抽样 order by方式耗时更长，大约多30秒左右。
+
+
+
+rand() 函数
+
+生成一个0-1之间的随机数，可设定随机种子。
+
+利用这个函数在hive 中进行随机抽样。
+
+test1  简单随机抽样
+
+SELECT t.varx,t.a
+FROM(
+    SELECT varx,rand() a
+    FROM tablename)t
+WHERE t.a BETWEEN 0 AND 0.2
+这样就抽取了五分之一的数据。
+
+--或者像这样随机抽取100条数据，与limit结合使用
+
+SELECT distinct a.*
+FROM table a
+ORDER BY rand(222)
+limit 100
+test2  数据块取样（Block Sampling）
+
+关键字 TABLESAMPLE
+
+SELECT * FROM table1 TABLESAMPLE (30M)
+
+SELECT * FROM table1 TABLESAMPLE (15 PERCENT)
+
+SELECT COUNT(1) FROM (SELECT * FROM lxw1 TABLESAMPLE (200 ROWS)) x --不懂
+SELECT COUTN(2) FROM table1 TABLESAMPLE (BUCKET 1 OUT OF 20 ON RAND()) -- 分桶20抽取第2桶
+test3  系统抽样
+
+mod,rand() 依照userrid取模，分5组，每组随机抽取100个用户，实现如：
+
+select *
+  from(
+      select refund_id,user_id,mod,rank_num from
+      (select refund_id,user_id,cast(10+rand()*100 as double) rank_num,
+        user_id%5 as mod --依据user_id，取模，获取 mod
+        from table1)
+      distribute by mod sort by mod,rank_num desc  --根据mod分组，并排序
+      ) a
+where row_number(mod)<=20; --从每个mod里面抽取20个
+test4 分层抽样
+
+
+
+
 数据量大的时候，对数据进行采样，然后再做模型分析。作为数据仓库的必备品hive，我们如何对其进行采样呢？
 
 当然，浪尖写本文还有另一个目的就是复习hive的四by。不知是否有印象呢？
 
 Hive : SORT BY vs ORDER BY vs DISTRIBUTE BY vs CLUSTER BY
-
-欢迎点击阅读原文，加入浪尖知识星球。
-
-
 
 假设有一张包含100亿行的Hive表，希望有效地随机抽样一个固定行数的数据 - 比如10000。最明显（而且显然是错误的）的方法是：
 select * from my_table

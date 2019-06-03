@@ -1,0 +1,393 @@
+暂时不说那么多原因，我只想到了其中一个：
+
+当我们有多个数据处理程序，需要一个源头的数据来“喂”，才能发挥数据处理最终的功效时！
+
+比如我们有一个类似淘宝一样的平台。
+
+有平日的订单流，也有用户每日的浏览，点击，询问等活动日志。
+
+订单流我们会直接记录到数据库，做持久化。
+
+而点击流，评论等等活动内容，
+
+我们是由舆论分析系统，点击分析系统，推荐分析系统等其他系统来处理的
+
+这些分析系统，怎么抓取网站上的这些活动内容？
+
+仅仅靠单一的点对点，那么无疑会增加网页设计的工作量，
+
+因为不得不增加对多个系统的直连访问
+
+而使用了 Kafka 等日志系统
+
+网页只需要发一次消息到 Kafka cluster
+
+那么相关有兴趣的订阅方，就会到 Kafka Cluster 上读取自己想要的 topic
+
+拿到自己感兴趣的 topic, 就可以拉到自己系统做分析处理
+
+比如 PV(Page View), UV(User View)分析，即页面浏览总量，用户总量分析
+
+比如 Recommand 系统，即推荐系统，根据浏览的产品，推荐一些相关产品。
+
+这就是一个需要 Kafka 这种集中式分发消息的场景
+
+一处获取，多方订阅
+
+不对业务系统有过多的访问压力，还能提供更有效，高吞吐量的多播环境
+
+
+1.利用Partition实现并行处理
+
+       Kafka中的每个Topic都包含一个或多个Partition，且它们位于不同节点。
+
+同时，Partition在物理上对应一个本地文件夹，每个Partition包含一个或多个Segment，其中包含一个数据文件与一个索引文件。
+
+Partition像一个数组，可以通过索引（offset）去访问其数据。
+
+
+       Kafka不仅可以实现机器间的并行处理，
+因为其Partition物理上对应一个文件夹，可以通过配置让同一节点的不同Partition置于不同的disk drive上，从而实现磁盘间的并行处理。
+
+具体方法：将不同磁盘mount到不同目录，在server.properties中，将log.dirs设置为多目录（逗号分隔），Kafka会自动将所有Partition均匀分配到不同disk上。
+
+       一个Partition只能被一个Consumer消费，如果Consumer的个数多于Partition的个数，会有部分Consumer无法消费该Topic的数据，
+所以，Partition的个数决定了最大并行度。
+       如果用Spark消费Kafka数据，如果Topic的Partition数为N，则有效的Spark最大并行度也为N，即使Spark的Executor数为N+M，最多也只有N个Executor可以同时处理该Topic数据。
+
+
+2.ISR实现CAP中可用性与数据一致性的动态平衡
+       Kafka的数据复制方案接近于Master-Slave，不同的是，Kafka既不是完全的同步复制，也不是完全的一步复制，而是基于ISR的动态复制方案。
+       ISR，In-Sync Replica，每个Partition的Leader都会维护这样一个列表，其中包含了所有与之同步的Replica。每次写入数据时，只有ISR中的所有Replica都复制完，Leader才会将这条数据置为Commit，它才能被Consumer消费。
+       与同步复制不同的是，这个ISR是由Leader动态维护的，如果Follower不能紧跟上Leader，它将被Leader从ISR中移除，待它重新“跟上”Leader后，会被Leader再次加入ISR中。每次改变ISR后，Leader会将最新ISR持久化到Zookeeper中。
+       那么如何判断Follower是否“跟上”Leader？
+
+如果Follower在replica.lag.time.max.ms时间内未向Leader发送Fetch请求（数据复制请求），则Leader将其从ISR中移除。
+
+为什么要使用ISR方案？
+
+Leader可移除不能及时与之同步的Follower，所以与同步复制相比可以避免最慢的Follower拖慢整体速度，提高系统可用性。
+从Consumer角度来看，ISR中所有Replica都始终处于同步状态，从而与异步复制相比提高了数据一致性。
+
+ISR相关配置
+
+Broker的min.insync.replicas参数制定了Broker所要求的ISR最小长度，默认值为1.极限情况下ISR可以只包含Leader，但此时如果Leader宕机，则该Partition不可用，可用性不可保证。
+只有被ISR中所有Replica同步的消息才被commit，但是Producer在写数据时，Leader不需要ISR中所有Replica同步该数据才确认收到数据。Producer可以通过acks参数指定最少需要多少个Replica确认收到该消息才视为该消息发送成功。acks默认值为1，即Leader收到该消息后立即告诉Producer收到该消息，此时如果在ISR中的消息复制完该消息前Leader宕机，那该条消息会丢失。推荐做法是：将acks设置为all或-1，此时只有ISR中的所有Replica都收到该数据（也及消息被commit），Leader才会告诉Producer该消息发送成功，这样保证了不会有未知的数据丢失。
+
+实现层面
+1.高效实用磁盘
+顺序写磁盘
+       将写磁盘的过程变为顺序写，可极大提高对磁盘的利用率。Consumer通过offset顺序消费这些数据，且不删除已经消费的数据，从而避免随机写磁盘的过程。
+       Kafka删除旧数据的方式是删除整个Segment对应的log文件和整个index文件，而不是删除部分内容。如下代码所示：
+
+
+
+充分利用Page Cache
+Page Cache的优点：
+
+I/O Scheduler会将连续的小块写组装成大块的物理写从而提高性能。
+
+I/O Scheduler会尝试将一些写操作重新按顺序排好，从而减少磁头移动时间。
+
+
+充分利用所有空闲内存（非JVM内存）。
+
+读操作可以直接在Page Cache内进行。如果消费和生产速度相当，甚至不需要通过物理磁盘交换数据。
+
+如果进程重启，JVM内的Cache会失效，但Page Cache仍然可用
+
+
+零拷贝
+       Kafka中存在大量网络数据持久化到磁盘（Producer到Broker）和磁盘文件通过网络发送（Broker到Consumer）的过程，这个过程中，传统模式下要进行数据的四次拷贝，但是Kafka通过零拷贝技术将其减为了一次，大大增加了效率，原理可以在另一篇文章（https://www.jianshu.com/p/835ec2d4c170）中获得。
+3.减少网络开销
+批处理
+       批处理减少了网络传输的overhead，又提高了写磁盘的效率。
+       Kafka的API做中，从send接口来看，一次只能发送一个ProducerRecord，但是send方法并不是立即将消息发送出去，而是通过batch.size和linger.ms控制实际发送频率，从而实现批量发送。
+数据压缩降低网络负载
+高效的序列化方式
+
+
+
+
+生产者（写入数据）
+生产者（producer）是负责向Kafka提交数据的，我们先分析这一部分。
+
+Kafka会把收到的消息都写入到硬盘中，它绝对不会丢失数据。为了优化写入速度Kafak采用了两个技术， 顺序写入 和 MMFile 。
+
+顺序写入
+因为硬盘是机械结构，每次读写都会寻址->写入，其中寻址是一个“机械动作”，它是最耗时的。所以硬盘最“讨厌”随机I/O，最喜欢顺序I/O。为了提高读写硬盘的速度，Kafka就是使用顺序I/O。
+
+
+上图就展示了Kafka是如何写入数据的， 每一个Partition其实都是一个文件 ，收到消息后Kafka会把数据插入到文件末尾（虚框部分）。
+
+这种方法有一个缺陷—— 没有办法删除数据 ，所以Kafka是不会删除数据的，它会把所有的数据都保留下来，每个消费者（Consumer）对每个Topic都有一个offset用来表示 读取到了第几条数据 。
+
+
+上图中有两个消费者，Consumer1有两个offset分别对应Partition0、Partition1（假设每一个Topic一个Partition）；Consumer2有一个offset对应Partition2。这个offset是由客户端SDK负责保存的，Kafka的Broker完全无视这个东西的存在；一般情况下SDK会把它保存到zookeeper里面。(所以需要给Consumer提供zookeeper的地址)。
+
+如果不删除硬盘肯定会被撑满，所以Kakfa提供了两种策略来删除数据。一是基于时间，二是基于partition文件大小。具体配置可以参看它的配置文档。
+
+Memory Mapped Files
+即便是顺序写入硬盘，硬盘的访问速度还是不可能追上内存。所以Kafka的数据并 不是实时的写入硬盘 ，它充分利用了现代操作系统 分页存储 来利用内存提高I/O效率。
+
+Memory Mapped Files(后面简称mmap)也被翻译成 内存映射文件 ，在64位操作系统中一般可以表示20G的数据文件，它的工作原理是直接利用操作系统的Page来实现文件到物理内存的直接映射。完成映射之后你对物理内存的操作会被同步到硬盘上（操作系统在适当的时候）。
+
+
+通过mmap，进程像读写硬盘一样读写内存（当然是虚拟机内存），也不必关心内存的大小有虚拟内存为我们兜底。
+
+使用这种方式可以获取很大的I/O提升， 省去了用户空间到内核空间 复制的开销（调用文件的read会把数据先放到内核空间的内存中，然后再复制到用户空间的内存中。）也有一个很明显的缺陷——不可靠， 写到mmap中的数据并没有被真正的写到硬盘，操作系统会在程序主动调用flush的时候才把数据真正的写到硬盘。 Kafka提供了一个参数——producer.type来控制是不是主动flush，如果Kafka写入到mmap之后就立即flush然后再返回Producer叫 同步 (sync)；写入mmap之后立即返回Producer不调用flush叫 异步 (async)。
+
+mmap其实是Linux中的一个函数就是用来实现内存映射的，谢谢Java NIO，它给我提供了一个mappedbytebuffer类可以用来实现内存映射（所以是沾了Java的光才可以如此神速和Scala没关系！！）
+
+消费者（读取数据）
+Kafka使用磁盘文件还想快速？这是我看到Kafka之后的第一个疑问，ZeroMQ完全没有任何服务器节点，也不会使用硬盘，按照道理说它应该比Kafka快。可是实际测试下来它的速度还是被Kafka“吊打”。 “一个用硬盘的比用内存的快”，这绝对违反常识；如果这种事情发生说明——它作弊了。
+
+没错，Kafka“作弊”。无论是 顺序写入 还是 mmap 其实都是作弊的准备工作。
+
+如何提高Web Server静态文件的速度
+仔细想一下，一个Web Server传送一个静态文件，如何优化？答案是zero copy。传统模式下我们从硬盘读取一个文件是这样的
+
+先复制到内核空间（read是系统调用，放到了DMA，所以用内核空间），然后复制到用户空间(1,2)；从用户空间重新复制到内核空间（你用的socket是系统调用，所以它也有自己的内核空间），最后发送给网卡（3、4）。
+
+
+Zero Copy中直接从内核空间（DMA的）到内核空间（Socket的），然后发送网卡。
+
+这个技术非常普遍，The C10K problem 里面也有很详细的介绍，Nginx也是用的这种技术，稍微搜一下就能找到很多资料。
+
+Java的NIO提供了FileChannle，它的transferTo、transferFrom方法就是Zero Copy。
+
+Kafka是如何耍赖的
+想到了吗？Kafka把所有的消息都存放在一个一个的文件中， 当消费者需要数据的时候Kafka直接把“文件”发送给消费者 。这就是秘诀所在，比如： 10W的消息组合在一起是10MB的数据量，然后Kafka用类似于发文件的方式直接扔出去了，如果消费者和生产者之间的网络非常好（只要网络稍微正常一点10MB根本不是事。。。家里上网都是100Mbps的带宽了），10MB可能只需要1s。所以答案是——10W的TPS，Kafka每秒钟处理了10W条消息。
+
+可能你说：不可能把整个文件发出去吧？里面还有一些不需要的消息呢？是的，Kafka作为一个“高级作弊分子”自然要把作弊做的有逼格。Zero Copy对应的是sendfile这个函数（以Linux为例），这个函数接受
+
+out_fd作为输出（一般及时socket的句柄）
+
+in_fd作为输入文件句柄
+
+off_t表示in_fd的偏移（从哪里开始读取）
+
+size_t表示读取多少个
+
+没错，Kafka是用mmap作为文件读写方式的，它就是一个文件句柄，所以直接把它传给sendfile；偏移也好解决，用户会自己保持这个offset，每次请求都会发送这个offset。（还记得吗？放在zookeeper中的）；数据量更容易解决了，如果消费者想要更快，就全部扔给消费者。如果这样做一般情况下消费者肯定直接就被 压死了 ；所以Kafka提供了的两种方式——Push，我全部扔给你了，你死了不管我的事情；Pull，好吧你告诉我你需要多少个，我给你多少个。
+
+总结
+Kafka速度的秘诀在于，它把所有的消息都变成一个的文件。通过mmap提高I/O速度，写入数据的时候它是末尾添加所以速度最优；读取数据的时候配合sendfile直接暴力输出。阿里的RocketMQ也是这种模式，只不过是用Java写的。
+
+单纯的去测试MQ的速度没有任何意义，Kafka这种“暴力”、“流氓”、“无耻”的做法已经脱了MQ的底裤，更像是一个暴力的“数据传送器”。 所以对于一个MQ的评价只以速度论英雄，世界上没人能干的过Kafka，我们设计的时候不能听信网上的流言蜚语——“Kafka最快，大家都在用，所以我们的MQ用Kafka没错”。在这种思想的作用下，你可能根本不会关心“失败者”；而实际上可能这些“失败者”是更适合你业务的MQ。
+
+
+
+Kafka文件存储机制那些事
+
+分析过程分为以下4个步骤：
+
+topic中partition存储分布
+partiton中文件存储方式
+partiton中segment文件存储结构
+在partition中如何通过offset查找message
+通过上述4过程详细分析，我们就可以清楚认识到kafka文件存储机制的奥秘。
+
+2.1 topic中partition存储分布
+假设实验环境中Kafka集群只有一个broker，xxx/message-folder为数据文件存储根目录，在Kafka broker中server.properties文件配置(参数log.dirs=xxx/message-folder)，例如创建2个topic名称分别为report_push、launch_info, partitions数量都为partitions=4
+
+存储路径和目录规则为：
+xxx/message-folder
+
+这里写图片描述
+
+在Kafka文件存储中，同一个topic下有多个不同partition，每个partition为一个目录，partiton命名规则为topic名称+有序序号，第一个partiton序号从0开始，序号最大值为partitions数量减1。
+
+2.2 partiton中文件存储方式
+下面示意图形象说明了partition中文件存储方式:
+这里写图片描述
+
+每个partion(目录)相当于一个巨型文件被平均分配到多个大小相等segment(段)数据文件中。但每个段segment file消息数量不一定相等，这种特性方便old segment file快速被删除。
+每个partiton只需要支持顺序读写就行了，segment文件生命周期由服务端配置参数决定。
+这样做的好处就是能快速删除无用文件，有效提高磁盘利用率。
+
+2.3 partiton中segment文件存储结构
+读者从2.2节了解到Kafka文件系统partition存储方式，本节深入分析partion中segment file组成和物理结构。
+
+segment file组成：由2大部分组成，分别为index file和data file，此2个文件一一对应，成对出现，后缀”.index”和“.log”分别表示为segment索引文件、数据文件.
+segment文件命名规则：partion全局的第一个segment从0开始，后续每个segment文件名为上一个segment文件最后一条消息的offset值。数值最大为64位long大小，19位数字字符长度，没有数字用0填充。
+下面文件列表是笔者在Kafka broker上做的一个实验，创建一个topicXXX包含1 partition，设置每个segment大小为500MB,并启动producer向Kafka broker写入大量数据,如下图2所示segment文件列表形象说明了上述2个规则：
+
+这里写图片描述
+
+以上述图2中一对segment file文件为例，说明segment中index<—->data file对应关系物理结构如下：
+
+这里写图片描述
+
+上述图3中索引文件存储大量元数据，数据文件存储大量消息，索引文件中元数据指向对应数据文件中message的物理偏移地址。
+
+其中以索引文件中元数据3,497为例，依次在数据文件中表示第3个message(在全局partiton表示第368772个message)、以及该消息的物理偏移地址为497。
+
+从上述图3了解到segment data file由许多message组成，下面详细说明message物理结构如下：
+
+这里写图片描述
+
+参数说明
+
+关键字	解释说明
+8 byte offset	在parition(分区)内的每条消息都有一个有序的id号，这个id号被称为偏移(offset),它可以唯一确定每条消息在parition(分区)内的位置。即offset表示partiion的第多少message
+4 byte message size	message大小
+4 byte CRC32	用crc32校验message
+1 byte “magic”	表示本次发布Kafka服务程序协议版本号
+1 byte “attributes”	表示为独立版本、或标识压缩类型、或编码类型。
+4 byte key length	表示key的长度,当key为-1时，K byte key字段不填
+K byte key	可选
+value bytes payload	表示实际消息数据。
+2.4 在partition中如何通过offset查找message
+例如读取offset=368776的message，需要通过下面2个步骤查找。
+
+第一步查找segment file
+上述图2为例，其中00000000000000000000.index表示最开始的文件，起始偏移量(offset)为0.第二个文件00000000000000368769.index的消息量起始偏移量为368770 = 368769 + 1.同样，第三个文件00000000000000737337.index的起始偏移量为737338=737337 + 1，其他后续文件依次类推，以起始偏移量命名并排序这些文件，只要根据offset 二分查找文件列表，就可以快速定位到具体文件。
+当offset=368776时定位到00000000000000368769.index|log
+
+第二步通过segment file查找message
+通过第一步定位到segment file，当offset=368776时，依次定位到00000000000000368769.index的元数据物理位置和00000000000000368769.log的物理偏移地址，然后再通过00000000000000368769.log顺序查找直到offset=368776为止。
+
+从上述图3可知这样做的优点，segment index file采取稀疏索引存储方式，它减少索引文件大小，通过mmap可以直接内存操作，稀疏索引为数据文件的每个对应message设置一个元数据指针,它比稠密索引节省了更多的存储空间，但查找起来需要消耗更多的时间。
+
+3 Kafka文件存储机制–实际运行效果
+实验环境：
+
+Kafka集群：由2台虚拟机组成
+cpu：4核
+物理内存：8GB
+网卡：千兆网卡
+jvm heap: 4GB
+这里写图片描述
+
+从上述图5可以看出，Kafka运行时很少有大量读磁盘的操作，主要是定期批量写磁盘操作，因此操作磁盘很高效。这跟Kafka文件存储中读写message的设计是息息相关的。Kafka中读写message有如下特点:
+
+写message：
+
+消息从java堆转入page cache(即物理内存)。
+由异步线程刷盘,消息从page cache刷入磁盘。
+读message
+
+消息直接从page cache转入socket发送出去。
+当从page cache没有找到相应数据时，此时会产生磁盘IO,从磁盘Load消息到page cache,然后直接从socket发出去
+4.总结
+Kafka高效文件存储设计特点：
+
+Kafka把topic中一个parition大文件分成多个小文件段，通过多个小文件段，就容易定期清除或删除已经消费完文件，减少磁盘占用。
+通过索引信息可以快速定位message和确定response的最大大小。
+通过index元数据全部映射到memory，可以避免segment file的IO磁盘操作。
+通过索引文件稀疏存储，可以大幅降低index文件元数据占用空间大
+
+============
+架构层面
+1.利用Partition实现并行处理
+       Kafka中的每个Topic都包含一个或多个Partition，且它们位于不同节点。同时，Partition在物理上对应一个本地文件夹，每个Partition包含一个或多个Segment，其中包含一个数据文件与一个索引文件。Partition像一个数组，可以通过索引（offset）去访问其数据。
+       Kafka不仅可以实现机器间的并行处理，因为其Partition物理上对应一个文件夹，可以通过配置让同一节点的不同Partition置于不同的disk drive上，从而实现磁盘间的并行处理。具体方法：将不同磁盘mount到不同目录，在server.properties中，将log.dirs设置为多目录（逗号分隔），Kafka会自动将所有Partition均匀分配到不同disk上。
+       一个Partition只能被一个Consumer消费，如果Consumer的个数多于Partition的个数，会有部分Consumer无法消费该Topic的数据，所以，Partition的个数决定了最大并行度。
+       如果用Spark消费Kafka数据，如果Topic的Partition数为N，则有效的Spark最大并行度也为N，即使Spark的Executor数为N+M，最多也只有N个Executor可以同时处理该Topic数据。
+
+2.ISR实现CAP中可用性与数据一致性的动态平衡
+       Kafka的数据复制方案接近于Master-Slave，不同的是，Kafka既不是完全的同步复制，也不是完全的一步复制，而是基于ISR的动态复制方案。
+       ISR，In-Sync Replica，每个Partition的Leader都会维护这样一个列表，其中包含了所有与之同步的Replica。每次写入数据时，只有ISR中的所有Replica都复制完，Leader才会将这条数据置为Commit，它才能被Consumer消费。
+       与同步复制不同的是，这个ISR是由Leader动态维护的，如果Follower不能紧跟上Leader，它将被Leader从ISR中移除，待它重新“跟上”Leader后，会被Leader再次加入ISR中。每次改变ISR后，Leader会将最新ISR持久化到Zookeeper中。
+       那么如何判断Follower是否“跟上”Leader？
+
+如果Follower在replica.lag.time.max.ms时间内未向Leader发送Fetch请求（数据复制请求），则Leader将其从ISR中移除。
+
+为什么要使用ISR方案？
+Leader可移除不能及时与之同步的Follower，所以与同步复制相比可以避免最慢的Follower拖慢整体速度，提高系统可用性。
+
+从Consumer角度来看，ISR中所有Replica都始终处于同步状态，从而与异步复制相比提高了数据一致性。
+
+ISR相关配置
+Broker的min.insync.replicas参数制定了Broker所要求的ISR最小长度，默认值为1.极限情况下ISR可以只包含Leader，但此时如果Leader宕机，则该Partition不可用，可用性不可保证。
+
+只有被ISR中所有Replica同步的消息才被commit，但是Producer在写数据时，Leader不需要ISR中所有Replica同步该数据才确认收到数据。Producer可以通过acks参数指定最少需要多少个Replica确认收到该消息才视为该消息发送成功。acks默认值为1，即Leader收到该消息后立即告诉Producer收到该消息，此时如果在ISR中的消息复制完该消息前Leader宕机，那该条消息会丢失。推荐做法是：将acks设置为all或-1，此时只有ISR中的所有Replica都收到该数据（也及消息被commit），Leader才会告诉Producer该消息发送成功，这样保证了不会有未知的数据丢失。
+
+实现层面
+1.高效实用磁盘
+顺序写磁盘
+       将写磁盘的过程变为顺序写，可极大提高对磁盘的利用率。Consumer通过offset顺序消费这些数据，且不删除已经消费的数据，从而避免随机写磁盘的过程。
+       Kafka删除旧数据的方式是删除整个Segment对应的log文件和整个index文件，而不是删除部分内容。如下代码所示：
+
+
+
+
+
+image.png
+
+充分利用Page Cache
+Page Cache的优点：
+
+I/O Scheduler会将连续的小块写组装成大块的物理写从而提高性能。
+
+I/O Scheduler会尝试将一些写操作重新按顺序排好，从而减少磁头移动时间。
+
+充分利用所有空闲内存（非JVM内存）。
+
+读操作可以直接在Page Cache内进行。如果消费和生产速度相当，甚至不需要通过物理磁盘交换数据。
+
+如果进程重启，JVM内的Cache会失效，但Page Cache仍然可用
+
+零拷贝
+       Kafka中存在大量网络数据持久化到磁盘（Producer到Broker）和磁盘文件通过网络发送（Broker到Consumer）的过程，这个过程中，传统模式下要进行数据的四次拷贝，但是Kafka通过零拷贝技术将其减为了一次，大大增加了效率，原理可以在另一篇文章（https://www.jianshu.com/p/835ec2d4c170）中获得。
+
+3.减少网络开销
+批处理
+       批处理减少了网络传输的overhead，又提高了写磁盘的效率。
+       Kafka的API做中，从send接口来看，一次只能发送一个ProducerRecord，但是send方法并不是立即将消息发送出去，而是通过batch.size和linger.ms控制实际发送频率，从而实现批量发送。
+
+数据压缩降低网络负载
+高效的序列化方式
+
+
+--------------------------------------------------
+
+kafka初衷 企业统一，高通量，低延迟。
+
+Kafka 是一种高吞吐量的分布式发布订阅消息系统，有如下特性：
+
+通过O(1)的磁盘数据结构提供消息的持久化，这种结构对于即使数以TB的消息存储也能够保持长时间的稳定性能。
+高吞吐量：即使是非常普通的硬件Kafka也可以支持每秒数百万 [2] 的消息。
+支持通过Kafka服务器和消费机集群来分区消息。
+支持Hadoop并行数据加载
+这篇写得也很好
+http://rdcqii.hundsun.com/portal/article/709.html
+
+生产快
+producer ——> broker
+分布式broker
+
+存储快
+broker ——>disk
+简单说就是通过buffer控制数据的发送，有时间阀值与消息数量阀值来控制
+
+不同于 Redis 和 MemcacheQ 等内存消息队列，Kafka 的设计是把所有的 Message 都要写入速度低、容量大的硬盘，以此来换取更强的存储能力。实际上，Kafka 使用硬盘并没有带来过多的性能损失，“规规矩矩”的抄了一条“近道”。
+首先，说“规规矩矩”是因为 Kafka 在磁盘上只做 Sequence I/O （顺序写），由于消息系统读写的特殊性，这并不存在什么问题。关于磁盘 I/O 的性能，引用一组 Kafka 官方给出的测试数据(Raid-5，7200rpm)：
+
+Sequence I/O: 600MB/s (实验室)
+Sequence I/O: 400MB-500MB/s (工作场景)
+Random I/O: 100KB/s
+1
+2
+3
+所以通过只做 Sequence I/O 的限制，规避了磁盘访问速度低下对性能可能造成的影响。
+
+接下来我们再聊一聊 Kafka 是如何“抄近道的”。
+首先，Kafka 重度依赖底层操作系统提供的 PageCache 功能。当上层有写操作时，操作系统只是将数据写入 PageCache，同时标记 Page 属性为 Dirty。当读操作发生时，先从 PageCache 中查找，如果发生缺页才进行磁盘调度，最终返回需要的数据。
+实际上 PageCache 是把尽可能多的空闲内存都当做了磁盘缓存来使用。同时如果有其他进程申请内存，回收 PageCache 的代价又很小，所以现代的 OS 都支持 PageCache。使用 PageCache 功能同时可以避免在 JVM 内部缓存数据，JVM 为我们提供了强大的 GC 能力，同时也引入了一些问题不适用与 Kafka 的设计。
+如果在 Heap 内管理缓存，JVM 的 GC 线程会频繁扫描 Heap 空间，带来不必要的开销。如果 Heap过大，执行一次 Full GC 对系统的可用性来说将是极大的挑战。
+所有在在 JVM 内的对象都不免带有一个 Object Overhead(千万不可小视)，内存的有效空间利用率会因此降低。
+所有的 In-Process Cache 在 OS 中都有一份同样的 PageCache。所以通过将缓存只放在 PageCache，可以至少让可用缓存空间翻倍。
+如果 Kafka 重启，所有的 In-Process Cache 都会失效，而 OS 管理的 PageCache 依然可以继续使用。
+
+读取快
+消费者获取数据快
+PageCache 还只是第一步，Kafka 为了进一步的优化性能还采用了 Sendfile 技术。在解释 Sendfile 之前，首先介绍一下传统的网络 I/O 操作流程，大体上分为以下 4 步。
+
+OS 从硬盘把数据读到内核区的 PageCache。
+用户进程把数据从内核区 Copy 到用户区。
+然后用户进程再把数据写入到 Socket，数据流入内核区的 Socket Buffer 上。
+OS 再把数据从 Buffer 中 Copy 到网卡的 Buffer 上，这样完成一次发送。
+这里写图片描述
+整个过程共经历两次 Context Switch，四次 System Call。同一份数据在内核 Buffer 与用户 Buffer 之间重复拷贝，效率低下。其中 2、3 两步没有必要，完全可以直接在内核区完成数据拷贝。这也正是Sendfile 所解决的问题，经过 Sendfile 优化后，整个 I/O 过程就变成了下面这个样子。
