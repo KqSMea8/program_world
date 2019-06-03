@@ -1,0 +1,109 @@
+
+1. 测试工具
+pgbench
+pgbench是针对PostgreSQL的一个基准测试程序。可以方便的用来测试兼容PostgreSQL协议的数据库性能，通过不断运行相同的sql（sql可以自己定义），最终计算出各项测试指标。时空数据库使用PostgreSQL协议，因此，采用pgbench进行基准测试。
+
+2. 测试指标
+写入TPS
+数据库不同batch，每秒insert的数据条数
+只读QPS
+数据库只读时，每秒执行的SQL数（仅包含select）。
+读写QPS
+数据库读写时，每秒执行的SQL数（insert、select）
+
+
+测试环境
+所有测试在华东1（杭州）地域完成，时空数据库的测试实例规格如下：
+
+2C 4G SSD云盘 100G
+4C 16G SSD 云盘 150G
+8C 32G SSD 云盘 500G
+测试步骤
+写入TPS
+1、创建时空表
+
+CREATE TABLE "rides"(
+    uid bigint,
+    time  timestamp without time zone not null,
+    speed float,
+    position geometry(Point,4326)
+);
+SELECT create_hypertable('rides', 'time', chunk_time_interval => interval '1 hour');
+2、写入测试脚本
+
+random(1552259212,1552295212)：表示2019-03-11 07:06:52至2019-03-11 17:06:52之间10个小时内的随机数据。
+insert_1.sql，单条插入
+
+#cat insert_1.sql
+\set t random(1552259212,1552295212)
+insert into rides select (random()*100000)::int,id,random()*1000,ST_SetSRID(ST_MakePoint( trunc( (0.5-random())*100), trunc( (0.5-random())*100) ),4326) from generate_series(to_timestamp(:t), to_timestamp(:t) + '0 second','1 second') as t(id);
+insert_10.sql，batch 10插入
+
+#cat insert_10.sql, (1552259212,1552295212) 10个小时(2019-03-11 07:06:52,2019-03-11 17:06:52)
+\set t random(1552259212,1552295212)
+insert into rides select (random()*100000)::int,id,random()*1000,ST_SetSRID(ST_MakePoint( trunc( (0.5-random())*100), trunc( (0.5-random())*100) ),4326) from generate_series(to_timestamp(:t), to_timestamp(:t) + '9 second','1 second') as t(id);
+insert_100.sql，batch 100插入
+
+#cat insert_100.sql
+\set t random(1552259212,1552295212)
+insert into rides select (random()*100000)::int,id,random()*1000,ST_SetSRID(ST_MakePoint( trunc( (0.5-random())*100), trunc( (0.5-random())*100) ),4326) from generate_series(to_timestamp(:t), to_timestamp(:t) + '99 second','1 second') as t(id);
+insert_1000.sql，batch 1000插入
+
+#cat insert_1000.sql
+\set t random(1552259212,1552295212)
+insert into rides select (random()*100000)::int,id,random()*1000,ST_SetSRID(ST_MakePoint( trunc( (0.5-random())*100), trunc( (0.5-random())*100) ),4326) from generate_series(to_timestamp(:t), to_timestamp(:t) + '999 second','1 second') as t(id);
+3、使用下面命令，按照不同batch，写入800W数据
+
+# xxx：用户创建的时空数据库初始账号。x.x.x.x：时空数据库ip地址。3242：时空数据库默认端口。postgres：默认库为postgres
+pgbench -U xxx -h x.x.x.x -p 3242 -d postgres -M prepared -n -r -P 1 -f ./insert_1.sql -c 16 -j 16 -t 500000
+pgbench -U xxx -h x.x.x.x -p 3242 -d postgres -M prepared -n -r -P 1 -f ./insert_10.sql -c 16 -j 16 -t 50000
+pgbench -U xxx -h x.x.x.x -p 3242 -d postgres -M prepared -n -r -P 1 -f ./insert_100.sql -c 16 -j 16 -t 5000
+pgbench -U xxx -h x.x.x.x -p 3242 -d postgres -M prepared -n -r -P 1 -f ./insert_1000.sql -c 16 -j 16 -t 500
+查询QPS
+1、创建时空表
+
+CREATE TABLE "myrides"(
+    uid bigint,
+    time  timestamp without time zone not null,
+    speed float,
+    position geometry(Point,4326)
+);
+SELECT create_hypertable('myrides', 'time', chunk_time_interval => interval '1 hour');
+2、初始化测试数据
+
+# 写入1000W数据,random(1552259212,1552295212)：表示产生10个小时内时序数据
+cat insert_100_10hour.sql
+\set t random(1552259212,1552295212)
+insert into myrides select (random()*100000)::int,id,random()*1000,ST_SetSRID(ST_MakePoint( trunc( (0.5-random())*100), trunc( (0.5-random())*100)
+pgbench -U xxx -h x.x.x.x -p 3242 -d postgres -M prepared -n -r -P 1 -f ./insert_100_10hour.sql -c 20 -j 20 -t 5000
+create index on myrides using gist(position);
+# 写入1亿数据,random(1552259212,1552619212)：表示产生100个小时内时序数据
+cat insert_100_100hour.sql
+\set t random(1552259212,1552619212)
+insert into myrides select (random()*100000)::int,id,random()*1000,ST_SetSRID(ST_MakePoint( trunc( (0.5-random())*100), trunc( (0.5-random())*100) ),4326) from generate_series(to_timestamp(:t), to_timestamp(:t) + '99 second','1 second') as t(id)
+pgbench -U xxx -h x.x.x.x -p 3242 -d postgres -M prepared -n -r -P 1 -f ./insert_100_100hour.sql -c 20 -j 20 -t 50000
+create index on myrides using gist(position);
+3、只读测试脚本
+
+# cat select_ro.sql
+\set x random(1, 1 * :scale)
+\set y random(1, 1 * :scale)
+\set t random(1552259212,1552619212)
+select count(*) from myrides where time > to_timestamp(:t) and time < to_timestamp(:t+10) and ST_Contains(ST_SetSRID(ST_MakeBox2D(ST_Point(:x, :y),ST_Point(:x + 1,:y +1)),4326),position);
+4、读写测试脚本
+
+# cat select_rw.sql
+\set x random(1, 1 * :scale)
+\set y random(1, 1 * :scale)
+\set t random(1552259212,1552619212)
+BEGIN;
+insert into myrides select (random()*100000)::int,id,random()*1000,ST_SetSRID(ST_MakePoint( trunc( (0.5-random())*100), trunc( (0.5-random())*100) ),4326) from generate_series(to_timestamp(:t), to_timestamp(:t) + '0 second','1 second') as t(id);
+select count(*) from myrides where time > to_timestamp(:t) and time < to_timestamp(:t+10) and ST_Contains(ST_SetSRID(ST_MakeBox2D(ST_Point(:x, :y),ST_Point(:x + 1,:y +1)),4326),position);
+END;
+5、查询压测
+
+# 只读QPS压测：
+pgbench  -U xxx -h x.x.x.x -p 3242 -d postgres -M prepared -r -P 1 -f ./select_ro.sql -c 8 -j 8 -T 100 -D scale=50
+# 读写QPS压测：
+pgbench  -U xxx -h x.x.x.x -p 3242 -d postgres -M prepared -r -P 1 -f ./select_rw.sql -c 8 -j 8 -T 100 -D scale=50
+ 上一篇：使用详解

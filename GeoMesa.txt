@@ -1,0 +1,79 @@
+本篇参考的文档与博客：
+1、GeoMesa官网介绍：https://www.geomesa.org/documentation/index.html
+2、阿里云-GeoMesa开发指南：https://help.aliyun.com/document_detail/87287.html
+3、HuFeiHu-Blog的博客：https://blog.csdn.net/u011596455/article/details/75868609
+4、barrycug的博客：https://www.jianshu.com/p/b031be6bf486
+5、萧博士的博客：https://blog.csdn.net/xiaof22a/article/details/80288096
+
+说明
+本篇博客立足于“总结+学习”的出发点，对网上现有的关于GeoMesa的资料进行总结，便于大家也便于自己对GeoMesa有一个较全面的认识。在此，笔者衷心感谢上述各位博主的分享。
+
+简介
+1、GeoMesa 是由locationtech开发的一套开源的地理大数据处理工具套件，可在分布式计算系统上进行大规模的地理空间查询和分析，可帮助用户管理、使用来自于物联网、社交媒体、手机应用的海量的时空数据。
+2、GeoMesa以分布式时空索引为内核，在此基础上基于不同的NoSQL数据库提供数据管理工具，并以统一的接口对外提供服务，衍生出了多个开源项目 — 目前多个活跃的开源项目(如GeoTrellis,GeoWave，GeoDocker等)都提供了对GeoMesa数据源的支持。
+
+定位
+GeoMesa 是一个基于NoSQL的时空数据管理（存储、查询）与分析引擎。
+
+使用场景
+1、基础地理信息数据管理：GeoMesa提供的高效时空索引系统，允许用户使用NoSQL数据库对点、线、面等空间要素进行分布式存储与快速查询。
+2、大规模传感网实时数据管理：GeoMesa可以与Apache Streams、Kafka、Spark等项目进行无缝衔接，用来存储和管理实时的流式数据并进行实时分析。
+3、大规模轨迹数据管理：GeoMesa提供了针对随时间连续变化的轨迹数据的存储模型，并提供了TubeSelect等空间查询算法实现基于轨迹数据的时空查询算法。
+4、海量数据统计分析：GeoMesa提供了多种如KNN、直方图、热点分析等空间分析算法，允许用户进行空间大数据的实时分析挖掘。
+
+存储、查询
+1、使用 key-value数据库存储数据，按照键值对的形式进行组织、索引和存储。将海量的时空数据（如基础地理信息数据、传感网实时数据、GNSS轨迹数据等）存储到Accumulo，HBase，Google Cloud Bigtable和Cassandra数据库（云端存储架构）中， Accumulo，HBase和Google Cloud Bigtable等数据库对这些键进行排序，可将它们存储在任意数量的节点（服务器）上，并提供高效的索引来读取、查询数据。2、可以和Apache Storm一起处理流数据，并使用Spark进行空间分析；基于Apache Kafka提供了时空数据的近实时流处理功能。
+3、支持Common Query Language (CQL)，支持指定空间条件（距离和范围）的快速查询；通过GeoMesa API或GeoTools API进行查询等操作。
+4、与关系数据库不同的是，key-value数据库中频繁使用key进行查询；GeoMesa根据时空数据的特点，实现生成包含时空信息的Key的算法（Z曲线）；Z曲线上的每个点都可赋予一个顺序值，GeoMesa通过此顺序值将经纬度表示为一个整数，将二维数据降为一维数据作为key使用。Z曲线支持多维数据，因此GeoMesa支持将多维数据降为一维数据，作为key使用。
+
+
+数据访问与可视化
+1、通过实现GeoTools接口，提供通过标准OGC接口（WMS、WFS、WPS、WCS)访问数据的能力；通过这些接口，用户可以方便对GeoMesa处理的数据进行展示和分析，比如查询、直方图、时间序列分析等。
+2、以GeoServer插件的形式为GeoServer提供读取GeoMesa表的功能。在GeoServer中，GeoMesa数据源以表的形式存在。
+3、整合GeoServer提供可视化功能。
+
+架构
+
+
+数据导入
+多种数据导入方式，包括GeoMesa命令行工具，Hadoop的map-reduce作业以及Apache Storm的实时数据流。
+
+其他
+关于GeoMesa-Hbase
+
+1、优点：
+1）提供了多种空间索引方式供用户灵活选择。
+2）提供了基于Coprocessor的空间查询方式，将计算过程放置在server端，能够减少通讯开销，从而获得很好的性能提升。
+3）提供了丰富数据入库、操作等工具，便于用户处理数据。
+4）提供了多种空间数据分析算法，如KNN、直方图、热点分析、TubeSelect等。
+5）基于OGC标准设计，便于系统间的集成与互操作。
+6）基于RDBMS Spatial的云数据库产品(如Postgresql、Oracle)缺乏时空融合操作，在PB级大规模时空数据处理能力以及存储可扩展性方面有待提高。而HBase for GeoMesa支持时空融合操作和分布式索引算法，实现了多源异构数据的一体化管理和高效计算，并在此基础上提供大规模分布式存储及跨结点容灾备份支持。同时基于云平台的HBase for GeoMesa可以帮助用户应对系统运维、数据安全性等方面的挑战，使用户把主要精力放在时空数据的组织与应用设计上来，并节省大量的成本。
+
+2、缺点：
+目前不支持栅格数据存储；空间索引基于Z曲线与GeoHash设计，存在位置突变等问题，仍有改进空间。
+---------------------
+
+HBase Ganos简介
+更新时间：2018-12-14 15:16:55
+
+
+HBase Ganos简介
+
+HBase Ganos时空引擎是基于 LocationTech 开源项目 GeoMesa 开发的一套时空大数据引擎系统。HBase Ganos提供一系列时空索引（点、线、面）、数据类型、查询算法，基于阿里云NoSQL分布式存储系统中对空间/时空数据进行高效的存储、索引、查询和分析计算。
+
+HBase Ganos使用场景
+
+基础地理信息数据管理：HBase Ganos提供的高效时空索引系统，允许用户使用NoSQL数据库对点、线、面等空间要素进行分布式存储与快速查询。
+大规模传感网实时数据管理：HBase Ganos可以Stream流式计算框架、MQ、Spark分析框架等进行无缝衔接，用来存储和管理实时的流式数据并进行实时分析。
+大规模轨迹数据管理：HBase Ganos提供了针对随时间连续变化的轨迹数据的存储模型，并提供了TubeSelect等空间查询算法实现基于轨迹数据的时空查询算法。可广泛应用在网约车、共享单车、船只、飞行器等领域的轨迹存储与查询。
+海量数据统计分析：HBase Ganos提供了多种如KNN、直方图、热点分析等空间分析算法，允许用户进行空间大数据的实时分析挖掘。
+HBase Ganos的优势
+
+PB级存储与海量并发写入。
+多种空间索引方式供用户灵活选择。
+基于Coprocessor的空间查询与计算方式，将计算过程放置在server端，能够最大化并行效率，从而获得较好的性能提升。
+提供了多种空间数据分析算法，如KNN、直方图、热点分析、TubeSelect等。
+基于OGC标准设计，便于系统间的集成与互操作。
+冷热数据存储分离与无缝访问。
+基于阿里云HBase专业运维，全托管方式，提供可靠稳定的服务。
+

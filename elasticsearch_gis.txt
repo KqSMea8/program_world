@@ -1,0 +1,1481 @@
+一、geo point地理位置数据类型
+1.建立geo_point类型的mapping
+PUT /my_index 
+{
+  "mappings": {
+	"my_type": {
+	  "properties": {
+		"location": {
+		  "type": "geo_point"
+		}
+	  }
+	}
+  }
+}
+2.写入geo_point的3种方法
+PUT my_index/my_type/1
+{
+  "text": "Geo-point as an object",
+  "location": { 
+	"lat": 41.12,
+	"lon": -71.34
+  }
+}
+PUT my_index/my_type/2
+{
+  "text": "Geo-point as a string",
+  "location": "41.12,-71.34" 
+}
+PUT my_index/my_type/4
+{
+  "text": "Geo-point as an array",
+  "location": [ -71.34, 41.12 ] 
+}
+3.查询某个矩形的地理位置范围内的坐标点，比如41.12,-71.34是一个酒店，搜索的是从42,-72（代表了大厦A）和40,-74（代表了马路B）作为矩形的范围
+GET /my_index/my_type/_search 
+{
+  "query": {
+	"geo_bounding_box": {
+	  "location": {
+		"top_left": {
+		  "lat": 42,
+		  "lon": -72
+		},
+		"bottom_right": {
+		  "lat": 40,
+		  "lon": -74
+		}
+	  }
+	}
+  }
+}
+4.搜索出200km内的酒店
+GET /hotel_app/hotels/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match_all": {}
+        }
+      ],
+      "filter": {
+        "geo_distance": {
+          "distance": "200km",
+          "pin.location": {
+            "lat": 40,
+            "lon": -70
+          }
+        }
+      }
+    }
+  }
+}
+5.当前的位置的每段范围内，有多少家酒店
+GET /hotel_app/hotels/_search
+{
+  "size": 0,
+  "aggs": {
+    "agg_by_distance_range": {
+      "geo_distance": {
+        "field": "pin.location",
+        "origin": {
+          "lat": 40,
+          "lon": -70
+        },
+        "unit": "mi", 
+        "ranges": [
+          {
+            "to": 100
+          },
+          {
+            "from": 100,
+            "to": 300
+          },
+          {
+            "from": 300
+          }
+        ]
+      }
+    }
+  }
+}
+---------------------
+==============
+
+ElasticSearch之基于地理位置的搜索
+我们有时候，希望可以根据当前所在的位置，找到自己身边的符合条件的一些商店，酒店之类的。
+
+它主要支持两种类型的地理查询：
+一种是地理点(geo_point)，即经纬度查询，
+
+另一种是地理形状查询(geo_shape)，即支持点、线、圈、多边形查询等。
+
+
+
+一 地理形状
+我们在计算机屏幕上看到的圆形并不是由完美的连续的线组成的。而是用一个个连续的着色像素点画出的一个近似圆。地理形状的工作方式就与此相似。
+
+1.1gep_shape相关的映射参数
+tree: geohash 或者 quadtree
+
+precision: 用来控制生成的 geohash 的最大长度
+
+tree_levels:前缀树的最大层数
+
+strategy：该策略参数定义了如何在索引和搜索时间表示形状的方法，不建议认为修改，使用默认的就好
+
+
+
+1.2 PrfixTree:前缀树
+为了在索引有效的表示形状，形状被转换城一系列的hash值代表的网格块。树的概念主要来自于前缀树使用多个网格层，每个网格层的精度越来越高，可以代表地球。ES提供了多种前缀树以供选择：
+
+
+
+# GeohashPrefixTree: geo 哈希前缀树
+
+使用geohash代表网格，Geohashes是基于纬度和经度交叉的base32编码字符串，在geohash中添加的每个字符表示另一个树级别，并将5位精度添加到geohash中。geohash代表一个矩形区域，有32个子矩形。ES中最高水平是24。
+
+# QuadPrefixTree: 四叉树前缀树
+
+使用quadtree代表网格，类似于geohash，四叉树交叉在经纬度上，因此产生的哈希是位集，四叉树的树层代表了这个位集的2位，每个位对应一个坐标。
+
+
+
+1.3 精确度
+geo_shape不能提供100%的精度，并且取决于怎样去配置，例如，一个点可能位于特定网格单元的边界附近，因此可能不匹配只匹配旁边的单元格的查询——尽管这个形状非常接近这个点。
+
+{
+
+   "properties": {
+
+       "location": {
+
+           "type": "geo_shape",
+
+           "tree": "quadtree",
+
+           "precision": "1m"
+
+        }
+
+    }
+
+}
+
+1.4 性能考虑
+ES使用前缀树中的路径作为索引和查询中的术语。级别越高(因此精度越高)，生成的词汇就越多。当然，计算这些term，将它们保存在内存中，并将它们存储在磁盘上都有代价。特别是在较高的树层次上，即使有少量的数据，索引也会变得非常大。此外，功能的大小也很重要。大而复杂的多边形可以在更高的层次上占据很大的空间。哪个设置是正确的取决于用例。一般情况下，一个对索引大小和查询性能的准确性。
+
+这两种实现的弹性搜索的默认值是在赤道上的50米精度和指数大小之间的折衷。这允许索引数以百万计的形状，而不会过多地将结果索引与输入大小联系在一起。
+
+1.5 输入结构
+GeoJSON格式代表形状：
+
+
+
+Point:
+
+{
+
+   "location" : {
+
+       "type" : "point",
+
+       "coordinates" : [-77.03653, 38.897676]
+
+    }
+
+}
+
+LineString:
+
+{
+
+   "location" : {
+
+       "type" : "linestring",
+
+       "coordinates" : [[-77.03653, 38.897676], [-77.009051,38.889939]]
+
+    }
+
+}
+
+Polygon:
+
+{
+
+   "location" : {
+
+       "type" : "polygon",
+
+       "coordinates" : [
+
+            [[100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0] ]
+
+        ]
+
+    }
+
+}
+
+MultiPoint:
+
+{
+
+   "location" : {
+
+       "type" : "polygon",
+
+       "orientation" : "clockwise",
+
+       "coordinates" : [
+
+            [[-177.0, 10.0], [176.0, 15.0], [172.0, 0.0], [176.0, -15.0], [-177.0, -10.0],[-177.0, 10.0] ],
+
+            [[178.2, 8.2], [-178.8, 8.2], [-180.8, -8.8], [178.2, 8.8] ]
+
+        ]
+
+    }
+
+}
+
+
+
+Envelop:
+
+{
+
+   "location" : {
+
+       "type" : "envelope",
+
+       "coordinates" : [ [-45.0, 45.0], [45.0, -45.0] ]
+
+    }
+
+}
+
+Circle:
+
+{
+
+   "location" : {
+
+       "type" : "circle",
+
+       "coordinates" : [-45.0, 45.0],
+
+       "radius" : "100m"
+
+    }
+
+}
+
+
+
+二 地理形状查询
+地理形状支持2种方式查询：一种是通过整个形状的定义，一种是通过预索引的方式。
+
+2.1 形状定义
+与地理形状相同，地理形状过滤使用GeoJSON来表示形状。
+
+POST /attractions/landmark/_search
+
+{
+
+   "query":{
+
+       "geo_shape": {
+
+          "location": {
+
+               "shape":{
+
+                   "type":"circle",
+
+                   "radius":"690m",
+
+                   "coordinates":[ 4.89994,52.37815]
+
+               }
+
+           }
+
+        }
+
+    }
+
+}
+
+
+
+POST /attractions/landmark/_search
+
+{
+
+   "query":{
+
+       "geo_shape": {
+
+          "location": {
+
+               "shape":{
+
+                   "type":"envelope",
+
+                   "coordinates":[[ 116.39794,39.9001], [ 116.40887, 39.89609 ]]
+
+               }
+
+           }
+
+        }
+
+    }
+
+}
+
+2.2 预索引
+查询也支持使用被索引在其他索引或者索引类型中的形状，当存在一个预定义的形状列表时，可以使用逻辑名来引用而不用每一次都提供具体的坐标值。在这种情况下，只需要提供参数见如下所示：
+
+id: 包含预索引形状的文档id
+
+index: 预索引形状的索引名，默认为shapes
+
+type: 预索引形状的索引类型
+
+path:指定的字段作为包含预索引形状的路径，默认为shape
+
+ET /_search
+
+{
+
+   "query": {
+
+       "bool": {
+
+           "must": {
+
+               "match_all": {}
+
+           },
+
+               "filter": {
+
+                   "geo_shape": {
+
+                        "location": {
+
+                           "indexed_shape": {
+
+                                "id":"DEU",
+
+                               "type": "countries",
+
+                               "index": "shapes",
+
+                               "path": "location"
+
+                            }
+
+                        }
+
+                   }
+
+               }
+
+        }
+
+    }
+
+}
+
+
+
+2.3 空间关系
+地理形状映射参数决定使用的空间关系操作符，所有可以使用的空间关系操作符列表如下：
+
+INTERSECTS: 返回地理形状字段与查询集合相交的所有文档。默认选项。
+
+DISJOINT: 返回地理形状字段与查询集合没有关联的所有文档
+
+WITHIN: 返回地理形状字段在查询集合内的所有文档
+
+CONTAINS: 返回地理形状字段包含查询集合的所有文档
+
+
+
+三 地理范围查询
+可以基于一个位置点的范围来过滤查询文档。
+
+3.1 经纬度坐标格式
+PUT /attractions/restaurant/1
+
+{
+
+ "name":    "Chipotle Mexican Grill",
+
+ "location": "40.715, -74.011"
+
+}
+
+
+
+PUT /attractions/restaurant/2
+
+{
+
+ "name":     "PalaPizza",
+
+ "location": {
+
+   "lat":     40.722,
+
+   "lon":    -73.989
+
+  }
+
+}
+
+
+
+PUT /attractions/restaurant/3
+
+{
+
+ "name":     "MiniMunchies Pizza",
+
+ "location": [ -73.983, 40.719 ]
+
+}
+
+3.2 通过地理坐标点过滤
+有四种地理坐标点相关的过滤器可以用来选中或者排除文档：
+
+geo_bounding_box:找出落在指定矩形框中的点。
+
+geo_distance:找出与指定位置在给定距离内的点。
+
+geo_distance_range:找出与指定点距离在给定最小距离和最大距离之间的点。
+
+geo_polygon:找出落在多边形中的点。 这个过滤器使用代价很大
+
+
+
+3.2.1geo_bounding_box
+找出落在指定矩形框中的点。其实也可以相当于一个范围查询。
+
+这是目前为止最有效的地理坐标过滤器了，因为它计算起来非常简单。 你指定一个矩形的 顶部 , 底部 , 左边界 ，和 右边界 ，然后过滤器只需判断坐标的经度是否在左右边界之间，纬度是否在上下边界之间：
+
+他可以指定一下几个属性：
+
+top_left: 指定最左边的经度和最上边的纬度
+
+bottom_right: 指定右边的经度和最下边的纬度
+
+或者
+
+top_right: 指定最上边的纬度和最右边的经度
+
+bottom_left：指定最下边的纬度和最左边的经度
+
+POST /map/hotel/_search
+
+{
+
+   "query":{
+
+       "constant_score": {
+
+           "filter": {
+
+              "geo_bounding_box": {
+
+                   "location":{
+
+                        "top_left":{
+
+                            "lat":40.73,
+
+                            "lon":114.2
+
+                        },
+
+                       "bottom_right": {
+
+                            "lat":30.5,
+
+                            "lon":120
+
+                       }
+
+                   }
+
+              }
+
+           }
+
+        }
+
+    }
+
+}
+
+
+
+优化盒模型：
+
+地理坐标盒模型过滤器 不需要把所有坐标点都加载到内存里。 因为它要做的 只是简单判断 lat 和 lon 坐标数值是否在给定的范围内可以用倒排索引做一个 range 过滤来实现目标。
+
+
+
+要使用这种优化方式，需要把 geo_point 字段 用 lat 和 lon 的方式分别映射到索引中：
+
+PUT /attractions
+
+{
+
+ "mappings": {
+
+   "restaurant": {
+
+     "properties": {
+
+       "name": {
+
+         "type": "string"
+
+        },
+
+       "location": {
+
+         "type":   "geo_point",
+
+         "lat_lon": true
+
+        }
+
+      }
+
+    }
+
+  }
+
+}
+
+location.lat 和 location.lon 字段将被分别索引。它们可以被用于检索，但是不会在检索结果中返回。
+
+然后，查询时你需要告诉 Elasticesearch使用已索引的 lat 和 lon ：
+
+GET /attractions/restaurant/_search
+
+{
+
+ "query": {
+
+   "filtered": {
+
+     "filter": {
+
+       "geo_bounding_box": {
+
+         "type":   "indexed",
+
+         "location": {
+
+           "top_left": {
+
+             "lat":  40.8,
+
+             "lon": -74.0
+
+           },
+
+           "bottom_right": {
+
+             "lat":  40.7,
+
+             "lon":  -73.0
+
+            }
+
+          }
+
+        }
+
+      }
+
+    }
+
+  }
+
+}
+
+设置 type 参数为 indexed （替代默认值 memory ）来明确告诉 Elasticsearch 对这个过滤器使用倒排索引
+
+
+
+3.2.2 geo_distance地理距离过滤器
+给定一个位置为圆心，然后画一个圆，找出那些地理坐标烙在其中的文档。
+比如我要在成都市世纪城附近找最近2km的酒店
+distance指定了以世纪城这个坐标为中心，然后以distance为半径的圆内查找
+
+POST /map/hotel/_search
+
+{
+
+   "query":{
+
+       "constant_score": {
+
+           "filter": {
+
+              "geo_distance": {
+
+                 "distance": "2km",
+
+                 "location": {
+
+                    "lat": 30.556485,
+
+                    "lon": 104.069315
+
+                 }
+
+              }
+
+           }
+
+        }
+
+    }
+
+}
+
+
+
+距离计算类型
+
+两点间的距离计算，有多种牺牲性能换取精度的算法：
+
+arc
+
+最慢但最精确的是 arc 计算方式，这种方式把世界当作球体来处理。不过这种方式的精度有限，因为这个世界并不是完全的球体。
+
+plane
+
+plane 计算方式把地球当成是平坦的，这种方式快一些但是精度略逊。在赤道附近的位置精度最好，而靠近两极则变差。
+
+sloppy_arc
+
+如此命名，是因为它使用了 Lucene 的 SloppyMath 类。这是一种用精度换取速度的计算方式， 它使用 Haversine formula来计算距离。它比 arc 计算方式快 4 到 5 倍，并且距离精度达 99.9%。这也是默认的计算方式。
+
+
+
+3.2.3geo_distance_range 地理距离区间过滤器
+geo_distance 和 geo_distance_range 过滤器 的唯一差别在于后者是一个环状的，它会排除掉落在内圈中的那部分文档。
+就相当于会把白色部分里面的文档排除掉，而只是匹配蓝色部分的文档
+
+POST /map/hotel/_search
+
+{
+
+   "query":{
+
+       "constant_score": {
+
+           "filter": {
+
+              "geo_distance_range": {
+
+                   "gte":"0.5km",
+
+                   "lte":"10km",
+
+                   "location":[104.069315,30.556485]
+
+              }
+
+           }
+
+        }
+
+    }
+
+}
+
+
+
+但是5系列好像不支持这个功能了，提示：
+
+[geo_distance_range] queries are no longersupported for geo_point field types. Use geo_distance sort or aggregations
+
+
+
+3.2.4 geo_polygon搜索指定范围内
+POST /map/hotel/_search
+
+{
+
+ "query": {
+
+   "bool": {
+
+     "must": [{"match_all": {}}],
+
+     "filter": {
+
+       "geo_polygon": {
+
+         "location": {
+
+           "points": [
+
+             {"lat" : 40.73, "lon" : -74.1},
+
+             {"lat" : 40.01, "lon" : -71.12},
+
+             {"lat" : 50.56, "lon" : -90.58}
+
+            ]
+
+          }
+
+        }
+
+      }
+
+    }
+
+  }
+
+}
+
+
+
+我们现在要指定成都市宽窄巷子 跳伞塔 春熙路，这三个地区组成的多边形的范围内，我要搜索这里面的酒店，就可以用得上这个查询
+
+
+
+3.3 按距离排序
+检索结果可以按与指定点的距离排序。当你 可以 按距离排序时， 按距离打分 通常是一个更好的解决方案。
+
+
+POST /map/hotel/_search
+
+{
+
+   "query":{
+
+       "constant_score": {
+
+           "filter": {
+
+              "geo_bounding_box": {
+
+                   "location":{
+
+                        "top_left":{
+
+                            "lat":40.73,
+
+                            "lon":114.2
+
+                        },
+
+                       "bottom_right": {
+
+                            "lat":30.5,
+
+                            "lon":122
+
+                        }
+
+                   }
+
+              }
+
+           }
+
+        }
+
+    },
+
+   "sort": [
+
+       {
+
+         "_geo_distance": {
+
+           "location":[116.6382,36.77],
+
+            "order": "asc",
+
+            "unit":"km",
+
+            "distance_type":"plane"
+
+          }
+
+       }
+
+    ]
+
+}
+
+排序中的location指的是，文档中各个loction与该location的距离。
+
+地理距离排序可以对多个坐标点来使用，不管（这些坐标点）是在文档中还是排序参数中。使用 sort_mode 来指定是否需要使用位置集合的 最小 （ min ） 最大 （ max ）或者 平均 （ avg ）距离。 如此就可以返回 “离我的工作地和家最近的朋友” 这样的结果了。
+
+
+
+按距离打分：
+
+
+
+有可能距离是决定返回结果排序的唯一重要因素，不过更常见的情况是距离会和其它因素，比如全文检索匹配度、流行程度或者价格一起决定排序结果。
+
+
+
+遇到这种场景你需要在 功能评分查询 中指定方式让我们把这些因子处理后得到一个综合分。 越近越好 中有个一个例子就是介绍地理距离影响排序得分的。
+
+
+
+另外按距离排序还有个缺点就是性能：需要对每一个匹配到的文档都进行距离计算。而 function_score 查询，在 rescore 语句 中可以限制只对前 n 个结果进行计算。
+
+
+==============
+
+地理坐标点（geo-point） 是指地球表面可以用经纬度描述的一个点。地理坐标点可以用来计算两个坐标位置间的距离，或者判断一个点是否在一个区域中。地理坐标点不能被动态映射（dynamic mapping）自动检测，而是需要显式声明对应字段类型为 geo_point 。
+
+PUT /attractions
+{
+  "mappings": {
+    "restaurant": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "location": {
+          "type": "geo_point"
+        }
+      }
+    }
+  }
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+如上例，location 被声明为 geo_point 后，我们就可以索引包含了经纬度信息的文档了。经纬度信息的形式可以是字符串，数组或者对象。
+
+PUT /attractions/restaurant/1
+{
+  "name":     "Chipotle Mexican Grill",
+  "location": "40.715, -74.011" <1>
+}
+
+PUT /attractions/restaurant/2
+{
+  "name":     "Pala Pizza",
+  "location": { <2>
+    "lat":     40.722,
+    "lon":    -73.989
+  }
+}
+
+PUT /attractions/restaurant/3
+{
+  "name":     "Mini Munchies Pizza",
+  "location": [ -73.983, 40.719 ] <3>
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+<1> 以半角逗号分割的字符串形式 “lat,lon”；
+<2> 明确以 lat 和 lon 作为属性的对象；
+<3> 数组形式表示 [lon,lat]。
+注意 :
+可能所有人都至少踩过一次这个坑：地理坐标点用字符串形式表示时是纬度在前，经度在后（”latitude,longitude”），而数组形式表示时刚好相反，是经度在前，纬度在后（[longitude,latitude]）。其实，在 Elasticesearch 内部，不管字符串形式还是数组形式，都是纬度在前，经度在后。不过早期为了适配 GeoJSON 的格式规范，调整了数组形式的表示方式。因此，在使用地理位置（geolocation）的路上就出现了这么一个“捕熊器”，专坑那些不了解这个陷阱的使用者。
+
+通过地理坐标点过滤
+有四种地理坐标点相关的过滤方式可以用来选中或者排除文档：
+
+geo_bounding_box::
+找出落在指定矩形框中的坐标点
+geo_distance::
+找出与指定位置在给定距离内的点
+geo_distance_range::
+找出与指定点距离在给定最小距离和最大距离之间的点
+geo_polygon::
+找出落在多边形中的点。这个过滤器使用代价很大。当你觉得自己需要使用它，最好先看看 geo-shapes
+所有这些过滤器的工作方式都相似： 把 索引中所有文档（而不仅仅是查询中匹配到的部分文档，见 fielddata-intro）的经纬度信息都载入内存，然后每个过滤器执行一个轻量级的计算去判断当前点是否落在指定区域。
+提示
+
+地理坐标过滤器使用代价昂贵 —— 所以最好在文档集合尽可能少的场景使用。 你可以先使用那些简单快捷的过滤器，比如 term 或者 range，来过滤掉尽可能多的文档，最后才交给地理坐标过滤器处理。
+
+布尔型过滤器（bool filter）会自动帮你做这件事。 它会优先让那些基于“bitset”的简单过滤器(见 filter-caching)来过滤掉尽可能多的文档，然后依次才是地理坐标过滤器或者脚本类的过滤器。
+
+地理坐标盒模型过滤器
+这是目前为止最有效的 地理坐标过滤器了，因为它计算起来非常简单。 你指定一个矩形的 顶部（top）, 底部（bottom）, 左边界（left）, 和 右边界（right）， 然后它只需判断坐标的经度是否在左右边界之间，纬度是否在上下边界之间。（译注：原文似乎写反了）
+
+GET /attractions/restaurant/_search
+{
+  "query": {
+    "filtered": {
+      "filter": {
+        "geo_bounding_box": {
+          "location": { <1>
+            "top_left": {
+              "lat":  40.8,
+              "lon": -74.0
+            },
+            "bottom_right": {
+              "lat":  40.7,
+              "lon": -73.0
+            }
+          }
+        }
+      }
+    }
+  }
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+<1> 盒模型信息也可以用 bottom_left（左下方点）和 top_right（右上方点） 来表示。
+优化盒模型
+地理坐标盒模型过滤器不需要把所有坐标点都加载到内存里。 因为它要做的只是简单判断 纬度 和 经度 坐标数值是否在给定的范围内，所以它可以用倒排索引来做一个范围（range）过滤。
+要使用这种优化方式，需要把 geo_point 字段用 纬度（lat）和经度（lon）方式表示并分别索引。
+
+
+PUT /attractions
+{
+  "mappings": {
+    "restaurant": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "location": {
+          "type":    "geo_point",
+          "lat_lon": true <1>
+        }
+      }
+    }
+  }
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+<1> location.lat 和 location.lon 字段将被分别索引。它们可以被用于检索，但是不会在检索结果中返回。
+然后，查询时你需要告诉 Elasticesearch 使用已索引的 lat和lon。
+
+GET /attractions/restaurant/_search
+{
+  "query": {
+    "filtered": {
+      "filter": {
+        "geo_bounding_box": {
+          "type":    "indexed", <1>
+          "location": {
+            "top_left": {
+              "lat":  40.8,
+              "lon": -74.0
+            },
+            "bottom_right": {
+              "lat":  40.7,
+              "lon":  -73.0
+            }
+          }
+        }
+      }
+    }
+  }
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+<1> 设置 type 参数为 indexed (默认为 memory) 来明确告诉 Elasticsearch 对这个过滤器使用倒排索引。
+注意：
+
+
+geo_point 类型可以包含多个地理坐标点，但是针对经度纬度分别索引的这种优化方式（lat_lon）只对单个坐标点的方式有效。
+地理距离过滤器
+地理距离过滤器（geo_distance）以给定位置为圆心画一个圆，来找出那些位置落在其中的文档：
+GET /attractions/restaurant/_search
+{
+  "query": {
+    "filtered": {
+      "filter": {
+        "geo_distance": {
+          "distance": "1km", <1>
+          "location": { <2>
+            "lat":  40.715,
+            "lon": -73.988
+          }
+        }
+      }
+    }
+  }
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+<1> 找出所有与指定点距离在1公里（1km）内的 location 字段。访问 Distance Units 查看所支持的距离表示单位
+
+<2> 中心点可以表示为字符串，数组或者（如示例中的）对象。详见 lat-lon-formats。
+
+地理距离过滤器计算代价昂贵。 为了优化性能，Elasticsearch 先画一个矩形框（边长为2倍距离）来围住整个圆形， 这样就可以用消耗较少的盒模型计算方式来排除掉那些不在盒子内（自然也不在圆形内）的文档， 然后只对落在盒模型内的这部分点用地理坐标计算方式处理。
+
+提示
+你需要判断你的使用场景，是否需要如此精确的使用圆模型来做距离过滤？ 通常使用矩形模型是更高效的方式，并且往往也能满足应用需求。
+
+更快的地理距离计算
+两点间的距离计算，有多种性能换精度的算法：
+
+arc::
+最慢但是最精确是弧形（arc）计算方式，这种方式把世界当作是球体来处理。 不过这种方式精度还是有限，因为这个世界并不是完全的球体。
+plane::
+平面（plane）计算方式，(((“plane distance calculation”)))把地球当成是平坦的。 这种方式快一些但是精度略逊；在赤道附近位置精度最好，而靠近两极则变差。
+sloppy_arc::
+如此命名，是因为它使用了 Lucene 的 SloppyMath 类。 这是一种用精度换取速度的计算方式，它使用 Haversine formula 来计算距离； 它比弧形（arc）计算方式快4~5倍, 并且距离精度达99.9%。这也是默认的计算方式。
+你可以参考下例来指定不同的计算方式：
+
+GET /attractions/restaurant/_search
+{
+  "query": {
+    "filtered": {
+      "filter": {
+        "geo_distance": {
+          "distance":      "1km",
+          "distance_type": "plane", <1>
+          "location": {
+            "lat":  40.715,
+            "lon": -73.988
+          }
+        }
+      }
+    }
+  }
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+<1> 使用更快但精度稍差的平面（plane）计算方式。
+提示： 你的用户真的会在意一个宾馆落在指定圆形区域数米之外了吗？ 一些地理位置相关的应用会有较高的精度要求；但大部分实际应用场景中，使用精度较低但响应更快的计算方式可能就挺好。
+
+地理距离区间过滤器
+地理距离过滤器（geo_distance）和地理距离区间过滤器（geo_distance_range）的唯一差别在于后者是一个环状的，它会排除掉落在内圈中的那部分文档。
+
+指定到中心点的距离也可以换一种表示方式： 指定一个最小距离（使用 gt或者gte）和最大距离（使用lt或者lte），就像使用区间（range）过滤器一样。
+
+
+GET /attractions/restaurant/_search
+{
+  "query": {
+    "filtered": {
+      "filter": {
+        "geo_distance_range": {
+          "gte":    "1km", <1>
+          "lt":     "2km", <1>
+          "location": {
+            "lat":  40.715,
+            "lon": -73.988
+          }
+        }
+      }
+    }
+  }
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+匹配那些距离中心点超过1公里而小于2公里的位置。
+缓存地理位置过滤器###
+因为如下两个原因，地理位置过滤器默认是不被缓存的：
+
+地理位置过滤器通常是用于查找用户当前位置附近的东西。但是用户是在移动的，并且没有两个用户的位置完全相同，因此缓存的过滤器基本不会被重复使用到。
+过滤器是被缓存为比特位集合来表示段（segment）内的文档。假如我们的查询排除了几乎所有文档，只剩一个保存在这个特别的段内。一个未缓存的地理位置过滤器只需要检查这一个文档就行了，但是一个缓存的地理位置过滤器则需要检查所有在段内的文档。
+缓存对于地理位置过滤器也可以很有效。 假设你的索引里包含了所有美国的宾馆。一个在纽约的用户是不会对旧金山的宾馆感兴趣的。 所以我们可以认为纽约是一个热点（hot spot），然后画一个边框把它和附近的区域围起来。
+
+如果这个地理盒模型过滤器（geo_bounding_box）被缓存起来，那么当有位于纽约市的用户访问时它就可以被重复使用了。 它可以直接排除国内其它区域的宾馆。然后我们使用未缓存的，更加明确的地理盒模型过滤器（geo_bounding_box）或者地理距离过滤器（geo_distance）来在剩下的结果集中把范围进一步缩小到用户附近：
+
+GET /attractions/restaurant/_search
+{
+  "query": {
+    "filtered": {
+      "filter": {
+        "bool": {
+          "must": [
+            {
+              "geo_bounding_box": {
+                "type": "indexed",
+                "_cache": true, <1>
+                "location": {
+                  "top_left": {
+                    "lat":  40,8,
+                    "lon": -74.1
+                  },
+                  "bottom_right": {
+                    "lat":  40.4,
+                    "lon": -73.7
+                  }
+                }
+              }
+            },
+            {
+              "geo_distance": { <2>
+                "distance": "1km",
+                "location": {
+                  "lat":  40.715,
+                  "lon": -73.988
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+<1> 缓存的地理盒模型过滤器把结果集缩小到了纽约市。
+<2> 代价更高的地理距离过滤器（geo_distance）让结果集缩小到1km内的用户。
+减少内存占用
+每一个 经纬度（lat/lon）组合需要占用16个字节的内存。要知道内存可是供不应求的。 使用这种占用16字节内存的方式可以得到非常精确的结果。不过就像之前提到的一样，实际应用中几乎都不需要这么精确。
+你可以通过这种方式来减少内存使用量： 设置一个压缩的（compressed）数据字段格式并明确指定你的地理坐标点所需的精度。 即使只是将精度降低到1毫米（1mm）级别，也可以减少1/3的内存使用。 更实际的，将精度设置到3米（3m）内存占用可以减少62%，而设置到1公里（1km）则节省75%之多。
+
+这个设置项可以通过 update-mapping API 来对实时索引进行调整：
+
+POST /attractions/_mapping/restaurant
+{
+  "location": {
+    "type": "geo_point",
+    "fielddata": {
+      "format":    "compressed",
+      "precision": "1km" <1>
+    }
+  }
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+<1> 每一个经纬度（lat/lon）组合现在只需要4个字节，而不是16个。
+另外，你还可以这样做来避免把所有地理坐标点全部同时加载到内存中： 使用在优化盒模型（optimize-bounding-box）中提到的技术， 或者把地理坐标点当作文档值（doc values）来存储。
+
+
+PUT /attractions
+{
+  "mappings": {
+    "restaurant": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "location": {
+          "type":       "geo_point",
+          "doc_values": true <1>
+        }
+      }
+    }
+  }
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+<1> 地理坐标点现在不会被加载到内存，而是保存在磁盘中。
+将地理坐标点映射为文档值的方式只能是在这个字段第一次被创建时。 相比使用字段值，使用文档值会有一些小的性能代价，不过考虑到它对内存的节省，这种方式通常是还值得的。
+
+按距离排序
+检索结果可以按跟指定点的距离排序：
+
+提示 当你可以（can）按距离排序时，按距离打分（scoring-by-distance）通常是一个更好的解决方案。
+
+GET /attractions/restaurant/_search
+{
+  "query": {
+    "filtered": {
+      "filter": {
+        "geo_bounding_box": {
+          "type":       "indexed",
+          "location": {
+            "top_left": {
+              "lat":  40,8,
+              "lon": -74.0
+            },
+            "bottom_right": {
+              "lat":  40.4,
+              "lon": -73.0
+            }
+          }
+        }
+      }
+    }
+  },
+  "sort": [
+    {
+      "_geo_distance": {
+        "location": { <1>
+          "lat":  40.715,
+          "lon": -73.998
+        },
+        "order":         "asc",
+        "unit":          "km", <2>
+        "distance_type": "plane" <3>
+      }
+    }
+  ]
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+<1> 计算每个文档中 location 字段与指定的 lat/lon 点间的距离。
+<2> 以 公里（km）为单位，将距离设置到每个返回结果的 sort 键中。
+<3> 使用快速但精度略差的平面（plane）计算方式。
+你可能想问：为什么要制定距离的单位（unit）呢？ 用于排序的话，我们并不关心比较距离的尺度是英里，公里还是光年。 原因是，这个用于排序的值会设置在每个返回结果的 sort 元素中。
+
+...
+  "hits": [
+     {
+        "_index": "attractions",
+        "_type": "restaurant",
+        "_id": "2",
+        "_score": null,
+        "_source": {
+           "name": "New Malaysia",
+           "location": {
+              "lat": 40.715,
+              "lon": -73.997
+           }
+        },
+        "sort": [
+           0.08425653647614346 <1>
+        ]
+     },
+
+<1> 宾馆距离我们的指定位置距离是 0.084km。
+你可以通过设置单位（unit）来让返回值的形式跟你应用中想要的匹配。
+提示
+地理距离排序可以对多个坐标点来使用，不管（这些坐标点）是在文档中还是排序参数中。 使用 sort_mode 来指定是否需要使用位置集合的 最小（min），最大（max）或者平均（avg）距离。 这样就可以返回离我的工作地和家最近的朋友这样的结果了。
+
+按距离打分
+有可能距离只是决定返回结果排序的唯一重要因素，不过更常见的情况是距离会和其它因素， 比如全文检索匹配度，流行程度或者价格一起决定排序结果。
+
+遇到这种场景你需要在查询分值计算（function_score query）中指定方式让我们把这些因子处理得到一个综合分。 decay-functions中有个一个例子就是地理距离影响排序得分的。
+
+另外按距离排序还有个缺点就是性能：需要对每一个匹配到的文档都进行距离计算。 而 function_score请求，在 rescore phase阶段有可能只需要对前 n 个结果进行计算处理。
+

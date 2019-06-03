@@ -1,0 +1,669 @@
+物联网设备监控分析
+物联网设备无时无刻不在产生海量的设备状态数据和业务消息数据，这些数据有助于进行设备监控、业务分析预测和故障诊断。![apmpic]
+
+设备将原始数据通过 MQTT 协议发送到物联网套件，经由物联网套件将数据转发到消息服务系统，继而通过流计算系统对这些数据进行实时计算处理后写入到 TSDB 中存储，或者经由物联网套件直接将原始数据写入 TSDB 中存储。
+
+前端的监控系统和大数据处理系统会利用 TSDB 的数据查询和计算分析能力进行业务监控和分析结果的实时展现。
+
+iotpic
+
+电力化工及工业制造监控分析
+传统电力化工以及工业制造行业需要通过实时的监控系统进行设备状态检测，故障发现以及业务趋势分析。
+
+设备通过工业接口协议将自身状态数据和生产业务数据接入工业设备网关，然后通过 MQTT 协议发送到物联网套件，继而传输到云上的消息服务系统并经过流计算系统处理后写入 TSDB，完成时序数据的存储和分析。
+
+iiotpic
+
+系统运维和业务实时监控
+通过对大规模应用集群和机房设备的监控，实时关注设备运行状态、资源利用率和业务趋势，实现数据化运营和自动化开发运维。
+
+通过日志或者其他方式对原始指标数据进行采集和实时计算，最后将实时计算的结果数据存储到 TSDB，实现监控和分析的展现。
+
+
+----------------------------------------------------------------------------------------
+
+时序数据高效读写
+TSDB 提供时序数据的高效读写。对于百万数据点的读取，响应时间小于 5 秒，且最高可以支撑每秒千万数据点的写入。
+
+数据写入
+
+TSDB 支持通过 HTTP 协议 和 TSDB Java Client 两种方式进行数据写入。
+
+数据查询
+
+TSDB 支持通过 HTTP 协议、TSDB Java Client 以及 TSDB 控制台三种方式进行数据的查询操作。
+
+用户也可以通过 TSDB 产品控制台的数据查询功能进行数据分组、降采样、空间聚合的可视化数据查询展现。
+
+数据管理
+数据时效设置
+
+您可以通过控制台或者 API 设置数据的有效期。数据时效开启并设置完成后，系统对于定义的过期数据将立即标记失效，并在特定时间进行自动化清理。
+
+数据清理
+
+您可以在控制台上根据度量（Metric）进行数据清理，或者通过 API 进行更灵活的数据清理。
+
+高效压缩存储
+TSDB 使用高效的数据压缩技术，将单个数据点的平均使用存储空间降为1~2个字节，可以降低90%存储使用空间，同时加快数据写入的速度。
+
+时序数据计算能力
+TSDB 提供专业全面的时序数据计算函数，支持降采样、数据插值和空间聚合计算，能满足各种复杂的业务数据查询场景。
+
+监控运维
+TSDB 提供实例运维系统，让您可以实时的掌握实例的运行情况、性能指标和存储空间使用情况，并通过设置报警通道，实时发现资源瓶颈。
+
+数据和实例安全
+TSDB 提供以下方案保证您的数据和实例的安全：
+
+提供 VPC 的实例访问方式，充分保证实例访问的安全性。
+提供网络白名单功能：您可以通过设置允许访问实例的机器名单，进一步保证实例和数据的访问安全。如果一台机器在 VPC 内部，但不在设置的白名单内，则不能访问实例。
+TSDB 的数据存储默认采取三副本策略，充分保证数据的可用性。
+流计算支持
+TSDB 已与阿里云流计算（StreamCompute）产品集成。详细的集成说明请参见创建 TSDB 结果表。
+
+
+产品优势
+更新时间：2018-07-20 19:47:44
+
+
+性能卓越
+具有高效的读写能力，相比较开源的 OpenTSDB 和 InfluxDB，读写效率提升数倍。
+
+存储成本低
+基于高效压缩算法有效压缩原始数据，最多可节约 90% 的存储空间。
+
+使用简单
+兼容 OpenTSDB 的数据访问协议，开发简单。
+控制台提供丰富的数据管理和运维功能，操作简单便捷，让您轻松完成日常数据管控和运维。
+专业运维支持
+TSDB 的研发团队具备全球一流的数据库专家，提供专业技术支持。
+提供专业的监控和报警系统，快速具备运维能力。
+
+=========
+
+时序数据库 TSDB ：英文全称为 Time Series Database，提供高效存取时序数据和统计分析功能的数据管理系统。
+
+时序数据（Time Series Data）：基于稳定频率持续产生的一系列指标监测数据。
+
+例如，监测某城市的空气质量时，每秒采集一个二氧化硫浓度的值而产生的一系列数据。
+
+度量（Metric）：
+监测数据的指标，例如风力和温度。
+
+---------------
+
+标签（Tag）：
+
+标签（Tag）就是用于表明指标项监测针对的具体对象，属于指定度量下的数据子类别。
+
+一个标签（Tag）由一个标签键（TagKey）和一个对应的标签值（TagValue）组成，
+
+例如“城市（TagKey）= 杭州（TagValue）”就是一个标签（Tag）。
+
+更多标签示例：机房 = A 、IP = 172.220.110.1。
+
+注意：当标签键和标签值都相同才算同一个标签；标签键相同，标签值不同，则不是同一个标签。
+
+在监测数据的时候，指定度量是“气温”，标签是“城市 = 杭州”，则监测的就是杭州市的气温。
+
+标签键（TagKey，Tagk）：为指标项（Metric）监测指定的对象类型（会有对应的标签值来定位该对象类型下的具体对象），例如国家、省份、城市、机房、IP 等。
+
+标签值（TagValue，Tagv）：标签键（TagKey）对应的值。例如，当标签键（TagKey）是“国家”时，可指定标签值（TagValue）为“中国”。
+
+--------------------------
+值（Value）：度量对应的值，例如 15 级（风力）和 20 ℃（温度）。
+
+-----------------
+时间戳（Timestamp）：数据（度量值）产生的时间点。
+
+--------------------------------------------------
+
+数据点 (Data Point)：针对监测对象的某项指标（由度量和标签定义）按特定时间间隔（连续的时间戳）采集的每个度量值就是一个数据点。
+
+“一个度量 + N 个标签（N >= 1）+ 一个时间戳 + 一个值”定义一个数据点。
+
+-------------------
+
+
+时间序列（Time Series）：针对某个监测对象的某项指标（由度量和标签定义）的描述。“一个度量 + N 个标签KV组合（N >= 1）”定义为一个时间序列，某个时间序列上产生的数据值的增加，不会导致时间序列的增加。 时间序列的示意图如下：
+
+
+----------------------------
+timeseries
+
+时间线（Timeline）：等同于时间序列的概念。
+
+
+----------------------------------------------------------
+时间精度：时间线数据的写入时间精度——毫秒、秒、分钟、小时或者其他稳定时间频度。例如，每秒一个温度数据的采集频度，每 5 分钟一个负载数据的采集频度。
+
+
+------------------
+
+数据组（Data Group）：如果需要对比不同监测对象（由标签定义）的同一指标（由度量定义）的数据，可以按标签这些数据分成不同的数据组。例如，将温度指标数据按照不同城市进行分组查询，操作类似于该 SQL 语句：select temperature from xxx group by city where city in （shanghai, hangzhou)。
+
+
+------------
+聚合（ Aggregation）：
+
+当同一个度量（Metric）的查询有多条时间线产生（多个指标采集设备），那么为了将空间的多维数据展现为成同一条时间线，需要进行合并计算，例如，当选定了某个城市某个城区的污染指数时，通常将各个环境监测点的指标数据平均值作为最终区域的指标数据，这个计算过程就是空间聚合。
+
+--------
+降采样（Downsampling）：当查询的时间区间跨度较长而原始数据时间精度较细时，为了满足业务需求的场景、提升查询效率，就会降低数据的查询展现精度，这就叫做降采样，
+
+比如按秒采集一年的数据，按照天级别查询展现。
+
+------------
+数据时效（Data’s Validity Period）：
+
+数据时效是设置的数据的实际有效期，超过有效期的数据会被自动释放。
+
+=======
+时序数据库TSDB SQL查询引擎（简称TSQL查询引擎或TSQL引擎）提供类SQL的查询能力，支持TSDB时序数据的查询，能够基于TSQL进行多指标的 Join 查询等。
+
+下面解释说明时序数据和关系型数据之间的关系，并解释SQL关系模型下的时序数据模型。
+
+这个示意图给出一个时序时空数据库TSDB的一条时间序列 (Time Series)，可以参见TSDB阿里云文档，理解TSDB时序模型下的概念metric, tags, tag value, timestamp, value。timeseries
+
+SQL关系模型是一个二维关系表，上面的时序数据，从概念上，可以理解成一个关系模型下的二维表，如下表所示：
+
+Table:Temperature
+timestamp	value	Floor	Room	DeviceID
+1492158910	26	33	3302	7649501
+1492158920	25.8	33	3302	7649501
+1492158930	26.1	33	3302	7649501
+1492158940	26.3	33	3302	7649501
+1492158950	26.5	33	3302	7649501
+…
+
+时序数据和关系型数据对应关系
+TSDB 时序数据概念	TSDB SQL 关系模型概念
+度量（Metric)	数据库表 （Table）
+时间戳（Timestamp）	表的一列(Column)，列名是timestamp，类型为timestamp
+值（Value）	表的一列, 列名是value, 类型对应度量值的类型: double, varchar, boolean，暂不支持多值模型，单个table 多个field value 的返回
+标签键（TagKey，Tagk）	表的一列，列名是TagKey, 类型为varchar
+标签值（TagValue，Tagv）	对应TagKey的列属下的值
+======
+TSQL 名词概念
+
+时序数据库TSDB SQL查询引擎（简称TSQL查询引擎或TSQL引擎）提供类SQL的查询能力，支持TSDB时序数据的查询，能够基于TSQL进行多指标的 Join 查询等。
+
+下面解释说明时序数据和关系型数据之间的关系，并解释SQL关系模型下的时序数据模型。
+
+这个示意图给出一个时序时空数据库TSDB的一条时间序列 (Time Series)，可以参见TSDB阿里云文档，理解TSDB时序模型下的概念metric, tags, tag value, timestamp, value。timeseries
+
+SQL关系模型是一个二维关系表，上面的时序数据，从概念上，可以理解成一个关系模型下的二维表，如下表所示：
+
+Table:Temperature
+timestamp	value	Floor	Room	DeviceID
+1492158910	26	33	3302	7649501
+1492158920	25.8	33	3302	7649501
+1492158930	26.1	33	3302	7649501
+1492158940	26.3	33	3302	7649501
+1492158950	26.5	33	3302	7649501
+…
+
+时序数据和关系型数据对应关系
+TSDB 时序数据概念	TSDB SQL 关系模型概念
+度量（Metric)	数据库表 （Table）
+时间戳（Timestamp）	表的一列(Column)，列名是timestamp，类型为timestamp
+值（Value）	表的一列, 列名是value, 类型对应度量值的类型: double, varchar, boolean，暂不支持多值模型，单个table 多个field value 的返回
+标签键（TagKey，Tagk）	表的一列，列名是TagKey, 类型为varchar
+标签值（TagValue，Tagv）	对应TagKey的列属下的值
+
+
+
+=======
+TSQL应用开发步骤示例
+
+本页目录
+第一步：申请TSDB实例，并写入时序数据
+第二步：参考下面的demo程序，作相应的改动
+这里简要介绍如何在Python, Java应用程序里，通过TSQL查询并获取TSDB数据库的数据。
+
+
+第一步：申请TSDB实例，并写入时序数据
+
+第二步：参考下面的demo程序，作相应的改动
+需要的改动
+
+修改程序中host和port，以第一步申请的TSDB实例的host和port取代
+针对写入的时序数据，构造一个SQL查询语句，替换程序中的相应变量。
+
+Python
+import json
+import requests
+## 需要修改：根据你申请的TSDB实例的host和port，修改下面两个变量
+host="your_tsdb_instance_host"
+port=3242
+## http service的URL： http://host:port/api/sqlquery
+endpoint_sqlquery = 'http://{0}:{1}/api/sqlquery'.format(host,port)
+## 函数execSqlQuery接受一个SQL Select 语句，sqlquery是一个String。提交到TSDB，并获取结果
+def execSqlQuery(sqlquery):
+  ## 构造http request中的JSON string
+  query = {
+    "sql": sqlquery
+  }
+  ## 提交http request, 以GET的方式
+  response = requests.get(endpoint_sqlquery, data=json.dumps(query), headers={'Content-Type':'application/json'})
+  if response.status_code != 200:
+    ## 查询执行失败，显示错误代码和错误信息。
+    print ('Failed to execute query. POST /api/sqlquery {}, {}'.format(response.status_code, response.content))
+  else:
+    print ("Query is successful.")
+    ## 把response反序列化成一个python的JSON object
+    parsed = json.loads(response.content)
+    ## 你可以对这个查询结果的JSON作进一步的处理，这里，我们仅仅是打印出来。
+    print (json.dumps(parsed, indent=2, sort_keys=True))
+## 这是一个 demo sql语句。根据TSDB SQL查询的文档构造合适的SQL查询语句
+sqlquery = "select * from tsdb.`cpu.usage_system` where `timestamp` between '2019-03-01 00:00:00' and '2019-03-01 00:00:10'"
+execSqlQuery(sqlquery)
+执行上面的python程序：
+
+python demoSql.py
+下面是一个成功执行后的部分查询结果
+
+Query is successful.
+{
+  "columns": [
+    "hostname",
+    "rack",
+    "service_environment",
+    "os",
+    "service",
+    "datacenter",
+    "arch",
+    "service_version",
+    "team",
+    "region",
+    "timestamp",
+    "value"
+  ],
+  "metadata": [
+    "VARCHAR",
+    "VARCHAR",
+    "VARCHAR",
+    "VARCHAR",
+    "VARCHAR",
+    "VARCHAR",
+    "VARCHAR",
+    "VARCHAR",
+    "VARCHAR",
+    "VARCHAR",
+    "TIMESTAMP",
+    "FLOAT8"
+  ],
+  "rows": [
+    {
+      "arch": "x86",
+      "datacenter": "us-east-1b",
+      "hostname": "host_9",
+      "os": "Ubuntu16.10",
+      "rack": "7",
+      "region": "us-east-1",
+      "service": "14",
+      "service_environment": "production",
+      "service_version": "0",
+      "team": "LON",
+      "timestamp": "2019-03-01T00:00",
+      "value": "90.49879988870993"
+    },
+    {
+      "arch": "x86",
+      "datacenter": "us-east-1b",
+      "hostname": "host_9",
+      "os": "Ubuntu16.10",
+      "rack": "7",
+      "region": "us-east-1",
+      "service": "14",
+      "service_environment": "production",
+      "service_version": "0",
+      "team": "LON",
+      "timestamp": "2019-03-01T00:00:10",
+      "value": "91.55436144098181"
+    },
+    ...
+]
+
+Java
+首先，需要加入httpclient和gson. 我们使用httpclient来提交http的request, 而gson库用来JSON的序列化和反序列化。假设用的是maven来管理java 项目，在项目的pom.xml加入依赖
+
+    <dependency>
+        <groupId>org.apache.httpcomponents</groupId>
+        <artifactId>httpclient</artifactId>
+        <version>4.5.3</version>
+    </dependency>
+    <dependency>
+        <groupId>com.google.code.gson</groupId>
+        <artifactId>gson</artifactId>
+        <version>2.8.1</version>
+    </dependency>
+样本程序
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.util.EntityUtils;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+public class TsqlDemo {
+    public static void main(String[] args) throws Exception {
+        // 需要修改：根据你申请的TSDB实例的host和port，修改下面两个变量
+        String host = "ts-uf6w8b6s6fuse9fua.hitsdb.rds.aliyuncs.com";
+        int port = 3242;
+        // 这是一个 demo sql语句。根据TSDB SQL查询的文档构造合适的SQL查询语句
+        String sql = "select * from tsdb.`cpu.usage_system` " +
+            "where `timestamp` between '2019-03-01 00:00:00' and '2019-03-01 00:00:10'";
+        // 提交SQL查询，并获得查询结果
+        Result result = execSqlQuery(host, port, sql);
+        System.out.println("Submitted query:" + sql);
+        // 把查询结果以JSON的形式打印出来
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        System.out.println("Query Result: \n" + gson.toJson(result));
+    }
+    private static Result execSqlQuery(String host, int port, String sql) throws Exception {
+        // http service的URL： http://host:port/api/sqlquery
+        String url = String.format("http://%s:%d/api/sqlquery", host, port);
+        // 构造一个Java POJO Query instance。JSON序列化后成为一个JSON格式的字符串
+        Query query = new Query(sql);
+        Gson         gson          = new Gson();
+        HttpClient   httpClient    = HttpClientBuilder.create().build();
+        HttpPost     post          = new HttpPost(url);
+        // postingString 就是query被JSON序列化后的JSON格式的字符串
+        StringEntity postingString = new StringEntity(gson.toJson(query));
+        post.setEntity(postingString);
+        post.setHeader("Content-type", "application/json");
+        // 以POST的形式，提交到url,
+        HttpResponse  resp = httpClient.execute(post);
+        if (resp.getStatusLine().getStatusCode() != 200) {
+            throw new RuntimeException("Failed to execute query. Error:" + EntityUtils.toString(resp.getEntity()));
+        } else {
+            String resStr = EntityUtils.toString(resp.getEntity());
+            // /api/sqlquery的response包含的是一个JSON格式的字符串，我们通过Result这个Java POJO来反序列化成一个Result的instance.
+            Result result = gson.fromJson(resStr, Result.class);
+            return result;
+        }
+    }
+    // JAVA POJO, 用于构造一个Query
+    public static class Query {
+        String sql;
+        public Query(String sql) {
+            this.sql = sql;
+        }
+    }
+    // JAVA POJO, 用于查询结果的反序列化
+    public static class Result {
+        public Collection<String> columns;
+        public List<String> metadata;
+        public List<Map<String, String>> rows;
+        public Result(Collection<String> columns, List<String> metadata, List<Map<String, String>> rows) {
+            this.columns = columns;
+            this.metadata = metadata;
+            this.rows = rows;
+        }
+    }
+}
+执行的结果（部分）
+
+Submitted query:select * from tsdb.`cpu.usage_system` where `timestamp` between '2019-03-01 00:00:00' and '2019-03-01 00:00:10'
+Query Result:
+{
+  "columns": [
+    "hostname",
+    "rack",
+    "service_environment",
+    "os",
+    "service",
+    "datacenter",
+    "arch",
+    "service_version",
+    "team",
+    "region",
+    "timestamp",
+    "value"
+  ],
+  "metadata": [
+    "VARCHAR",
+    "VARCHAR",
+    "VARCHAR",
+    "VARCHAR",
+    "VARCHAR",
+    "VARCHAR",
+    "VARCHAR",
+    "VARCHAR",
+    "VARCHAR",
+    "VARCHAR",
+    "TIMESTAMP",
+    "FLOAT8"
+  ],
+  "rows": [
+    {
+      "hostname": "host_9",
+      "rack": "7",
+      "service_environment": "production",
+      "os": "Ubuntu16.10",
+      "service": "14",
+      "datacenter": "us-east-1b",
+      "arch": "x86",
+      "service_version": "0",
+      "team": "LON",
+      "region": "us-east-1",
+      "timestamp": "2019-03-01T00:00",
+      "value": "90.49879988870993"
+    },
+    {
+      "hostname": "host_9",
+      "rack": "7",
+      "service_environment": "production",
+      "os": "Ubuntu16.10",
+      "service": "14",
+      "datacenter": "us-east-1b",
+      "arch": "x86",
+      "service_version": "0",
+      "team": "LON",
+      "region": "us-east-1",
+      "timestamp": "2019-03-01T00:00:10",
+      "value": "91.55436144098181"
+    },
+...
+]
+
+
+===============
+
+相比OpenTSDB优势
+
+OpenTSDB协议兼容性
+性能对比
+OpenTSDB是可扩展的分布式时序数据库，底层依赖HBase。作为基于通用存储开发的时序数据库典型代表，起步比较早，在时序市场的认可度相对较高。阿里云智能TSDB高度兼容OpenTSDB协议，采用自研的索引，数据模型，流式聚合等技术手段提供更强大的时序能力。本文从运维管控，功能，成本，性能等方面对比阿里云智能TSDB和OpenTSDB的优势。
+
+分类对比
+OpenTSDB	TSDB
+运维管控	服务可用性	需自行保障，自行搭建集群，自建组件依赖	99.9%
+数据可靠性	需自行保障，自行搭建集群，自建组件依赖	99.9999%
+软硬件投入	数据库服务器成本相对较高	无软硬件投入，按需付费
+维护成本	需招聘专职TSDB DBA人员来维护，花费大量人力成本	托管服务
+部署扩容	需硬件采购、机房托管、机器部署等工作，周期较长	即时开通，快速部署，弹性扩容
+依赖组件繁重，	依赖AysncHBase，HBase等运维成本高	0运维
+配置调优参数繁多	SALT、连接数，同步刷盘参数，Compaction等等	默认参数采用最佳实践
+建表语句	需要运维静态建表语句	建表语句托管，用户透明
+监控报警体系	依赖外部搭建	完整的自监控链路
+功能	数据模型	单值模型	同时支持多值模型和单值模型
+SDK	开源SDK不支持查询	健壮稳定的Java SDK
+数据类型多样性	数值类型	支持数值，布尔，字符串等多种数据类型
+SQL查询能力	不具备	支持SQL的分析查询
+管理控制台	内置简单的图形展示	支持丰富的详情展示，数据管理，时序洞察等
+中文支持	仅支持英文字符	支持英文字符和中文字符
+单一维度（tags 可选择）	tags是必选参数	tags是可选参数
+TagKey个数	最多8个	可支持16个
+集成能力	开源产品，与云产品集成能力弱	同Flink，物联网平台无缝对接，生态丰富
+成本	数据压缩	通用压缩，压缩率低	时序领域专用压缩，压缩率高
+稳定性	数据读取	读写耦合，容易造成连接数耗尽，读写失败概率大	读写线程池分离，易于管理连接，读写稳健
+聚合器	内存物化聚合，容易造内存OOM	流式聚合，内存管理粒度细，可控性强
+OpenTSDB协议兼容性
+由于阿里云TSDB底层技术架构同OpenTSDB的实现区别巨大，对于OpenTSDB的一些运维接口不会兼容。比如OpenTSDB的元数据管理接口/api/tree, /api/uid等等。根据OpenTSDB的官网API Endpoints（http://opentsdb.net/docs/build/html/api_http/index.html) ,下表列举了TSDB的兼容程度。
+
+OpenTSDB 协议API	TSDB是否兼容
+/s	否
+/api/aggregators	是
+/api/annotation	否
+/api/config	是
+/api/dropcaches	否
+/api/put	是
+/api/rollup	否
+/api/histogram	否
+/api/query	是
+/api/query/last	是
+/api/search/lookup	是
+/api/serializers	是
+/api/stats	是
+/api/suggest	是
+/api/tree	否
+/api/uid	否
+/api/version	是
+除此之外，TSDB提供了一些面向时序更友好的接口。包括
+
+TSDB 自定义协议API	描述
+/api/mput	多值写入
+/api/mquery	多值查询
+/api/query/mlast	多值查询最新数据点
+/api/dump_meta	查询 Tagk 下的 Tagv
+/api/ttl	设置数据时效
+/api/delete_data	清理数据
+/api/delete_meta	清理时间线
+性能对比
+测试数据说明
+这里介绍的是用作测试查询性能的数据集。下面将从 Metric、时间线、Value 和 采集周期 四个方面来描述：
+
+metric
+固定指定一个 metric 为 m。
+
+tagkv
+前四个 tagkv 全排列，形成 10 * 20 * 100 * 100 = 2000000 条时间线，最后 IP 对应 2000000 条时间线从 1 开始自增。
+
+tag_k	tag_v
+zone	z1~z10
+cluster	c1~c20
+group	g1~100
+app	a1~a100
+ip	ip1~ip2000000
+value
+度量值为 [1, 100] 区间内的随机值
+
+interval
+采集周期为 10 秒，持续摄入 3 小时，总数据量为 3 * 60 * 60 / 10 * 2000000 = 2,160,000,000 个数据点。
+
+统计结果说明
+压测模式如下：
+
+压测参数	参数值	说明
+压测持续分钟数	3
+压力模式	固定	不同于阶梯和脉冲模式，固定模式不会调节压测的并发量
+施压机数量	5
+单台施压机 TPS 值	1000
+获取 Connection 超时时间（毫秒）	600000
+连接建立超时时间（毫秒）	600000
+请求获取数据超时时间（毫秒）	600000	考虑到大查询会很耗时，一旦 timeout 可能会导致 TPS 统计误差
+调用方式	同步
+每次测试进行之前均重启数据库服务，避免之前的测试操作可能还占用资源。同时对测试操作进行预热，避免未预热情况下，首次请求的耗时过长，而影响到 RT 统计的准确性。
+
+测试环境说明
+机型配置
+写入机型: 2C8G
+
+查询机型: 64C256G
+
+HBase机型： 8C16G * 5
+
+数据库版本
+OpenTSDB: 2.3.2 + HBase 1.5.0.1
+
+TSDB: 2.4.2
+
+写入性能对比
+写入场景列表
+数据点写入的压力由上述压测配置可得知，5 台压测机，每台压测机设置目标 TPS 为 1000，则可以提供 5000 TPS 的写入压力。同时，为了确保测试的公平性，TSDB 和 OpenTSDB 均使用同步写入，并开启落盘功能。其中，为了体现出不同的采集周期（interval），各个场景写入数据点的时间戳（timestamp），都基于某一时刻（base_time），随着调用次数（N）的增加而递增，即可用公式表示为 timestamp = base_time + interval * N
+
+采集周期（秒）	Metric	Tag
+场景一	10	一个	4tagk * 2500tagv
+场景二	10	十个	4tagk * 2500tagv
+场景三	60	一个	4tagk * 2500tagv
+场景四	60	十个	4tagk * 2500tagv
+TSDB 结果
+场景	TPS	RT(ms)	MinRT	MaxRT	80%RT	95%RT	99%RT
+场景一	4194.23	149.91	36.9	1808.0	210.42	239.11	250.38
+场景二	4223.09	148.4	37.2	474.22	209.74	238.32	248.52
+场景三	4225.24	150.37	37.09	645.57	211.22	239.01	249.88
+场景四	4227.01	148.61	37.4	888.72	209.93	238.68	249.38
+OpenTSDB 结果
+场景	TPS	RT(ms)	MinRT	MaxRT	80%RT	95%RT	99%RT
+场景一	1008.12	832.68	47.19	1310.56	1158.44	1255.66	1283.67
+场景二	1094.4	770.82	43.64	1469.04	1078.78	1238.06	1281.69
+场景三	804.82	1047.59	132.18	1297.71	1188.12	1269.82	1281.32
+场景四	1039.72	807.29	44.43	1421.03	1110.46	1242.02	1281.76
+性能对比分析
+TPS
+wqps
+
+RT
+wrt
+
+查询性能对比
+查询场景列表
+数据点查询的压力，同样可由上述压测配置可得知，5 台压测机，每台压测机设置目标 QPS 为 1000，则可以提供 5000 QPS 的查询压力。和写入不同的是，因为查询的目标数据集相对而言更庞大，如果直接使用 5000 的 QPS 进行压测，可能会因为查询队列满，出现空跑的情况。因此，为了测试的准确性，这里的 5000 实际上是 QPS 的上限，所有的查询压测开始之前，都通过观察数据库服务端日志和资源消耗情况，确保数据库能正常运作的情况下，进行压测的。而针对场景五到场景八，这四种涵盖整个数据集的查询场景，即便将压测并发量从 5000 降低到 500、50、5、1 之后，仍然会导致 OpenTSDB 不可用，我们这里使用 N/A 来表示 Not Available 状态，并在后续分析图表中，使用 0 替代表示。
+
+Metric	Tag（tagk，tagv组合）	时间范围
+场景一	一个	1 个 Tag	5min
+场景二	一个	10 个 Tag	5min
+场景三	一个	100 个 Tag	5min
+场景四	一个	1000 个 Tag	5min
+场景五	一个	1 个 Tag	3hour
+场景六	一个	10 个 Tag	3hour
+场景七	一个	100 个 Tag	3hour
+场景八	一个	1000 个 Tag	3hour
+对应查询语句
+# 5min
+{"start":1546272000,"end":1546272300,"queries":[{"aggregator":"count","metric":"m","tags":{"ip":"i1"}}]}
+{"start":1546272000,"end":1546272300,"queries":[{"aggregator":"count","metric":"m","tags":{"cluster":"c1","group":"h1","app":"a1"}}]}
+{"start":1546272000,"end":1546272300,"queries":[{"aggregator":"count","metric":"m","tags":{"zone":"z1","cluster":"c1","group":"h1"}}]}
+{"start":1546272000,"end":1546272300,"queries":[{"aggregator":"count","metric":"m","tags":{"cluster":"c1","group":"h1"}}]}
+# 3hour
+{"start":1546272000,"end":1546282800,"queries":[{"aggregator":"count","metric":"m","tags":{"ip":"i1"}}]}
+{"start":1546272000,"end":1546282800,"queries":[{"aggregator":"count","metric":"m","tags":{"cluster":"c1","group":"h1","app":"a1"}}]}
+{"start":1546272000,"end":1546282800,"queries":[{"aggregator":"count","metric":"m","tags":{"zone":"z1","cluster":"c1","group":"h1"}}]}
+{"start":1546272000,"end":1546282800,"queries":[{"aggregator":"count","metric":"m","tags":{"cluster":"c1","group":"h1"}}]}
+TSDB 结果
+场景	TPS	RT(ms)	MinRT	MaxRT	80%RT	95%RT	99%RT
+场景一	3831.8	44.14	36.94	416.98	44.51	46.73	75.5
+场景二	1148.22	657.77	105.96	1054.96	715.5	745.87	796.8
+场景三	215.96	3522.96	557.81	4067.14	3679.5	3786.29	3854.57
+场景四	39.37	19692.53	1784.93	22370.1	-	-	-
+场景五	2856.1	262.76	41.29	847.01	296.99	443.52	489.4
+场景六	446.54	1684.15	67.75	2161.85	1802.8	1898.0	1959.02
+场景七	69.25	11237.9	1873.55	12776.56	11917.05	12133.61	12316.79
+场景八	11.76	65615.45	5742.12	86952.76	-	-	-
+OpenTSDB 结果
+场景	TPS	RT(ms)	MinRT	MaxRT	80%RT	95%RT	99%RT
+场景一	1.97	77842.67	10486.16	109650.51	-	-	-
+场景二	1.95	78062.6	12723.96	119911.53	-	-	-
+场景三	1.96	78865.02	15942.89	141365.75	-	-	-
+场景四	1.97	77331.91	7780.02	113582.65	-	-	-
+场景五	N/A	N/A	N/A	N/A	N/A	N/A	N/A
+场景六	N/A	N/A	N/A	N/A	N/A	N/A	N/A
+场景七	N/A	N/A	N/A	N/A	N/A	N/A	N/A
+场景八	N/A	N/A	N/A	N/A	N/A	N/A	N/A
+性能对比分析
+QPS
+rqps
+
+RT
+rrt
+
+在高并发情况下（>500），OpenTSDB 几乎处于不可用状态，而 TSDB 仍然可以稳定运行。
+

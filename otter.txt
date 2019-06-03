@@ -1,0 +1,557 @@
+最新更新
+otter已在阿里云推出商业化版本 数据传输服务DTS， 开通即用，免去部署维护的昂贵使用成本。DTS针对阿里云RDS、DRDS等产品进行了适配，解决了Binlog日志回收，主备切换、VPC网络切换等场景下的同步高可用问题。同时，针对RDS进行了针对性的性能优化。出于稳定性、性能及成本的考虑，强烈推荐阿里云用户使用DTS产品。DTS产品使用文档
+DTS支持阿里云RDS&DRDS的Binlog日志实时订阅，现推出首月0折体验，限时限量，立即体验>>>
+环境搭建 & 打包
+环境搭建：
+进入$otter_home目录
+执行：mvn clean install
+导入maven项目。如果eclipse下报"Missing artifact com.oracle:ojdbc14:jar:10.2.0.3.0"，修改$otter_home/pom.xml中"${user.dir}/lib/ojdbc14-10.2.0.3.0.jar"为绝对路径，比如"d:/lib/ojdbc14-10.2.0.3.0.jar"
+打包：
+进入$otter_home目录
+执行：mvn clean install -Dmaven.test.skip -Denv=release
+发布包位置：$otter_home/target
+项目背景
+   阿里巴巴B2B公司，因为业务的特性，卖家主要集中在国内，买家主要集中在国外，所以衍生出了杭州和美国异地机房的需求，同时为了提升用户体验，整个机房的架构为双A，两边均可写，由此诞生了otter这样一个产品。
+
+   otter第一版本可追溯到04~05年，此次外部开源的版本为第4版，开发时间从2011年7月份一直持续到现在，目前阿里巴巴B2B内部的本地/异地机房的同步需求基本全上了otte4。
+
+目前同步规模：
+同步数据量6亿
+文件同步1.5TB(2000w张图片)
+涉及200+个数据库实例之间的同步
+80+台机器的集群规模
+项目介绍
+名称：otter ['ɒtə(r)]
+
+译意： 水獭，数据搬运工
+
+语言： 纯java开发
+
+定位： 基于数据库增量日志解析，准实时同步到本机房或异地机房的mysql/oracle数据库. 一个分布式数据库同步系统
+
+工作原理
+
+
+原理描述：
+
+1. 基于Canal开源产品，获取数据库增量日志数据。 什么是Canal, 请点击
+
+manager(web管理)+node(工作节点)
+
+    a. manager运行时推送同步配置到node节点
+
+    b. node节点将同步状态反馈到manager上
+
+3. 基于zookeeper，解决分布式状态调度的，允许多node节点之间协同工作.
+
+otter之前开源的一个子项目，开源链接地址：http://github.com/alibaba/canal
+Introduction
+See the page for introduction: Introduction.
+
+QuickStart
+See the page for quick start: QuickStart.
+
+AdminGuide
+See the page for admin deploy guide : AdminGuide
+
+相关文档
+See the page for 文档: 相关PPT&PDF
+
+常见问题
+See the page for FAQ: FAQ
+
+版本相关:
+1. 建议版本：4.2.15 (otter开源版本从内部演变而来，所以初始版本直接从4.x开始)
+
+2. 下载发布包：download
+
+3. maven依赖 ： 暂无
+
+阿里巴巴mysql数据库binlog的增量订阅&消费组件：http://github.com/alibaba/canal
+阿里巴巴去Oracle数据迁移同步工具(目标支持MySQL/DRDS)：http://github.com/alibaba/yugong
+
+注意：canal&otter QQ讨论群已经建立，群号：161559791 ，欢迎加入进行技术讨论。
+1. qq交流群： 161559791
+
+2. 邮件交流： jianghang115@gmail.com
+
+3. 新浪微博： agapple0002
+
+4. 报告issue：issues
+
+https://job.alibaba.com/zhaopin/position_detail.htm?positionId=32666
+
+
+
+Otter是基于cannal开源的，canal又是基于mysql binlog的产品。我们就从binlog说起
+
+binlog
+mysql的binlog日志是被设计用来作主从备份或者数据恢复用的。binlog是The Binary Log的简称，意思就是二进制的日志文件（可以点击https://dev.mysql.com/doc/refman/5.6/en/binary-log.html了解）。binlog中以二进制的形式记录了数据库的”events（事件）”即数据库结构及表数据发生的变化。以下这张图就反应了主从库之间使用binlog进行同步的过程：
+
+
+
+mysql提供了三种不同的binlog记录形式：
+
+STATEMENT 语句模式（默认）：日志中记录了所有的执行的sql语句，从库在执行的时候，重新执行相应sql即可。但是因为不记录语句执行的上下文，在从库执行某些语句（比如存储过程）的时候，有些语句不一定能成功执行导致丢失数据
+ROW 行模式：日志中记录每一行每个字段的变化，能清楚记录每行数据的变化历史，主从丢失数据的情况大大降低，但是缺点是会产生大量的binlog占用存储空间
+MIX 混合模式：在 Mixed 模式下，MySQL 会根据执行的每一条具体的 SQL 语句来区分对待记录的日志形式，也就是在 statement 和 row 之间选择一种。比如遇到表结构变更的时候就会以 statement 模式来记录，如果 SQL 语句确实就是 update 或者 delete 等修改数据的语句，那么还是会记录所有行的变更。目前这种模式其实就是由mysql来选择到底用哪种模式记录，可以点此了解https://dev.mysql.com/doc/refman/5.6/en/binary-log-mixed.html
+你可以通过以下命令查看自己的mysql的binlog情况：
+
+//查看自己的mysql是否打开了binlog选项
+show variables like 'log_bin'
+//查看binlog的格式
+show variables like 'binlog_format'
+
+//获取binlog列表
+show binary logs
+//或者
+show master logs
+
+//查看正在写入的binlog
+show master status
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+上文中说过binlog中是以event的形式记录日志的，所以你可以通过事件命令查看具体的日志内容及位置
+
+SHOW BINLOG EVENTS
+   [IN 'log_name']
+   [FROM pos]
+   [LIMIT [offset,] row_count]
+1
+2
+3
+4
+比如：SHOW BINLOG EVENTS LIMIT 1
+
+
+
+Log_name:日志文件名
+Pos:事件起始位置
+Event_type：事件类型
+End_log_pos结束位置
+mysqlbinlog工具
+如果binlog的格式是STATEMENT，以上show binlog event的方式是可以看到sql语句的，但是如果row模式的话，没法看到，只能通过mysqlbinlog工具进行查看，mysqlbinlog也是mysql dba常用的备份恢复数据的工具。
+
+该工具需要登录到数据库主机使用
+
+mysqlbinlog [options] log_file
+1
+具体的选项参考：https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html
+
+如果你没有数据库主机的登录权限，可以选择使用远程导出的方式将远端的binlog导出。
+
+# mysqlbinlog -u用户名 -p密码 -h主机地址 -P端口号 --read-from-remote-server mysql-bin.000001 --base64-output=decode-rows -v > 1.txt
+1
+返回数据如下，黑色背景部分为一个事件的完整日志，红框标记则为执行的SQL
+
+
+
+Canal
+canal(https://github.com/alibaba/canal)是阿里出品基于binlog的一款订阅消费组件，简单来说也就是它可以订阅mysql的binlog，并进行读取消费，以达到数据同步等目的。相较于传统的触发器同步数据模式，基于binlog的数据同步方式无疑灵活性、功能性更强。
+
+
+
+原理如下：
+
+canal模拟mysql slave的交互协议，伪装自己为mysql slave，向mysql master发送dump协议
+mysql master收到dump请求，开始推送binary log给slave(也就是canal)
+canal解析binary log对象(原始为byte流)
+canal服务端：
+这张图表示了canal服务端的模块划分
+
+
+
+server代表一个canal运行实例，对应于一个jvm
+instance对应于一个数据队列（也就是一个数据库的binlog订阅者） （1个server对应1..n个instance)
+instance下的子模块：
+
+eventParser (数据源接入，模拟slave协议和master进行交互，协议解析)
+eventSink (Parser和Store链接器，进行数据过滤，加工，分发的工作)
+eventStore (数据存储)
+metaManager (增量订阅&消费信息管理器)
+canal客户端：
+
+canal客户端可以向服务器端进行消息订阅消费，服务器端的解析后的数据存在eventStore中，而客户端的工作就是从eventStore中订阅消费。
+
+
+
+
+otter是一个基于canal的数据同步平台，含义是水獭，主要的功能就是可以将mysql的数据同步至另外mysql或者oracle，在项目中应用场景主要是多数据中心、BI系统抽取数据、灾备。
+
+另外也支持双向同步（即A库同步给B库，B库也同步给A库）、文件同步，不过目前笔者这还没用到。
+
+简单就可以理解成在canel的基础上做了一个mysql的同步平台（带WEB管理界面），在界面上，你可以定义相应的映射规则，otter进程就会根据你定义的规则读取binlog，并更新到目标库中去
+
+github的地址：https://github.com/alibaba/otter
+
+架构
+otter是典型的管理结构，由以下三部分组成：
+
+1、一个后台的manager（web，对应一个jvm），管理员通过这个管理界面配置相应的同步任务
+
+2、一个或者多个真正做事情的node(工作节点，对应一个jvm)，manager将配置任务推送给node，由node真正干活
+
+3、为了node之间能协同工作，需要有个zookeeper，解决分布式的调度问题
+
+整体的架构如下：
+
+
+
+Pipeline：从源端到目标端的整个过程描述，主要由一些同步映射过程组成。
+
+Channel:同步通道，单项同步中由一个Pipeline组成，在双向同步中由两个Pipleline组成。
+
+安装配置
+参考此博文吧，不赘述，不难
+https://blog.csdn.net/wudufeng/article/details/78688240
+
+自由门
+otter默认是只支持源库的增量更新的（因为他只是读取源库的binlog）,如果我们有全表更新或者想要历史数据的需求怎么办？这就涉及到otter的自由门功能。
+
+这个功能在官网的文档中说的语焉不详，而且也不好找，但是是个非常有用的功能。因此简单说下
+
+首先需要在源库中，需要增加一个retl库和一个密码为retl的retl用户
+
+/*
+供 otter 使用， otter 需要对 retl.* 的读写权限，以及对业务表的读写权限
+1. 创建database retl
+*/
+CREATE DATABASE retl;
+
+/* 2. 用户授权 给同步用户授权 */
+CREATE USER retl@'%' IDENTIFIED BY 'retl';
+GRANT USAGE ON *.* TO `retl`@'%';
+GRANT SELECT, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO `retl`@'%';
+GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE ON `retl`.* TO `retl`@'%';
+/* 业务表授权，这里可以限定只授权同步业务的表 */
+GRANT SELECT, INSERT, UPDATE, DELETE ON *.* TO `retl`@'%';
+
+/* 3. 创建系统表 */
+USE retl;
+DROP TABLE IF EXISTS retl.retl_buffer;
+DROP TABLE IF EXISTS retl.retl_mark;
+DROP TABLE IF EXISTS retl.xdual;
+
+CREATE TABLE retl_buffer
+(
+    ID BIGINT(20) AUTO_INCREMENT,
+    TABLE_ID INT(11) NOT NULL,
+    FULL_NAME varchar(512),
+    TYPE CHAR(1) NOT NULL,
+    PK_DATA VARCHAR(256) NOT NULL,
+    GMT_CREATE TIMESTAMP NOT NULL,
+    GMT_MODIFIED TIMESTAMP NOT NULL,
+    CONSTRAINT RETL_BUFFER_ID PRIMARY KEY (ID)
+)  ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE retl_mark
+(
+    ID BIGINT AUTO_INCREMENT,
+    CHANNEL_ID INT(11),
+    CHANNEL_INFO varchar(128),
+    CONSTRAINT RETL_MARK_ID PRIMARY KEY (ID)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
+
+CREATE TABLE xdual (
+  ID BIGINT(20) NOT NULL AUTO_INCREMENT,
+  X timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (ID)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
+
+/* 4. 插入初始化数据 */
+INSERT INTO retl.xdual(id, x) VALUES (1,now()) ON DUPLICATE KEY UPDATE x = now();
+下面说说retl_buffer这张表
+
+CREATE TABLE retl_buffer
+   (
+    ID BIGINT AUTO_INCREMENT,   ## 无意义，自增即可
+    TABLE_ID INT(11) NOT NULL,   ## tableId, 可通过该链接查询：http://otter.alibaba-inc.com/data_media_list.htm，即序号这一列，如果配置的是正则，需要指定full_name，当前table_id设置为0.
+    FULL_NAME varchar(512),  ## schemaName + '.' +  tableName  (如果明确指定了table_id，可以不用指定full_name)
+    TYPE CHAR(1) NOT NULL,   ## I/U/D ，分别对应于insert/update/delete
+    PK_DATA VARCHAR(256) NOT NULL, ## 多个pk之间使用char(1)进行分隔
+    GMT_CREATE TIMESTAMP NOT NULL, ## 无意义，系统时间即可
+    GMT_MODIFIED TIMESTAMP NOT NULL,  ## 无意义，系统时间即可
+    CONSTRAINT RETL_BUFFER_ID PRIMARY KEY (ID)
+   )  ENGINE=InnoDB DEFAULT CHARSET=utf8;
+之后的操作其实就是，把你想要同步表的表名及记录ID插入到retl_buffer表即可
+
+insert into retl.retl_buffer(ID,TABLE_ID, FULL_NAME,TYPE,PK_DATA,GMT_CREATE,GMT_MODIFIED) (select null,0,'$schema.table$','I',id,now(),now() from $schema.table$);
+1
+如果针对多主键时，对应的PK_DATA需要将需要同步表几个主键按照(char)1进行拼接。
+
+以下这条sql的意思就是将rrrr.t_test的主键为aaa的这条记录按照规则插入到目标库
+
+insert into `retl`.`retl_buffer` ( `TABLE_ID`, `FULL_NAME`, `TYPE`, `PK_DATA`, `GMT_CREATE`, `GMT_MODIFIED`) values ( '0', 'rrrr.t_test', 'I', 'aaa', now(), now());
+1
+其实原理还是使用canel读取了源库的retl_buffer操作binlog来进行实现的，所以在使用此功能时，channel必须处于工作状态。
+
+同步表必须有主键
+如果channel已经建立，数据表字段更新的时候，只允许新增字段到末尾。还有就是新增字段要先加目标库，再加源库
+---------------------
+
+2018-05-07 16:10:44
+Otter:
+     otter是阿里开源的一个分布式数据库同步系统，尤其是在跨机房数据库同步方面，有很强大的功能。它是基于数据库增量日志解析，实时将数据同步到本机房或跨机房的mysql/oracle数据库。
+
+
+环境：(由于环境隐私原因，环境中使用的外部IP隐藏)
+网络图：
+
+image.png
+
+
+实验环境：
+
+A机房（公司内网）《===》B机房（云服务环境内网）
+
+
+
+数据源（mysql需开启binlog,binlog_format=ROW）：
+
+Mysql_A:192.168.1.20:3306(外部IP：xx.xx.xx.xx:3306)
+
+Mysql_B:192.168.123.12:3306(外部IP：yy.yy.yy.yy:3306)
+
+
+
+角色分布：
+
+Zookeeper:192.168.1.20:3181(外部IP：xx.xx.xx.xx:3181)
+
+Manager:192.168.1.19:2333
+
+Node1（云服务）:192.168.123.12(外部IP：yy.yy.yy.yy:2088)
+
+Node2（公司内网）:192.168.1.228:2088(外部IP：xx.xx.xx.xx:2088)
+
+
+
+注：由于在现实环境中，考虑到跨机房同步的问题，所以很多时候需要使用到外部IP来进行服务之间的访问，因此mysql,zookeeper以及nodes都需讲相应的端口开放到外网（其中node需开放2088以及9090端口）。
+
+
+部署otter:
+Otter打包
+
+1，下载：https://github.com/alibaba/otter。
+
+
+
+2，打包机器上安装mvn打包工具。
+
+
+
+3，解压otter包，并搭建otter所需环境。
+
+#unzip otter-4.2.15.zip
+# cd otter-4.2.15/lib
+# sh install.sh
+# cd ../ && mvn clean install
+
+
+4，打包。
+
+# mvn clean install -Dmaven.test.skip -Denv=release
+    打包成功后会在target目录下生成manager和node的代码包：
+
+image.png
+
+
+
+
+
+Manager安装
+
+1，把打好的manager代码包传至manager节点，并解压。
+
+# tar -zxvf manager.deployer-4.2.16-SNAPSHOT.tar.gz -C /usr/local/otter-manager
+
+
+2，在mysql中，新建otter所需的库，并执行otter提供的初始化sql。（初始化sql在otter的代码包中能找到）
+
+Mysql > create database otter_fjhb;
+Mysql > source /path/otter-4.2.15/manager/deployer/src/main/resources/sql/otter-manager-schema.sql
+
+
+3，Manager配置文件，配置manager端口以及mysql和zookeeper的连接信息。
+
+image.png
+
+
+
+4，启动manager。
+
+# /usr/local/otter-manager/bin/starup.sh
+
+
+Node安装
+
+1，打开manager页面，配置zookeeper信息，注意node节点需能访问zookeeper信息，这里的zk需填写外部IP来访问。
+
+1.png
+
+2，添加node1（华为云），启用外部IP。
+
+2.png
+
+添加node2(华博内网)，启用外部IP:
+
+3.png
+
+3，进入node服务器，把打包好的node包传上去，并解压配置。
+
+# tar -zxvf node.deployer-4.2.16-SNAPSHOT.tar.gz -C /usr/local/otter-node
+
+
+4，配置manager的地址。
+
+ image.png
+
+
+
+5，配置nid (根据node id配置来配置)。
+
+# echo '1' > conf/nid
+
+
+6，安装aria2工具(在node节点之间提供文件传输通道)。
+
+# tar -zxvf aria2-1.33.1.tar.gz
+# cd aria2-1.33.1/ && ./configure &&make && make install
+
+
+7，启动node。
+
+# /path/bin/startup.sh
+
+
+8，Node正确启动后，可以查看node状态。
+
+5.png
+
+
+
+注：安装node要先在manager页面上配置node信息，否则启动node的时候会报错：‘在manager上找不到node x’。
+
+
+
+
+Otter单向数据同步
+这里配置华博内网mysql到华为云内网mysql的单向数据同步。
+
+其中有如下步骤：
+
+1：配置同步双方的mysql数据源：配置管理à数据源配置。
+
+   这里填写的mysql用户不一定要用root，只要有操作需同步数据的库表的相关权限即可。
+
+1.png
+
+2.png
+
+2：配置同步双方的相关mysql数据源表，配置管理==》数据表配置。这里可以配置一个schema下的单张表，也可匹配schema下的所有表，这里我们配置同步所有表。
+
+1.png
+
+2.png
+
+
+
+3：配置canal，定义源数据库，配置管理canal配置。
+
+   这里填写的mysql用户不一定是root，但需拥有可执行show master status的权限。
+
+3.png
+
+
+
+4：新增channel、pipline以及映射关系。
+
+4.png
+
+
+
+根据同步的流程位置选择select机器和load机器，离源mysql近的应为select机器，离目的mysql近的应为load机器。
+
+5.png
+
+
+
+根据同步关系选择数据源表：
+
+6.png
+
+7.png
+
+
+
+完成以上配置后返回channel管理，启用channel，该channel中的pipline就会自动去寻找源mysql中的binglog position位置，两边的mysql就开始进入同步状态了。
+
+8.png
+
+9.png
+
+
+
+
+Otter双向数据同步
+双向同步本质上就是配置两个单向同步。本质上可以配置两个channel并分别配置pipline来实现，但是这种情况下，会有数据回环同步的问题。Otter里面提供了otter双向回环控制功能，可通过在一个channel里配置两个pipline来实现。
+
+
+
+这里实现的是华博内网和华为云双向的数据同步，步骤和单向同步类似。
+
+1：配置同步双方的mysql数据源。
+
+1.png2.png
+
+2：配置同步双方的相关mysql数据源表。
+
+3.png4.png
+
+3：配置canal，定义源数据库。
+
+由于是双向同步，因此需配置两个canal。
+
+5.png6.png
+
+4：新增channel、pipline以及映射关系。
+
+   新增channel。
+
+7.png
+
+   添加pipline，这里根据同步方向不同，添加两个pipline。其中一个Pipline高级设置中的的“支持DDL同步”选项需关闭，否则channel会报“一个channel中只允许开启单向ddl同步!”错误。
+
+9.png10.png
+
+      在两个pipline中分别添加映射关系，添加完效果如下，形成一个双向的channel。
+
+11.png
+
+      启用channel，状态中会显示这是一个双向channel，在完成定位后，双向同步开始工作。无论在哪个端的mysql操作数据，都会同步到另一端。但注意，由于其中的一个pipline个关闭了ddl同步功能，这里的ddl操作是单向同步的。
+
+12.png
+
+13.png
+
+
+
+后记：
+
+       以上操作是搭建公司两个环境mysql数据库同步的otter时顺手写的文档。其实otter还针对其他同步场景有不同的配置，比如双A配置，主从配置等等，这里由于还未测试过，没有写出来，希望后期后空可以做一下相关的实验。最终的结果效果测试没有放上来，是基于效果截图不直观的考虑。如果正确配置的话，应该同步效果都是没问题的。
+
+      跨机房的otter配置，有个很大的问题就是网络访问问题，比如：manager需要能访问node，node之间需要能互相访问，manager和node需要能访问zookeeper，load node需要能访问源mysql等。如何把所有的关节打通是一个比较繁琐的问题，大家可以多留意manager和node的日志。
+
+     另外，otter在使用过程中会出现许多不稳定的问题，比如pipline修改配置会造成同步延迟，pipline重启会导致定位异常等。建议给manager和node节点分配大一点的内存使用。
+
+
