@@ -1,0 +1,524 @@
+1 Kafka 消息的问题
+
+Kafka就比较适合高吞吐量并且允许少量数据丢失的场景，如果非要保证“消息只读取一次”，可以使用JMS
+
+Kafka Producer 消息发送有两种方式(配置参数 producer.type)：
+
+producer.type=sync(默认值): 后台线程中消息发送是同步方式，对应的类为 kafka.producer.SyncProducer；
+
+producer.type=async: 后台线程中消息发送是异步方式，
+
+对应的类为 kafka.producer.AyncProducer；优点是可批量发送消息(消息个数达到 batch.num.messages=200 或时间达到 “ 时发送)、吞吐量佳，缺点是发送不及时可能导致丢失；
+
+对于同步方式(producer.type=sync)
+
+
+-----------------------
+
+Kafka Producer 消息发送有三种确认方式(配置参数 acks)：
+acks=0: producer 不等待 Leader 确认，只管发出即可；最可能丢失消息，适用于高吞吐可丢失的业务；
+acks=1(默认值): producer 等待 Leader 写入本地日志后就确认；之后 Leader 向 Followers 同步时，如果 Leader 宕机会导致消息没同步而丢失，producer 却依旧认为成功；
+acks=all/-1: producer 等待 Leader 写入本地日志、而且 Leader 向 Followers 同步完成后才会确认；最可靠。
+Kafka Consumer 有两个接口：
+
+Low-level API: 消费者自己维护 offset 等值，可以完全控制；
+High-level API: 封装了对 parition 和 offset 的管理，使用简单；可能遇到 Consumer 取出消息并更新了 offset，但未处理消息即宕机，从而相当于消息丢失；
+Kafka 支持 3 种消息传递语义：
+
+最多一次 -消息可能会丢失，但永远不会重新发送。consumer.poll(); consumer.commitOffset(); processMsg(messages);
+至少一次 -消息永远不会丢失，但可能会重新传递。consumer.poll(); processMsg(messages); consumer.commitOffset();
+恰恰一次 - 这就是人们真正想要的，每条信息只传递一次。以事务来保证。
+
+
+2 消息重复
+
+
+
+3 消息丢失
+根本原因：已经提交了 offset，但数据在内存中尚未处理，线程就被杀掉。
+同步模式下，确认机制设置为-1(不可为1)，即让消息写入Leader和Follower之后再确认消息发送成功；
+异步模式下，设置为不限制阻塞超时时间(不可为acks=0)，当缓冲区满时不清空缓冲池，而是让生产者一直处于阻塞状态；
+
+
+
+4 消息乱序
+传统的队列，在并行处理时，由于网络故障或速度差异，尽管服务器传递是有序的，但消费者接收的顺序可能不一致；
+Kafka 在主题内部有分区，并行处理时，每个分区仅由消费者组中的一个消费者使用，确保了消费者是该分区的唯一读者，并按顺序使用这些数据。
+但是它也仅仅是保证Topic的一个分区顺序处理，不能保证跨分区的消息先后处理顺序，除非只提供一个分区。
+
+=============
+
+分区可靠性保证
+
+Kafka维护一个AR（All Partition）列表，由ISR（与Leader数据同步的Replica）和OSR（与Leader数据不同步的Replica）组成。刚开始所有的副本都在ISR中，在kafka工作的过程中，因为各种问题（网络、磁盘、内存）导致某些副本同步速度慢于replica.lag.time.max.ms指定的阈值，则它们被踢出ISR，移动到OSR中。
+
+ kafka默认配置下，ISR中的所有Replica数据从Leader中同步完成，生产者才会认为数据提交成功，因此ISR的数据不易过多，而且他们之间的网络也应该畅通。
+
+ OSR内的Replica是否同步了leader的数据不影响数据是否提交成功，它们会尽力不断从Leader中同步数据（出现OSR需要及时运维人员，排查故障，让其尽快回到ISR中，降低集群宕机的风险)
+
+
+
+截断机制
+
+.HW(HighWatermark)：数据被成功提交（ISR中的所有Replica同步完成），HW更新到该位置，HW之前的数据才可以被消费者访问，保证没有同步完成的数据不会被消费者访问到，这就是隔离性（两个事务之间互不影响）。
+
+在leader宕机后，只能从ISR列表中选取新的leader，无论ISR中哪个副本被选为新的leader都知道HW之前的数据，可以保证在切换了leader后，消费者可以继续看到之前已经提交的数据
+
+
+
+如果leader宕机，选出了新的leader，而新的leader并没有完全同步之前leader的所有数据，之后又接受了新的数据，此时旧的leader恢复，则会发现新的leader中的数据和自己持有的数据不一致，此时旧的leader会将自己的数据截断到宕机之前的hw位置，并同步新leader的数据
+
+
+生产可靠性保证
+
+生产者向leader发送数据时，可以选择需要的可靠性级别 ，通过request.required.acks参数配置：
+
+0 - 生产者不停向leader发送数据，而不需要leader反馈成功消息
+        这种模式效率最高，可靠性最低
+        可能在发送过程中丢失数据
+        可能在leader宕机时丢失数据
+​
+  1 - 生产者发送数据给leader，leader收到数据后要等到ISR列表中的所有副本都同步数据完成后，才向生产者发送成功消息，如果一直收不到成功消息，则认为发送数据失败会自动重发数据.
+        这种模式下可靠性很高，但是当ISR列表中只剩下leader时，当leader宕机让然有可能丢数据
+        此时可以配置min.insync.replicas指定要求观察ISR中至少要有指定数量的副本，默认该值为1，需要改为大于等于2的值
+        这样当生产者发送数据给leader但是发现ISR中只有leader自己时，会收到异常表明数据写入失败，此时无法写入数据，保证了数据绝对不丢
+        虽然不丢但是可能会多数据，例如生产者发送数据给leader，leader同步数据给ISR中的follower，同步到一半leader宕机，此时选出新的leader，可能具有部分此次提交的数据，而生产者收到失败消息重发数据，新的leader接受 数据则数据重复了
+因此kafka只支持At Most Once和At Least Once，不支持Exactly Once（到业务中去重）
+
+leader选举
+默认配置下，当leader宕机时会选择ISR中的一个follower成为新的leader，
+
+如果ISR中的所有副本都宕机，而又要求集群可用，那么有下面两种选择：
+
+必须等待ISR列表中的副本活过来才选择其成为leader继续工作，将unclean.leader.election.enable设置为false
+
+2.选择任何一个活着的副本可能不在ISR中成为leader继续工作，将unclean.leader.election.enable设置为true
+
+第一种方法，可靠性有保证，但是可用性变低，只有最后挂了的leader活过来kafka集群才能继续工作
+
+第二种方法，可用性高，可靠性没有保证，任何一个副本活过来就可以继续工作，但是有可能存在数据不一致的情况
+
+--------------------------------------------------------------------------------
+
+1 概述
+Kakfa起初是由LinkedIn公司开发的一个分布式的消息系统，后成为Apache的一部分，它使用Scala编写，以可水平扩展和高吞吐率而被广泛使用。目前越来越多的开源分布式处理系统如Cloudera、Apache Storm、Spark等都支持与Kafka集成。
+
+Kafka凭借着自身的优势，越来越受到互联网企业的青睐，唯品会也采用Kafka作为其内部核心消息引擎之一。Kafka作为一个商业级消息中间件，消息可靠性的重要性可想而知。如何确保消息的精确传输？如何确保消息的准确存储？如何确保消息的正确消费？这些都是需要考虑的问题。本文首先从Kafka的架构着手，先了解下Kafka的基本原理，然后通过对kakfa的存储机制、复制原理、同步原理、可靠性和持久性保证等等一步步对其可靠性进行分析，最后通过benchmark来增强对Kafka高可靠性的认知。
+
+2 Kafka体系架构
+
+
+如上图所示，一个典型的Kafka体系架构包括若干Producer（可以是服务器日志，业务数据，页面前端产生的page view等等），若干broker（Kafka支持水平扩展，一般broker数量越多，集群吞吐率越高），若干Consumer (Group)，以及一个Zookeeper集群。Kafka通过Zookeeper管理集群配置，选举leader，以及在consumer group发生变化时进行rebalance。Producer使用push(推)模式将消息发布到broker，Consumer使用pull(拉)模式从broker订阅并消费消息。
+
+名词解释：
+
+名称	解释
+Broker	消息中间件处理节点，一个Kafka节点就是一个broker，一个或者多个Broker可以组成一个Kafka集群
+Topic	Kafka根据topic对消息进行归类，发布到Kafka集群的每条消息都需要指定一个topic
+Producer	消息生产者，向Broker发送消息的客户端
+Consumer	消息消费者，从Broker读取消息的客户端
+ConsumerGroup	每个Consumer属于一个特定的Consumer Group，一条消息可以发送到多个不同的Consumer Group，但是一个Consumer Group中只能有一个Consumer能够消费该消息
+Partition	物理上的概念，一个topic可以分为多个partition，每个partition内部是有序的
+2.1 Topic & Partition
+一个topic可以认为一个一类消息，每个topic将被分成多个partition，每个partition在存储层面是append log文件。任何发布到此partition的消息都会被追加到log文件的尾部，每条消息在文件中的位置称为offset(偏移量)，offset为一个long型的数字，它唯一标记一条消息。每条消息都被append到partition中，是顺序写磁盘，因此效率非常高（经验证，顺序写磁盘效率比随机写内存还要高，这是Kafka高吞吐率的一个很重要的保证）。
+
+
+
+每一条消息被发送到broker中，会根据partition规则选择被存储到哪一个partition。如果partition规则设置的合理，所有消息可以均匀分布到不同的partition里，这样就实现了水平扩展。（如果一个topic对应一个文件，那这个文件所在的机器I/O将会成为这个topic的性能瓶颈，而partition解决了这个问题）。在创建topic时可以在$KAFKA_HOME/config/server.properties中指定这个partition的数量（如下所示），当然可以在topic创建之后去修改partition的数量。
+
+# The default number of log partitions per topic. More partitions allow greater
+# parallelism for consumption, but this will also result in more files across
+# the brokers.
+num.partitions=3
+1
+2
+3
+4
+在发送一条消息时，可以指定这个消息的key，producer根据这个key和partition机制来判断这个消息发送到哪个partition。partition机制可以通过指定producer的partition.class这一参数来指定，该class必须实现kafka.producer.Partitioner接口。
+
+有关Topic与Partition的更多细节，可以参考下面的“Kafka文件存储机制”这一节。
+
+3 高可靠性存储分析
+Kafka的高可靠性的保障来源于其健壮的副本（replication）策略。通过调节其副本相关参数，可以使得Kafka在性能和可靠性之间运转的游刃有余。Kafka从0.8.x版本开始提供partition级别的复制,replication的数量可以在$KAFKA_HOME/config/server.properties中配置（default.replication.refactor）。
+
+这里先从Kafka文件存储机制入手，从最底层了解Kafka的存储细节，进而对其的存储有个微观的认知。之后通过Kafka复制原理和同步方式来阐述宏观层面的概念。最后从ISR，HW，leader选举以及数据可靠性和持久性保证等等各个维度来丰富对Kafka相关知识点的认知。
+
+3.1 Kafka文件存储机制
+Kafka中消息是以topic进行分类的，生产者通过topic向Kafka broker发送消息，消费者通过topic读取数据。然而topic在物理层面又能以partition为分组，一个topic可以分成若干个partition，那么topic以及partition又是怎么存储的呢？partition还可以细分为segment，一个partition物理上由多个segment组成，那么这些segment又是什么呢？下面我们来一一揭晓。
+
+为了便于说明问题，假设这里只有一个Kafka集群，且这个集群只有一个Kafka broker，即只有一台物理机。在这个Kafka broker中配置（$KAFKA_HOME/config/server.properties中）log.dirs=/tmp/kafka-logs，以此来设置Kafka消息文件存储目录，与此同时创建一个topic：topic_zzh_test，partition的数量为4（$KAFKA_HOME/bin/kafka-topics.sh --create --zookeeper localhost:2181 --partitions 4 --topic topic_zzh_test --replication-factor 1）。那么我们此时可以在/tmp/kafka-logs目录中可以看到生成了4个目录：
+
+drwxr-xr-x 2 root root 4096 Apr 10 16:10 topic_zzh_test-0
+drwxr-xr-x 2 root root 4096 Apr 10 16:10 topic_zzh_test-1
+drwxr-xr-x 2 root root 4096 Apr 10 16:10 topic_zzh_test-2
+drwxr-xr-x 2 root root 4096 Apr 10 16:10 topic_zzh_test-3
+
+在Kafka文件存储中，同一个topic下有多个不同的partition，每个partiton为一个目录，partition的名称规则为：topic名称+有序序号，第一个序号从0开始计，最大的序号为partition数量减1，partition是实际物理上的概念，而topic是逻辑上的概念。
+
+上面提到partition还可以细分为segment，这个segment又是什么？如果就以partition为最小存储单位，我们可以想象当Kafka producer不断发送消息，必然会引起partition文件的无限扩张，这样对于消息文件的维护以及已经被消费的消息的清理带来严重的影响，所以这里以segment为单位又将partition细分。每个partition(目录)相当于一个巨型文件被平均分配到多个大小相等的segment(段)数据文件中（每个segment 文件中消息数量不一定相等）这种特性也方便old segment的删除，即方便已被消费的消息的清理，提高磁盘的利用率。每个partition只需要支持顺序读写就行，segment的文件生命周期由服务端配置参数（log.segment.bytes，log.roll.{ms,hours}等若干参数）决定。
+
+segment文件由两部分组成，分别为“.index”文件和“.log”文件，分别表示为segment索引文件和数据文件。这两个文件的命令规则为：partition全局的第一个segment从0开始，后续每个segment文件名为上一个segment文件最后一条消息的offset值，数值大小为64位，20位数字字符长度，没有数字用0填充，如下：
+
+00000000000000000000.index
+00000000000000000000.log
+00000000000000170410.index
+00000000000000170410.log
+00000000000000239430.index
+00000000000000239430.log
+
+以上面的segment文件为例，展示出segment：00000000000000170410的“.index”文件和“.log”文件的对应的关系，如下图：
+
+
+
+如上图，“.index”索引文件存储大量的元数据，“.log”数据文件存储大量的消息，索引文件中的元数据指向对应数据文件中message的物理偏移地址。其中以“.index”索引文件中的元数据[3, 348]为例，在“.log”数据文件表示第3个消息，即在全局partition中表示170410+3=170413个消息，该消息的物理偏移地址为348。
+
+那么如何从partition中通过offset查找message呢？
+以上图为例，读取offset=170418的消息，首先查找segment文件，其中00000000000000000000.index为最开始的文件，第二个文件为00000000000000170410.index（起始偏移为170410+1=170411），而第三个文件为00000000000000239430.index（起始偏移为239430+1=239431），所以这个offset=170418就落到了第二个文件之中。其他后续文件可以依次类推，以其实偏移量命名并排列这些文件，然后根据二分查找法就可以快速定位到具体文件位置。其次根据00000000000000170410.index文件中的[8,1325]定位到00000000000000170410.log文件中的1325的位置进行读取。
+
+要是读取offset=170418的消息，从00000000000000170410.log文件中的1325的位置进行读取，那么怎么知道何时读完本条消息，否则就读到下一条消息的内容了？
+这个就需要联系到消息的物理结构了，消息都具有固定的物理结构，包括：offset（8 Bytes）、消息体的大小（4 Bytes）、crc32（4 Bytes）、magic（1 Byte）、attributes（1 Byte）、key length（4 Bytes）、key（K Bytes）、payload(N Bytes)等等字段，可以确定一条消息的大小，即读取到哪里截止。
+
+3.2 复制原理和同步方式
+Kafka中topic的每个partition有一个预写式的日志文件，虽然partition可以继续细分为若干个segment文件，但是对于上层应用来说可以将partition看成最小的存储单元（一个有多个segment文件拼接的“巨型”文件），每个partition都由一些列有序的、不可变的消息组成，这些消息被连续的追加到partition中。
+
+
+
+上图中有两个新名词：HW和LEO。这里先介绍下LEO，LogEndOffset的缩写，表示每个partition的log最后一条Message的位置。HW是HighWatermark的缩写，是指consumer能够看到的此partition的位置，这个涉及到多副本的概念，这里先提及一下，下节再详表。
+
+言归正传，为了提高消息的可靠性，Kafka每个topic的partition有N个副本（replicas），其中N(大于等于1)是topic的复制因子（replica fator）的个数。Kafka通过多副本机制实现故障自动转移，当Kafka集群中一个broker失效情况下仍然保证服务可用。在Kafka中发生复制时确保partition的日志能有序地写到其他节点上，N个replicas中，其中一个replica为leader，其他都为follower, leader处理partition的所有读写请求，与此同时，follower会被动定期地去复制leader上的数据。
+
+如下图所示，Kafka集群中有4个broker, 某topic有3个partition,且复制因子即副本个数也为3：
+
+
+
+Kafka提供了数据复制算法保证，如果leader发生故障或挂掉，一个新leader被选举并被接受客户端的消息成功写入。Kafka确保从同步副本列表中选举一个副本为leader，或者说follower追赶leader数据。leader负责维护和跟踪ISR(In-Sync Replicas的缩写，表示副本同步队列，具体可参考下节)中所有follower滞后的状态。当producer发送一条消息到broker后，leader写入消息并复制到所有follower。消息提交之后才被成功复制到所有的同步副本。消息复制延迟受最慢的follower限制，重要的是快速检测慢副本，如果follower“落后”太多或者失效，leader将会把它从ISR中删除。
+
+3.3 ISR
+上节我们涉及到ISR (In-Sync Replicas)，这个是指副本同步队列。副本数对Kafka的吞吐率是有一定的影响，但极大的增强了可用性。默认情况下Kafka的replica数量为1，即每个partition都有一个唯一的leader，为了确保消息的可靠性，通常应用中将其值(由broker的参数offsets.topic.replication.factor指定)大小设置为大于1，比如3。 所有的副本（replicas）统称为Assigned Replicas，即AR。ISR是AR中的一个子集，由leader维护ISR列表，follower从leader同步数据有一些延迟（包括延迟时间replica.lag.time.max.ms和延迟条数replica.lag.max.messages两个维度, 当前最新的版本0.10.x中只支持replica.lag.time.max.ms这个维度），任意一个超过阈值都会把follower剔除出ISR, 存入OSR（Outof-Sync Replicas）列表，新加入的follower也会先存放在OSR中。AR=ISR+OSR。
+
+Kafka 0.9.0.0版本后移除了replica.lag.max.messages参数，只保留了replica.lag.time.max.ms作为ISR中副本管理的参数。为什么这样做呢？replica.lag.max.messages表示当前某个副本落后leader的消息数量超过了这个参数的值，那么leader就会把follower从ISR中删除。假设设置replica.lag.max.messages=4，那么如果producer一次传送至broker的消息数量都小于4条时，因为在leader接受到producer发送的消息之后而follower副本开始拉取这些消息之前，follower落后leader的消息数不会超过4条消息，故此没有follower移出ISR，所以这时候replica.lag.max.message的设置似乎是合理的。但是producer发起瞬时高峰流量，producer一次发送的消息超过4条时，也就是超过replica.lag.max.messages，此时follower都会被认为是与leader副本不同步了，从而被踢出了ISR。但实际上这些follower都是存活状态的且没有性能问题。那么在之后追上leader,并被重新加入了ISR。于是就会出现它们不断地剔出ISR然后重新回归ISR，这无疑增加了无谓的性能损耗。而且这个参数是broker全局的。设置太大了，影响真正“落后”follower的移除；设置的太小了，导致follower的频繁进出。无法给定一个合适的replica.lag.max.messages的值，故此，新版本的Kafka移除了这个参数。
+
+注：ISR中包括：leader和follower。
+
+上面一节还涉及到一个概念，即HW。HW俗称高水位，HighWatermark的缩写，取一个partition对应的ISR中最小的LEO作为HW，consumer最多只能消费到HW所在的位置。另外每个replica都有HW,leader和follower各自负责更新自己的HW的状态。对于leader新写入的消息，consumer不能立刻消费，leader会等待该消息被所有ISR中的replicas同步后更新HW，此时消息才能被consumer消费。这样就保证了如果leader所在的broker失效，该消息仍然可以从新选举的leader中获取。对于来自内部broker的读取请求，没有HW的限制。
+
+下图详细的说明了当producer生产消息至broker后，ISR以及HW和LEO的流转过程：
+
+
+
+由此可见，Kafka的复制机制既不是完全的同步复制，也不是单纯的异步复制。事实上，同步复制要求所有能工作的follower都复制完，这条消息才会被commit，这种复制方式极大的影响了吞吐率。而异步复制方式下，follower异步的从leader复制数据，数据只要被leader写入log就被认为已经commit，这种情况下如果follower都还没有复制完，落后于leader时，突然leader宕机，则会丢失数据。而Kafka的这种使用ISR的方式则很好的均衡了确保数据不丢失以及吞吐率。
+
+Kafka的ISR的管理最终都会反馈到Zookeeper节点上。具体位置为：/brokers/topics/[topic]/partitions/[partition]/state。目前有两个地方会对这个Zookeeper的节点进行维护：
+
+Controller来维护：Kafka集群中的其中一个Broker会被选举为Controller，主要负责Partition管理和副本状态管理，也会执行类似于重分配partition之类的管理任务。在符合某些特定条件下，Controller下的LeaderSelector会选举新的leader，ISR和新的leader_epoch及controller_epoch写入Zookeeper的相关节点中。同时发起LeaderAndIsrRequest通知所有的replicas。
+leader来维护：leader有单独的线程定期检测ISR中follower是否脱离ISR, 如果发现ISR变化，则会将新的ISR的信息返回到Zookeeper的相关节点中。
+3.4 数据可靠性和持久性保证
+当producer向leader发送数据时，可以通过request.required.acks参数来设置数据可靠性的级别：
+
+1（默认）：这意味着producer在ISR中的leader已成功收到数据并得到确认。如果leader宕机了，则会丢失数据。
+0：这意味着producer无需等待来自broker的确认而继续发送下一批消息。这种情况下数据传输效率最高，但是数据可靠性确是最低的。
+-1：producer需要等待ISR中的所有follower都确认接收到数据后才算一次发送完成，可靠性最高。但是这样也不能保证数据不丢失，比如当ISR中只有leader时（前面ISR那一节讲到，ISR中的成员由于某些情况会增加也会减少，最少就只剩一个leader），这样就变成了acks=1的情况。
+如果要提高数据的可靠性，在设置request.required.acks=-1的同时，也要min.insync.replicas这个参数(可以在broker或者topic层面进行设置)的配合，这样才能发挥最大的功效。min.insync.replicas这个参数设定ISR中的最小副本数是多少，默认值为1，当且仅当request.required.acks参数设置为-1时，此参数才生效。如果ISR中的副本数少于min.insync.replicas配置的数量时，客户端会返回异常：org.apache.kafka.common.errors.NotEnoughReplicasExceptoin: Messages are rejected since there are fewer in-sync replicas than required。
+
+接下来对acks=1和-1的两种情况进行详细分析：
+
+1. request.required.acks=1
+
+producer发送数据到leader，leader写本地日志成功，返回客户端成功；此时ISR中的副本还没有来得及拉取该消息，leader就宕机了，那么此次发送的消息就会丢失。
+
+
+
+2. request.required.acks=-1
+
+同步（Kafka默认为同步，即producer.type=sync）的发送模式，replication.factor>=2且min.insync.replicas>=2的情况下，不会丢失数据。
+
+有两种典型情况。acks=-1的情况下（如无特殊说明，以下acks都表示为参数request.required.acks），数据发送到leader, ISR的follower全部完成数据同步后，leader此时挂掉，那么会选举出新的leader，数据不会丢失。
+
+
+
+acks=-1的情况下，数据发送到leader后 ，部分ISR的副本同步，leader此时挂掉。比如follower1和follower2都有可能变成新的leader, producer端会得到返回异常，producer端会重新发送数据，数据可能会重复。
+
+
+
+当然上图中如果在leader crash的时候，follower2还没有同步到任何数据，而且follower2被选举为新的leader的话，这样消息就不会重复。
+
+注：Kafka只处理fail/recover问题,不处理Byzantine问题。
+
+3.5 关于HW的进一步探讨
+考虑上图（即acks=-1,部分ISR副本同步）中的另一种情况，如果在Leader挂掉的时候，follower1同步了消息4,5，follower2同步了消息4，与此同时follower2被选举为leader，那么此时follower1中的多出的消息5该做如何处理呢？
+
+这里就需要HW的协同配合了。如前所述，一个partition中的ISR列表中，leader的HW是所有ISR列表里副本中最小的那个的LEO。类似于木桶原理，水位取决于最低那块短板。
+
+
+
+如上图，某个topic的某partition有三个副本，分别为A、B、C。A作为leader肯定是LEO最高，B紧随其后，C机器由于配置比较低，网络比较差，故而同步最慢。这个时候A机器宕机，这时候如果B成为leader，假如没有HW，在A重新恢复之后会做同步(makeFollower)操作，在宕机时log文件之后直接做追加操作，而假如B的LEO已经达到了A的LEO，会产生数据不一致的情况，所以使用HW来避免这种情况。
+A在做同步操作的时候，先将log文件截断到之前自己的HW的位置，即3，之后再从B中拉取消息进行同步。
+
+如果失败的follower恢复过来，它首先将自己的log文件截断到上次checkpointed时刻的HW的位置，之后再从leader中同步消息。leader挂掉会重新选举，新的leader会发送“指令”让其余的follower截断至自身的HW的位置然后再拉取新的消息。
+
+当ISR中的个副本的LEO不一致时，如果此时leader挂掉，选举新的leader时并不是按照LEO的高低进行选举，而是按照ISR中的顺序选举。
+
+3.6 Leader选举
+一条消息只有被ISR中的所有follower都从leader复制过去才会被认为已提交。这样就避免了部分数据被写进了leader，还没来得及被任何follower复制就宕机了，而造成数据丢失。而对于producer而言，它可以选择是否等待消息commit，这可以通过request.required.acks来设置。这种机制确保了只要ISR中有一个或者以上的follower，一条被commit的消息就不会丢失。
+
+有一个很重要的问题是当leader宕机了，怎样在follower中选举出新的leader，因为follower可能落后很多或者直接crash了，所以必须确保选择“最新”的follower作为新的leader。一个基本的原则就是，如果leader不在了，新的leader必须拥有原来的leader commit的所有消息。这就需要做一个折中，如果leader在一个消息被commit前等待更多的follower确认，那么在它挂掉之后就有更多的follower可以成为新的leader，但这也会造成吞吐率的下降。
+
+一种非常常用的选举leader的方式是“少数服从多数”，Kafka并不是采用这种方式。这种模式下，如果我们有2f+1个副本，那么在commit之前必须保证有f+1个replica复制完消息，同时为了保证能正确选举出新的leader，失败的副本数不能超过f个。这种方式有个很大的优势，系统的延迟取决于最快的几台机器，也就是说比如副本数为3，那么延迟就取决于最快的那个follower而不是最慢的那个。“少数服从多数”的方式也有一些劣势，为了保证leader选举的正常进行，它所能容忍的失败的follower数比较少，如果要容忍1个follower挂掉，那么至少要3个以上的副本，如果要容忍2个follower挂掉，必须要有5个以上的副本。也就是说，在生产环境下为了保证较高的容错率，必须要有大量的副本，而大量的副本又会在大数据量下导致性能的急剧下降。这种算法更多用在Zookeeper这种共享集群配置的系统中而很少在需要大量数据的系统中使用的原因。HDFS的HA功能也是基于“少数服从多数”的方式，但是其数据存储并不是采用这样的方式。
+
+实际上，leader选举的算法非常多，比如Zookeeper的Zab、Raft以及Viewstamped Replication。而Kafka所使用的leader选举算法更像是微软的PacificA算法。
+
+Kafka在Zookeeper中为每一个partition动态的维护了一个ISR，这个ISR里的所有replica都跟上了leader，只有ISR里的成员才能有被选为leader的可能（unclean.leader.election.enable=false）。在这种模式下，对于f+1个副本，一个Kafka topic能在保证不丢失已经commit消息的前提下容忍f个副本的失败，在大多数使用场景下，这种模式是十分有利的。事实上，为了容忍f个副本的失败，“少数服从多数”的方式和ISR在commit前需要等待的副本的数量是一样的，但是ISR需要的总的副本的个数几乎是“少数服从多数”的方式的一半。
+
+上文提到，在ISR中至少有一个follower时，Kafka可以确保已经commit的数据不丢失，但如果某一个partition的所有replica都挂了，就无法保证数据不丢失了。这种情况下有两种可行的方案：
+
+等待ISR中任意一个replica“活”过来，并且选它作为leader
+选择第一个“活”过来的replica（并不一定是在ISR中）作为leader
+这就需要在可用性和一致性当中作出一个简单的抉择。如果一定要等待ISR中的replica“活”过来，那不可用的时间就可能会相对较长。而且如果ISR中所有的replica都无法“活”过来了，或者数据丢失了，这个partition将永远不可用。选择第一个“活”过来的replica作为leader,而这个replica不是ISR中的replica,那即使它并不保障已经包含了所有已commit的消息，它也会成为leader而作为consumer的数据源。默认情况下，Kafka采用第二种策略，即unclean.leader.election.enable=true，也可以将此参数设置为false来启用第一种策略。
+
+unclean.leader.election.enable这个参数对于leader的选举、系统的可用性以及数据的可靠性都有至关重要的影响。下面我们来分析下几种典型的场景。
+
+
+
+如果上图所示，假设某个partition中的副本数为3，replica-0, replica-1, replica-2分别存放在broker0, broker1和broker2中。AR=(0,1,2)，ISR=(0,1)。
+设置request.required.acks=-1, min.insync.replicas=2，unclean.leader.election.enable=false。这里将broker0中的副本也称之为broker0起初broker0为leader，broker1为follower。
+
+当ISR中的replica-0出现crash的情况时，broker1选举为新的leader[ISR=(1)]，因为受min.insync.replicas=2影响，write不能服务，但是read能继续正常服务。此种情况恢复方案：
+
+尝试恢复(重启)replica-0，如果能起来，系统正常；
+如果replica-0不能恢复，需要将min.insync.replicas设置为1，恢复write功能。
+当ISR中的replica-0出现crash，紧接着replica-1也出现了crash, 此时[ISR=(1),leader=-1],不能对外提供服务，此种情况恢复方案：
+
+尝试恢复replica-0和replica-1，如果都能起来，则系统恢复正常；
+如果replica-0起来，而replica-1不能起来，这时候仍然不能选出leader，因为当设置unclean.leader.election.enable=false时，leader只能从ISR中选举，当ISR中所有副本都失效之后，需要ISR中最后失效的那个副本能恢复之后才能选举leader, 即replica-0先失效，replica-1后失效，需要replica-1恢复后才能选举leader。保守的方案建议把unclean.leader.election.enable设置为true,但是这样会有丢失数据的情况发生，这样可以恢复read服务。同样需要将min.insync.replicas设置为1，恢复write功能；
+replica-1恢复，replica-0不能恢复，这个情况上面遇到过，read服务可用，需要将min.insync.replicas设置为1，恢复write功能；
+replica-0和replica-1都不能恢复，这种情况可以参考情形2.
+当ISR中的replica-0, replica-1同时宕机,此时[ISR=(0,1)],不能对外提供服务，此种情况恢复方案：尝试恢复replica-0和replica-1，当其中任意一个副本恢复正常时，对外可以提供read服务。直到2个副本恢复正常，write功能才能恢复，或者将将min.insync.replicas设置为1。
+
+3.7 Kafka的发送模式
+Kafka的发送模式由producer端的配置参数producer.type来设置，这个参数指定了在后台线程中消息的发送方式是同步的还是异步的，默认是同步的方式，即producer.type=sync。如果设置成异步的模式，即producer.type=async，可以是producer以batch的形式push数据，这样会极大的提高broker的性能，但是这样会增加丢失数据的风险。如果需要确保消息的可靠性，必须要将producer.type设置为sync。
+
+对于异步模式，还有4个配套的参数，如下：
+
+Property	Description
+queue.buffering.max.ms	默认值：5000。启用异步模式时，producer缓存消息的时间。比如我们设置成1000时，它会缓存1s的数据再一次发送出去，这样可以极大的增加broker吞吐量，但也会造成时效性的降低。
+queue.buffering.max.messages	默认值：10000。启用异步模式时，producer缓存队列里最大缓存的消息数量，如果超过这个值，producer就会阻塞或者丢掉消息。
+queue.enqueue.timeout.ms	默认值：-1。当达到上面参数时producer会阻塞等待的时间。如果设置为0，buffer队列满时producer不会阻塞，消息直接被丢掉；若设置为-1，producer会被阻塞，不会丢消息。
+batch.num.messages	默认值：200。启用异步模式时，一个batch缓存的消息数量。达到这个数值时，producer才会发送消息。（每次批量发送的数量）
+以batch的方式推送数据可以极大的提高处理效率，kafka producer可以将消息在内存中累计到一定数量后作为一个batch发送请求。batch的数量大小可以通过producer的参数（batch.num.messages）控制。通过增加batch的大小，可以减少网络请求和磁盘IO的次数，当然具体参数设置需要在效率和时效性方面做一个权衡。在比较新的版本中还有batch.size这个参数。
+
+4 高可靠性使用分析
+4.1 消息传输保障
+前面已经介绍了Kafka如何进行有效的存储，以及了解了producer和consumer如何工作。接下来讨论的是Kafka如何确保消息在producer和consumer之间传输。有以下三种可能的传输保障（delivery guarantee）:
+
+At most once: 消息可能会丢，但绝不会重复传输
+At least once：消息绝不会丢，但可能会重复传输
+Exactly once：每条消息肯定会被传输一次且仅传输一次
+Kafka的消息传输保障机制非常直观。当producer向broker发送消息时，一旦这条消息被commit，由于副本机制（replication）的存在，它就不会丢失。但是如果producer发送数据给broker后，遇到的网络问题而造成通信中断，那producer就无法判断该条消息是否已经提交（commit）。虽然Kafka无法确定网络故障期间发生了什么，但是producer可以retry多次，确保消息已经正确传输到broker中，所以目前Kafka实现的是at least once。
+
+consumer从broker中读取消息后，可以选择commit，该操作会在Zookeeper中存下该consumer在该partition下读取的消息的offset。该consumer下一次再读该partition时会从下一条开始读取。如未commit，下一次读取的开始位置会跟上一次commit之后的开始位置相同。当然也可以将consumer设置为autocommit，即consumer一旦读取到数据立即自动commit。如果只讨论这一读取消息的过程，那Kafka是确保了exactly once, 但是如果由于前面producer与broker之间的某种原因导致消息的重复，那么这里就是at least once。
+
+考虑这样一种情况，当consumer读完消息之后先commit再处理消息，在这种模式下，如果consumer在commit后还没来得及处理消息就crash了，下次重新开始工作后就无法读到刚刚已提交而未处理的消息，这就对应于at most once了。
+
+读完消息先处理再commit。这种模式下，如果处理完了消息在commit之前consumer crash了，下次重新开始工作时还会处理刚刚未commit的消息，实际上该消息已经被处理过了，这就对应于at least once。
+
+要做到exactly once就需要引入消息去重机制。
+
+4.2 消息去重
+如上一节所述，Kafka在producer端和consumer端都会出现消息的重复，这就需要去重处理。
+
+Kafka文档中提及GUID(Globally Unique Identifier)的概念，通过客户端生成算法得到每个消息的unique id，同时可映射至broker上存储的地址，即通过GUID便可查询提取消息内容，也便于发送方的幂等性保证，需要在broker上提供此去重处理模块，目前版本尚不支持。
+
+针对GUID, 如果从客户端的角度去重，那么需要引入集中式缓存，必然会增加依赖复杂度，另外缓存的大小难以界定。
+
+不只是Kafka, 类似RabbitMQ以及RocketMQ这类商业级中间件也只保障at least once, 且也无法从自身去进行消息去重。所以我们建议业务方根据自身的业务特点进行去重，比如业务消息本身具备幂等性，或者借助Redis等其他产品进行去重处理。
+
+4.3 高可靠性配置
+Kafka提供了很高的数据冗余弹性，对于需要数据高可靠性的场景，我们可以增加数据冗余备份数（replication.factor），调高最小写入副本数的个数（min.insync.replicas）等等，但是这样会影响性能。反之，性能提高而可靠性则降低，用户需要自身业务特性在彼此之间做一些权衡性选择。
+
+要保证数据写入到Kafka是安全的，高可靠的，需要如下的配置：
+
+topic的配置：replication.factor>=3,即副本数至少是3个；2<=min.insync.replicas<=replication.factor
+broker的配置：leader的选举条件unclean.leader.election.enable=false
+producer的配置：request.required.acks=-1(all)，producer.type=sync
+5 BenchMark
+Kafka在唯品会有着很深的历史渊源，根据唯品会消息中间件团队（VMS团队）所掌握的资料显示，在VMS团队运转的Kafka集群中所支撑的topic数已接近2000，每天的请求量也已达千亿级。这里就以Kafka的高可靠性为基准点来探究几种不同场景下的行为表现，以此来加深对Kafka的认知，为大家在以后高效的使用Kafka时提供一份依据。
+
+5.1 测试环境
+Kafka broker用到了4台机器，分别为broker[0/1/2/3]配置如下：
+
+CPU: 24core/2.6GHZ
+Memory: 62G
+Network: 4000Mb
+OS/kernel: CentOs release 6.6 (Final)
+Disk: 1089G
+Kafka版本：0.10.1.0
+broker端JVM参数设置：
+-Xmx8G -Xms8G -server -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -XX:+CMSScavengeBeforeRemark -XX:+DisableExplicitGC -Djava.awt.headless=true -Xloggc:/apps/service/kafka/bin/…/logs/kafkaServer-gc.log -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.port=9999
+
+客户端机器配置：
+
+CPU: 24core/2.6GHZ
+Memory: 3G
+Network: 1000Mb
+OS/kernel: CentOs release 6.3 (Final)
+Disk: 240G
+5.2 不同场景测试
+场景1：测试不同的副本数、min.insync.replicas策略以及request.required.acks策略（以下简称acks策略）对于发送速度（TPS）的影响。
+
+具体配置：一个producer；发送方式为sync；消息体大小为1kB；partition数为12。副本数为：1/2/4；min.insync.replicas分别为1/2/4；acks分别为-1（all）/1/0。
+
+具体测试数据如下表（min.insync.replicas只在acks=-1时有效）：
+
+acks	replicas	min.insync.replicas	retries	TPS
+-1	1	1	0	28511.3
+-1	2	1	0	22359.5
+-1	2	2	0	22927.4
+-1	4	1	0	16193.9
+-1	4	2	0	16599.9
+-1	4	4	0	16680.3
+0	1	N/A	0	45353.8
+0	2	N/A	0	46426.5
+0	4	N/A	0	46764.2
+1	1	N/A	0	33950.3
+1	2	N/A	0	32192.2
+1	4	N/A	0	32275.9
+测试结果分析：
+
+客户端的acks策略对发送的TPS有较大的影响，TPS：acks_0 > acks_1 > ack_-1;
+副本数越高，TPS越低；副本数一致时，min.insync.replicas不影响TPS；
+acks=0/1时，TPS与min.insync.replicas参数以及副本数无关，仅受acks策略的影响。
+下面将partition的个数设置为1，来进一步确认下不同的acks策略、不同的min.insync.replicas策略以及不同的副本数对于发送速度的影响，详细请看情景2和情景3。
+
+场景2：在partition个数固定为1，测试不同的副本数和min.insync.replicas策略对发送速度的影响。
+
+具体配置：一个producer；发送方式为sync；消息体大小为1kB；producer端acks=-1(all)。变换副本数：2/3/4； min.insync.replicas设置为：1/2/4。
+
+测试结果如下：
+
+replicas	min.insync.replicas	TPS
+2	1	9738.8
+2	2	9701.6
+3	1	8999.7
+3	2	9243.1
+4	1	9005.8
+4	2	8216.9
+4	4	9092.4
+测试结果分析：副本数越高，TPS越低（这点与场景1的测试结论吻合），但是当partition数为1时差距甚微。min.insync.replicas不影响TPS。
+
+场景3：在partition个数固定为1，测试不同的acks策略和副本数对发送速度的影响。
+
+具体配置：一个producer；发送方式为sync；消息体大小为1kB；min.insync.replicas=1。topic副本数为：1/2/4；acks： 0/1/-1。
+
+测试结果如下：
+
+replicas	acks	TPS
+1	0	76696
+2	0	57503
+4	0	59367
+1	1	19489
+2	1	20404
+4	1	18365
+1	-1	18641
+2	-1	9739
+4	-1	9006
+测试结果分析（与情景1一致）：
+
+副本数越多，TPS越低；
+客户端的acks策略对发送的TPS有较大的影响，TPS：acks_0 > acks_1 > ack_-1。
+场景4：测试不同partition数对发送速率的影响
+
+具体配置：一个producer；消息体大小为1KB；发送方式为sync；topic副本数为2；min.insync.replicas=2；acks=-1。partition数量设置为1/2/4/8/12。
+
+测试结果：
+
+
+
+测试结果分析：partition的不同会影响TPS，随着partition的个数的增长TPS会有所增长，但并不是一直成正比关系，到达一定临界值时，partition数量的增加反而会使TPS略微降低。
+
+场景5：通过将集群中部分broker设置成不可服务状态，测试对客户端以及消息落盘的影响。
+
+具体配置：一个producer；消息体大小1KB;发送方式为sync；topic副本数为4；min.insync.replicas设置为2；acks=-1；retries=0/100000000；partition数为12。
+
+具体测试数据如下表：
+
+acks	replicas	min.insync.replicas	retries	测试方法	TPS	数据落盘	出现错误
+-1	4	2	0	发送过程中kill两台broker	12840	一致（部分数据可落盘，部分失败）	错误1
+-1	4	2	100000000	发送过程中kill两台broker	13870	一致（消息有重复落盘）	错误2
+-1	4	2	100000000	发送过程中kill三台broker，之后重启	N/A	一致（消息有重复落盘）	错误2、3、4
+出错信息：
+
+错误1：客户端返回异常，部分数据可落盘，部分失败：org.apache.kafka.common.errors.NetworkException: The server disconnected before a response was received.
+错误2：[WARN]internals.Sender - Got error produce response with correlation id 19369 on topic-partition default_channel_replicas_4_1-3, retrying (999999999 attempts left). Error: NETWORK_EXCEPTION
+错误3： [WARN]internals.Sender - Got error produce response with correlation id 77890 on topic-partition default_channel_replicas_4_1-8, retrying (999999859 attempts left). Error: NOT_ENOUGH_REPLICAS
+错误4： [WARN]internals.Sender - Got error produce response with correlation id 77705 on topic-partition default_channel_replicas_4_1-3, retrying (999999999 attempts left). Error: NOT_ENOUGH_REPLICAS_AFTER_APPEND
+测试结果分析：
+
+kill两台broker后，客户端可以继续发送。broker减少后，partition的leader分布在剩余的两台broker上，造成了TPS的减小；
+kill三台broker后，客户端无法继续发送。Kafka的自动重试功能开始起作用，当大于等于min.insync.replicas数量的broker恢复后，可以继续发送；
+当retries不为0时，消息有重复落盘；客户端成功返回的消息都成功落盘，异常时部分消息可以落盘。
+场景6：测试单个producer的发送延迟，以及端到端的延迟。
+
+具体配置：：一个producer；消息体大小1KB；发送方式为sync；topic副本数为4；min.insync.replicas设置为2；acks=-1；partition数为12。
+
+测试数据及结果（单位为ms）：
+
+发送端(avg)	发送端(min)	发送端(max)	发送端(99%)	发送端(99.99%)	消费端(avg)	消费端(min)	消费端(max)	消费端(99%)	消费端(99.99%)
+1.715	1	157	3	29	1.646	1	288	4	72
+各场景测试总结：
+
+当acks=-1时，Kafka发送端的TPS受限于topic的副本数量（ISR中），副本越多TPS越低；
+acks=0时，TPS最高，其次为1，最差为-1，即TPS：acks_0 > acks_1 > ack_-1；
+min.insync.replicas参数不影响TPS；
+partition的不同会影响TPS，随着partition的个数的增长TPS会有所增长，但并不是一直成正比关系，到达一定临界值时，partition数量的增加反而会使TPS略微降低；
+Kafka在acks=-1,min.insync.replicas>=1时，具有高可靠性，所有成功返回的消息都可以落盘。
+
+==========
+
+kafka 使用多副本来保证消息不丢失，多副本就涉及到kafka的复制机制，在一个超大规模的集群中，时不时地这个点磁盘坏了，那个点cpu负载高了，出现各种各样的问题，多个副本之间的复制，如果想完全自动化容错，就要做一些考量和取舍了。我们举个例子说明下运维中面对的复杂性，我们都知道 kafka 有个 ISR集合，我先说明下这个概念：kafka不是完全同步，也不是完全异步，是一种ISR机制：  1. leader会维护一个与其基本保持同步的Replica列表，该列表称为ISR(in-sync Replica)，每个Partition都会有一个ISR，而且是由leader动态维护 2. 如果一个follower比一个leader落后太多，或者超过一定时间未发起数据复制请求，则leader将其重ISR中移除 3. 当ISR中所有Replica都向Leader发送ACK时，leader才commit，这时候producer才能认为一个请求中的消息都commit了。在这种机制下， 如果一个  producer 一个请求发送的消息条数太多，导致flower瞬间落后leader太多怎么办？如果 follower不停的移入移出 ISR 会不会影响性能？如果对这种情况加了报警，就有可能造成告警轰炸，如果我们不加报警，如果是broker 挂掉或者 broker 因为IO性能或者GC问题夯住的情况导致落后leader太多，这种真正需要报警情况怎么办呢？ 今天我们来看下 kafka 是怎么在设计上让我们完全避免这种运维中头疼的问题的。kafka的复制机制kafka 每个分区都是由顺序追加的不可变的消息序列组成，每条消息都一个唯一的offset 来标记位置。
+
+
+
+
+
+kafka中的副本机制是以分区粒度进行复制的，我们在kafka中创建 topic的时候，都可以设置一个复制因子，这个复制因子决定着分区副本的个数，如果leader 挂掉了，kafka 会把分区主节点failover到其他副本节点，这样就能保证这个分区的消息是可用的。leader节点负责接收producer 打过来的消息，其他副本节点（follower）从主节点上拷贝消息。
+
+
+
+
+
+kakfa 日志复制算法提供的保证是当一条消息在 producer 端认为已经 committed的之后，如果leader 节点挂掉了，其他节点被选举成为了 leader 节点后，这条消息同样是可以被消费到的。这样的话，leader 选举的时候，只能从 ISR集合中选举，集合中的每个点都必须是和leader消息同步的，也就是没有延迟，分区的leader 维护ISR 集合列表，如果某个点落后太多，就从 ISR集合中踢出去。 producer 发送一条消息到leader节点后， 只有当ISR中所有Replica都向Leader发送ACK确认这条消息时，leader才commit，这时候producer才能认为这条消息commit了，正是因为如此，kafka客户端的写性能取决于ISR集合中的最慢的一个broker的接收消息的性能，如果一个点性能太差，就必须尽快的识别出来，然后从ISR集合中踢出去，以免造成性能问题。kafka 复制机制详情参考  https://kafka.apache.org/documentation.html#replication一个副本怎么才算是跟得上leader的副本一个副本不能 “caught up” leader 节点，就有可能被从 ISR集合中踢出去，我们举个例子来说明，什么才是真正的 “caught up” —— 跟leader节点消息同步。kafka 中的一个单分区的 topic — foo，复制因子为 3 ，分区分布和 leader 和 follower 如下图，现在broker 2和3 是 follower 而且都在 ISR 集合中。我们设置  replica.lag.max.messages  为4，只要 follower 只要不落后leader 大于3条消息，就然后是跟得上leader的节点，就不会被踢出去， 设置 replica.lag.time.max.ms 为 500ms， 意味着只要 follower 在每 500ms内发送fetch请求，就不会被认为已经dead ，不会从ISR集合中踢出去。
+
+
+
+
+
+现在 producer 发送一条消息，offset 为3， 这时候 broker 3 发生了 GC， 入下图：
+
+
+
+
+
+因为 broker 3 现在在 ISR 集合中， 所以要么 broker 3  拉取同步上这条 offset 为3 的消息，要么 3 被从 ISR集合中踢出去，不然这条消息就不会 committed， 因为 replica.lag.max.messages=4 为4， broker 3 只落后一条消息，不会从ISR集合中踢出去， broker 3 如果这时候 GC  100ms， GC 结束，然后拉取到 offset 为3的消息，就再次跟 leader 保持完全同步，整个过程一直在 ISR集合中，如下图：
+
+
+
+
+
+什么时候一个副本才会从ISR集合中踢出去一个副本被踢出 ISR集合的几种原因：一个副本在一段时间内都没有跟得上 leader 节点，也就是跟leader节点的差距大于 replica.lag.max.messages ， 通常情况是 IO性能跟不上，或者CPU 负载太高，导致 broker 在磁盘上追加消息的速度低于接收leader 消息的速度。一个 broker 在很长时间内（大于 replica.lag.time.max.ms  ）都没有向 leader 发送fetch 请求，  可能是因为 broker 发生了 full GC， 或者因为别的原因挂掉了。一个新 的 broker 节点，比如同一个 broker id， 磁盘坏掉，新换了一台机器，或者一个分区 reassign 到一个新的broker 节点上，都会从分区leader 上现存的最老的消息开始同步。所以说 kafka 0.8 版本后设置了两个参数  ，  replica.lag.max.messages 用来识别性能一直很慢的节点，  replica.lag.time.max.ms 用来识别卡住的节点。一个节点在什么情况下真正处于落后状态从上面的情况来看，两个参数看似已经足够了，如果一个副本超过   replica.lag.time.max.ms 还没有发送fetch同步请求， 可以认为这个副本节点卡住了，然后踢出去，但是还有一种比较特殊的情况没有考虑到，我们上文中设置   replica.lag.max.messages 为4，之所以设置为 4， 是我们已经知道 producer 每次请求打过来的消息数都在 4 以下，如果我们的参数是作用于多个 topic 的情况，那么这个 producer 最大打过来的消息数目就不好估计了，或者说在经常出现流量抖动的情况下，就会出现一个什么情况呢，我们还是使用例子说明：如果我们的 topic — foo  的 producer 因为流量抖动打过来一个 包含 4条消息的请求，我们设置的 replica.lag.max.messages 还是为4， 这个时候，所有的 follower 都会因为超出落后条数被踢出 ISR集合：
+
+
+
+
+
+然后，因为 follower 是正常的，所以下一次 fetch 请求就会又追上 leader， 这时候就会再次加入 ISR 集合，如果经常性的抖动，就会不断的移入移出ISR集合，会造成令人头疼的 告警轰炸。
+
+
+
+
+
+这里的核心问题是，在海量的 topic 情况下，或者经常性的流量抖动情况下，我们不能对 topic 的producer 每次打过来的消息数目做任何假设，所以就不太好定出来一个 合适的 eplica.lag.max.messages 值一个配置全部搞定其实只有两种情况是异常的，一种就是卡住，另外一种是follower 性能慢，如果我们只根据 follower 落后 leader 多少来判断是否应该把 follower 提出ISR集合，就必须要对流量进行预测估计，怎么才能避免这种不靠谱的估计呢，kafka 给出 的方案是这样的，对   replica.lag.time.max.ms 这个配置的含义做了增强，和之前一样，如果 follower 卡住超过这个时间不发送fetch请求， 会被踢出ISR集合，新的增强逻辑是，在 follower 落后 leader 超过   eplica.lag.max.messages 条消息的时候，不会立马踢出ISR 集合，而是持续落后超过    replica.lag.time.max.ms 时间，才会被踢出，这样就能避免流量抖动造成的运维问题，因为follower 在下一次fetch的时候就会跟上leader， 这样就也不用对 topic 的写入速度做任何的估计喽。
+
+作者：Java大生
+链接：https://www.jianshu.com/p/ff296d51385a
+来源：简书
+简书著作权归作者所有，任何形式的转载都请联系作者获得授权并注明出处。

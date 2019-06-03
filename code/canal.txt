@@ -1,0 +1,277 @@
+a. canal的原理是基于mysql binlog技术，所以这里一定需要开启mysql的binlog写入功能，建议配置binlog模式为row.
+
+针对阿里云RDS账号默认已经有binlog dump权限,不需要任何权限或者binlog设置,可以直接跳过这一步
+
+[mysqld]
+log-bin=mysql-bin #添加这一行就ok
+binlog-format=ROW #选择row模式
+server_id=1 #配置mysql replaction需要定义，不能和canal的slaveId重复
+b. canal的原理是模拟自己为mysql slave，所以这里一定需要做为mysql slave的相关权限.
+
+CREATE USER canal IDENTIFIED BY 'canal';
+GRANT SELECT, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'canal'@'%';
+-- GRANT ALL PRIVILEGES ON *.* TO 'canal'@'%' ;
+FLUSH PRIVILEGES;
+针对已有的账户可直接通过grant
+
+其他场景的使用
+基于canal的docker模式快速启动，参考：Docker QuickStart
+如何将canal链接aliyun rds，参考：Aliyun RDS QuickStart
+如果将canal消息直接投递给kafka/RocketMQ，参考：Canal-Kafka-RocketMQ-QuickStart
+启动步骤：
+1. 下载canal
+
+直接下载
+
+访问：https://github.com/alibaba/canal/releases ，会列出所有历史的发布版本包 下载方式，比如以1.0.17版本为例子：
+wget https://github.com/alibaba/canal/releases/download/canal-1.0.17/canal.deployer-1.0.17.tar.gz
+or
+
+自己编译
+
+git clone git@github.com:alibaba/canal.git
+cd canal;
+mvn clean install -Dmaven.test.skip -Denv=release
+编译完成后，会在根目录下产生target/canal.deployer-$version.tar.gz
+
+2. 解压缩
+
+mkdir /tmp/canal
+tar zxvf canal.deployer-$version.tar.gz  -C /tmp/canal
+解压完成后，进入/tmp/canal目录，可以看到如下结构：
+
+drwxr-xr-x 2 jianghang jianghang  136 2013-02-05 21:51 bin
+drwxr-xr-x 4 jianghang jianghang  160 2013-02-05 21:51 conf
+drwxr-xr-x 2 jianghang jianghang 1.3K 2013-02-05 21:51 lib
+drwxr-xr-x 2 jianghang jianghang   48 2013-02-05 21:29 logs
+
+
+3. 配置修改
+
+应用参数：
+
+vi conf/example/instance.properties
+#################################################
+## mysql serverId
+canal.instance.mysql.slaveId = 1234
+#position info，需要改成自己的数据库信息
+canal.instance.master.address = 127.0.0.1:3306
+canal.instance.master.journal.name =
+canal.instance.master.position =
+canal.instance.master.timestamp =
+
+
+#canal.instance.standby.address =
+#canal.instance.standby.journal.name =
+#canal.instance.standby.position =
+#canal.instance.standby.timestamp =
+
+
+#username/password，需要改成自己的数据库信息
+canal.instance.dbUsername = canal
+
+canal.instance.dbPassword = canal
+canal.instance.defaultDatabaseName =
+canal.instance.connectionCharset = UTF-8
+
+
+#table regex
+canal.instance.filter.regex = .\..
+
+
+#################################################
+
+说明：
+
+canal.instance.connectionCharset 代表数据库的编码方式对应到java中的编码类型，比如UTF-8，GBK , ISO-8859-1
+如果系统是1个cpu，需要将canal.instance.parser.parallel设置为false
+4. 准备启动
+
+sh bin/startup.sh
+5. 查看日志
+
+vi logs/canal/canal.log
+2013-02-05 22:45:27.967 [main] INFO  com.alibaba.otter.canal.deployer.CanalLauncher - ## start the canal server.
+2013-02-05 22:45:28.113 [main] INFO  com.alibaba.otter.canal.deployer.CanalController - ## start the canal server[10.1.29.120:11111]
+2013-02-05 22:45:28.210 [main] INFO  com.alibaba.otter.canal.deployer.CanalLauncher - ## the canal server is running now ......
+具体instance的日志：
+
+vi logs/example/example.log
+2013-02-05 22:50:45.636 [main] INFO  c.a.o.c.i.spring.support.PropertyPlaceholderConfigurer - Loading properties file from class path resource [canal.properties]
+2013-02-05 22:50:45.641 [main] INFO  c.a.o.c.i.spring.support.PropertyPlaceholderConfigurer - Loading properties file from class path resource [example/instance.properties]
+2013-02-05 22:50:45.803 [main] INFO  c.a.otter.canal.instance.spring.CanalInstanceWithSpring - start CannalInstance for 1-example
+2013-02-05 22:50:45.810 [main] INFO  c.a.otter.canal.instance.spring.CanalInstanceWithSpring - start successful....
+6. 关闭
+
+sh bin/stop.sh
+it's over.
+
+=============
+ClientSample
+直接使用canal.example工程
+a. 首先启动Canal Server，可参见QuickStart
+b.
+可以在eclipse里，直接打开com.alibaba.otter.canal.example.SimpleCanalClientTest，直接运行
+在工程的example目录下运行命令行：
+mvn exec:java -Dexec.mainClass="com.alibaba.otter.canal.example.SimpleCanalClientTest"
+下载example包: https://github.com/alibaba/canal/releases，解压缩后，直接运行sh startup.sh脚本
+c. 触发数据变更 d. 在控制台或者logs中查看，可以看到如下信息 ：
+================> binlog[mysql-bin.002579:508882822] , name[retl,xdual] , eventType : UPDATE , executeTime : 1368607728000 , delay : 4270ms
+-------> before
+ID : 1    update=false
+X : 2013-05-15 11:43:42    update=false
+-------> after
+ID : 1    update=false
+X : 2013-05-15 16:48:48    update=true
+从头创建工程
+依赖配置：
+
+<dependency>
+    <groupId>com.alibaba.otter</groupId>
+    <artifactId>canal.client</artifactId>
+    <version>1.1.0</version>
+</dependency>
+1. 创建mvn标准工程：
+
+mvn archetype:create -DgroupId=com.alibaba.otter -DartifactId=canal.sample
+maven3.0.5以上版本舍弃了create，使用generate生成项目
+mvn archetype:generate -DgroupId=com.alibaba.otter -DartifactId=canal.sample
+2. 修改pom.xml，添加依赖
+
+3. ClientSample代码
+
+package com.alibaba.otter.canal.sample;
+import java.net.InetSocketAddress;
+import java.util.List;
+
+
+import com.alibaba.otter.canal.client.CanalConnectors;
+import com.alibaba.otter.canal.client.CanalConnector;
+import com.alibaba.otter.canal.common.utils.AddressUtils;
+import com.alibaba.otter.canal.protocol.Message;
+import com.alibaba.otter.canal.protocol.CanalEntry.Column;
+import com.alibaba.otter.canal.protocol.CanalEntry.Entry;
+import com.alibaba.otter.canal.protocol.CanalEntry.EntryType;
+import com.alibaba.otter.canal.protocol.CanalEntry.EventType;
+import com.alibaba.otter.canal.protocol.CanalEntry.RowChange;
+import com.alibaba.otter.canal.protocol.CanalEntry.RowData;
+
+
+public class SimpleCanalClientExample {
+
+
+public static void main(String args[]) {
+    // 创建链接
+    CanalConnector connector = CanalConnectors.newSingleConnector(new InetSocketAddress(AddressUtils.getHostIp(),
+                                                                                        11111), "example", "", "");
+    int batchSize = 1000;
+    int emptyCount = 0;
+    try {
+        connector.connect();
+        connector.subscribe(".*\\..*");
+        connector.rollback();
+        int totalEmptyCount = 120;
+        while (emptyCount < totalEmptyCount) {
+            Message message = connector.getWithoutAck(batchSize); // 获取指定数量的数据
+            long batchId = message.getId();
+            int size = message.getEntries().size();
+            if (batchId == -1 || size == 0) {
+                emptyCount++;
+                System.out.println("empty count : " + emptyCount);
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                }
+            } else {
+                emptyCount = 0;
+                // System.out.printf("message[batchId=%s,size=%s] \n", batchId, size);
+                printEntry(message.getEntries());
+            }
+
+            connector.ack(batchId); // 提交确认
+            // connector.rollback(batchId); // 处理失败, 回滚数据
+        }
+
+        System.out.println("empty too many times, exit");
+    } finally {
+        connector.disconnect();
+    }
+}
+
+private static void printEntry(List<Entry> entrys) {
+    for (Entry entry : entrys) {
+        if (entry.getEntryType() == EntryType.TRANSACTIONBEGIN || entry.getEntryType() == EntryType.TRANSACTIONEND) {
+            continue;
+        }
+
+        RowChange rowChage = null;
+        try {
+            rowChage = RowChange.parseFrom(entry.getStoreValue());
+        } catch (Exception e) {
+            throw new RuntimeException("ERROR ## parser of eromanga-event has an error , data:" + entry.toString(),
+                                       e);
+        }
+
+        EventType eventType = rowChage.getEventType();
+        System.out.println(String.format("================&gt; binlog[%s:%s] , name[%s,%s] , eventType : %s",
+                                         entry.getHeader().getLogfileName(), entry.getHeader().getLogfileOffset(),
+                                         entry.getHeader().getSchemaName(), entry.getHeader().getTableName(),
+                                         eventType));
+
+        for (RowData rowData : rowChage.getRowDatasList()) {
+            if (eventType == EventType.DELETE) {
+                printColumn(rowData.getBeforeColumnsList());
+            } else if (eventType == EventType.INSERT) {
+                printColumn(rowData.getAfterColumnsList());
+            } else {
+                System.out.println("-------&gt; before");
+                printColumn(rowData.getBeforeColumnsList());
+                System.out.println("-------&gt; after");
+                printColumn(rowData.getAfterColumnsList());
+            }
+        }
+    }
+}
+
+private static void printColumn(List<Column> columns) {
+    for (Column column : columns) {
+        System.out.println(column.getName() + " : " + column.getValue() + "    update=" + column.getUpdated());
+    }
+}
+
+}
+
+4. 运行Client
+
+首先启动Canal Server，可参见QuickStart
+
+启动Canal Client后，可以从控制台从看到类似消息：
+
+empty count : 1
+empty count : 2
+empty count : 3
+empty count : 4
+此时代表当前数据库无变更数据
+
+5. 触发数据库变更
+
+mysql> use test;
+Database changed
+mysql> CREATE TABLE `xdual` (
+    ->   `ID` int(11) NOT NULL AUTO_INCREMENT,
+    ->   `X` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ->   PRIMARY KEY (`ID`)
+    -> ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8 ;
+Query OK, 0 rows affected (0.06 sec)
+mysql> insert into xdual(id,x) values(null,now());Query OK, 1 row affected (0.06 sec)
+
+可以从控制台中看到：
+
+empty count : 1
+empty count : 2
+empty count : 3
+empty count : 4
+================> binlog[mysql-bin.001946:313661577] , name[test,xdual] , eventType : INSERT
+ID : 4    update=true
+X : 2013-02-05 23:29:46    update=true
+

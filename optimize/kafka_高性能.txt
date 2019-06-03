@@ -74,8 +74,8 @@ ISR相关配置
 Broker的min.insync.replicas参数制定了Broker所要求的ISR最小长度，默认值为1.极限情况下ISR可以只包含Leader，但此时如果Leader宕机，则该Partition不可用，可用性不可保证。
 只有被ISR中所有Replica同步的消息才被commit，但是Producer在写数据时，Leader不需要ISR中所有Replica同步该数据才确认收到数据。Producer可以通过acks参数指定最少需要多少个Replica确认收到该消息才视为该消息发送成功。acks默认值为1，即Leader收到该消息后立即告诉Producer收到该消息，此时如果在ISR中的消息复制完该消息前Leader宕机，那该条消息会丢失。推荐做法是：将acks设置为all或-1，此时只有ISR中的所有Replica都收到该数据（也及消息被commit），Leader才会告诉Producer该消息发送成功，这样保证了不会有未知的数据丢失。
 
-实现层面
-1.高效实用磁盘
+
+
 顺序写磁盘
        将写磁盘的过程变为顺序写，可极大提高对磁盘的利用率。Consumer通过offset顺序消费这些数据，且不删除已经消费的数据，从而避免随机写磁盘的过程。
        Kafka删除旧数据的方式是删除整个Segment对应的log文件和整个index文件，而不是删除部分内容。如下代码所示：
@@ -86,26 +86,29 @@ Broker的min.insync.replicas参数制定了Broker所要求的ISR最小长度，�
 Page Cache的优点：
 
 I/O Scheduler会将连续的小块写组装成大块的物理写从而提高性能。
-
 I/O Scheduler会尝试将一些写操作重新按顺序排好，从而减少磁头移动时间。
 
 
 充分利用所有空闲内存（非JVM内存）。
 
 读操作可以直接在Page Cache内进行。如果消费和生产速度相当，甚至不需要通过物理磁盘交换数据。
-
 如果进程重启，JVM内的Cache会失效，但Page Cache仍然可用
 
 
 零拷贝
-       Kafka中存在大量网络数据持久化到磁盘（Producer到Broker）和磁盘文件通过网络发送（Broker到Consumer）的过程，这个过程中，传统模式下要进行数据的四次拷贝，但是Kafka通过零拷贝技术将其减为了一次，大大增加了效率，原理可以在另一篇文章（https://www.jianshu.com/p/835ec2d4c170）中获得。
-3.减少网络开销
+       Kafka中存在大量网络数据持久化到磁盘（Producer到Broker）和磁盘文件通过网络发送（Broker到Consumer）的过程，这个过程中，
+传统模式下要进行数据的四次拷贝，但是Kafka通过零拷贝技术将其减为了一次，大大增加了效率，原理可以在另一篇文章（https://www.jianshu.com/p/835ec2d4c170）中获得
+
+
 批处理
        批处理减少了网络传输的overhead，又提高了写磁盘的效率。
        Kafka的API做中，从send接口来看，一次只能发送一个ProducerRecord，但是send方法并不是立即将消息发送出去，而是通过batch.size和linger.ms控制实际发送频率，从而实现批量发送。
-数据压缩降低网络负载
-高效的序列化方式
 
+数据压缩降低网络负载
+
+
+
+高效的序列化方式
 
 
 
@@ -375,6 +378,7 @@ Random I/O: 100KB/s
 
 接下来我们再聊一聊 Kafka 是如何“抄近道的”。
 首先，Kafka 重度依赖底层操作系统提供的 PageCache 功能。当上层有写操作时，操作系统只是将数据写入 PageCache，同时标记 Page 属性为 Dirty。当读操作发生时，先从 PageCache 中查找，如果发生缺页才进行磁盘调度，最终返回需要的数据。
+
 实际上 PageCache 是把尽可能多的空闲内存都当做了磁盘缓存来使用。同时如果有其他进程申请内存，回收 PageCache 的代价又很小，所以现代的 OS 都支持 PageCache。使用 PageCache 功能同时可以避免在 JVM 内部缓存数据，JVM 为我们提供了强大的 GC 能力，同时也引入了一些问题不适用与 Kafka 的设计。
 如果在 Heap 内管理缓存，JVM 的 GC 线程会频繁扫描 Heap 空间，带来不必要的开销。如果 Heap过大，执行一次 Full GC 对系统的可用性来说将是极大的挑战。
 所有在在 JVM 内的对象都不免带有一个 Object Overhead(千万不可小视)，内存的有效空间利用率会因此降低。
