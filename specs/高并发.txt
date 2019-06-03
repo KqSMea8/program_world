@@ -1,4 +1,355 @@
 
+对于ThreadLocal感兴趣是从一个问题开始的：ThreadLocal在何种情况下会发生内存泄露？对于这个问题的思考不得不去了解ThreadLocal本身的实现以及一些细节问题等。接下去依次介绍ThreadLocal的功能，实现细节，使用场景以及一些使用建议。
+
+##概述
+ThreadLocal不是用来解决对象共享访问问题的，而主要提供了线程保持对象的方法和避免参数传递的方便的对象访问方式。一般情况下，通过ThreadLocal.set()到线程中的对象是该线程自己使用的对象，其他线程是不需要访问的，也访问不到的。各个线程中访问的是不同的对象。
+
+ThreadLocal使用场合主要解决多线程中数据因并发产生不一致的问题。ThreadLocal为每个线程的中并发访问的数据提供一个副本，通过访问副本来运行业务，这样的结果是耗费了内存，但大大减少了线程同步所带来的线程消耗，也介绍了线程并发控制的复杂度。
+
+另外，说ThreadLocal使得各线程能够保持各自独立的一个对象，并不是通过ThreadLocal.set()来实现的，而是通过每个线程中的new对象的操作来创建的对象，每个线程创建一个，不是什么对象的拷贝或副本。通过ThreadLocal.set()将这个新创建的对象的引用保存到各线程的自己的一个map(Thread类中的ThreadLocal.ThreadLocalMap的变量)中，每个线程都有这样一个map，执行ThreadLocal.get()时，各线程从自己的map中取出放进去的对象，因此取出来的是各自自己线程中的对象，ThreadLocal实例是作为map的key来使用的。
+【代码1】
+
+    /* ThreadLocal values pertaining to this thread. This map is maintained
+     * by the ThreadLocal class. */
+    ThreadLocal.ThreadLocalMap threadLocals = null;
+
+    /*
+     * InheritableThreadLocal values pertaining to this thread. This map is
+     * maintained by the InheritableThreadLocal class.
+     */
+    ThreadLocal.ThreadLocalMap inheritableThreadLocals = null;
+1
+2
+3
+4
+5
+6
+7
+8
+9
+很多人会有这样的无解：感觉这个ThreadLocal对象建立了一个类似于全局的map，然后每个线程作为map的key来存取对应的线程本地的value。其实是ThreadLocal类中有一个ThreadLocalMap静态内部类，可以简单的理解为一个map，这个map为每个线程复制一个变量的“拷贝”存储其中。下面是ThreadLocalMap的部分源码：
+【代码2】
+
+static class ThreadLocalMap {
+        static class Entry extends WeakReference<ThreadLocal> {
+            Object value;
+            Entry(ThreadLocal k, Object v) {
+                super(k);
+                value = v;
+            }
+        }
+        private static final int INITIAL_CAPACITY = 16;
+        private Entry[] table;
+        private int size = 0;
+        private int threshold; // Default to 0
+        //部分省略
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+ThreadLocal类中一共有4个方法：
+
+T get()
+protected T initialValue()
+void remove()
+void set(T value)
+就以get()方法为例
+【代码3】
+
+    public T get() {
+        Thread t = Thread.currentThread();
+        ThreadLocalMap map = getMap(t);
+        if (map != null) {
+            ThreadLocalMap.Entry e = map.getEntry(this);
+            if (e != null)
+                return (T)e.value;
+        }
+        return setInitialValue();
+    }
+    ThreadLocalMap getMap(Thread t) {
+        return t.threadLocals;
+    }
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+get()方法的源码如上所示，可以看到map中真正的key是线程ThreadLocal实例本身（ThreadLocalMap.Entry e = map.getEntry(this);中的this）。可以看一下getEntry(ThreadLocal key)的源码.
+【代码4】
+
+        private Entry getEntry(ThreadLocal key) {
+            int i = key.threadLocalHashCode & (table.length - 1);
+            Entry e = table[i];
+            if (e != null && e.get() == key)
+                return e;
+            else
+                return getEntryAfterMiss(key, i, e);
+        }
+1
+2
+3
+4
+5
+6
+7
+8
+那么map中的value是什么呢？我们继续来看源码：
+【代码5】
+
+    private T setInitialValue() {
+        T value = initialValue();
+        Thread t = Thread.currentThread();
+        ThreadLocalMap map = getMap(t);
+        if (map != null)
+            map.set(this, value);
+        else
+            createMap(t, value);
+        return value;
+    }
+    protected T initialValue() {
+        return null;
+    }
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+代码5中只能够观察到通过[protected T initialValue()]方法设置了一个初始值，当然也可以通过set方法来赋值，继续看源码：
+【代码6】
+
+    public void set(T value) {
+        Thread t = Thread.currentThread();
+        ThreadLocalMap map = getMap(t);
+        if (map != null)
+            map.set(this, value);
+        else
+            createMap(t, value);
+    }
+1
+2
+3
+4
+5
+6
+7
+8
+ThreadLocal设置值有两种方案：1. Override其initialValue方法；2. 通过set设置。
+
+关于重写initialValue方法可以参考下面这个例子简便的实现：
+【代码7】
+
+    private static final ThreadLocal<Long> TIME_THREADLOCAL = new ThreadLocal<Long>(){
+        @Override
+        protected Long initialValue()
+        {
+            return System.currentTimeMillis();
+        }
+    };
+1
+2
+3
+4
+5
+6
+7
+##内存泄露
+通过代码1和代码2的片段可以看出，在Thread类中保有ThreadLocal.ThreadLocalMap的引用，即在一个Java线程栈中指向了堆内存中的一个ThreadLocal.ThreadLocalMap的对象，此对象中保存了若干个Entry，每个Entry的key(ThreadLocal实例)是弱引用，value是强引用（这点类似于WeakHashMap）。
+
+用到弱引用的只是key，每个key都弱引用指向threadLocal，当把threadLocal实例置为null以后，没有任何强引用指向threadLocal实例，所以threadLocal将会被gc回收，但是value却不能被回收，因为其还存在于ThreadLocal.ThreadLocalMap的对象的Entry之中。只有当前Thread结束之后，所有与当前线程有关的资源才会被GC回收。所以，如果在线程池中使用ThreadLocal，由于线程会复用，而又没有显示的调用remove的话的确是会有可能发生内存泄露的问题。
+
+其实在ThreadLocal.ThreadLocalMap的get或者set方法中会探测其中的key是否被回收（调用expungeStaleEntry方法），然后将其value设置为null，这个功能几乎和WeakHashMap中的expungeStaleEntries()方法一样。因此value在key被gc后可能还会存活一段时间，但最终也会被回收，但是若不再调用get或者set方法时，那么这个value就在线程存活期间无法被释放。
+【代码8】
+
+        private int expungeStaleEntry(int staleSlot) {
+            Entry[] tab = table;
+            int len = tab.length;
+
+            // expunge entry at staleSlot
+            tab[staleSlot].value = null;
+            tab[staleSlot] = null;
+            size--;
+
+            // Rehash until we encounter null
+            Entry e;
+            int i;
+            for (i = nextIndex(staleSlot, len);
+                 (e = tab[i]) != null;
+                 i = nextIndex(i, len)) {
+                ThreadLocal k = e.get();
+                if (k == null) {
+                    e.value = null;
+                    tab[i] = null;
+                    size--;
+                } else {
+                    int h = k.threadLocalHashCode & (len - 1);
+                    if (h != i) {
+                        tab[i] = null;
+
+                        // Unlike Knuth 6.4 Algorithm R, we must scan until
+                        // null because multiple entries could have been stale.
+                        while (tab[h] != null)
+                            h = nextIndex(h, len);
+                        tab[h] = e;
+                    }
+                }
+            }
+            return i;
+        }
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+其实ThreadLocal本身可以看成是没有内存泄露问题的，通过显示的调用remove方法即可。
+
+##使用场景及方式
+ThreadLocal的应用场景，最适合的是按线程多实例（每个线程对应一个实例）的对象的访问，并且这个对象很多地方都要用到。
+
+对于多线程资源共享的问题，同步机制采用了“以时间换空间”的方式，比如定义一个static变量，同步访问，而ThreadLocal采用了“以空间换时间”的方式。前者仅提供一份变量，让不同的线程排队访问，而后者为每一个线程都提供了一份变量，因此可以同时访问而互不影响。
+
+在多线程的开发中，经常会考虑到的策略是对一些需要公开访问的属性通过设置同步的方式来访问。这样每次能保证只有一个线程访问它，不会有冲突。但是这样做的结果会使得性能和对高并发的支持不够。在某些情况下，如果我们不一定非要对一个变量共享不可，而是给每个线程一个这样的资源副本，让他们可以独立都各自跑各自的，这样不是可以大幅度的提高并行度和性能了吗？
+
+还有的情况是有的数据本身不是线程安全的，或者说它只能被一个线程使用，不能被其它线程同时使用。如果等一个线程使用完了再给另一个线程使用就根本不现实。这样的情况下，我们也可以考虑用ThreadLocal。
+
+ThreadLocal建议：
+
+ThreadLocal类变量因为本身定位为要被多个线程来访问，它通常被定义为static变量。
+能够通过值传递的参数，不要通过ThreadLocal存储，以免造成ThreadLocal的滥用。
+在线程池的情况下，在ThreadLocal业务周期处理完成时，最好显示的调用remove()方法，清空“线程局部变量”中的值。
+在正常情况下使用ThreadLocal不会造成OOM, 弱引用的知识ThreadLocal,保存值依然是强引用，如果ThreadLocal依然被其他对象应用，线程局部变量将无法回收。
+##InheritableThreadLocal
+InheritableThreadLocal是ThreadLocal的子类，代码量很少，可以看一下：
+【代码9】
+
+public class InheritableThreadLocal<T> extends ThreadLocal<T> {
+    protected T childValue(T parentValue) {
+        return parentValue;
+    }
+    ThreadLocalMap getMap(Thread t) {
+       return t.inheritableThreadLocals;
+    }
+    void createMap(Thread t, T firstValue) {
+        t.inheritableThreadLocals = new ThreadLocalMap(this, firstValue);
+    }
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+这里主要的还是一个childValue这个方法。
+在代码7中示范了ThreadLocal的方法，而使用类InheritableThreadLocal可以在子线程中取得父线程继承下来的值。可以采用重写childValue（Object parentValue）方法来更改继承的值。
+查看案例：
+【代码10】
+
+public class InheriableThreadLocal
+{
+    public static final InheritableThreadLocal<?> itl = new InheritableThreadLocal<Object>(){
+        @Override protected Object initialValue()
+        {
+            return new Date().getTime();
+        }
+
+        @Override protected Object childValue(Object parentValue)
+        {
+            return parentValue+" which plus in subThread.";
+        }
+    };
+
+    public static void main(String[] args)
+    {
+        System.out.println("Main: get value = "+itl.get());
+        Thread a = new Thread(new Runnable(){
+            @Override public void run()
+            {
+                System.out.println(Thread.currentThread().getName()+": get value = "+itl.get());
+            }
+        });
+        a.start();
+    }
+}
+
+运行结果：
+
+Main: get value = 1467100984858
+Thread-0: get value = 1467100984858 which plus in subThread.
+1
+2
+如果去掉@Override protected Object childValue(Object parentValue)方法运行结果：
+
+Main: get value = 1461585396073
+Thread-0: get value = 1461585396073
+
+
+
+
+
+
+
+==================
 1. interrupted与isInterrupted的区别
 interrupted()：测试当前线程是否已经是中断状态，执行后具有状态标志清除为false的功能。
 isInterrupted()：测试线程Thread对象是否已经是中断状态，但不清除状态标志。
@@ -899,17 +1250,8 @@ AtomicBoolean，AtomicInteger, AtomicLong三个类提供的方法类似，以Ato
     public final boolean compareAndSet(int expect, int update) {
         return unsafe.compareAndSwapInt(this, valueOffset, expect, update);
     }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
+
+
 sun.misc.Unsafe只提供三种CAS方法：compareAndSwapObject, compareAndSwapInt和compareAndSwapLong，再看AtomicBoolean源码，发现它是先把Boolean转换成整形，再使用compareAndSwapInt进行CAS，原子更新char,float,double变量也可以用类似的思路来实现。
 
 42. 原子更新数组
@@ -989,53 +1331,7 @@ public class CyclicBarrierTest
         }
     }
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
-23
-24
-25
-26
-27
-28
-29
-30
-31
-32
-33
-34
-35
-36
-37
-38
-39
-40
-41
-42
-43
-44
-45
-46
-47
+
 输出结果：3 1 5 2 4
 
 45. CyclicBarrier和CountDownLatch的区别

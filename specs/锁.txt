@@ -1,0 +1,703 @@
+
+public class ClhSpinLock implements Lock{
+    private final ThreadLocal<Node> prev;
+    private final ThreadLocal<Node> node;
+    private final AtomicReference<Node> tail = new AtomicReference<Node>(new Node());
+
+    public ClhSpinLock() {
+        this.node = new ThreadLocal<Node>() {
+            protected Node initialValue() {
+                return new Node();
+            }
+        };
+
+        this.prev = new ThreadLocal<Node>() {
+            protected Node initialValue() {
+                return null;
+            }
+        };
+    }
+     public void lock() {
+        final Node node = this.node.get();
+        node.locked = true;
+        Node pred = this.tail.getAndSet(node);
+        this.prev.set(pred);
+        // 自旋
+        while (pred.locked);
+    }
+
+    public void unlock() {
+        final Node node = this.node.get();
+        node.locked = false;
+        this.node.set(this.prev.get());
+//        this.node.set(new Node());
+    }
+}
+
+CLH 代码分析：
+（1）pred node 的作用：其实完全可以把pred node去掉，然后在unlock方法中将this.node 赋值一个新的Node就行。而对this.node赋值prev node，就不用new了，效率更高。
+（2）公平锁的体现：通过AtomicReference.getAndSet()将线程形成一个链表.只有等前一个线程释放了锁，后面的线程才能获取锁，确保了锁的公平性。
+（3）是否可重入：不能重入，非重入锁
+
+	最近在看关于线程锁的算法，做一个整理。资料出自于《The Art of Multiprocessor Programming》，算是一个读书笔记吧。示范代码基于java。
+
+	第一章是Craig, Landin, and Hagersten (CLH) locks。先上CLHLock的实现逻辑：
+
+Java代码  收藏代码
+public class CLHLock implements Lock {
+    private final AtomicReference tail;
+    private final ThreadLocal myPred;
+    private final ThreadLocal myNode;
+
+    public CLHLock() {
+        tail = new AtomicReference(new QNode());
+        myNode = new ThreadLocal() {
+            protected QNode initialValue() {
+                return new QNode();
+            }
+        };
+
+        myPred = new ThreadLocal();
+    }
+
+    @Override
+    public void lock() {
+        QNode node = myNode.get();
+        node.locked = true;
+        QNode pred = tail.getAndSet(node);
+        myPred.set(pred);
+        while (pred.locked) {
+        }
+    }
+
+    @Override
+    public void unlock() {
+        QNode node = myNode.get();
+        node.locked = false;
+        myNode.set(myPred.get());
+    }
+
+    private static class QNode {
+        volatile boolean locked;
+    }
+}
+
+
+
+	CLH Lock是一个自旋锁，能确保无饥饿性，提供先来先服务的公平性。
+
+
+
+	锁本身被表示成QNode的虚拟链表。共享的tail保存申请的最后的一个申请lock的线程的myNode域。每个申请lock的线程通过一个本地线程变量pred指向它的前驱。另外一个本地线程变量myNode的locked保存本身的状态，true：正在申请锁或已申请到锁；false：已释放锁。每个线程通过监视自身的前驱状态，自旋等待锁被释放。释放锁时，把自身myNode的locked设为false，使后继线程获的锁，并回收前驱的QNode，等待下次使用，因为自身的QNode可能被tail获后继引用，而前驱不再使用老的QNode。
+
+
+
+	该算法也是空间有效的，如果有n个线程，L个锁，每个线程每次只获取一个锁，那么需要的存储空间是O（L+n），n个线程有n个myNode，L个锁有L个tail。这种算法有一个缺点是在NUMA系统架构下性能表现很差，因为它自旋的locked是前驱线程的，如果内存位置较远，那么性能会受到损失。但是在SMP这种cache一致性的系统架构上表现良好。
+
+
+
+	下一章会整理MCSLock，它更适用于NUMA架构。
+
+ =====================================================
+
+
+
+
+AQS是一个抽象类，不可以被实例化，它的设计之初就是为了让子类通过继承来实现多样的功能的。
+
+它内部提供了一个FIFO的等待队列，用于多个线程等待一个事件（锁）。它有一个重要的状态标志——state，该属性是一个int值，表示对象的当前状态（如0表示lock，1表示unlock）。AQS提供了三个protected final的方法来改变state的值，分别是：getState、setState(int)、compareAndSetState(int, int)。根据修饰符，它们是不可以被子类重写的，但可以在子类中进行调用，这也就意味着子类可以根据自己的逻辑来决定如何使用state值。
+综上，
+
+
+我们知道AQS有2个宝贝，一个等待队列，还有一个STATE标志，并且通过CAS来改变它的值。
+
+AQS的子类应当被定义为内部类，作为内部的helper对象。
+
+事实上，这也是juc种锁的做法，如ReentrantLock，便是通过内部的Sync对象来继承AQS的。
+
+AQS中定义了一些未实现的方法（抛出UnsupportedOperationException异常）
+
+tryAcquire(int) 尝试获取state
+tryRelease(int) 尝试释放state
+tryAcquireShared(int) 共享的方式尝试获取
+tryReleaseShared(int) 共享的方式尝试释放
+isHeldExclusively() 判断当前是否为独占锁
+这些方法是子类需要实现的，可以选择实现其中的一部分。根据实现方式的不同，可以分为两种：独占锁和共享锁。其中JUC中锁的分类为:
+独占锁：ReentrantLock、ReentrantReadWriteLock.WriteLock
+共享锁：ReentrantReadWriteLock.ReadLock、CountDownLatch、CyclicBarrier、Semaphore
+其实现方式为：
+独占锁实现的是tryAcquire(int)、tryRelease(int)
+共享锁实现的是tryAcquireShared(int)、tryReleaseShared(int)
+AQS中还提供了一个内部类ConditionObject，它实现了Condition接口，可以用于await/signal。采用CLH队列的算法，唤醒当前线程的下一个节点对应的线程，而signalAll唤醒所有线程。
+
+总的来说，AQS提供了三个功能：
+实现独占锁
+实现共享锁
+实现Condition模型
+综上对AQS的了解，我们大概已经可以把模板搭一下了。
+public class MyLock implements Lock {
+
+    Helper helper = new Helper();
+    @Override
+    public void lock() {
+        helper.acquire(1);
+    }
+
+    @Override
+    public void lockInterruptibly() throws InterruptedException {
+        helper.acquireInterruptibly(1);
+    }
+
+    @Override
+    public boolean tryLock() {
+        return helper.tryAcquire(1);
+    }
+
+    @Override
+    public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
+        return helper.tryAcquireNanos(1,unit.toNanos(time));
+    }
+
+    @Override
+    public void unlock() {
+        helper.release(1);
+    }
+
+    @Override
+    public Condition newCondition() {
+        return helper.newCondition();
+    }
+
+    private class Helper extends AbstractQueuedSynchronizer {
+        @Override
+        protected boolean tryAcquire(int arg){
+
+        }
+
+        @Override
+        protected boolean tryRelease(int arg) {
+
+        }
+
+        Condition newCondition() {
+            return new ConditionObject();
+        }
+    }
+}
+
+
+上面MYLOCK的大多数方法，其实我们根本不用操心，统一交给AQS的方法来帮我们完成就好。而我们真正要实现的就是tryAcquire和tryRelease 这2个操作。
+首先我们还是结合前一章的思路来实现tryAcquire，本质就是如果第一个线程进来就拿到锁，后面进来的RETURN FALSE。然而之前我们声明了一个BOOL变量。这里我们可以直接AQS 的STATE变量。我们可以用初始值为0来表示没有线程拿到锁，一旦第一个线程进来了，就把它设置为非0.
+protected boolean tryAcquire(int arg){
+            //如果第一个线程进来，拿到锁，返回TRUE
+
+            //如果第二个线程进来，返回FALSE，拿不到锁
+
+            int state = getState();
+            if(state == 0){
+                if(compareAndSetState(0,arg)) {
+                    setExclusiveOwnerThread(Thread.currentThread());
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+下面我们再来思考释放，因为锁的获取和释放是一一对应的，我们首要判断锁住的线程是不是同一个，如果是，我们就把STATE - ARG。如果STATE回到0,则代表锁释放成功。
+protected boolean tryRelease(int arg) {
+            //锁的获取和释放需要11对应，那么调用这个方法的线程，一定是当前线程让。
+            if(Thread.currentThread() != getExclusiveOwnerThread()){
+                throw new RuntimeException();
+            }
+            int state = getState() - arg;
+            setState(state);
+            if(state == 0){
+                setExclusiveOwnerThread(null);
+                return true;
+            }
+            return false;
+        }
+
+下面我们就可以用之前的那个测试类Sequence来测试下我们写的锁了。
+可以发现输出的是50，锁是成功的。
+然后去测试重入锁的DEMO，发现会卡主。我们要再加一些逻辑来实现重入锁。
+protected boolean tryAcquire(int arg){
+            //如果第一个线程进来，拿到锁，返回TRUE
+
+            //如果第二个线程进来，返回FALSE，拿不到锁
+
+            Thread t = Thread.currentThread();
+            int state = getState();
+            if(state == 0){
+                if(compareAndSetState(0,arg)) {
+                    setExclusiveOwnerThread(Thread.currentThread());
+                    return true;
+                }
+            }else if(getExclusiveOwnerThread() == t){
+                //因为只有一个线程可以进这个IF，所以没有线程安全性问题
+                setState(state+arg);
+                return true;
+            }
+
+            return false;
+        }
+
+然后就实现好了，现在DEMO也能过了。
+
+==========================
+从 acquire 方法开始 —— 获取
+为什么 AQS 需要一个虚拟 head 节点
+reelase 方法如何释放锁
+总结
+
+前言
+AQS 是 JUC 中的核心，其中封装了资源的获取和释放，在我们之前的  并发编程之 AQS 源码剖析 文章中，我们已经从 ReentranLock 那里分析了锁的获取和释放。但我有必要再次解释 AQS 的核心 CLH 锁。
+这里引用一下别人对于 CLH 的解释：
+
+CLH CLH(Craig, Landin, and Hagersten  locks): 是一个自旋锁，能确保无饥饿性，提供先来先服务的公平性。
+
+
+CLH锁也是一种基于链表的可扩展、高性能、公平的自旋锁，申请线程只在本地变量上自旋，它不断轮询前驱的状态，如果发现前驱释放了锁就结束自旋。
+
+Java AQS 的设计对 CLH 锁进行了优化或者说变体。
+我们还是从代码开始说起吧。
+1. 从 acquire 方法开始 —— 获取
+acquire 方法是获取锁的常用方法。代码如下：
+public final void acquireQueued(int arg) {
+    // 当 tryAcquire 返回 true 就说明获取到锁了，直接结束。
+    // 反之，返回 false 的话，就需要执行后面的方法。
+    if (!tryAcquire(arg) &&
+        acquireQueued(addWaiter(Node.EXCLUSIVE), arg))
+        selfInterrupt();
+}
+
+只要子类的 tryAcquire 方法返回 false，那么就说明获取锁事变，就需要将自己加入队列。
+private Node addWaiter(Node mode) {
+    // 创建一个独占类型的节点
+    Node node = new Node(Thread.currentThread(), mode);
+    // Try the fast path of enq; backup to full enq on failure
+    Node pred = tail;
+    // 如果 tail 节点不是 null，就将新节点的 pred 节点设置为 tail 节点。
+    // 并且将新节点设置成 tail 节点。
+    if (pred != null) {
+        node.prev = pred;
+        if (compareAndSetTail(pred, node)) {
+            pred.next = node;
+            return node;
+        }
+    }
+    // 如果 tail 节点是  null，或者 CAS 设置 tail 失败。
+    // 在 enq 方法中处理
+    enq(node);
+    return node;
+}
+
+将自己加入了尾部，并更新了 tail 节点。
+private Node enq(final Node node) {
+    for (;;) {
+        Node t = tail;
+        // 如果 tail 是 null，就创建一个虚拟节点，同时指向 head 和 tail，称为 初始化。
+        if (t == null) { // Must initialize
+            if (compareAndSetHead(new Node()))
+                tail = head;
+        } else {// 如果不是 null
+            // 和 上个方法逻辑一样，将新节点追加到 tail 节点后面，并更新队列的 tail 为新节点。
+            // 只不过这里是死循环的，失败了还可以再来 。
+            node.prev = t;
+            if (compareAndSetTail(t, node)) {
+                t.next = node;
+                return t;
+            }
+        }
+    }
+}
+
+enq 方法的逻辑是什么呢？当 tail 是 null（没有初始化队列），就需要初始化队列了。CAS 设置  tail 失败，也会走这里，需要在 enq 方法中循环设置 tail。直到成功。
+注意：这里会创建一个虚拟节点。
+2. 为什么 AQS 需要一个虚拟 head 节点
+为什么要创建一个虚拟节点呢？
+事情要从 Node 类的 waitStatus 变量说起，简称 ws。每个节点都有一个 ws 变量，用于这个节点状态的一些标志。初始状态是 0。如果被取消了，节点就是 1，那么他就会被 AQS 清理。
+还有一个重要的状态：SIGNAL —— -1，表示：当当前节点释放锁的时候，需要唤醒下一个节点。
+所有，每个节点在休眠前，都需要将前置节点的 ws 设置成 SIGNAL。否则自己永远无法被唤醒。
+而为什么需要这么一个 ws 呢？—— 防止重复操作。假设，当一个节点已经被释放了，而此时另一个线程不知道，再次释放。这时候就错误了。
+所以，需要一个变量来保证这个节点的状态。而且修改这个节点，必须通过 CAS 操作保证线程安全。
+So，回到我们之前的问题：为什么要创建一个虚拟节点呢？
+每个节点都必须设置前置节点的 ws 状态为 SIGNAL，所以必须要一个前置节点，而这个前置节点，实际上就是当前持有锁的节点。
+问题在于有个边界问题：第一个节点怎么办？他是没有前置节点的。
+
+那就创建一个假的。
+
+这就是为什么要创建一个虚拟节点的原因。
+总结下来就是：每个节点都需要设置前置节点的 ws 状态（这个状态为是为了保证数据一致性），而第一个节点是没有前置节点的，所以需要创建一个虚拟节点。
+回到我们的 acquireQueued 方法证实一下：
+// 这里返回的节点是新创建的节点，arg 是请求的数量
+final boolean acquireQueued(final Node node, int arg) {
+    boolean failed = true;
+    try {
+        boolean interrupted = false;
+        for (;;) {
+            // 找上一个节点
+            final Node p = node.predecessor();
+            // 如果上一个节点是 head ，就尝试获取锁
+            // 如果 获取成功，就将当前节点设置为 head，注意 head 节点是永远不会唤醒的。
+            if (p == head && tryAcquire(arg)) {
+                setHead(node);
+                p.next = null; // help GC
+                failed = false;
+                return interrupted;
+            }
+            // 在获取锁失败后，就需要阻塞了。
+            // shouldParkAfterFailedAcquire ---> 检查上一个节点的状态，如果是 SIGNAL 就阻塞，否则就改成 SIGNAL。
+            if (shouldParkAfterFailedAcquire(p, node) &&
+                parkAndCheckInterrupt())
+                interrupted = true;
+        }
+    } finally {
+        if (failed)
+            cancelAcquire(node);
+    }
+}
+
+这个方法有 2 个逻辑：
+
+如何将自己挂起？
+被唤醒之后做什么？
+
+先回答第二个问题： 被唤醒之后做什么？
+尝试拿锁，成功之后，将自己设置为 head，断开和 next 的连接。
+再看第二个问题：如何将自己挂起？
+注意：挂起自己之前，需要将前置节点的 ws 状态设置成 SIGNAL，告诉他：你释放锁的时候记得唤醒我。
+具体逻辑在 shouldParkAfterFailedAcquire 方法中：
+private static boolean shouldParkAfterFailedAcquire(Node pred, Node node) {
+    int ws = pred.waitStatus;
+    //  如果他的上一个节点的 ws 是 SIGNAL，他就需要阻塞。
+    if (ws == Node.SIGNAL)
+        // 阻塞
+        return true;
+    // 前任被取消。 跳过前任并重试。
+    if (ws > 0) {
+        do {
+            // 将前任的前任 赋值给 当前的前任
+            node.prev = pred = pred.prev;
+        } while (pred.waitStatus > 0);
+        // 将前任的前任的 next 赋值为 当前节点
+        pred.next = node;
+    } else {
+        // 如果没有取消 || 0 || CONDITION || PROPAGATE，那么就将前任的 ws 设置成 SIGNAL.
+        // 为什么必须是 SIGNAL 呢？
+        // 答：希望自己的上一个节点在释放锁的时候，通知自己（让自己获取锁）
+        compareAndSetWaitStatus(pred, ws, Node.SIGNAL);
+    }
+    // 重来
+    return false;
+}
+
+该方法的主要逻辑就是将前置节点的状态修改成 SIGNAL。其中如果前置节点被取消了，就跳过他。
+那么肯定，在前置节点释放锁的时候，肯定会唤醒这个节点。看看释放的逻辑吧。
+3. reelase 方法如何释放锁
+先来一波代码:
+public final boolean release(int arg) {
+    if (tryRelease(arg)) {
+        Node h = head;
+        // 所有的节点在将自己挂起之前，都会将前置节点设置成 SIGNAL，希望前置节点释放的时候，唤醒自己。
+        // 如果前置节点是 0 ，说明前置节点已经释放过了。不能重复释放了，后面将会看到释放后会将 ws 修改成0.
+        if (h != null && h.waitStatus != 0)
+            unparkSuccessor(h);
+        return true;
+    }
+    return false;
+}
+
+从这个方法的判断就可以看出，head 必须不等于 0。为什么呢？当一个节点尝试挂起自己之前，都会将前置节点设置成 SIGNAL -1，就算是第一个加入队列的节点，在获取锁失败后，也会将虚拟节点设置的 ws 设置成 SIGNAL。
+而这个判断也是防止多线程重复释放。
+那么肯定，在释放锁之后，肯定会将 ws 状态设置成 0。防止重复操作。
+代码如下：
+private void unparkSuccessor(Node node) {
+    int ws = node.waitStatus;
+    if (ws < 0)
+        // 将 head 节点的 ws 改成 0，清除信号。表示，他已经释放过了。不能重复释放。
+        compareAndSetWaitStatus(node, ws, 0);
+
+    Node s = node.next;
+    // 如果 next 是 null，或者 next 被取消了。就从 tail 开始向上找节点。
+    if (s == null || s.waitStatus > 0) {
+        s = null;
+        // 从尾部开始，向前寻找未被取消的节点，直到这个节点是 null，或者是 head。
+        // 也就是说，如果 head 的 next 是 null，那么就从尾部开始寻找，直到不是 null 为止，找到这个 head 就不管了。
+        // 如果是 head 的 next 不是 null，但是被取消了，那这个节点也会被略过。
+        for (Node t = tail; t != null && t != node; t = t.prev)
+            if (t.waitStatus <= 0)
+                s = t;
+    }
+    // 唤醒 head.next 这个节点。
+    // 通常这个节点是 head 的 next。
+    // 但如果 head.next 被取消了，就会从尾部开始找。
+    if (s != null)
+        LockSupport.unpark(s.thread);
+}
+
+如果 ws 小于 0，我们假设是 SIGNAL，就修改成 0.  证实了我们的想法。
+如果他的 next 是 null，说明 next 取消了，那么就从尾部开始向上寻找（不从尾部也没办法）。当然找的过程中，也跳过了失效的节点。
+最后，唤醒他。
+唤醒之后的逻辑是什么样子的还记得吗？
+复习一下：拿锁，设置自己为 head，断开前任 head 和自己的连接。
+
+4. 总结
+AQS 使用的 CLH 锁，需要一个虚拟 head 节点，这个节点的作用是防止重复释放锁。当第一个进入队列的节点没有前置节点的时候，就会创建一个虚拟的。
+
+
+新增节点时
+
+
+更新 tail
+
+
+
+唤醒节点时，之前的 head 取消了
+
+======
+返回主页 莫那·鲁道虽生犹死，向死而生。 http://thinkinjava.cn
+首页
+新随笔
+联系
+管理
+并发编程——详解 AQS CLH 锁
+从 acquire 方法开始 —— 获取
+为什么 AQS 需要一个虚拟 head 节点
+reelase 方法如何释放锁
+总结
+前言
+AQS 是 JUC 中的核心，其中封装了资源的获取和释放，在我们之前的 并发编程之 AQS 源码剖析 文章中，我们已经从 ReentranLock 那里分析了锁的获取和释放。但我有必要再次解释 AQS 的核心 CLH 锁。
+
+这里引用一下别人对于 CLH 的解释：
+
+CLH CLH(Craig, Landin, and Hagersten locks): 是一个自旋锁，能确保无饥饿性，提供先来先服务的公平性。
+
+CLH锁也是一种基于链表的可扩展、高性能、公平的自旋锁，申请线程只在本地变量上自旋，它不断轮询前驱的状态，如果发现前驱释放了锁就结束自旋。
+
+Java AQS 的设计对 CLH 锁进行了优化或者说变体。
+
+我们还是从代码开始说起吧。
+
+1. 从 acquire 方法开始 —— 获取
+acquire 方法是获取锁的常用方法。代码如下：
+
+public final void acquireQueued(int arg) {
+    // 当 tryAcquire 返回 true 就说明获取到锁了，直接结束。
+    // 反之，返回 false 的话，就需要执行后面的方法。
+    if (!tryAcquire(arg) &&
+        acquireQueued(addWaiter(Node.EXCLUSIVE), arg))
+        selfInterrupt();
+}
+只要子类的 tryAcquire 方法返回 false，那么就说明获取锁事变，就需要将自己加入队列。
+
+private Node addWaiter(Node mode) {
+    // 创建一个独占类型的节点
+    Node node = new Node(Thread.currentThread(), mode);
+    // Try the fast path of enq; backup to full enq on failure
+    Node pred = tail;
+    // 如果 tail 节点不是 null，就将新节点的 pred 节点设置为 tail 节点。
+    // 并且将新节点设置成 tail 节点。
+    if (pred != null) {
+        node.prev = pred;
+        if (compareAndSetTail(pred, node)) {
+            pred.next = node;
+            return node;
+        }
+    }
+    // 如果 tail 节点是  null，或者 CAS 设置 tail 失败。
+    // 在 enq 方法中处理
+    enq(node);
+    return node;
+}
+将自己加入了尾部，并更新了 tail 节点。
+
+private Node enq(final Node node) {
+    for (;;) {
+        Node t = tail;
+        // 如果 tail 是 null，就创建一个虚拟节点，同时指向 head 和 tail，称为 初始化。
+        if (t == null) { // Must initialize
+            if (compareAndSetHead(new Node()))
+                tail = head;
+        } else {// 如果不是 null
+            // 和 上个方法逻辑一样，将新节点追加到 tail 节点后面，并更新队列的 tail 为新节点。
+            // 只不过这里是死循环的，失败了还可以再来 。
+            node.prev = t;
+            if (compareAndSetTail(t, node)) {
+                t.next = node;
+                return t;
+            }
+        }
+    }
+}
+enq 方法的逻辑是什么呢？当 tail 是 null（没有初始化队列），就需要初始化队列了。CAS 设置 tail 失败，也会走这里，需要在 enq 方法中循环设置 tail。直到成功。
+
+注意：这里会创建一个虚拟节点。
+
+2. 为什么 AQS 需要一个虚拟 head 节点
+为什么要创建一个虚拟节点呢？
+
+事情要从 Node 类的 waitStatus 变量说起，简称 ws。每个节点都有一个 ws 变量，用于这个节点状态的一些标志。初始状态是 0。如果被取消了，节点就是 1，那么他就会被 AQS 清理。
+
+还有一个重要的状态：SIGNAL —— -1，表示：当当前节点释放锁的时候，需要唤醒下一个节点。
+
+所有，每个节点在休眠前，都需要将前置节点的 ws 设置成 SIGNAL。否则自己永远无法被唤醒。
+
+而为什么需要这么一个 ws 呢？—— 防止重复操作。假设，当一个节点已经被释放了，而此时另一个线程不知道，再次释放。这时候就错误了。
+
+所以，需要一个变量来保证这个节点的状态。而且修改这个节点，必须通过 CAS 操作保证线程安全。
+
+So，回到我们之前的问题：为什么要创建一个虚拟节点呢？
+
+每个节点都必须设置前置节点的 ws 状态为 SIGNAL，所以必须要一个前置节点，而这个前置节点，实际上就是当前持有锁的节点。
+
+问题在于有个边界问题：第一个节点怎么办？他是没有前置节点的。
+
+那就创建一个假的。
+
+这就是为什么要创建一个虚拟节点的原因。
+
+总结下来就是：每个节点都需要设置前置节点的 ws 状态（这个状态为是为了保证数据一致性），而第一个节点是没有前置节点的，所以需要创建一个虚拟节点。
+
+回到我们的 acquireQueued 方法证实一下：
+
+// 这里返回的节点是新创建的节点，arg 是请求的数量
+final boolean acquireQueued(final Node node, int arg) {
+    boolean failed = true;
+    try {
+        boolean interrupted = false;
+        for (;;) {
+            // 找上一个节点
+            final Node p = node.predecessor();
+            // 如果上一个节点是 head ，就尝试获取锁
+            // 如果 获取成功，就将当前节点设置为 head，注意 head 节点是永远不会唤醒的。
+            if (p == head && tryAcquire(arg)) {
+                setHead(node);
+                p.next = null; // help GC
+                failed = false;
+                return interrupted;
+            }
+            // 在获取锁失败后，就需要阻塞了。
+            // shouldParkAfterFailedAcquire ---> 检查上一个节点的状态，如果是 SIGNAL 就阻塞，否则就改成 SIGNAL。
+            if (shouldParkAfterFailedAcquire(p, node) &&
+                parkAndCheckInterrupt())
+                interrupted = true;
+        }
+    } finally {
+        if (failed)
+            cancelAcquire(node);
+    }
+}
+这个方法有 2 个逻辑：
+
+如何将自己挂起？
+被唤醒之后做什么？
+先回答第二个问题： 被唤醒之后做什么？
+
+尝试拿锁，成功之后，将自己设置为 head，断开和 next 的连接。
+
+再看第二个问题：如何将自己挂起？
+
+注意：挂起自己之前，需要将前置节点的 ws 状态设置成 SIGNAL，告诉他：你释放锁的时候记得唤醒我。
+
+具体逻辑在 shouldParkAfterFailedAcquire 方法中：
+
+private static boolean shouldParkAfterFailedAcquire(Node pred, Node node) {
+    int ws = pred.waitStatus;
+    //  如果他的上一个节点的 ws 是 SIGNAL，他就需要阻塞。
+    if (ws == Node.SIGNAL)
+        // 阻塞
+        return true;
+    // 前任被取消。 跳过前任并重试。
+    if (ws > 0) {
+        do {
+            // 将前任的前任 赋值给 当前的前任
+            node.prev = pred = pred.prev;
+        } while (pred.waitStatus > 0);
+        // 将前任的前任的 next 赋值为 当前节点
+        pred.next = node;
+    } else {
+        // 如果没有取消 || 0 || CONDITION || PROPAGATE，那么就将前任的 ws 设置成 SIGNAL.
+        // 为什么必须是 SIGNAL 呢？
+        // 答：希望自己的上一个节点在释放锁的时候，通知自己（让自己获取锁）
+        compareAndSetWaitStatus(pred, ws, Node.SIGNAL);
+    }
+    // 重来
+    return false;
+}
+该方法的主要逻辑就是将前置节点的状态修改成 SIGNAL。其中如果前置节点被取消了，就跳过他。
+
+那么肯定，在前置节点释放锁的时候，肯定会唤醒这个节点。看看释放的逻辑吧。
+
+3. reelase 方法如何释放锁
+先来一波代码:
+
+public final boolean release(int arg) {
+    if (tryRelease(arg)) {
+        Node h = head;
+        // 所有的节点在将自己挂起之前，都会将前置节点设置成 SIGNAL，希望前置节点释放的时候，唤醒自己。
+        // 如果前置节点是 0 ，说明前置节点已经释放过了。不能重复释放了，后面将会看到释放后会将 ws 修改成0.
+        if (h != null && h.waitStatus != 0)
+            unparkSuccessor(h);
+        return true;
+    }
+    return false;
+}
+从这个方法的判断就可以看出，head 必须不等于 0。为什么呢？当一个节点尝试挂起自己之前，都会将前置节点设置成 SIGNAL -1，就算是第一个加入队列的节点，在获取锁失败后，也会将虚拟节点设置的 ws 设置成 SIGNAL。
+
+而这个判断也是防止多线程重复释放。
+
+那么肯定，在释放锁之后，肯定会将 ws 状态设置成 0。防止重复操作。
+
+代码如下：
+
+private void unparkSuccessor(Node node) {
+    int ws = node.waitStatus;
+    if (ws < 0)
+        // 将 head 节点的 ws 改成 0，清除信号。表示，他已经释放过了。不能重复释放。
+        compareAndSetWaitStatus(node, ws, 0);
+
+    Node s = node.next;
+    // 如果 next 是 null，或者 next 被取消了。就从 tail 开始向上找节点。
+    if (s == null || s.waitStatus > 0) {
+        s = null;
+        // 从尾部开始，向前寻找未被取消的节点，直到这个节点是 null，或者是 head。
+        // 也就是说，如果 head 的 next 是 null，那么就从尾部开始寻找，直到不是 null 为止，找到这个 head 就不管了。
+        // 如果是 head 的 next 不是 null，但是被取消了，那这个节点也会被略过。
+        for (Node t = tail; t != null && t != node; t = t.prev)
+            if (t.waitStatus <= 0)
+                s = t;
+    }
+    // 唤醒 head.next 这个节点。
+    // 通常这个节点是 head 的 next。
+    // 但如果 head.next 被取消了，就会从尾部开始找。
+    if (s != null)
+        LockSupport.unpark(s.thread);
+}
+如果 ws 小于 0，我们假设是 SIGNAL，就修改成 0. 证实了我们的想法。
+
+如果他的 next 是 null，说明 next 取消了，那么就从尾部开始向上寻找（不从尾部也没办法）。当然找的过程中，也跳过了失效的节点。
+
+最后，唤醒他。
+
+唤醒之后的逻辑是什么样子的还记得吗？
+
+复习一下：拿锁，设置自己为 head，断开前任 head 和自己的连接。
+
+4. 总结
+AQS 使用的 CLH 锁，需要一个虚拟 head 节点，这个节点的作用是防止重复释放锁。当第一个进入队列的节点没有前置节点的时候，就会创建一个虚拟的。
+
+来一幅图尝试解释 AQS 吧：
+
+新增节点时
+image.png
+
+更新 tail
+
+image.png
+
+唤醒节点时，之前的 head 取消了
+image.png
+
+
