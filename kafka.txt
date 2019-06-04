@@ -127,7 +127,7 @@
 6．4．3　分区leader的选举
 6．5　参数解密
 6．5．1　broker．id
-6．5．2　bootstrap．servers
+6．5．2　bootstrap．servers111111111111
 6．5．3　服务端参数列表
 6．6　总结
 第7章　深入客户端

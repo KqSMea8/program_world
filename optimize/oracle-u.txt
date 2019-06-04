@@ -74,56 +74,12 @@ FIRST_ROWS(n)格式如下：
 /*+ FIRST_ROWS(n) */
 使用范例
 
-1
-
-2
-
-3
 select /*+ first_rows(10) */ empno,ename,sal,job
   from emp
  where deptno=30;
 上述SQL中使用了/*+ first_rows(10) */，其含义是告诉优化器我们想以最短的响应时间返回满足条件"deptno=30"的前10条记录。
 注意，FIRST_ROWS(n) Hint和优化器模式FIRST_ROWS_n不是一一对应的。优化器模式FIRST_ROWS_n中的n只能是1、10、100、1000。但FIRST_ROWS(n) Hint中的n还可以是其他值。
 
-1
-
-2
-
-3
-
-4
-
-5
-
-6
-
-7
-
-8
-
-9
-
-10
-
-11
-
-12
-
-13
-
-14
-
-15
-
-16
-
-17
-
-18
-
-19
-
-20
 scott@TEST>alter session set optimizer_mode=first_rows_9;
 ERROR:
 ORA-00096: invalid value FIRST_ROWS_9 for parameter optimizer_mode, must be from among first_rows_1000, first_rows_100, first_rows_10, first_rows_1, first_rows, all_rows, choose,rule

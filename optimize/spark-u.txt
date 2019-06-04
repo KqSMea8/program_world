@@ -1,8 +1,5 @@
 
 
-
-在Spark中提及最多的是RDD，而RDD所交互的数据是通过Storage来实现和管理
-
 Storage模块整体架构
 
 1. 存储层

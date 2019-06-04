@@ -1,0 +1,4 @@
+分区分配策略　RangeAssignor分配策略
+      7．1．2　RoundRobinAssignor分配策略
+      7．1．3　StickyAssignor分配策略
+      7．1．4　自定义分区分配策略
