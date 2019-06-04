@@ -18,15 +18,6 @@ ThreadLocal使用场合主要解决多线程中数据因并发产生不一致的
      * maintained by the InheritableThreadLocal class.
      */
     ThreadLocal.ThreadLocalMap inheritableThreadLocals = null;
-1
-2
-3
-4
-5
-6
-7
-8
-9
 很多人会有这样的无解：感觉这个ThreadLocal对象建立了一个类似于全局的map，然后每个线程作为map的key来存取对应的线程本地的value。其实是ThreadLocal类中有一个ThreadLocalMap静态内部类，可以简单的理解为一个map，这个map为每个线程复制一个变量的“拷贝”存储其中。下面是ThreadLocalMap的部分源码：
 【代码2】
 
