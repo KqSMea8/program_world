@@ -1,0 +1,294 @@
+我们已经知道了 JMS 规范的目的是为了使得 Java 应用程
+序能够访问现有 MOM (消息中间件)系统，形成一套统一
+的标准规范，解决不同消息中间件之间的协作问题。在创
+建 JMS 规范时，设计者希望能够结合现有的消息传送的精
+髓，比如说
+1. 不同的消息传送模式或域，例如点对点消息传送和发布
+/订阅消息传送
+2. 提供于接收同步和异步消息的工具
+3. 对可靠消息传送的支持
+4. 常见消息格式，例如流、文本和字节
+
+
+JMS  的体系结构
+通过 JMS 规范结合 ActiveMQ 实现消息发
+送案例
+➢ 查看 gitlab 上的代码
+
+
+消息传递域
+JMS 规范中定义了两种消息传递域：点对点（point-to-
+point ） 消 息 传 递 域 和 发 布 / 订 阅 消 息 传 递 域
+(publish/subscribe)
+简单理解就是：有点类似于我们通过 qq 聊天的时候，在群
+里面发消息和给其中一个同学私聊消息。在群里发消息，
+所有群成员都能收到消息。私聊消息只能被私聊的学员能
+收到消息，
+
+
+点对点消息传递域
+1. 每个消息只能有一个消费者
+2. 消息的生产者和消费者之间没有时间上的相关性。无论
+消费者在生产者发送消息的时候是否处于运行状态，都
+可以提取消息
+
+
+
+
+发布订阅消息传递域
+1. 每个消息可以有多个消费者
+2. 生产者和消费者之间有时间上的相关性。订阅一个主题
+的消费者只能消费自它订阅之后发布的消息。JMS 规范
+允许客户创建持久订阅，这在一定程度上降低了时间上
+的相关性要求。持久订阅允许消费者消费它在未处于激活状态时发送的消息
+
+消息结构组成
+JMS 消息由及部分组成：消息头、属性、消息体
+
+消息头
+
+消息头(Header) - 消息头包含消息的识别信息和路由信息，
+消息头包含一些标准的属性如：
+JMSDestination 消息发送的目的地，queue或者topic)
+JMSDeliveryMode 传送模式。持久模式和非持久模式
+JMSPriority 消息优先级（优先级分为 10 个级别，
+从 0(最低)到 9(最高). 如果不设定优先级，默认级别是 4。
+需要注意的是，JMS provider 并不一定保证按照优先级的
+顺序提交消息）
+JMSMessageID 唯一识别每个消息的标识
+
+属性
+按类型可以分为应用设置的属性，标准属性和消息中间件
+定义的属性
+1. 应用程序设置和添加的属性，比如
+Message.setStringProperty(“key”,”value”);
+通过下面的代码可以获得自定义属性的，在接收端的代
+码中编写
+在发送端，定义消息属性
+message.setStringProperty("Mic","Hello
+World");
+在接收端接收数据
+做技术人的指路明灯，做职场生涯的精神导师
+Enumeration
+enumeration=message.getPropertyNames();
+while(enumeration.hasMoreElements()){
+String
+name=enumeration.nextElement().toString();
+System.out.println("name:"+name+":"+messag
+e.getStringProperty(name));
+System.out.println();
+}
+2. JMS 定义的属性
+使用“JMSX”作为属性名的前缀，通过下面这段代码可以
+返回所有连接支持的 JMSX 属性的名字
+3. JMS provider 特定的属性
+消息体
+就是我们需要传递的消息内容，JMS API 定义了 5 中消息
+做技术人的指路明灯，做职场生涯的精神导师
+体格式，可以使用不同形式发送接收数据，并可以兼容现
+有的消息格式，其中包括
+TextMessage  java.lang.String 对象，如 xml 文件内
+容
+MapMessage  名/值对的集合，名是 String 对象，值
+类型可以是 Java 任何基本类型
+BytesMessage  字节流
+StreamMessage  Java 中的输入输出流
+ObjectMessage  Java 中的可序列化对象
+Message  没有消息体，只有消息头和属性。
+绝大部分的时候，我们只需要基于消息体进行构造
+
+
+
+持久订阅
+
+持久订阅的概念，也很容易理解，比如还是以 QQ 为例，
+我们把 QQ 退出了，但是下次登录的时候，仍然能收到离
+线的消息。
+持久订阅就是这样一个道理，持久订阅有两个特点：
+1. 持久订阅者和非持久订阅者针对的 Domain 是 Pub/Sub，
+而不是 P2P
+2. 当 Broker 发送消息给订阅者时，如果订阅者处于 未激
+活状态状态：持久订阅者可以收到消息，而非持久订阅
+者则收不到消息。
+做技术人的指路明灯，做职场生涯的精神导师
+当然这种方式也有一定的影响：当持久订阅者处于 未激活
+状态时，Broker 需要为持久订阅者保存消息；如果持久订
+阅者订阅的消息太多则会溢出。
+消费端改动
+connection=connectionFactory.createConnectio
+n();
+connection.setClientID("Mic-001");
+connection.start();
+Session
+session=connection.createSession(Boolean.TRU
+E,Session.AUTO_ACKNOWLEDGE);
+Topic
+destination=session.createTopic("myTopic");
+MessageConsumer
+consumer=session.createDurableSubscriber(des
+tination,"Mic-001");
+TextMessage
+message=(TextMessage)consumer.receive();
+System.out.println(message.getText());
+修改三处地方，然后先启动消费端去注册一个持久订阅。
+做技术人的指路明灯，做职场生涯的精神导师
+持久订阅时，客户端向 JMS 服务器注册一个自己身份的 ID，
+当这个客户端处于离线时，JMS Provider 会为这个 ID 保
+存所有发送到主题的消息，当客户再次连接到 JMS
+Provider 时，会根据自己的 ID 得到所有当自己处于离线时
+发送到主题的消息。
+这个身份ID，在代码中的体现就是connection的ClientID，
+这个其实很好理解，你要想收到朋友发送的 qq 消息，前提
+就是你得先注册个 QQ 号，而且还要有台能上网的设备，
+电脑或手机。设备就相当于是 clientId 是唯一的；qq 号相
+当于是订阅者的名称，在同一台设备上，不能用同一个 qq
+号挂 2 个客户端。连接的 clientId 必须是唯一的，订阅者
+的名称在同一个连接内必须唯一。这样才能唯一的确定连接和订阅者。
+
+activeMQ 控制台
+设置持久订阅以后，在控制台能看到下图的变化
+
+JMS 消息的可靠性机制
+理论上来说，我们需要保证消息中间件上的消息，只有被
+消费者确认过以后才会被签收，相当于我们寄一个快递出
+去，收件人没有收到快递，就认为这个包裹还是属于待签
+收状态，这样才能保证包裹能够安全达到收件人手里。消
+息中间件也是一样。
+消息的消费通常包含 3 个阶段：客户接收消息、客户处理
+消息、消息被确认
+首先，来简单了解 JMS 的事务性会话和非事务性会话的概
+念
+
+JMS Session 接口提供了 commit 和 rollback 方法。事务提
+交意味着生产的所有消息被发送，消费的所有消息被确认；
+事务回滚意味着生产的所有消息被销毁，消费的所有消息
+被恢复并重新提交，除非它们已经过期。 事务性的会话总
+是牵涉到事务处理中，commit 或 rollback 方法一旦被调
+用，一个事务就结束了，而另一个事务被开始。关闭事务
+性会话将回滚其中的事务
+
+在事务型会话中
+在事务状态下进行发送操作，消息并未真正投递到中间件，
+而只有进行 session.commit 操作之后，消息才会发送到中
+做技术人的指路明灯，做职场生涯的精神导师
+间件，再转发到适当的消费者进行处理。如果是调用
+rollback 操作，则表明，当前事务期间内所发送的消息都取
+消掉。通过在创建 session 的时候使用 true or false 来决定
+当前的会话是事务性还是非事务性
+connection.createSession(Boolean.TRUE,Session.AUTO_
+ACKNOWLEDGE);
+在事务性会话中，消息的确认是自动进行，也就是通过
+session.commit()以后，消息会自动确认。
+➢ 必须保证发送端和接收端都是事务性会话
+在非事务型会话中
+消 息 何 时 被 确 认 取 决 于 创 建 会 话 时 的 应 答 模 式
+(acknowledgement mode). 有三个可选项
+Session.AUTO_ACKNOWLEDGE
+当客户成功的从 receive 方法返回的时候，或者从
+MessageListenner.onMessage 方法成功返回的时候，会话
+自动确认客户收到消息。
+Session.CLIENT_ACKNOWLEDGE
+客户通过调用消息的 acknowledge 方法确认消息。
+做技术人的指路明灯，做职场生涯的精神导师
+CLIENT_ACKNOWLEDGE 特性
+在这种模式中，确认是在会话层上进行，确认一个被消费
+的消息将自动确认所有已被会话消费的消息。列如，如果
+一个消息消费者消费了 10 个消息，然后确认了第 5 个消
+息，那么 0~5 的消息都会被确认 ->
+演示如下： 发送端发送10个消息，接收端接收10个消息，
+但是在 i==5 的时候，调用 message.acknowledge()进行
+确认，会发现 0~4 的消息都会被确认
+Session.DUPS_ACKNOWLEDGE
+消息延迟确认。指定消息提供者在消息接收者没有确认发
+送时重新发送消息，这种模式不在乎接受者收到重复的消
+息。
+
+
+消息 的 持久化 存储
+消息的持久化存储也是保证可靠性最重要的机制之一，也
+就是消息发送到 Broker 上以后，如果 broker 出现故障宕
+机了，那么存储在 broker 上的消息不应该丢失。可以通过
+下面的代码来设置消息发送端的持久化和非持久化特性
+MessageProducer
+producer=session.createProducer(destination)
+;
+producer.setDeliveryMode(DeliveryMode.PERSIS
+TENT);
+➢ 对于非持久的消息，JMS provider 不会将它存到文件/数
+据库等稳定的存储介质中。也就是说非持久消息驻留在
+内存中，如果 jms provider 宕机，那么内存中的非持久
+消息会丢失
+➢ 对于持久消息，消息提供者会使用存储-转发机制，先将
+消息存储到稳定介质中，等消息发送成功后再删除。如
+果 jms provider 挂掉了，那么这些未送达的消息不会丢
+失；jms provider 恢复正常后，会重新读取这些消息，
+并传送给对应的消费者。
+
+从 JMS 规范来了解 ActiveMQ
+Java 消息服务（Java Message Service）是 java 平台中关
+于面向消息中间件的 API，用于在两个应用程序之间，或者
+分布式系统中发送消息，进行异步通信。
+JMS 是一个与具体平台无关的 API，绝大多数 MOM
+（Message Oriented Middleware）（面向消息中间件）提
+供商都对 JMS 提供了支持。今天给大家讲的 ActiveMQ 就
+做技术人的指路明灯，做职场生涯的精神导师
+是其中一个实现
+
+
+JMS的概念和规范
+消息传递域
+点对点(p2p)
+1.每个消息只能有一个消费者
+2.消息的生产者和消费者之间没有时间上的相关性。无论消费者在生产者发送消息的时候是否处于运行状态，都可以提取消息
+发布订阅(pub/sub)
+1.每个消息可以有多个消费者
+2.消息的生产者和消费者之间存在时间上的相关性，订阅一个主题的消费者只能消费自它订阅之后发布的消息。JMS规范允许提供客户端创建持久订阅
+JMS API
+ConnectionFactory  连接工厂
+Connection  			封装客户端与JMS provider之间的一个虚拟的连接
+Session					生产和消费消息的一个单线程上下文； 用于创建producer、consumer、message、queue..\
+Destination				消息发送或者消息接收的目的地
+MessageProducer/consumer	消息生产者/消费者
+消息组成
+消息头
+包含消息的识别信息和路由信息
+消息体
+TextMessage
+MapMessage
+BytesMessage
+StreamMessage   输入输出流
+ObjectMessage  可序列化对象
+属性
+
+JMS的可靠性机制
+JMS消息之后被确认后，才会认为是被成功消费。消息的消费包含三个阶段： 客户端接收消息、客户端处理消息、消息被确认
+事务性会话
+
+ 如上图，设置为true的时候，消息会在session.commit以后自动签收
+非事务性会话
+
+在该模式下，消息何时被确认取决于创建会话时的应答模式
+AUTO_ACKNOWLEDGE
+当客户端成功从recive方法返回以后，或者[MessageListener.onMessage] 方法成功返回以后，会话会自动确认该消息
+CLIENT_ACKNOWLEDGE
+客户端通过调用消息的textMessage.acknowledge();确认消息。
+在这种模式中，如果一个消息消费者消费一共是10个消息，那么消费了5个消息，然后在第5个消息通过textMessage.acknowledge()，那么之前的所有消息都会被消确认
+DUPS_OK_ACKNOWLEDGE
+延迟确认
+
+本地事务
+在一个JMS客户端，可以使用本地事务来组合消息的发送和接收。JMS Session 接口提供了commit和rollback方法。
+JMS Provider会缓存每个生产者当前生产的所有消息，直到commit或者rollback，commit操作将会导致事务中所有的消息被持久存储；rollback意味着JMS Provider将会清除此事务下所有的消息记录。在事务未提交之前，消息是不会被持久化存储的，也不会被消费者消费
+事务提交意味着生产的所有消息都被发送。消费的所有消息都被确认；
+事务回滚意味着生产的所有消息被销毁，消费的所有消息被恢复，也就是下次仍然能够接收到发送端的消息，除非消息已经过期了
+
+
+JMS （pub/sub）模型
+1.订阅可以分为非持久订阅和持久订阅
+2.当所有的消息必须接收的时候，则需要用到持久订阅。反之，则用非持久订阅
+JMS  （P2P）模型
+1.如果session关闭时，有一些消息已经收到，但还没有被签收，那么当消费者下次连接到相同的队列时，消息还会被签收
+2.如果用户在receive方法中设定了消息选择条件，那么不符合条件的消息会留在队列中不会被接收
+3.队列可以长久保存消息直到消息被消费者签收。消费者不需要担心因为消息丢失而时刻与jms provider保持连接状态
+Broker
+

@@ -1,0 +1,303 @@
+web页面弹出窗口代码大全
+
+//-----------按钮提示框----------//
+<input type="button" name="btn2" id="btn2" value="删除" onclick="return confirm('Yes/No'););
+
+//-----------按钮提示框----------//
+<input type="button" name="btn2" id="btn2" value="提示" onclick="javaScript:alert('您确定要删除吗？');
+
+//-----------提交按钮----------//
+<input type="button" value="提交" onclick="javaScript:window.location.href='http://angelialily.javaeye.com/';"/>
+
+//-----------关闭按钮----------//
+<input type="button" value="关闭" onclick="javaScript:window.close();">
+
+//-----------返回并关闭连接----------//
+<a href="#" onclick="javascript:;window.opener.location.reload();window.close()">返回</a>
+javaScript:window.location.reload();//返回当前页并刷新
+
+//-----------返回上一级页面----------//
+<input type="button" name="button" value="< 返回" onclick="javascript:history.go(-1)"/>
+
+//关闭,父窗口弹出对话框,子窗口直接关闭
+this.Response.Write("<script language=javascript>window.close();</script>");
+
+//关闭,父窗口和子窗口都不弹出对话框,直接关闭
+this.Response.Write("<script>");
+this.Response.Write("{top.opener =null;top.close();}");
+this.Response.Write("</script>");
+
+//弹出窗口刷新当前页面width=200 height=200菜单。菜单栏,工具条,地址栏,状态栏全没有
+this.Response.Write("<script language=javascript>window.open('rows.aspx','newwindow','width=200,height=200')</script>");
+
+//弹出窗口刷新当前页面
+this.Response.Write("<script language=javascript>window.open('rows.aspx')</script>");
+this.Response.Write("<script>window.open('WebForm2.aspx','_blank');</script>");
+
+//弹出提示窗口跳到webform2.aspx页(在一个IE窗口中)
+this.Response.Write(" <script language=javascript>alert('注册成功'); window.window.location.href='WebForm2.aspx';</script> ");
+
+//关闭当前子窗口,刷新父窗口
+this.Response.Write("<script>window.opener.location.href=window.opener.location.href;window.close();</script>");
+this.Response.Write("<script>window.opener.location.replace(window.opener.document.referrer);window.close();</script>");
+
+//子窗口刷新父窗口
+this.Response.Write("<script>window.opener.location.href=window.opener.location.href;</script>");
+this.Response.Write("<script>window.opener.location.href='WebForm1.aspx';</script>");
+
+//弹出提示窗口.确定后弹出子窗口(WebForm2.aspx)
+this.Response.Write("<script language='javascript'>alert('发表成功！');window.open('WebForm2.aspx')</script>");
+
+//弹出提示窗口,确定后,刷新父窗口
+this.Response.Write("<script>alert('发表成功！');window.opener.location.href=window.opener.location.href;</script>");
+
+//弹出相同的一页
+<INPUT type="button" value="Button" onclick="javascript:window.open(window.location.href)">
+
+//
+Response.Write("parent.mainFrameBottom.location.href='yourwebform.aspx?temp=" +str+"';");
+
+
+<SCRIPT LANGUAGE="javascript">
+<!--
+window.open ('page.html', 'newwindow', 'height=100, width=400, top=0, left=0, toolbar=no, menubar=no, scrollbars=no, resizable=no,location=n o, status=no') //这句要写成一行
+-->
+</SCRIPT>
+　　
+　　参数解释：
+　　
+　　<SCRIPT LANGUAGE="javascript"> js脚本开始；
+　　window.open 弹出新窗口的命令；
+　　'page.html' 弹出窗口的文件名；
+　　'newwindow' 弹出窗口的名字（不是文件名），非必须，可用空''代替；
+　　height=100 窗口高度；
+　　width=400 窗口宽度；
+　　top=0 窗口距离屏幕上方的象素值；
+　　left=0 窗口距离屏幕左侧的象素值；
+　　toolbar=no 是否显示工具栏，yes为显示；
+　　menubar，scrollbars 表示菜单栏和滚动栏。
+　　resizable=no 是否允许改变窗口大小，yes为允许；
+　　location=no 是否显示地址栏，yes为允许；
+　　status=no 是否显示状态栏内的信息（通常是文件已经打开），yes为允许；
+　　</SCRIPT> js脚本结束
+
+'newwin':隐藏菜单栏地址栏工具条
+width=50:宽度
+height=50:高度
+scrollbars=yes/no:滚动条
+top=50:窗口距离屏幕上方
+left=50:窗口距离屏幕左侧
+例:window.open('detail.aspx?ID="+e.Item.Cells[1].Text+"','newwin','width=750,height=600,scrollbars=yes,top=50,left=50');");
+this.Response.Write("<Script>window.open('WebForm2.aspx','','toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=no,resizable=yes,width=750,height=470,left=80,top=40');</script>");
+
+例:
+this.Response.Write("<script>alert('发表成功！');window.opener.location.href=window.opener.location.href;</script>");
+this.Response.Write("<script>");
+this.Response.Write("{top.opener =null;top.close();}");
+this.Response.Write("</script>");
+
+例: linkcolumn1.DataNavigateUrlFormatString="javascript:varwin=window.open('edit_usr.aspx?actid={0}','newwin','width=750,height=600,scrollbars=yes,top=50,left=50');window.close()";
+
+this.Response.Write("<Script>window.open('WebForm7.aspx','','toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=no,resizable=yes,width=750,height=470,left=80,top=40');</script>");
+
+弹出跟你当前的窗口有没有菜单工具栏没有关系,你只要在页面中写一个脚本它就弹出了.比如
+<a href=# onclick="window.open('xxx.aspx','窗口名称','参数');">xxxxx</a>
+
+以下列出一些弹出窗口的参数,你可自行设定,参数之间用逗号分隔
+
+可选。字符串--列出对象表并用逗号分开。每一项都有自己的值，他们将被分开（如："fullscreen=yes, toolbar=yes"）。下面是被支持的各种特性。
+channelmode = { yes | no | 1 | 0 } 是否在窗口中显示阶梯模式。默认为no。
+directories = { yes | no | 1 | 0 } 是否在窗口中显示各种按钮。默认为yes。
+fullscreen = { yes | no | 1 | 0 } 是否用全屏方式显示浏览器。默认为no。使用这一特性时需要非常小心。因为这一属性可能会隐藏浏览器的标题栏和菜单，你必须提供一个按钮或者其他提示来帮助使用者关闭这一浏览窗口。ALT+F4可以关闭窗口。一个全屏窗口必须使用阶梯(channelmode)模式。
+height = number 指定窗口的高度，单位是像素。最小值是100。
+left = number 指定窗口距左边框的距离，单位是像素。值必须大于或者等于0。
+location = { yes | no | 1 | 0 } 指定是否在窗口中显示地址栏。默认为yes。
+menubar = { yes | no | 1 | 0 } 指定是否在窗口中显示菜单栏。默认为yes。
+resizable = { yes | no | 1 | 0 } 指定是否在窗口中显示可供用户调整大小的句柄。默认为yes。
+scrollbars = { yes | no | 1 | 0 } 指定是否在窗口中显示横向或者纵向滚动条。默认为yes。
+status = { yes | no | 1 | 0 } 指定是否在窗口中显示状态栏。默认为yes。
+titlebar = { yes | no | 1 | 0 } 指定是否在窗口中显示标题栏。在非调用HTML Application或者一个对话框的情况下，这一项将被忽略。默认为yes。
+toolbar = { yes | no | 1 | 0 } 指定是否在窗口中显示工具栏，包括如前进、后退、停止等按钮。默认为yes。
+top = number 指定窗口顶部的位置，单位是像素。值必须大于或者等于0。
+width = number 指定窗口的宽度，单位是像素。最小值是100。
+
+【1、最基本的弹出窗口代码】
+　　
+　　<SCRIPT LANGUAGE="javascript">
+　　<!--
+　　window.open ('page.html')
+　　-->
+　　</SCRIPT>
+　　
+　　因为这是一段javascripts代码，所以它们应该放在<SCRIPT LANGUAGE="javascript">标签和</script>之间。<!-- 和 -->是对一些版本低的浏览器起作用，在这些老浏览器中不会将标签中的代码作为文本显示出来。要养成这个好习惯啊。window.open ('page.html') 用于控制弹出新的窗口page.html，如果page.html不与主窗口在同一路径下，前面应写明路径，绝对路径(http://)和相对路径(.. /)均可。用单引号和双引号都可以，只是不要混用。这一段代码可以加入HTML的任意位置，<head>和</head>之间可 以，<body>间</body>也可以，越前越早执行，尤其是页面代码长，又想使页面早点弹出就尽量往前放。
+　
+【2、经过设置后的弹出窗口】
+　　
+　　下面再说一说弹出窗口的设置。只要再往上面的代码中加一点东西就可以了。我们来定制这个弹出的窗口的外观，尺寸大小，弹出的位置以适应该页面的具体情况。
+　　
+　　<SCRIPT LANGUAGE="javascript">
+　　<!--
+　　window.open ('page.html', 'newwindow', 'height=100, width=400, top=0, left=0, toolbar=no, menubar=no, scrollbars=no, resizable=no,location=n o, status=no') //这句要写成一行
+　　-->
+　　</SCRIPT>
+　　
+　　参数解释：
+　　
+　　<SCRIPT LANGUAGE="javascript"> js脚本开始；
+　　window.open 弹出新窗口的命令；
+　　'page.html' 弹出窗口的文件名；
+　　'newwindow' 弹出窗口的名字（不是文件名），非必须，可用空''代替；
+　　height=100 窗口高度；
+　　width=400 窗口宽度；
+　　top=0 窗口距离屏幕上方的象素值；
+　　left=0 窗口距离屏幕左侧的象素值；
+　　toolbar=no 是否显示工具栏，yes为显示；
+　　menubar，scrollbars 表示菜单栏和滚动栏。
+　　resizable=no 是否允许改变窗口大小，yes为允许；
+　　location=no 是否显示地址栏，yes为允许；
+　　status=no 是否显示状态栏内的信息（通常是文件已经打开），yes为允许；
+　　</SCRIPT> js脚本结束
+　　
+【3、用函数控制弹出窗口】
+　　
+　　下面是一个完整的代码。
+　　<html>
+　　<head>
+　　<script LANGUAGE="JavaScript">
+　　<!--
+　　function openwin() {
+　　window.open ("page.html", "newwindow", "height=100, width=400, toolbar =no, menubar=no, scrollbars=no, resizable=no, location=no, status=no") //写成一行
+　　}
+　　//-->
+　　</script>
+　　</head>
+　　<body onload="openwin()">
+　　任意的页面内容...
+　　</body>
+　　</html>
+
+　　这里定义了一个函数openwin(),函数内容就是打开一个窗口。在调用它之前没有任何用途。怎么调用呢？
+
+　　方法一：<body onload="openwin()"> 浏览器读页面时弹出窗口；
+　　方法二：<body onunload="openwin()"> 浏览器离开页面时弹出窗口；
+　　方法三：用一个连接调用：
+　　<a href="#" onclick="openwin()">打开一个窗口</a>
+　　注意：使用的“#”是虚连接。
+　　方法四：用一个按钮调用：
+　　<input type="button" onclick="openwin()" value="打开窗口">
+　
+【4、同时弹出2个窗口】
+　　
+　　 对源代码稍微改动一下：
+　　
+　　<script LANGUAGE="JavaScript">
+　　<!--
+　　function openwin() {
+　　window.open ("page.html", "newwindow", "height=100, width=100, top=0, left=0,toolbar=no, menubar=no, scrollbars=no, resizable=no, location=n o, status=no")//写成一行
+　　window.open ("page2.html", "newwindow2", "height=100, width=100, top=1 00, left=100,toolbar=no, menubar=no, scrollbars=no, resizable=no, loca tion=no, status=no")//写成一行
+　　}
+　　//-->
+　　</script>
+　　为避免弹出的2个窗口覆盖，用top和left控制一下弹出的位置不要相互覆盖即可 。最后用上面说过的四种方法调用即可。
+　　注意：2个窗口的name(newwindows和newwindow2)不要相同，或者干脆全部为空。
+
+【5、主窗口打开文件1.htm，同时弹出小窗口page.html】
+
+　　如下代码加入主窗口<head>区：
+　　<script language="javascript">
+　　<!--
+　　function openwin() {
+　　window.open("page.html","","width=200,height=200")
+　　}
+　　//-->
+　　</script>
+　　加入<body>区：
+　　<a href="1.htm" onclick="openwin()">open</a>即可。
+
+【6、弹出的窗口之定时关闭控制】
+　　
+　　下面我们再对弹出的窗口进行一些控制，效果就更好了。如果我们再将一小段 代码加入弹出的页面(注意是加入page.html的HTML中，不是主页面中)，让它10秒后自动关闭是不是更酷了？
+首先，将如下代码加入page.html文件的<head>区：
+　　<script language="JavaScript">
+　　function closeit()
+　　{
+　　setTimeout("self.close()",10000) //毫秒
+　　}
+　　</script>
+　　然后，再用<body onload="closeit()"> 这一句话代替page.html中原有的<BODY>这一句就可以了。(这一句话千万不要忘记写啊！这一句的作用是调用关闭窗口的代码，10秒钟后就自行关闭该窗口。)
+
+【7、在弹出窗口中加上一个关闭按钮】
+
+　　<FORM>
+　　<INPUT TYPE='BUTTON' VALUE='关闭' onClick='window.close()'>
+　　</FORM>
+　　呵呵，现在更加完美了！
+
+【8、内包含的弹出窗口-一个页面两个窗口】
+
+　　上面的例子都包含两个窗口，一个是主窗口，另一个是弹出的小窗口。通过下面的例子，你可以在一个页面内完成上面的效果。
+
+　　<html>
+　　<head>
+　　<SCRIPT LANGUAGE="JavaScript">
+　　function openwin()
+　　{
+　　OpenWindow=window.open("", "newwin", "height=250, width=250,toolbar=no ,scrollbars="+scroll+",menubar=no");
+　　//写成一行
+　　OpenWindow.document.write("<TITLE>例子</TITLE>")
+　　OpenWindow.document.write("<BODY BGCOLOR=#ffffff>")
+　　OpenWindow.document.write("<h1>Hello!</h1>")
+　　OpenWindow.document.write("New window opened!")
+　　OpenWindow.document.write("</BODY>")
+　　OpenWindow.document.write("</HTML>")
+　　OpenWindow.document.close()
+　　}
+　　</SCRIPT>
+　　</head>
+　　<body>
+　　<a href="#" onclick="openwin()">打开一个窗口</a>
+　　<input type="button" onclick="openwin()" value="打开窗口">
+　　</body>
+　　</html>
+
+　　看看OpenWindow.document.write()里面的代码不就是标准的HTML吗？只要按照格式写更多的行即可。千万注意多一个标签或少一个标签就会出现错误。记得用 OpenWindow.document.close()结束啊。
+
+【9、终极应用--弹出的窗口之Cookie控制】
+
+　　回想一下，上面的弹出窗口虽然酷，但是有一点小毛病，比如你将上面的脚本放在一个需要频繁经过的页面里(例如首页)，那么每次刷新这个页面，窗口都会弹出一次，我们使用cookie来控制一下就可以了。
+　　首先，将如下代码加入主页面HTML的<HEAD>区：
+
+　　<script>
+　　function openwin(){
+　　window.open("page.html","","width=200,height=200")
+　　}
+　　function get_cookie(Name) {
+　　var search = Name + "="
+　　var returnvalue = "";
+　　if (document.cookie.length > 0) {
+　　offset = document.cookie.indexOf(search)
+　　if (offset != -1) {
+　　offset += search.length
+　　end = document.cookie.indexOf(";", offset);
+　　if (end == -1)
+　　end = document.cookie.length;
+　　returnvalue=(document.cookie.substring(offset, end))
+　　}
+　　}
+　　return returnvalue;
+　　} 　
+　　function loadpopup(){
+　　if (get_cookie('popped')==''){
+　　openwin()
+　　document.cookie="popped=yes"
+　　}
+　　}
+　　</script>
+
+　　然后，用<body onload="loadpopup()">（注意不是openwin而是loadpop啊！）替换主页面中原有的<BODY>这一句 即可。你可以试着刷新一下这个页面或重新进入该页面，窗口再也不会弹出了。真正的Pop-Only-Once！
+转自：
+绝望的主夫的博客http://blog.sina.com.cn/s/blog_5d8a1cb201011ed1.html
+复制代码
+
+
+

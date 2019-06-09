@@ -1,6 +1,669 @@
 #!/usr/bin/env bash
 
 
+autobak
+
+
+
+#backup files by date
+
+DATE=`/bin/date +%Y%m%d`
+BAK_FILEName=${1##*/}
+/bin/tar -cf /backup/$BAK_FILEName.$DATE.tar $BAK_FILEName > /dev/null 2>> /backup/$BAK_FILEName.bak.log
+/bin/gzip /backup/$BAK_FILEName.$DATE.tar
+if [ $? -eq 0 ]
+then
+	echo "$1 $DATE backup successfully" >> /backup/$BAK_FILEName.bak.log
+else
+	echo "ERROR:failure $1 DATE backup!" >> /backup/$BAK_FILEName.bak.log
+fi
+
+# crontab -e
+# 0 3 * * 2,5 script
+
+#############################################
+
+
+#!/bin/sh
+echo '输入 1 到 4 之间的数字:'
+                echo '你输入的数字为:'
+                read aNum
+                case $aNum in
+                    1)  echo '你选择了 1'
+                    ;;
+                    2)  echo '你选择了 2'
+                    ;;
+                    3)  echo '你选择了 3'
+                    ;;
+                    4)  echo '你选择了 4'
+                    ;;
+                    *)  echo '你没有输入 1 到 4 之间的数字'
+                    ;;
+                esac
+
+
+###系统监控
+#!/bin/bash
+
+
+#network
+#Mike.Xu
+# while : ; do
+      # time='date +%m"-"%d" "%k":"%M'
+      # day='date +%m"-"%d'
+      # rx_before='ifconfig eth0|sed -n "8"p|awk '{print $2}'|cut -c7-'
+      # tx_before='ifconfig eth0|sed -n "8"p|awk '{print $6}'|cut -c7-'
+      # sleep 2
+      # rx_after='ifconfig eth0|sed -n "8"p|awk '{print $2}'|cut -c7-'
+      # tx_after='ifconfig eth0|sed -n "8"p|awk '{print $6}'|cut -c7-'
+      # rx_result=$[(rx_after-rx_before)/256]
+      # tx_result=$[(tx_after-tx_before)/256]
+      # echo "$time Now_In_Speed: "$rx_result"kbps Now_OUt_Speed: "$tx_result"kbps"
+      # sleep 2
+# done
+
+
+#systemstat.sh
+#Mike.Xu
+IP=192.168.1.227
+top -n 2| grep "Cpu" #>>./temp/cpu.txt
+free -m | grep "Mem" #>> ./temp/mem.txt
+df -k | grep "sda1" #>> ./temp/drive_sda1.txt
+#df -k | grep sda2 >> ./temp/drive_sda2.txt
+df -k | grep "/mnt/storage_0" #>> ./temp/mnt_storage_0.txt
+df -k | grep "/mnt/storage_pic" #>> ./temp/mnt_storage_pic.txt
+time=`date +%m"."%d" "%k":"%M`
+connect=`netstat -na | grep "219.238.148.30:80" | wc -l`
+echo "$time  $connect" #>> ./temp/connect_count.txt
+
+
+
+#monitor available disk space
+SPACE="df | sed -n '/ \ / $ / p' | gawk '{print $5}' | sed  's/%//'"
+if [ $SPACE -ge 90 ]
+then
+jbxue123@163.com
+fi
+
+
+#script  to capture system statistics
+OUTFILE=/home/xiaoyuzhou/capstats.csv
+DATE='date +%m/%d/%Y'
+TIME='date +%k:%m:%s'
+TIMEOUT='uptime'
+VMOUT='vmstat 1 2'
+USERS='echo $TIMEOUT | gawk '{print $4}' '
+LOAD='echo $TIMEOUT | gawk '{print $9}' | sed "s/,//' ''
+FREE="echo $VMOUT | sed -n '/[0-9]/p' | sed -n '2p' | gawk '{print $4} ''"
+IDLE="echo  $VMOUT | sed -n '/[0-9]/p' | sed -n '2p' |gawk '{print $15}'"
+echo "$DATE,$TIME,$USERS,$LOAD,$FREE,$IDLE" >> $OUTFILE
+
+
+# check_xu.sh
+# 0 * * * * /home/check_xu.sh
+
+DAT="`date +%Y%m%d`"
+HOUR="`date +%H`"
+DIR="/home/xiaoyuzhou/host_${DAT}/${HOUR}"
+DELAY=60
+COUNT=60
+# whether the responsible directory exist
+if ! test -d ${DIR}
+then
+        /bin/mkdir -p ${DIR}
+fi
+# general check
+export TERM=linux
+/usr/bin/top -b -d ${DELAY} -n ${COUNT} > ${DIR}/top_${DAT}.log 2>&1 &
+# cpu check
+/usr/bin/sar -u ${DELAY} ${COUNT} > ${DIR}/cpu_${DAT}.log 2>&1 &
+#/usr/bin/mpstat -P 0 ${DELAY} ${COUNT} > ${DIR}/cpu_0_${DAT}.log 2>&1 &
+#/usr/bin/mpstat -P 1 ${DELAY} ${COUNT} > ${DIR}/cpu_1_${DAT}.log 2>&1 &
+# memory check
+/usr/bin/vmstat ${DELAY} ${COUNT} > ${DIR}/vmstat_${DAT}.log 2>&1 &
+# I/O check
+/usr/bin/iostat ${DELAY} ${COUNT} > ${DIR}/iostat_${DAT}.log 2>&1 &
+# network check
+/usr/bin/sar -n DEV ${DELAY} ${COUNT} > ${DIR}/net_${DAT}.log 2>&1 &
+#/usr/bin/sar -n EDEV ${DELAY} ${COUNT} > ${DIR}/net_edev_${DAT}.log 2>&1 &
+
+
+
+
+
+
+# free_mem=$(free -m | grep "buffers/cache" | awk '{print $4}')
+# load_5min=$(cat /proc/loadavg | awk '{print $2}')
+# cpu_idle=$(sar 1 5 | grep -i 'Average' | awk '{print $NF}')
+# tx_speed=$(sar -n DEV 10 5 | grep "Average" | grep "$interface" | awk '{print $6}')
+# httpd_status=$(ps -ef | grep 'httpd' | grep -v 'grep')
+
+# header="{";
+# name="'hostname':'"
+# host=`hostname`
+# end="'}"
+
+
+# echo "{'hostname':'"$host"','freemem':"$free_mem",'load':"$load_5min",'cpuidle':"$cpu_idle",'txspeed':"$tx_speed",'httpstatus':'"$httpd_status"'}"
+
+
+cpuuse=`top -b -n2 -p 1 | fgrep "Cpu(s)" | tail -1 | awk -F'id,' -v prefix="$prefix" '{ split($1, vs, ","); v=vs[length(vs)]; sub("%", "", v); printf "%s%.1f%%\n", prefix, 100 - v }'`
+
+echo 'cpu use:'$cpuuse
+
+mem=`free -m|grep Mem|awk '{print ($3-$6-$7)/$2}'`
+
+echo 'mem use:'$mem
+
+
+##################
+#!/bin/bash
+
+#对进程进行监控
+function GetPID #User #Name
+ {
+    PsUser=$1
+    PsName=$2
+    pid=`ps -u $PsUser|grep $PsName|grep -v grep|grep -v vi|grep -v dbx\n |grep -v tail|grep -v start|grep -v stop |sed -n 1p |awk '{print $1}'`
+    echo $pid
+ }
+
+PID=`GetPID root mysql`
+     # 检查进程是否存在
+    if [ "-$PID" == "-" ]
+    then
+    {
+        echo "The process does not exist."
+    }
+    fi
+
+ echo $PID
+
+
+ #------------------------------------------------------------------------------
+# 函数: CheckProcess
+# 功能: 检查一个进程是否存在  自动重启的shell脚本实现方法
+# 参数: $1 --- 要检查的进程名称
+# 返回: 如果存在返回0, 否则返回1.
+#------------------------------------------------------------------------------
+CheckProcess()
+{
+  # 检查输入的参数是否有效
+  if [ "$1" = "" ];
+  then
+    return 1
+  fi
+
+  #$PROCESS_NUM获取指定进程名的数目，为1返回0，表示正常，不为1返回1，表示有错误，需要重新启动
+  PROCESS_NUM=`ps -ef | grep "$1" | grep -v "grep" | wc -l`
+  if [ $PROCESS_NUM -eq 1 ];
+  then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# 检查test实例是否已经存在
+while [ 1 ] ; do
+ CheckProcess "mysql"
+ CheckQQ_RET=$?
+ # if [ $CheckQQ_RET -eq 1 ];
+ # then
+
+# # 杀死所有test进程，可换任意你需要执行的操作
+  # killall -9 test
+  # exec ./test &
+ # fi
+ sleep 1
+done
+
+
+# # #对业务进程 CPU 进行实时监控
+ # function GetCpu #PID
+  # {
+   # CpuValue=`ps -p $1 -o pcpu |grep -v CPU | awk '{print $1}' | awk -  F. '{print $1}'`
+        # echo $CpuValue
+    # }
+
+# GetCpu $PID
+
+
+
+# #判断 CPU 利用率是否超过限制
+# function CheckCpu
+ # {
+    # PID=$1
+    # cpu=`GetCpu $PID`
+    # if [ $cpu -gt 80 ]
+    # then
+    # {
+ # echo “The usage of cpu is larger than 80%”
+    # }
+    # else
+    # {
+ # echo “The usage of cpu is normal”
+    # }
+    # fi
+ # }
+
+# CheckCpu $PID
+
+
+
+
+# #对业务进程内存使用量进行监控
+
+# function GetMem
+    # {
+        # MEMUsage=`ps -o vsz -p $1|grep -v VSZ`
+        # (( MEMUsage /= 1000))
+        # echo $MEMUsage
+    # }
+
+
+
+
+# #判断内存使用是否超过限制
+# mem=`GetMem $PID`
+ # if [ $mem -gt 1600 ]
+ # then
+ # {
+     # echo “The usage of memory is larger than 1.6G”
+ # }
+ # else
+ # {
+    # echo “The usage of memory is normal”
+ # }
+ # fi
+
+# mem=`GetMem $PID`
+
+    # echo "The usage of memory is $mem M"
+
+    # if [ $mem -gt 1600 ]
+    # then
+    # {
+         # echo "The usage of memory is larger than 1.6G"
+    # }
+    # else
+    # {
+        # echo "The usage of memory is normal"
+    # }
+    # fi
+
+
+# # 检测进程句柄使用量
+# function GetDes
+    # {
+        # DES=`ls /proc/$1/fd | wc -l`
+        # echo $DES
+    # }
+
+# des=` GetDes $PID`
+ # if [ $des -gt 900 ]
+ # then
+ # {
+     # echo “The number of des is larger than 900”
+ # }
+ # else
+ # {
+    # echo “The number of des is normal”
+ # }
+ # fi
+
+ # des=`GetDes $PID`
+
+    # echo "The number of des is $des"
+
+    # if [ $des -gt 900 ]
+    # then
+    # {
+         # echo "The number of des is larger than 900"
+    # }
+    # else
+    # {
+        # echo "The number of des is normal"
+    # }
+    # fi
+
+# #查看某个 TCP 或 UDP 端口是否在监听
+# function Listening
+ # {
+    # TCPListeningnum=`netstat -an | grep ":$1 " | \n
+    # awk '$1 == "tcp" && $NF == "LISTEN" {print $0}' | wc -l`
+    # UDPListeningnum=`netstat -an|grep ":$1 " \n
+    # |awk '$1 == "udp" && $NF == "0.0.0.0:*" {print $0}' | wc -l`
+    # (( Listeningnum = TCPListeningnum + UDPListeningnum ))
+    # if [ $Listeningnum == 0 ]
+    # then
+    # {
+        # echo "0"
+    # }
+    # else
+    # {
+       # echo "1"
+    # }
+    # fi
+ # }
+
+ # isListen=`Listening 8080`
+    # if [ $isListen -eq 1 ]
+    # then
+    # {
+        # echo "The port is listening"
+    # }
+    # else
+    # {
+        # echo "The port is not listening"
+    # }
+    # fi
+
+
+
+	# # tcp: netstat -an|egrep $1 |awk '$6 == "LISTEN" && $1 == "tcp" {print $0}'
+    # # udp: netstat -an|egrep $1 |awk '$1 == "udp" && $5 == "0.0.0.0:*" {print $0}'
+
+
+# #查看某个进程名正在运行的个数
+
+# #Runnum=`ps -ef | grep -v vi | grep -v tail | grep "[ /]CFTestApp" | grep -v grep | wc -l
+
+
+# #检测系统 CPU 负载
+# # function GetSysCPU
+ # # {
+   # # CpuIdle=`vmstat 1 5 |sed -n '3,$p' \n |awk '{x = x + $15} END {print x/5}' |awk -F. '{print $1}'
+   # # CpuNum=`echo "100-$CpuIdle" | bc`
+   # # echo $CpuNum
+ # # }
+ # # cpu=`GetSysCPU`
+ # # echo "The system CPU is $cpu"
+
+ # # if [ $cpu -gt 90 ]
+ # # then
+ # # {
+    # # echo "The usage of system cpu is larger than 90%"
+ # # }
+ # # else
+ # # {
+    # # echo "The usage of system cpu is normal"
+ # # }
+ # # fi
+
+
+# #检测系统磁盘空间
+# function GetDiskSpc
+ # {
+    # if [ $# -ne 1 ]
+    # then
+        # return 1
+    # fi
+
+    # Folder="$1$"
+    # DiskSpace=`df -k |grep $Folder |awk '{print $5}' |awk -F% '{print $1}'
+    # echo $DiskSpace
+# }
+
+
+ # Folder="/boot"
+
+ # DiskSpace=`GetDiskSpc $Folder`
+
+ # echo "The system $Folder disk space is $DiskSpace%"
+
+ # if [ $DiskSpace -gt 90 ]
+ # then
+ # {
+    # echo "The usage of system disk($Folder) is larger than 90%"
+ # }
+ # else
+ # {
+    # echo "The usage of system disk($Folder)  is normal"
+ # }
+ # fi
+
+###################################
+
+until [ $# -eq 0 ]
+		do
+			echo "第一个参数为: $1 参数个数为: $#"
+			#shift 命令执行前变量 $1 的值在shift命令执行后不可用
+			shift
+		done
+
+########流量监控###################
+#input the network name
+
+if [ -n "$1" ]; then
+    eth_name=$1
+else
+    eth_name="eth0"
+fi
+
+send_o=`ifconfig $eth_name | grep bytes | awk '{print $6}' | awk -F : '{print $2}'`
+recv_o=`ifconfig $eth_name | grep bytes | awk '{print $2}' | awk -F : '{print $2}'`
+
+send_n=$send_o
+recv_n=$recv_o
+
+i=0
+while [ $i -le 100000 ]; do
+    send_l=$send_n
+    recv_l=$recv_n
+    sleep 2
+    send_n=`ifconfig $eth_name | grep bytes | awk '{print $6}' | awk -F : '{print $2}'`
+    recv_n=`ifconfig $eth_name | grep bytes | awk '{print $2}' | awk -F : '{print $2}'`
+    i=`expr $i + 1`
+
+    send_r=`expr $send_n - $send_l`
+    recv_r=`expr $recv_n - $recv_l`
+    total_r=`expr $send_r + $recv_r`
+    send_ra=`expr \( $send_n - $send_o \) / $i`
+    recv_ra=`expr \( $recv_n - $recv_o \) / $i`
+    total_ra=`expr $send_ra + $recv_ra`
+    sendn=`ifconfig $eth_name | grep bytes | awk -F \( '{print $3}' | awk -F \) '{print $1}'`
+    recvn=`ifconfig $eth_name | grep bytes | awk -F \( '{print $2}' | awk -F \) '{print $1}'`
+    clear
+    echo "Last second : Send rate: $send_r Bytes/sec Recv rate: $recv_r Bytes/sec Total rate: $total_r Bytes/sec"
+    echo "Average value: Send rate: $send_ra Bytes/sec Recv rate: $recv_ra Bytes/sec Total rate: $total_ra Bytes/sec"
+    echo "Total traffic after startup: Send traffic: $sendn Recv traffic: $recvn"
+done
+
+#############
+数组
+
+#!/usr/bin/env bash
+for ((i=0;i<${#o[*]};i++))
+do
+    echo ${o[$i]}
+done
+
+declare -a myarray
+local -a myarray
+
+myarray=`ls *.bin 2>/dev/null`
+ read -a myarray
+
+${array[0]}='test'
+myarray=(${myarray[*] test)
+
+
+echo ${myarrra[*]};
+echo ${myarrra[@]};
+
+for item in ${myarray[*]};
+do
+echo $item;
+done;
+
+uset ${myarray}
+myarray=
+
+
+$ hobbies=( "${activities[@]" diving }
+ $ for hobby in "${hobbies[@]}"
+> do
+>   echo "Hobby: $hobby"
+> done
+Hobby: swimming
+Hobby: water skiing
+Hobby: canoeing
+Hobby: white-water rafting
+Hobby: surfing
+Hobby: scuba diving
+Hobby: diving
+$
+
+本章开头介绍了如何使用seq 0 $((${#beatles[@]}–1))获取数组的最后一个实际元素。但数组从0开始索引这一事实使得这一任务变得有些棘手。在向数组追加单个元素时，数组从0开始索引实际上使得追加操作更容易。
+$ hobbies[${#hobbies[@]}]=rowing
+$ for hobby in "${hobbies[@]}"
+> do
+>   echo "Hobby: $hobby"
+> done
+Hobby: swimming
+Hobby: water skiing
+Hobby: canoeing
+Hobby: white-water rafting
+Hobby: surfing
+Hobby: scuba diving
+Hobby: diving
+Hobby: rowing
+$
+bash shell确实有组合两个数组的内置语法。这种使用C风格符号+=的方法更简洁，而且写出的代码更清晰。
+$ airsports=( flying gliding parachuting )
+$ activities+=("${airsports[@]}")
+$ for act in "${activities[@]}"
+> do
+>   echo "Activity: $act"
+> done
+Activity: swimming
+Activity: water skiing
+Activity: canoeing
+Activity: white-water rafting
+Activity: surfing
+Activity: scuba diving
+Activity: climbing
+Activity: walking
+Activity: cycling
+Activity: flying
+Activity: gliding
+Activity: parachuting
+$
+
+for data in ${array[@]}
+do
+    echo ${data}
+done
+
+
+
+
+
+
+bash支持一维数组（不支持多维数组），并且没有限定数组的大小。类似与C语言，数组元素的下标由0开始编号。获取数组中的元素要利用下标，下标可以是整数或算术表达式，其值应大于或等于0。
+定义数组
+
+在Shell中，用括号来表示数组，数组元素用“空格”符号分割开。定义数组的一般形式为：
+    array_name=(value1 ... valuen)
+例如：
+array_name=(value0 value1 value2 value3)
+或者
+array_name=(
+value0
+value1
+value2
+value3
+)
+
+array_name[0]=value0
+array_name[1]=value1
+array_name[2]=value2
+#可以不使用连续的下标，而且下标的范围没有限制。
+#读取数组
+
+#读取数组元素值的一般格式是：
+    ${array_name[index]}
+例如：
+valuen=${array_name[2]}
+举个例子：
+#!/bin/sh
+NAME[0]="Zara"
+NAME[1]="Qadir"
+NAME[2]="Mahnaz"
+NAME[3]="Ayan"
+NAME[4]="Daisy"
+echo "First Index: ${NAME[0]}"
+echo "Second Index: ${NAME[1]}"
+运行脚本，输出：
+$./test.sh
+First Index: Zara
+Second Index: Qadir
+使用@ 或 * 可以获取数组中的所有元素，例如：
+${array_name[*]}
+${array_name[@]}
+举个例子：
+#!/bin/sh
+NAME[0]="Zara"
+NAME[1]="Qadir"
+NAME[2]="Mahnaz"
+NAME[3]="Ayan"
+NAME[4]="Daisy"
+echo "First Method: ${NAME[*]}"
+echo "Second Method: ${NAME[@]}"
+运行脚本，输出：
+$./test.sh
+First Method: Zara Qadir Mahnaz Ayan Daisy
+Second Method: Zara Qadir Mahnaz Ayan Daisy
+获取数组的长度
+
+获取数组长度的方法与获取字符串长度的方法相同，例如：
+纯文本复制
+# 取得数组元素的个数
+length=${#array_name[@]}
+# 或者
+length=${#array_name[*]}
+# 取得数组单个元素的长度
+lengthn=${#array_name[n]}
+
+
+##############
+
+#!/bin/sh
+#backup files by date
+#bug:只支持在数据的当前目录备份
+DATE=`/bin/date +%Y%m%d`
+/bin/tar -cf /backup/$1.$DATE.tar $1 > /dev/null 2>> /backup/$1.bak.log
+/bin/gzip /backup/$1.$DATE.tar
+if [ $? -eq 0]
+then
+	echo "$1 $DATE backup successfully" >> /backup/$1.bak.log
+else
+	echo "ERROR:failure $1 DATE backup!" >> /backup/$1.bak.log
+fi
+
+# crontab -e
+# 0 3 * * 2,5 /bin/sh /shell/shell.example/autobak.sh /etc
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#######################################
+
+
  find . -name *.sql -exec cat {} \; > all.txt
 
 十六. 文件查找命令find:
@@ -856,14 +1519,4 @@ function关键字定义一个函数，可加或不加。
 
 
 
-推荐阅读：
-
-大数据人员必会的linux性能调优
-
-如何理解Linux中的load averages？
-
-
-
-
-微信扫一扫
-关注该公众号
+=================

@@ -1,0 +1,29 @@
+ActiveMQ 安装
+1. 登 录 到 http://activemq.apache.org/activemq-5150-
+release.html，找到 ActiveMQ 的下载地址
+2. 直 接 copy 到 服 务 器 上 通 过 tar -zxvf apache-
+activeMQ.tar.gz
+3. 启动运行
+a) 普通启动：到 bin 目录下， sh activemq start
+b) 启 动 并 指 定 日 志 文 件 sh activemq start >
+/tmp/activemqlog
+4. 检查是否已启动
+ActiveMQ默认采用61616端口提供JMS服务，使用8161
+端口提供管理控制台服务，执行以下命令可以检查是否
+成功启动 ActiveMQ 服务
+netstat -an|grep 61616
+5. 通过 http://192.168.11.156:8161 访问 activeMQ 管理页
+面 ，默认帐号密码 admin/admin
+6. 关闭 ActiveMQ; sh activemq stop
+
+
+安装ActiveMQ
+
+1.下载activeMq安装包
+
+2.tar -zxvf **.tar.gz
+
+3.sh bin/activemq start 启动activeMQ服务
+
+
+

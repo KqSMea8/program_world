@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+<script type="text/javascript">
+	jQuery.ajax({
+		url : helloUrl,
+		dataType : "jsonp",
+		scriptCharset : "gb2312",
+		success : function(a) {
+			if (a && a.info) {
+				$("#loginbar").html(a.info);
+			}
+			if (a && a.sso) {
+				$.each(a.sso, function() {
+					$.getJSON(this)
+				})
+			}
+		}
+	});
+	
+	(function ($) {
+        $("#shortcut-2013 .menu").Jdropdown({delay: 50});
+        hello();
+    })(jQuery);
+</script>
+</head>
+<body>
+
+</body>
+</html>

@@ -1,0 +1,304 @@
+ajaxSettings: {
+		url: location.href,
+		type: "GET",
+		isLocal: rlocalProtocol.test( location.protocol ),
+		global: true,
+		processData: true,
+		async: true,
+		contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+
+		/*
+		timeout: 0,
+		data: null,
+		dataType: null,
+		username: null,
+		password: null,
+		cache: null,
+		throws: false,
+		traditional: false,
+		headers: {},
+		*/
+
+		accepts: {
+			"*": allTypes,
+			text: "text/plain",
+			html: "text/html",
+			xml: "application/xml, text/xml",
+			json: "application/json, text/javascript"
+		},
+
+		contents: {
+			xml: /\bxml\b/,
+			html: /\bhtml/,
+			json: /\bjson\b/
+		},
+
+		responseFields: {
+			xml: "responseXML",
+			text: "responseText",
+			json: "responseJSON"
+		},
+
+		// Data converters
+		// Keys separate source (or catchall "*") and destination types with a single space
+		converters: {
+
+			// Convert anything to text
+			"* text": String,
+
+			// Text to html (true = no transformation)
+			"text html": true,
+
+			// Evaluate text as a json expression
+			"text json": JSON.parse,
+
+			// Parse text as xml
+			"text xml": jQuery.parseXML
+		},
+
+		// For options that shouldn't be deep extended:
+		// you can add your own custom options here if
+		// and when you create one that shouldn't be
+		// deep extended (see ajaxExtend)
+		flatOptions: {
+			url: true,
+			context: true
+		}
+	},
+
+-------------------------------------------------------
+
+
+
+
+
+
+
+   $.ajax({
+         type: "GET",
+         url: "test.json",
+         data: {username:$("#username").val(), content:$("#content").val()},
+         dataType: "json",
+         success: function(data){
+                     $('#resText').empty();   //清空resText里面的所有内容
+                     var html = '';
+                     $.each(data, function(commentIndex, comment){
+                           html += '<div class="comment"><h6>' + comment['username']
+                                     + ':</h6><p class="para"' + comment['content']
+                                     + '</p></div>';
+                     });
+                     $('#resText').html(html);
+                  }
+   });
+
+
+
+     /* 加载热销商品列表页*/
+  $.ajax({
+      url:"http://datainfo.duapp.com/shopdata/getGoods.php?callback=?",
+      type:"get",
+      dataType:"jsonp",
+      success:function(resp) {
+          console.log(resp);
+          for(var i = 0; i < resp.length; i ++) {
+              // DOM操作添加商品
+              var $goodsBox = $("<div>").addClass("col-md-3").addClass("col-sm-4");
+              var $thumbnail = $("<div>").addClass("thumbnail");
+              var $img = $("<img>").attr("src", resp[i].goodsListImg);
+              var $caption = $("<div>").addClass("caption");
+              var $priceSpan = $("<span>").text(resp[i].price);
+              var $price = $("<h3>").text("￥").append($priceSpan);
+              var $name = $("<p>").text(resp[i].goodsName);
+              var $id = $("<p>").text(resp[i].goodsID).css("visible", "hidden");
+              var $addCart = $("<button>").addClass("btn").addClass("btn-danger").text("加入购物车");
+              var $buyNow = $("<button>").addClass("btn").addClass("btn-primary").text("立即购买");
+              $caption.append($price);
+              $caption.append($name);
+              $caption.append($id);
+              $thumbnail.append($img);
+              $thumbnail.append($caption);
+              $thumbnail.append($addCart);
+              $thumbnail.append($buyNow);
+              $goodsBox.append($thumbnail)
+              $(".hotgoodslist").append($goodsBox);
+          }
+      }
+  });
+
+  /*
+   加载衬衫商品列表页
+   */
+  $.ajax({
+      url:"http://datainfo.duapp.com/shopdata/getGoods.php?callback=?",
+      type:"get",
+      data:{
+          classID:1
+      },
+      dataType:"jsonp",
+      success:function(resp) {
+          console.log(resp);
+          for(var i = 0; i < resp.length; i ++) {
+              // DOM操作添加商品
+              var $goodsBox = $("<div>").addClass("col-md-3").addClass("col-sm-4");
+              var $thumbnail = $("<div>").addClass("thumbnail");
+              var $img = $("<img>").attr("src", resp[i].goodsListImg);
+              var $caption = $("<div>").addClass("caption");
+
+              var $priceSpan = $("<span>").text(resp[i].price);
+              var $price = $("<h3>").append($priceSpan);
+
+              var $name = $("<p>").text(resp[i].goodsName);
+              var $id = $("<p>").text(resp[i].goodsID).css("visible", "hidden");
+
+              $caption.append($price);
+              $caption.append($name);
+              $caption.append($id);
+
+              $thumbnail.append($img);
+              $thumbnail.append($caption);
+
+              $goodsBox.append($thumbnail)
+              $(".shirt").append($goodsBox);
+          }
+      }
+  });
+
+  $.ajax({url:"/jquery/test1.txt",async:false});
+
+
+$.ajax({ url: "test.html", context: document.body, success: function(){
+        $(this).addClass("done");
+      }});
+
+
+      -------------------------------------------------------------
+       $.post("demo_ajax_gethint.asp",{suggest:txt},function(result){
+          $("span").html(result);
+        });
+
+
+    $.post("ajax/test.html", function(data) {
+      $(".result").html(data);
+    });
+
+    // 请求生成后立即分配处理程序，请记住该请求针对 jqxhr 对象
+        var jqxhr = $.post("example.php", function() {
+          alert("success");
+        })
+        .success(function() { alert("second success"); })
+        .error(function() { alert("error"); })
+        .complete(function() { alert("complete"); });
+
+        // 在这里执行其他任务
+
+        // 为上面的请求设置另一个完成函数
+        jqxhr.complete(function(){ alert("second complete"); });
+
+
+$.post("test.php", { name: "John", time: "2pm" } );
+
+向服务器传递数据数组（同时仍然忽略返回值）：
+$.post("test.php", { 'choices[]': ["Jon", "Susan"] });
+例子 3
+使用 ajax 请求发送表单数据：
+$.post("test.php", $("#testform").serialize());
+例子 4
+输出来自请求页面 test.php 的结果（HTML 或 XML，取决于所返回的内容）：
+$.post("test.php", function(data){
+   alert("Data Loaded: " + data);
+ });
+例子 5
+向页面 test.php 发送数据，并输出结果（HTML 或 XML，取决于所返回的内容）：
+$.post("test.php", { name: "John", time: "2pm" },
+   function(data){
+     alert("Data Loaded: " + data);
+   });
+例子 6
+获得 test.php 页面的内容，并存储为 XMLHttpResponse 对象，并通过 process() 这个 JavaScript 函数进行处理：
+$.post("test.php", { name: "John", time: "2pm" },
+   function(data){
+     process(data);
+   }, "xml");
+例子 7
+获得 test.php 页面返回的 json 格式的内容：
+$.post("test.php", { "func": "getNameAndTime" },
+   function(data){
+     alert(data.name); // John
+     console.log(data.time); //  2pm
+   }, "json");
+
+ -------------------------------------------------------------------------------------
+ 实例
+ 使用 AJAX 的 GET 请求来改变 div 元素的文本：
+ $("button").click(function(){
+   $.get("demo_ajax_load.txt", function(result){
+     $("div").html(result);
+   });
+ });
+ 亲自试一试
+ 定义和用法
+ get() 方法通过远程 HTTP GET 请求载入信息。
+ 这是一个简单的 GET 请求功能以取代复杂 $.ajax 。请求成功时可调用回调函数。如果需要在出错时执行函数，请使用 $.ajax。
+ 语法
+ $(selector).get(url,data,success(response,status,xhr),dataType)
+ 参数	描述
+ url	必需。规定将请求发送的哪个 URL。
+ data	可选。规定连同请求发送到服务器的数据。
+ success(response,status,xhr)
+ 可选。规定当请求成功时运行的函数。
+ 额外的参数：
+ response - 包含来自请求的结果数据
+ status - 包含请求的状态
+ xhr - 包含 XMLHttpRequest 对象
+ dataType
+ 可选。规定预计的服务器响应的数据类型。
+ 默认地，jQuery 将智能判断。
+ 可能的类型：
+ "xml"
+ "html"
+ "text"
+ "script"
+ "json"
+ "jsonp"
+ 详细说明
+ 该函数是简写的 Ajax 函数，等价于：
+ $.ajax({
+   url: url,
+   data: data,
+   success: success,
+   dataType: dataType
+ });
+ 根据响应的不同的 MIME 类型，传递给 success 回调函数的返回数据也有所不同，这些数据可以是 XML root 元素、文本字符串、JavaScript 文件或者 JSON 对象。也可向 success 回调函数传递响应的文本状态。
+ 对于 jQuery 1.4，也可以向 success 回调函数传递 XMLHttpRequest 对象。
+ 示例
+ 请求 test.php 网页，忽略返回值：
+ $.get("test.php");
+ 更多示例
+ 例子 1
+ 请求 test.php 网页，传送2个参数，忽略返回值：
+ $.get("test.php", { name: "John", time: "2pm" } );
+ 例子 2
+ 显示 test.php 返回值(HTML 或 XML，取决于返回值)：
+ $.get("test.php", function(data){
+   alert("Data Loaded: " + data);
+ });
+ 例子 3
+ 显示 test.cgi 返回值(HTML 或 XML，取决于返回值)，添加一组请求参数：
+ $.get("test.cgi", { name: "John", time: "2pm" },
+   function(data){
+     alert("Data Loaded: " + data);
+   });
+
+
+
+
+
+
+
+
+
+
+
+
+
+

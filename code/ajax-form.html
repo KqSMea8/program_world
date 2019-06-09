@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+</head>
+<body>
+	<form id="formAddHandlingFee" name="formAddHandlingFee"
+		enctype="multipart/form-data" onsubmit="AddHandlingFeeToRefund()">
+		<table id="AddHandlingFee" class="Wfill">
+			<tr>
+				<td><asp:Literal ID="UI_Amount" runat="server" Text="处理费用"
+						meta:resourcekey="HandlingFeeAmount" /></td>
+				<td><input type="text" id="txtHandlingFeeAmount"
+					name="txtHandlingFeeAmount" class="{required:true,number:true}"
+					maxlength="12" /></td>
+			</tr>
+			<tr>
+				<td><asp:Literal ID="UI_HandlingFeeType" runat="server"
+						Text="费用类型" meta:resourcekey="HandlingFeeHandlingFeeType" /></td>
+				<td><crmweb:HtmlSelectControl ID="HandlingFeeType"
+						EnumTypeName="DX.OMS.Model.Common.HandlingFeeType,DX.OMS.Model.Common"
+						EmptyValue="" EmptyText="Select" runat="server"
+						class="text {required:true}" /></td>
+			</tr>
+			<tr>
+				<td><asp:Literal ID="UI_Notes" runat="server" Text="备注"
+						meta:resourcekey="HandlingFeeNotes" /></td>
+				<td><textarea id="txtNotes" name="txtNotes"
+						class="text {required:true}" cols="22" rows="2" maxlength="100"></textarea>
+				</td>
+			</tr>
+
+			<tr>
+				<td></td>
+				<td><input id="Submit1" type="submit" value="添加处理费" /> <asp:Button
+						ID="Button1" runat="server" Text="添加处理费"
+						OnClientClick="javascript:AddHandlingFeeToRefund()" /></td>
+			</tr>
+		</table>
+	</form>
+	<script type="text/javascript">
+		//ajax提交form表单的方式
+		$('#formAddHandlingFee')
+				.submit(
+						function() {
+							var AjaxURL = "../OrderManagement/AjaxModifyOrderService.aspx";
+							alert($('#formAddHandlingFee').serialize());
+							$
+									.ajax({
+										type : "POST",
+										dataType : "html",
+										url : AjaxURL
+												+ '?Action='
+												+ 'SubmitHandlingFee'
+												+ '&OrderNumber='
+												+ $
+														.trim($(
+																"#<%=this.txtOrderNumber.ClientID %>")
+																.val()),
+										data : $('#formAddHandlingFee')
+												.serialize(),
+										success : function(data) {
+											var strresult = data;
+											alert(strresult);
+											//加载最大可退金额
+											$("#spanMaxAmount").html(strresult);
+										},
+										error : function(data) {
+											alert("error:" + data.responseText);
+										}
+
+									});
+						}
+
+				);
+
+		function AddHandlingFeeToRefund()
+
+		{
+			var AjaxURL = "../OrderManagement/AjaxModifyOrderService.aspx";
+			alert($('#formAddHandlingFee').serialize());
+			$.ajax({
+				type : "POST",
+				dataType : "html",
+				url : AjaxURL
+						+ '?Action='
+						+ 'SubmitHandlingFee'
+						+ '&OrderNumber='
+						+ $
+								.trim($("#<%=this.txtOrderNumber.ClientID %>")
+										.val()),
+				data : $('#formAddHandlingFee').serialize(),
+				success : function(result) {
+					var strresult = result;
+					alert(strresult);
+					//加载最大可退金额
+					$("#spanMaxAmount").html(strresult);
+				},
+				error : function(data) {
+					alert("error:" + data.responseText);
+				}
+
+			});
+
+		}
+	</script>
+</body>
+</html>
