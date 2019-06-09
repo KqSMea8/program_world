@@ -1,11 +1,3 @@
-Git是当下最流行的版本管理工具，结合自己工作中的实际应用做了以下梳理。
-
-
-
-基础命令
-
-
-
 git init 初始化本地仓库
 
 git add -A . 来一次添加所有改变的文件
@@ -125,12 +117,6 @@ Beyond Compare (http://www.scootersoftware.com/download.php 代码合并
 
 
 
-常见问题
-
-
-
-Question1
-
 如何解决 ``` failed to push some refs to git ```
 Answer1
 
@@ -191,9 +177,6 @@ do
 done
 将pre-commit.sample文件名修改为pre-commit。
 
-
-
-Question5
 
 .gitignore规则不生效的解决办法
 
