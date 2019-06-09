@@ -48292,7 +48292,6 @@ object ParkingHeat extends Serializable with Logging with JsonBase[ParkDetail] {
           val parkInfos = new ArrayBuffer[ParkInfo]
 
           // TODO: 停车判定
-
           //坐标按时间排序，两点GPS距离在${MAX_DISTANCE}米以内 且 时长在MIN_DURATION分钟以上 判定为停车状态
           //bug:没计算经过的点与开始点的距离范围
 

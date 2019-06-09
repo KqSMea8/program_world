@@ -48,7 +48,7 @@ object rdd_test01 {
     val rdd0 = sc.parallelize(Array((1, 1), (1, 2), (1, 3), (2, 1), (2, 2), (2, 3)), 3)
     val rdd11 = rdd0.groupByKey()
     rdd11.collect
-
+f
     val rdd12 = rdd0.reduceByKey((x, y) => x + y)
     rdd12.collect
 

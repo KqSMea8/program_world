@@ -1,3 +1,8 @@
+--conf spark.memory.offHeap.size=5368709120 \
+--conf spark.memory.offHeap.enabled=true \
+
+
+
 Submitting Applications
 在 script in Spark的 bin 目录中的spark-submit 脚本用与在集群上启动应用程序。它可以通过一个统一的接口使用所有 Spark 支持的 cluster managers，所以您不需要专门的为每个cluster managers配置您的应用程序。
 

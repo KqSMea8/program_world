@@ -1,0 +1,406 @@
+下面代码即是Hadoop的MapReduce程序模版，其中使用了Hadoop辅助类，通过Configured的getConf()方法获取Configuration对象，重写Tool接口的run方法，实现Job提交功能。
+这样就可以实现代码与配置隔离，修改MapReduce参数不需要修改java代码、打包、部署，提高工作效率。
+
+/*
+ * MapReduce程序模板
+ * 写MR程序时，复制该文件，修改类名，实现相应的map、reduce函数等
+ */
+import java.io.IOException;
+import java.util.StringTokenizer; // 分隔字符串
+import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable; // 相当于int类型
+import org.apache.hadoop.io.LongWritable; // 相当于long类型
+import org.apache.hadoop.io.Text; // 相当于String类型
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
+/**
+* MapReduce程序基础模板
+*/
+public class MapReduceTemplate extends Configured implements Tool{
+    //静态Mapper类
+    public static class MapTemplate extends Mapper<LongWritable, Text, Text, IntWritable> {
+        @Override
+        public void map(LongWritable   key, Text value, Context context)
+                throws IOException, InterruptedException {
+            // 将输入数据解析成Key/Value对
+            // TODO: map()方法实现
+        }
+     }
+
+    //静态Reducer类
+    public static class ReduceTemplate extends Reducer<Text, IntWritable, Text, IntWritable> {
+        @Override
+        public void reduce(Text key, Iterable<IntWritable> values, Context context)
+            throws IOException, InterruptedException {
+            // TODO: reduce() 方法实现
+        }
+    }
+    /**
+    *
+    */
+    @Override
+    public int run(String[] args) throws Exception {
+        //读取配置文件
+        Configuration conf = getConf();
+        //设置参数
+        conf.set("fs.defaultFS", "hdfs://192.168.11.81:9000");
+        //自定义key value 之间的分隔符（默认为tab）
+        conf.set("mapreduce.input.keyvaluelinerecordreader.key.value.separator", ",");
+        // Job表示一个MapReduce任务,构造器第二个参数为Job的名称。
+        Job job = Job.getInstance(conf, "MapReduceTemplate");
+        job.setJarByClass(MapReduceTemplate.class);//主类
+
+        Path in = new Path(args[0]);//输入路径
+        Path out = new Path(args[1]);//输出路径
+        FileSystem hdfs = out.getFileSystem(conf);
+        if (hdfs.isDirectory(out)) {//如果输出路径存在就删除
+            hdfs.delete(out, true);
+        }
+        FileInputFormat.setInputPaths(job, in);//文件输入
+        FileOutputFormat.setOutputPath(job, out);//文件输出
+
+        job.setMapperClass(MapTemplate.class); //设置自定义Mapper
+        job.setReducerClass(ReduceTemplate.class); //设置自定义Reducer
+
+        job.setInputFormatClass(KeyValueTextInputFormat.class);//文件输入格式
+        job.setOutputFormatClass(TextOutputFormat.class);//文件输出格式
+        job.setOutputKeyClass(Text.class);//设置作业输出值 Key 的类
+        job.setOutputValueClass(Text.class);//设置作业输出值 Value 的类
+
+        return job.waitForCompletion(true)?0:1;//等待作业完成退出
+
+    }
+
+    //主方法，程序入口，调用ToolRunner.run( )
+    public static void main(String[] args) throws Exception {
+        int exitCode = ToolRunner.run(new MapReduceTemplate(), args);
+        System.exit(exitCode);
+    }
+}
+
+将输入数据解析成Key/Value对，具体解析成何种Key/Value跟在驱动中配置的输入方式有关，比如:TextInputFormat 将每行的首字符在整个文件中的偏移量作为Key（LongWritable）,本行中的所有内容作为Value（Text），KeyValueTextInputFormat 则根据默认的第一个\t 也就是tab 之前的所有内容当做Key（Text），之后全部作为Value（Text）。
+
+问题：为什么每次运行MapReduce程序，需要将确定输出目录不存在，或者说需要用户自己先删除已经存在的输出目录？
+这是因为在分布式环境下，某一目录可以有着重要的数据文件，如果MapReduce程序默认自动把输出目录删除（或者说覆写），则可能造成事故。所以输出目录需要用户自己来删除。
+
+6.4.2 创建maven项目
+
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>cn.hadron</groupId>
+    <artifactId>mrDemo</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>mrDemo</name>
+    <url>http://maven.apache.org</url>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>3.8.1</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-common -->
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+            <version>2.7.3</version>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-hdfs -->
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-hdfs</artifactId>
+            <version>2.7.3</version>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-client -->
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-client</artifactId>
+            <version>2.7.3</version>
+        </dependency>
+
+        <dependency>
+            <groupId>jdk.tools</groupId>
+            <artifactId>jdk.tools</artifactId>
+            <version>1.8</version>
+            <scope>system</scope>
+            <systemPath>${JAVA_HOME}/lib/tools.jar</systemPath>
+        </dependency>
+    </dependencies>
+    <build>
+        <plugins>
+            <!-- 编码和编译和JDK版本 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>2.3.2</version>
+                <configuration>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                    <encoding>utf8</encoding>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+
+其中，下面这段代码是防止@Override报错
+
+<plugins>
+            <!-- 编码和编译和JDK版本 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>2.3.2</version>
+                <configuration>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                    <encoding>utf8</encoding>
+                </configuration>
+            </plugin>
+        </plugins>
+
+本节完整的项目目录结构
+
+
+6.4.3 专利引用统计
+（1）问题描述
+有一份 CSV 格式专利引用数据供下载，超过 1600 万行，某几行如下：
+“CITING(引用)”,”CITED(被引用)”
+3858241,956203
+3858241,1324234
+3858241,3398406
+3858242,1515701
+3858242,3319261
+3858242,3707004
+3858243,1324234
+2858244,1515701
+…
+比如，第二行的意思是专利 3858241 引用了 1324234。换句话说，专利 1324234 被 3858241 引用。
+
+对每个专利，我们希望找到引用它的专利并合并，输出如下：
+1324234 3858243,3858241
+1515701 2858244,3858242
+3319261 3858242
+3398406 3858241
+3707004 3858242
+956203 3858241
+比如，专利 1324234 被[3858243,3858241]引用。
+
+（2）上传数据文件到hdfs
+
+[root@node1 ~]# hdfs dfs -mkdir -p /user/root/cite/input
+[root@node1 ~]# hdfs dfs -put cite75_99.txt /user/root/cite/input
+[root@node1 ~]# hdfs dfs -ls /user/root/cite/input/
+Found 1 items
+-rw-r--r--   3 root supergroup  264075431 2017-05-29 09:57 /user/root/cite/input/cite75_99.tx
+1
+2
+3
+4
+5
+（3）编写MapReduce程序
+
+package cn.hadron.mrDemo;
+import java.io.IOException;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.input.KeyValueTextInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
+/**
+ * 根据MapReduce程序基础模板改写
+ */
+public class CiteMapReduce extends Configured implements Tool {
+    //Mapper类
+    public static class MapClass extends Mapper<Text,Text,Text,Text> {
+        /**
+         * Text key：每行文件的 key 值（即引用的专利）。
+         * Text value：每行文件的 value 值（即被引用的专利）。
+         * map方法把字符串解析成Key-Value的形式，发给 Reduce 端来统计。
+         */
+        @Override
+        public void map(Text key, Text value, Context context)
+                                  throws IOException, InterruptedException {
+            //根据业务需求(value被key引用)，将key和value调换输出
+            context.write(value, key);
+        }
+    }
+
+    // Reducer类
+    public static class ReduceClass extends Reducer< Text, Text, Text, Text> {
+        /**
+         * 获取map方法的key-value结果,相同Key发送到同一个reduce里处理,
+         * 然后迭代values集合，把Value相加，结果写到 HDFS 系统里面
+         */
+        @Override
+        public void reduce(Text key, Iterable< Text> values, Context context)
+                                        throws IOException, InterruptedException {
+            String csv = "";
+            //将引入相同专利编号拼接输出
+            for(Text val:values) {
+                if(csv.length() > 0)csv += ",";  //添加分隔符
+                csv += val.toString();
+            }
+            context.write(key, new Text(csv));
+        }
+    }
+
+    @Override
+    public int run(String[] args) throws Exception {//驱动方法run()
+        //Configuration读取配置文件，如site-core.xml、mapred-site.xml、hdfs-site.xml等
+        Configuration conf = getConf();
+        //指定fs.defaultFS
+        conf.set("fs.defaultFS", "hdfs://192.168.80.131:9000");
+        //自定义key/value之间的分隔符（默认为tab）
+        conf.set("mapreduce.input.keyvaluelinerecordreader.key.value.separator", ",");
+        // Job表示一个MapReduce任务,构造器第二个参数为Job的名称。
+        Job job = Job.getInstance(conf, "word count");
+        job.setJarByClass(CiteMapReduce.class);//主类
+
+        Path in = new Path(args[0]);//输入路径
+        Path out = new Path(args[1]);//输出路径
+
+        FileSystem hdfs = out.getFileSystem(conf);
+        if (hdfs.isDirectory(out)) {//如果输出路径存在就删除
+            hdfs.delete(out, true);
+        }
+
+        FileInputFormat.setInputPaths(job, in);//文件输入
+        FileOutputFormat.setOutputPath(job, out);//文件输出
+
+        job.setMapperClass(MapClass.class);//设置自定义Mapper
+        job.setReducerClass(ReduceClass.class);//设置自定义Reducer
+
+        job.setInputFormatClass(KeyValueTextInputFormat.class);//文件输入格式
+        job.setOutputFormatClass(TextOutputFormat.class);//文件输出格式
+        job.setOutputKeyClass(Text.class);//设置作业输出值 Key 的类
+        job.setOutputValueClass(Text.class);//设置作业输出值 Value 的类
+
+        return job.waitForCompletion(true)?0:1;//等待作业完成退出
+    }
+
+    /**
+     * @param args输入文件、输出路径，可在Eclipse的Run Configurations中配如：
+     */
+    public static void main(String[] args){
+        System.setProperty("HADOOP_USER_NAME", "root");
+        try {
+            //程序参数：输入路径、输出路径
+            String[] args0 ={"/user/root/cite/input/cite75_99.txt","/user/root/cite/output/"};
+            //本地运行：第三个参数可通过数组传入，程序中设置为args0
+            //集群运行：第三个参数可通过命令行传入，程序中设置为args
+            //这里设置为本地运行，参数为args0
+            int res = ToolRunner.run(new Configuration(), new CiteMapReduce(), args0);
+            System.exit(res);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+（4）运行，查看结果
+
+
+[root@node1 ~]# hdfs dfs -ls /user/root/cite/output
+Found 2 items
+-rw-r--r--   3 root supergroup          0 2017-05-30 11:14 /user/root/cite/output/_SUCCESS
+-rw-r--r--   3 root supergroup  158078539 2017-05-30 11:14 /user/root/cite/output/part-r-00000
+1
+2
+3
+4
+将part-r-00000文件复制到本地，然后通过tail命令查看后几行
+
+[root@node1 ~]# hdfs dfs -get /user/root/cite/output/part-r-00000 ./rs.txt
+[root@node1 ~]# tail -10 rs.txt
+999961  5782495,5738381,5878901,4171117,4262874,5048788,4871140,4832301,4437639
+999965  5052613
+999968  3916735
+999971  3965843
+999972  4038129
+999973  4900344,5427610
+999974  5464105,4560073,4728158
+999977  4092587
+999978  3915443
+999983  5143114,5394715,5806555
+
+或者直接通过hdfs dfs -tail命令查看
+
+[root@node1 ~]# hdfs dfs -tail  /user/root/cite/output/part-r-00000
+,5655863,5636951,6007282,4842460
+999829  5046201
+999831  5417612
+999832  4358252
+999839  4129961
+999840  5979106
+999841  4396094
+999850  4304144
+999856  4180883
+999858  5297301
+999861  5052433
+999880  4882467
+999885  4953685,4883160,4895239,4949832,4930622,5050721,5052539,5009302,4884673,4809840,4662502,4746000,4739870,5184710
+999890  4244270
+999891  4982985,4414829
+999892  5131331
+999893  4750077,5093597
+999895  4382808
+999897  5368210
+999899  4194295
+999901  4373223
+999904  4484614
+999908  4738050,4649665
+999909  4410316
+999910  4305558
+999913  4732393,4998735,5067721,5401032
+999914  5469652
+99992   4439987
+99993   4327613
+999930  5609215
+999932  4605176
+999936  5014973,5642878
+999940  3876070,4022472
+999941  5447466
+999945  5207231,5569166
+999949  5640640
+999951  5316622,5374468
+999957  5755359
+999961  5782495,5738381,5878901,4171117,4262874,5048788,4871140,4832301,4437639
+999965  5052613
+999968  3916735
+999971  3965843
+999972  4038129
+999973  4900344,5427610
+999974  5464105,4560073,4728158
+999977  4092587
+999978  3915443
+999983  5143114,5394715,5806555

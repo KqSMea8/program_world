@@ -1,0 +1,164 @@
+其一是标准参数（-），所有的JVM实现都必须实现这些参数的功能，而且向后兼容；
+
+其二是非标准参数（-X），默认jvm实现这些参数的功能，但是并不保证所有jvm实现都满足，且不保证向后兼容；
+
+其三是非Stable参数（-XX），此类参数各个jvm实现会有所不同，将来可能会随时取消，需要慎重使用
+
+
+
+ 1. Serial 收集器参数
+串行收集器，client 的默认收集器，分为年轻代 Serial 和老年代 Serial Old 收集器。
+
+-XX:+UseSerialGC 这个参数就是可以指定使用新生代串行收集器和老年代串行收集器， “+” 号的意思是ture，开启，反之，如果是 “-”号，则是关闭。
+
+-XX:+UseParNewGC 新生代使用 ParNew 回收器，老年代使用串行收集器。
+
+-XX:+UseParallelGC 新生代私用 ParallelGC 回收器，老年代使用串行收集器。
+
+而 Serial 收集器出现的日志为 DefNew .
+
+
+
+
+# 2. ParNew 收集器参数
+并行收集器是 Serial 的多线程版本，在 CPU 并行能力强大的计算机上有很大优势。
+其中：
+
+-XX:+UseParNewGC 上面说过了，新生代使用 ParNew 收集器，老年代使用串行收集器。
+-XX:+UseConcMarkSweepGC: 新生代使用 ParNew 回收器，老年代使用 CMS。
+-XX:ParallelGCThreads={value}  这个参数是指定并行 GC 线程的数量，一般最好和 CPU 核心数量相当。默认情况下，当 CPU 数量小于8， ParallelGCThreads 的值等于 CPU 数量，当 CPU 数量大于 8 时，则使用公式：3+（（5*CPU）/ 8）；同时这个参数只要是并行 GC 都可以使用，不只是 ParNew。
+
+而 ParNew 的 GC 日志则表吸纳出 ParNew。
+
+
+# 3. PS 收集器参数
+全称 Parallel Scavenge 收集器，该收集器是 Java 8 的默认收集器，因为它能够根据系统当前状态给出吞吐量最高的GC 配置。所以，在一些手工调优复杂的场合或者对实时性要求不高的场合，可以使用该处理器。
+有哪些参数呢？
+
+-XX:MaxGCPauseMillis 设置最大垃圾收集停顿时间，他的值是一个大于0的整数。ParallelGC 工作时，会调整 Java 堆大小或者其他的一些参数，尽可能的把停顿时间控制在 MaxGCPauseMillis 以内。如果为了将停顿时间设置的很小，将此值也设置的很小，那么 PS 将会把堆设置的也很小，这将会到值频繁 GC ，虽然系统停顿时间小了，但总吞吐量下降了。
+-XX:GCTimeRatio 设置吞吐量大小，他的值是一个0 到100之间的整数，假设 GCTimeRatio 的值是 n ，那么系统将花费不超过 1/(1+n) 的时间用于垃圾收集，默认 n 是99，即不超过1% 的时间用于垃圾收集。
+-XX:+UseParallelGC 新生代使用 ParallelGC 回收器，老年代使用串行回收器。
+-XX:+UseParallelOldGC 新生代使用 ParallelGC 回收器，老年代使用 ParallelOldGC 回收器。
+-XX:UseAdaptiveSizePolicy: 打开自适应策略。在这种模式下，新生代的大小，eden 和 Survivor 的比例，晋升老年代的对象年龄等参数会被自动调整。以达到堆大小，吞吐量，停顿时间的平衡点。
+
+聪明的同学相比看出来了，1 和 2 两个参数是矛盾的。因为吞吐量和停顿时间就是矛盾的。所以，要根据应用的特性来进行设置，以达到最优水平。
+同时，Parallel Old 收集器也是一种关注吞吐量的并行的老年代回收器。
+
+-XX:+UseParallelOldGC 新生代使用 ParallelGC 回收器，老年代使用 ParallelOldGC 回收器。该参数可以启用 ParallelOldGC。
+-XX:ParallelGCGThreads 同时可以指定该参数设置并行线程数量。
+
+而 PS 处理器的 GC 日志则是 PSYoungGen。
+
+
+
+# 4. CMS 收集器参数
+CMS 处理器关注的是停顿时间。全称 Concurrent Mark Sweep。因为该处理器较为复杂，因此可以使用较多参数。
+
+-XX:-CMSPrecleaningEnabled 不进行预清理，度过我们之前的文章的都知道，CMS 在并发标记和重新标记的这段时间内，会有一个预清理的工作，而这个通过会尝试5秒之内等待来一次 YGC。以免在后面的重新标记阶段耗费大量时间来标记新生代的对象。
+-XX:+UseConcMarkSweepGC 此参数将启动 CMS 回收器。默认新生代是 ParNew，也可以设置 Serial 为新生代收集器。该参数等价于 -Xconcgc。
+-XX:ParallelGCThreads 由于是并行处理器，当然也可以指定线程数。默认并发线程数是：（ParallelGCThreads + 3）/ 4）。
+-XX:ConcGCThreads 或者 -XX:ParallelCMSThreads ；除了上面设置线程的方式，你也可以通过这个两个参数任意一个手工设定 CMS 并发线程数。
+-XX:CMSInitiatingOccupancyFraction 由于 CMS 回收器不是独占式的，在垃圾回收的时候应用程序仍在工作，所以需要留出足够的内存给应用程序，否则会触发 FGC。而什么时候运行 CMS GC 呢？通过该参数即可设置，该参数表示的是老年代的内存使用百分比。当达到这个阈值就会执行 CMS。默认是68。 如果老年代内存增长很快，建议降低阈值，避免 FGC，如果增长慢，则可以加大阈值，减少 CMS GC 次数。提高吞吐量。
+-XX：+UseCMSCompactAtFullCollection 由于 CMS 使用标记清理算法，内存碎片无法避免。该参数指定每次 CMS 后进行一次碎片整理。
+-XX:CMSFullGCsBeforeCompaction 由于每次进行碎片整理将会影响性能，你可以使用该参数设定多少次 CMS 后才进行一次碎片整理，也就是内存压缩。
+-XX:+CMSClassUnloadingEnabled 允许对类元数据进行回收。
+-XX:CMSInitiatingPermOccupancyFraction 当永久区占用率达到这一百分比时，启动 CMS 回收（前提是 -XX:+CMSClassUnloadingEnabled 激活了）。
+-XX:UseCMSInitiatingOccupancyOnly  表示只在到达阈值的时候才进行 CMS 回收。
+XX:CMSWaitDuration=2000 由于CMS GC 条件比较简单，JVM有一个线程定时扫描Old区，时间间隔可以通过该参数指定（毫秒单位），默认是2s。
+
+CMS 的 GC 日志 就是 CMS。
+# 5. G1 收集器参数
+作为 Java 9 的默认垃圾收集器，该收集器和之前的收集器大不相同，该收集器可以工作在young 区，也可以工作在 old 区。有哪些参数呢？
+
+-XX:+UseG1GC 开启 G1 收集器。
+-XX:MaxGCPauseMillis 用于指定最大停顿时间，如果任何一次停顿超过这个设置值时，G1 就会尝试调整新生代和老年代的比例，调整堆大小，调整晋升年龄的手段，试图达到目标。和 PS 一样，停顿时间小了，对应的吞吐量也会变小。这点值得注意。
+-XX:ParallelGCThreads 由于是并行并发的，可以指定GC 工作线程数量。
+-XX:InitiatingHeapOccupancyPercent 该参数可以指定当整个堆使用率达到多少时，触发并发标记周期的执行。默认值时45，即当堆的使用率达到45%，执行并发标记周期，该值一旦设置，始终都不会被 G1修改。也就是说，G1 就算为了满足 MaxGCPauseMillis 也不会修改此值。如果该值设置的很大，导致并发周期迟迟得不到启动，那么引起 FGC 的几率将会变大。如果过小，则会频繁标记，GC 线程抢占应用程序CPU 资源，性能将会下降。
+-XX:GCPauseIntervalMillis 设置停顿时间间隔。
+
+# 6. 一些通用参数
+在 GC 调优中，还有一些通用的参数。通常是我们的好帮手。
+
+-XX:-+DisableExplicitGC 禁用 System.gc()，由于该方法默认会触发 FGC，并且忽略参数中的 UseG1GC 和 UseConcMarkSweepGC，因此必要时可以禁用该方法。
+-XX:+ExplicitGCInvokesConcurrent 该参数可以改变上面的行为，也就是说，System.gc() 后不使用 FGC ，而是使用配置的并发收集器进行并发收集。注意：使用此选项就不要 使用 上面的选项。
+-XX:-ScavengeBeforeFullGC  由于大部分 FGC 之前都会 YGC，减轻了 FGC 的压力，缩短了 FGC 的停顿时间，但也可能你不需要这个特性，那么你可以使用这个参数关闭，默认是 ture 开启。
+-XX:MaxTenuringThreshold={value} 新生代 to 区的对象在经过多次 GC 后，如果还没有死亡，则认为他是一个老对象，则可以晋升到老年代，而这个年龄（GC 次数）是可以设置的，有就是这个参数。默认值时15。超过15 则认为是无限大(因为age变量时4个 bit，超过15无法表达)。但该参数不是唯一决定对象晋升的条件。当 to 区不够或者改对象年龄已经达到了平均晋升值或者大对象等等条件。
+-XX:TargetSurvivorRatio={value}  决定对何时晋升的不仅只有 XX:MaxTenuringThreshold 参数，如果在 Survivor 空间中相同年龄所有对象大小的总和大鱼 Survivor 空间的一半（默认50%），年龄大于或等于该年龄的对象就可以直接进入老年代。无需在乎 XX:MaxTenuringThreshold参数。因此，MaxTenuringThreshold 只是对象晋升的最大年龄。如果将 TargetSurvivorRatio 设置的很小，对象将晋升的很快。
+-XX:PretenureSizeThresholds={value}  除了年龄外，对象的体积也是影响晋升的一个关键，也就是大对象。如果一个对象新生代放不下，只能直接通过分配担保机制进入老年代。该参数是设置对象直接晋升到老年代的阈值，单位是字节。只要对象的大小大于此阈值，就会直接绕过新生代，直接进入老年代。注意：这个参数只对 Serial 和 ParNew 有效，ParallelGC  无效，默认情况下该值为0，也就是不指定最大的晋升大小，一切有运行情况决定。
+-XX:-UseTLAB 禁用线程本地分配缓存。TLAB 的全称是 Thread LocalAllocation Buffer ，即线程本地线程分配缓存，是一个线程私有的内存区域。该设计是为了加速对象分配速度。由于对象一般都是分配在堆上，而对是线程共享的。因此肯定有锁，虽然使用 CAS 的操作，但性能仍有优化空间。通过为每一个线程分配一个 TLAB 的空间（在 eden 区），可以消除多个线程同步的开销。默认开启。
+-XX:TLABSize 指定 TLAB 的大小。
+-XX:+PrintTLAB 跟踪 TLAB 的使用情况。用以确定是用多大的 TLABSize。
+-XX:+ResizeTLAB 自动调整 TLAB 大小。
+
+同时，对象也可能会在栈上分配，栈上分配，TLAB 分配，堆分配，他们的流程如下：
+
+
+
+
+
+对象分配流程
+
+还有一些开启 GC 日志的参数，是 GC 调优不可或缺的工具。
+
+-XX:+PrintGCDateStamps 打印 GC 日志时间戳。
+-XX:+PrintGCDetails  打印 GC 详情。
+-XX:+PrintGCTimeStamps: 打印此次垃圾回收距离jvm开始运行的所耗时间。
+-Xloggc:<filename>  将垃圾回收信息输出到指定文件
+-verbose:gc 打印 GC 日志
+-XX:+PrintGCApplicationStopedTime 查看 gc 造成的应用暂停时间
+XX:+PrintTenuringDistribution, 对象晋升的日志
+-XX:+HeapDumpOnOutOfMemoryError 内存溢出时输出 dump 文件。
+
+
+
+一、Throughput收集器(吞吐量)
+-XX:+UseParallelGC
+-XX:+UseParallelOldGC
+
+*参数调整：通过调整堆大小，减少GC停顿时间，增大吞吐量
+增强堆大小可以减少Full GC频率，但却会增加停顿时间
+1.手动调整
+-Xmn
+-Xms
+-XX:NewRatio=N
+手动指定堆内存大小和代空间比例，一般要多次试验
+2.自动参数调整
+-XX:MaxGCPauseMillis=N 可接受最大停顿时间
+-XX:GCTimeRatio=N	可接受GC时间占比（目标吞吐量） 吞吐量=1-1/(1+N)
+步骤：
+1.MaxGCPauseMillis优先级高，JVM会自动调整堆大小和代空间值，以期满足MaxGCPauseMillis
+2.当MaxGCPauseMillis满足后，JVM会增大堆大小，直到满足GCTimeRatio
+3.当MaxGCPauseMillis和GCTimeRadio都满足后，JVM会尽可能以最小堆大小来实现这两个指标参数
+Throughput一般不考虑响应时间，所以一般不设置-XX:MaxGCPauseMillis
+
+一般吞吐量在95%以上就算比较好的了，对于可用内存很少的环境可以降低指标
+
+
+
+
+二、CMS收集器(响应时间)
+-XX:+UseParNewGC
+-XX:+UseConcMarkSweepGC
+CMS收集器会对年轻代进行并发GC, 会有stw(stop-the-world)
+CMS收集器会对老年代进行并发GC, CMS
+如果有必要，CMS会发起单线程的Full GC, 这个操作十分耗时
+
+Full GC原因：
+并发模式失效：新生代发生GC时，老年代没有足够内存容纳晋升对象
+晋升失败：老年代虽然有足够容纳晋升对象的内存，但内存都是碎片，导致晋升失败
+
+*参数调整：避免并发模式失效和晋升失败
+-XX:+UseCMSInitiatingOccupancyOnly	根据Old内存使用阈值决定何时CMS, 默认是false，会用更复杂的算法决定何时CMS
+-XX:CMSInitingOccupancyFraction=N	default N=70，老年代内存使用70%时就发生CMS
+N设置太大，容易并发模式失效；N太小，CMS过于频繁，而CMS也会导致stop-the-world
+-XX:ConGCThreads=N GC的线程会100%占用CPU，如果发生并发模式失败，而N还小于CPU核心数，此时可以增加N。
+如果没有发生并发模式失败，此时可以减少N，以让应用程序有更多CPU执行
+
+Perm持久代GC调优
+持久代内存满了会引发Full GC
+持久代GC调优主要是让持久代也进行CMS收集
+-XX:+CMSPermGenSweepingEnable	使持久代使用CMS收集器
+-XX:+CMSClassUnloadingEnable	使持久代能真正释放不再被使用的类。默认是不会释放类的元数据的
+
+增量式CMS:普通CMS线程会占用100%的cpu负载，增量式CMS会让出一定CPU负载给应用线程
+这适合在单核CPU使用，显然已经没啥用处了

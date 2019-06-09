@@ -1,0 +1,880 @@
+
+
+1.1 系统参数
+系统级全局变量，该参数在程序中任何位置都可以访问到。优先级最高，覆盖程序中同名配置。
+
+系统参数的标准格式为：-Dargname=argvalue，多个参数之间用空格隔开，如果参数值中间有空格，则用引号括起来。
+
+其中，参数名可以是 Java 默认的，此类参数由 JVM 虚拟机自动识别并生效，例如，-Dfile.encoding=UTF-8 用于指定文件编码格式；也可以是用户自定义的，例如，-Dmy=user，程序中可以读取该参数值，执行相关逻辑。
+
+虚拟机系统参数中设置的参数键值对，在程序中可以用 System.getProperty("propertyName") 获取对应参数值。
+
+-X/-XX 为非标准系统参数形式，一般与 JVM 虚拟机设置有关，参数名和值都由 JVM 规范规定。例如：-Xms :初始堆大小、-Xmx :最大堆大小。
+
+代码清单：
+
+/**
+ * VM Args：-Dmy=user
+ *
+ * @author moonspirit
+ * @version 1.0
+ */
+public class VMargs {
+
+    public static void main(String[] args) {
+        String result = System.getProperty("my");
+        System.out.println("my: " + result);
+    }
+}
+
+
+
+1.2 运行参数
+main 方法执行时传入的参数值，如果参数有多个，用空格分开。
+
+main 方法的一般格式为：public static void main(String[] args)，其中，Stringp[] args 就是存储运行参数的变量，在程序中可以直接使用。
+
+代码清单：
+
+/**
+ * Program Args：hi a b c d
+ *
+ * @author moonspirit
+ * @version 1.0
+ */
+public class PROargs {
+
+    public static void main(String[] args) {
+        if (args.length > 0) {
+            for (int i = 0; i < args.length; i++) {
+                System.out.println("第" + i + "个参数为:" + args[i]);
+            }
+        }
+    }
+}
+
+输出结果：
+
+
+
+2. 命令行中的参数设置
+java 命令的基本格式为 java [-options] class [args...]，其中：
+
+[-options] 配置 Java 系统参数
+
+[args…] 配置 Java 运行参数
+
+示例：java -Dfile.encoding=UTF-8 -Dmy=user Test hi a b c d。
+
+3. Eclipse 中的参数设置
+在窗口左侧 Project Explorer 中找到要运行的类，右键 -> Run As –> Run Configurations，在对话框中选择 Arguments 选项卡，键入相应参数。
+
+
+
+ -client	设置jvm使用client模式，特点是启动速度比较快，但运行时性能和内存管理效率不高，通常用于客户端应用程序或者PC应用开发和调试。
+ -server	 设置jvm使server模式，特点是启动速度比较慢，但运行时性能和内存管理效率很高，适用于生产环境。在具有64位能力的jdk环境下将默认启用该模式，而忽略-client参数。
+ -jar	指定以jar包的形式执行一个应用程序。
+要这样执行一个应用程序，必须让jar包的manifest文件中声明初始加载的Main-class，当然那Main-class必须有public static void main(String[] args)方法。
+-agentlib:libname
+
+[=options]
+
+用于装载本地lib包；
+其中 libname为本地代理库文件名，默认搜索路径为环境变量PATH中的路径，options为传给本地库启动时的参数，多个参数之间用逗号分隔。在 Windows平台上jvm搜索本地库名为libname.dll的文件，在linux上jvm搜索本地库名为libname.so的文件，搜索路径环境变量在不同系统上有所不同，比如Solaries上就默认搜索LD_LIBRARY_PATH。
+比如：-agentlib:hprof用来获取jvm的运行情况，包括CPU、内存、线程等的运行数据，并可输出到指定文件中；windows中搜索路径为JRE_HOME/bin/hprof.dll。
+-agentpath:
+
+pathname [=options]
+
+按全路径装载本地库，不再搜索PATH中的路径；其他功能和agentlib相同；更多的信息待续，在后续的JVMTI部分会详述。
+-javaagent:jarpath
+
+[=options]
+
+指定jvm启动时装入java语言设备代理。
+Jarpath 文件中的mainfest文件必须有Agent-Class属性。代理类也必须实现公共的静态public static void premain(String agentArgs, Instrumentation inst)方法（和main方法类似）。当jvm初始化时，将按代理类的说明顺序调用premain方法；具体参见 java.lang.instrument软件包的描述。
+-classpath classpath
+
+或
+
+-cp classpath
+
+告知jvm搜索目录名、jar文档名、zip文档名，之间用分号;分隔；使用-classpath后jvm将不再使用CLASSPATH中的类搜索路径，如果-classpath和CLASSPATH都没有设置，则jvm使用当前路径(.)作为类搜索路径。
+
+jvm搜索类的方式和顺序为：Bootstrap，Extension，User。
+Bootstrap中的路径是jvm自带的jar或zip文件，jvm首先搜索这些包文件，用System.getProperty("sun.boot.class.path")可得到搜索路径。
+Extension是位于JRE_HOME/lib/ext目录下的jar文件，jvm在搜索完Bootstrap后就搜索该目录下的jar文件，用System.getProperty("java.ext.dirs")可得到搜索路径。
+User搜索顺序为当前路径.、CLASSPATH、-classpath，jvm最后搜索这些目录，用System.getProperty("java.class.path")可得到搜索路径。
+
+-Dproperty=value
+
+设置系统属性名/值对，运行在此jvm之上的应用程序可用System.getProperty("property")得到value的值。
+如果value中有空格，则需要用双引号将该值括起来，如-Dname="space string"。
+该参数通常用于设置系统级全局变量值，如配置文件路径，以便该属性在程序中任何地方都可访问。
+
+-verbose
+-verbose:class	输出jvm载入类的相关信息，当jvm报告说找不到类或者类冲突时可此进行诊断。
+-verbose:gc 	输出每次GC的相关情况。
+-verbose:jni	输出native方法调用的相关情况，一般用于诊断jni调用错误信息。
+-version	输出java的版本信息，比如jdk版本、vendor、model
+
+
+-Xmsn	指定jvm堆的初始大小，默认为物理内存的1/64，最小为1M；可以指定单位，比如k、m，若不指定，则默认为字节。
+-Xmxn	指定jvm堆的最大值，默认为物理内存的1/4或者1G，最小为2M；单位与-Xms一致。
+-Xmnn	指定jvm堆中年轻代的大小
+-Xssn	设置单个线程栈的大小，一般默认为512k。
+ -Xint	设置jvm以解释模式运行，所有的字节码将被直接执行，而不会编译成本地码。
+ -Xbatch	关闭后台代码编译，强制在前台编译，编译完成之后才能进行代码执行；
+默认情况下，jvm在后台进行编译，若没有编译完成，则前台运行代码时以解释模式运行。
+ -Xbootclasspath:
+
+bootclasspath
+
+让jvm从指定路径（可以是分号分隔的目录、jar、或者zip）中加载bootclass，用来替换jdk的rt.jar；若非必要，一般不会用到；
+ -Xbootclasspath
+
+/a:path
+
+将指定路径的所有文件追加到默认bootstrap路径中；
+ -Xbootclasspath
+
+/p:path
+
+让jvm优先于bootstrap默认路径加载指定路径的所有文件；
+ -Xcheck:jni	对JNI函数进行附加check；此时jvm将校验传递给JNI函数参数的合法性，在本地代码中遇到非法数据时，jmv将报一个致命错误而终止；使用该参数后将造成性能下降，请慎用。
+ -Xfuture	让jvm对类文件执行严格的格式检查（默认jvm不进行严格格式检查），以符合类文件格式规范，推荐开发人员使用该参数。
+ -Xnoclassgc	 关闭针对class的gc功能；因为其阻止内存回收，所以可能会导致OutOfMemoryError错误，慎用；
+-Xincgc	开启增量gc（默认为关闭）；这有助于减少长时间GC时应用程序出现的停顿；但由于可能和应用程序并发执行，所以会降低CPU对应用的处理能力。
+-Xloggc:file	与-verbose:gc功能类似，只是将每次GC事件的相关情况记录到一个文件中，文件的位置最好在本地，以避免网络的潜在问题。
+若与verbose命令同时出现在命令行中，则以-Xloggc为准。
+-Xprof	跟踪正运行的程序，并将跟踪数据在标准输出输出；适合于开发环境调试。
+-Xrs	减少jvm对操作系统信号（signals）的使用，该参数从1.3.1开始有效；
+ 从jdk1.3.0开始，jvm允许程序在关闭之前还可以执行一些代码（比如关闭数据库的连接池），即使jvm被突然终止；
+ jvm 关闭工具通过监控控制台的相关事件而满足以上的功能；更确切的说，通知在关闭工具执行之前，先注册控制台的控制handler，然后对 CTRL_C_EVENT, CTRL_CLOSE_EVENT,CTRL_LOGOFF_EVENT, and CTRL_SHUTDOWN_EVENT这几类事件直接返回true。
+ 但如果jvm以服务的形式在后台运行（比如servlet引擎），他能接收CTRL_LOGOFF_EVENT事件，但此时并不需要初始化关闭程序；为了避免类似冲突的再次出现，从jdk1.3.1开始提供-Xrs参数；当此参数被设置之后，jvm将不接收控制台的控制handler，也就是说他不监控和处理CTRL_C_EVENT, CTRL_CLOSE_EVENT, CTRL_LOGOFF_EVENT, orCTRL_SHUTDOWN_EVENT事件。
+
+
+
+　　前面我们提到用-XX作为前缀的参数列表在jvm中可能是不健壮的，SUN也不推荐使用，后续可能会在没有通知的情况下就直接取消了；但是由于这些参数中的确有很多是对我们很有用的，比如我们经常会见到的-XX:PermSize、-XX:MaxPermSize等等；
+
+下面我们将就Java HotSpot VM中-XX:的可配置参数列表进行描述；
+这些参数可以被松散的聚合成三类：
+行为参数（Behavioral Options）：用于改变jvm的一些基础行为；
+性能调优（Performance Tuning）：用于jvm的性能调优；
+调试参数（Debugging Options）：一般用于打开跟踪、打印、输出等jvm参数，用于显示jvm更加详细的信息；
+
+　　由于sun官方文档中对各参数的描述也都非常少（大多只有一句话），而且大多涉及OS层面的东西，很难描述清楚，所以以下是挑选了一些我们开发中可能会用得比较多的配置项，若需要查看所有参数列表，可以点击HotSpot VM Specific Options.查看原文；
+
+首先来介绍行为参数：
+
+-XX:-DisableExplicitGC
+
+禁止调用System.gc()；但jvm的gc仍然有效
+
+-XX:+MaxFDLimit
+
+最大化文件描述符的数量限制
+
+-XX:+ScavengeBeforeFullGC
+
+新生代GC优先于Full GC执行
+
+-XX:+UseGCOverheadLimit
+
+在抛出OOM之前限制jvm耗费在GC上的时间比例
+
+-XX:-UseConcMarkSweepGC
+
+对老生代采用并发标记交换算法进行GC
+
+-XX:-UseParallelGC
+
+启用并行GC
+
+-XX:-UseParallelOldGC
+
+对Full GC启用并行，当-XX:-UseParallelGC启用时该项自动启用
+
+-XX:-UseSerialGC
+
+启用串行GC
+
+-XX:+UseThreadPriorities
+
+启用本地线程优先级
+
+
+
+上面表格中黑体的三个参数代表着jvm中GC执行的三种方式，即串行、并行、并发；
+串行（SerialGC）是jvm的默认GC方式，一般适用于小型应用和单处理器，算法比较简单，GC效率也较高，但可能会给应用带来停顿；
+并行（ParallelGC）是指GC运行时，对应用程序运行没有影响，GC和app两者的线程在并发执行，这样可以最大限度不影响app的运行；
+并发（ConcMarkSweepGC）是指多个线程并发执行GC，一般适用于多处理器系统中，可以提高GC的效率，但算法复杂，系统消耗较大；
+
+
+性能调优参数列表：
+
+参数及其默认值
+
+描述
+
+-XX:LargePageSizeInBytes=4m
+
+设置用于Java堆的大页面尺寸
+
+-XX:MaxHeapFreeRatio=70
+
+GC后java堆中空闲量占的最大比例
+
+-XX:MaxNewSize=size
+
+新生成对象能占用内存的最大值
+
+-XX:MaxPermSize=64m
+
+老生代对象能占用内存的最大值
+
+-XX:MinHeapFreeRatio=40
+
+GC后java堆中空闲量占的最小比例
+
+-XX:NewRatio=2
+
+新生代内存容量与老生代内存容量的比例
+
+-XX:SurvivorRatio
+
+新生代中survivor区和eden区的比例
+
+-XX:NewSize=2.125m
+
+新生代对象生成时占用内存的默认值
+
+-XX:ReservedCodeCacheSize=32m
+
+保留代码占用的内存容量
+
+-XX:ThreadStackSize=512
+
+设置线程栈大小，若为0则使用系统默认值
+
+-XX:+UseLargePages
+
+使用大页面内存
+
+
+
+调试参数列表：
+
+参数及其默认值
+
+描述
+
+-XX:-CITime
+
+打印消耗在JIT编译的时间
+
+-XX:ErrorFile=./hs_err_pid<pid>.log
+
+保存错误日志或者数据到文件中
+
+-XX:-ExtendedDTraceProbes
+
+开启solaris特有的dtrace探针
+
+-XX:HeapDumpPath=./java_pid<pid>.hprof
+
+指定导出堆信息时的路径或文件名
+
+-XX:-HeapDumpOnOutOfMemoryError
+
+当首次遭遇OOM时导出此时堆中相关信息
+
+-XX:OnError=""
+
+出现致命ERROR之后运行自定义命令
+
+-XX:OnOutOfMemoryError=""
+
+当首次遭遇OOM时执行自定义命令
+
+-XX:-PrintClassHistogram
+
+遇到Ctrl-Break后打印类实例的柱状信息，与jmap -histo功能相同
+
+-XX:-PrintConcurrentLocks
+
+遇到Ctrl-Break后打印并发锁的相关信息，与jstack -l功能相同
+
+-XX:-PrintCommandLineFlags
+
+打印在命令行中出现过的标记
+
+-XX:-PrintCompilation
+
+当一个方法被编译时打印相关信息
+
+-XX:-PrintGC
+
+每次GC时打印相关信息
+
+-XX:-PrintGC Details
+
+每次GC时打印详细信息
+
+-XX:-PrintGCTimeStamps
+
+打印每次GC的时间戳
+
+-XX:-TraceClassLoading
+
+跟踪类的加载信息
+
+-XX:-TraceClassLoadingPreorder
+
+跟踪被引用到的所有类的加载信息
+
+-XX:-TraceClassResolution
+
+跟踪常量池
+
+-XX:-TraceClassUnloading
+
+跟踪类的卸载信息
+
+-XX:-TraceLoaderConstraints
+
+跟踪类加载器约束的相关信息
+
+------------------------------------------------------------------------
+
+
+-Xmx3550m：设置JVM最大堆内存为3550M。
+-Xms3550m：设置JVM初始堆内存为3550M。此值可以设置与-Xmx相同，以避免每次垃圾回收完成后JVM重新分配内存。
+-Xss128k：设置每个线程的栈大小。JDK5.0以后每个线程栈大小为1M，之前每个线程栈大小为256K。应当根据应用的线程所需内存大小进行调整。在相同物理内存下，减小这个值能生成更多的线程。但是操作系统对一个进程内的线程数还是有限制的，不能无限生成，经验值在3000~5000左右。需要注意的是：当这个值被设置的较大（例如>2MB）时将会在很大程度上降低系统的性能。
+-Xmn2g：设置年轻代大小为2G。在整个堆内存大小确定的情况下，增大年轻代将会减小年老代，反之亦然。此值关系到JVM垃圾回收，对系统性能影响较大，官方推荐配置为整个堆大小的3/8。
+-XX:NewSize=1024m：设置年轻代初始值为1024M。
+-XX:MaxNewSize=1024m：设置年轻代最大值为1024M。
+-XX:PermSize=256m：设置持久代初始值为256M。
+-XX:MaxPermSize=256m：设置持久代最大值为256M。
+-XX:NewRatio=4：设置年轻代（包括1个Eden和2个Survivor区）与年老代的比值。表示年轻代比年老代为1:4。
+-XX:SurvivorRatio=4：设置年轻代中Eden区与Survivor区的比值。表示2个Survivor区（JVM堆内存年轻代中默认有2个大小相等的Survivor区）与1个Eden区的比值为2:4，即1个Survivor区占整个年轻代大小的1/6。
+-XX:MaxTenuringThreshold=7：表示一个对象如果在Survivor区（救助空间）移动了7次还没有被垃圾回收就进入年老代。如果设置为0的话，则年轻代对象不经过Survivor区，直接进入年老代，对于需要大量常驻内存的应用，这样做可以提高效率。如果将此值设置为一个较大值，则年轻代对象会在Survivor区进行多次复制，这样可以增加对象在年轻代存活时间，增加对象在年轻代被垃圾回收的概率，减少Full GC的频率，这样做可以在某种程度上提高服务稳定性。
+-Xmn，-XX:NewSize/-XX:MaxNewSize，-XX:NewRatio 3组参数都可以影响年轻代的大小，混合使用的情况下，优先级是什么？
+如下：
+高优先级：-XX:NewSize/-XX:MaxNewSize
+中优先级：-Xmn（默认等效 -Xmn=-XX:NewSize=-XX:MaxNewSize=?）
+低优先级：-XX:NewRatio
+推荐使用-Xmn参数，原因是这个参数简洁，相当于一次设定 NewSize/MaxNewSIze，而且两者相等，适用于生产环境。-Xmn 配合 -Xms/-Xmx，即可将堆内存布局完成。
+-Xmn参数是在JDK 1.4 开始支持。
+JVM给出了3种选择：串行收集器、并行收集器、并发收集器。串行收集器只适用于小数据量的情况，所以生产环境的选择主要是并行收集器和并发收集器。
+默认情况下JDK5.0以前都是使用串行收集器，如果想使用其他收集器需要在启动时加入相应参数。JDK5.0以后，JVM会根据当前系统配置进行智能判断。
+串行收集器
+-XX:+UseSerialGC：设置串行收集器。
+并行收集器（吞吐量优先）
+-XX:+UseParallelGC：设置为并行收集器。此配置仅对年轻代有效。即年轻代使用并行收集，而年老代仍使用串行收集。
+-XX:ParallelGCThreads=20：配置并行收集器的线程数，即：同时有多少个线程一起进行垃圾回收。此值建议配置与CPU数目相等。
+-XX:+UseParallelOldGC：配置年老代垃圾收集方式为并行收集。JDK6.0开始支持对年老代并行收集。
+-XX:MaxGCPauseMillis=100：设置每次年轻代垃圾回收的最长时间（单位毫秒）。如果无法满足此时间，JVM会自动调整年轻代大小，以满足此时间。
+-XX:+UseAdaptiveSizePolicy：设置此选项后，并行收集器会自动调整年轻代Eden区大小和Survivor区大小的比例，以达成目标系统规定的最低响应时间或者收集频率等指标。此参数建议在使用并行收集器时，一直打开。
+并发收集器（响应时间优先）
+-XX:+UseConcMarkSweepGC：即CMS收集，设置年老代为并发收集。CMS收集是JDK1.4后期版本开始引入的新GC算法。它的主要适合场景是对响应时间的重要性需求大于对吞吐量的需求，能够承受垃圾回收线程和应用线程共享CPU资源，并且应用中存在比较多的长生命周期对象。CMS收集的目标是尽量减少应用的暂停时间，减少Full GC发生的几率，利用和应用程序线程并发的垃圾回收线程来标记清除年老代内存。
+-XX:+UseParNewGC：设置年轻代为并发收集。可与CMS收集同时使用。JDK5.0以上，JVM会根据系统配置自行设置，所以无需再设置此参数。
+-XX:CMSFullGCsBeforeCompaction=0：由于并发收集器不对内存空间进行压缩和整理，所以运行一段时间并行收集以后会产生内存碎片，内存使用效率降低。此参数设置运行0次Full GC后对内存空间进行压缩和整理，即每次Full GC后立刻开始压缩和整理内存。
+-XX:+UseCMSCompactAtFullCollection：打开内存空间的压缩和整理，在Full GC后执行。可能会影响性能，但可以消除内存碎片。
+-XX:+CMSIncrementalMode：设置为增量收集模式。一般适用于单CPU情况。
+-XX:CMSInitiatingOccupancyFraction=70：表示年老代内存空间使用到70%时就开始执行CMS收集，以确保年老代有足够的空间接纳来自年轻代的对象，避免Full GC的发生。
+其它垃圾回收参数
+-XX:+ScavengeBeforeFullGC：年轻代GC优于Full GC执行。
+-XX:-DisableExplicitGC：不响应 System.gc() 代码。
+-XX:+UseThreadPriorities：启用本地线程优先级API。即使 java.lang.Thread.setPriority() 生效，不启用则无效。
+-XX:SoftRefLRUPolicyMSPerMB=0：软引用对象在最后一次被访问后能存活0毫秒（JVM默认为1000毫秒）。
+-XX:TargetSurvivorRatio=90：允许90%的Survivor区被占用（JVM默认为50%）。提高对于Survivor区的使用率。
+-XX:-CITime：打印消耗在JIT编译的时间。
+-XX:ErrorFile=./hs_err_pid.log：保存错误日志或数据到指定文件中。
+-XX:HeapDumpPath=./java_pid.hprof：指定Dump堆内存时的路径。
+-XX:-HeapDumpOnOutOfMemoryError：当首次遭遇内存溢出时Dump出此时的堆内存。
+-XX:OnError=";"：出现致命ERROR后运行自定义命令。
+-XX:OnOutOfMemoryError=";"：当首次遭遇内存溢出时执行自定义命令。
+-XX:-PrintClassHistogram：按下 Ctrl+Break 后打印堆内存中类实例的柱状信息，同JDK的 jmap -histo 命令。
+-XX:-PrintConcurrentLocks：按下 Ctrl+Break 后打印线程栈中并发锁的相关信息，同JDK的 jstack -l 命令。
+-XX:-PrintCompilation：当一个方法被编译时打印相关信息。
+-XX:-PrintGC：每次GC时打印相关信息。
+-XX:-PrintGCDetails：每次GC时打印详细信息。
+-XX:-PrintGCTimeStamps：打印每次GC的时间戳。
+-XX:-TraceClassLoading：跟踪类的加载信息。
+-XX:-TraceClassLoadingPreorder：跟踪被引用到的所有类的加载信息。
+-XX:-TraceClassResolution：跟踪常量池。
+-XX:-TraceClassUnloading：跟踪类的卸载信息。
+关于参数名称等
+标准参数（-），所有JVM都必须支持这些参数的功能，而且向后兼容；例如：
+-client——设置JVM使用Client模式，特点是启动速度比较快，但运行时性能和内存管理效率不高，通常用于客户端应用程序或开发调试；在32位环境下直接运行Java程序默认启用该模式。
+-server——设置JVM使Server模式，特点是启动速度比较慢，但运行时性能和内存管理效率很高，适用于生产环境。在具有64位能力的JDK环境下默认启用该模式。
+非标准参数（-X），默认JVM实现这些参数的功能，但是并不保证所有JVM实现都满足，且不保证向后兼容；
+非稳定参数（-XX），此类参数各个JVM实现会有所不同，将来可能会不被支持，需要慎重使用；
+
+JVM服务参数调优实战
+大型网站服务器案例
+承受海量访问的动态Web应用
+服务器配置：8 CPU, 8G MEM, JDK 1.6.X
+参数方案：
+-server -Xmx3550m -Xms3550m -Xmn1256m -Xss128k -XX:SurvivorRatio=6 -XX:MaxPermSize=256m -XX:ParallelGCThreads=8 -XX:MaxTenuringThreshold=0 -XX:+UseConcMarkSweepGC
+调优说明：
+-Xmx 与 -Xms 相同以避免JVM反复重新申请内存。-Xmx 的大小约等于系统内存大小的一半，即充分利用系统资源，又给予系统安全运行的空间。
+-Xmn1256m 设置年轻代大小为1256MB。此值对系统性能影响较大，Sun官方推荐配置年轻代大小为整个堆的3/8。
+-Xss128k 设置较小的线程栈以支持创建更多的线程，支持海量访问，并提升系统性能。
+-XX:SurvivorRatio=6 设置年轻代中Eden区与Survivor区的比值。系统默认是8，根据经验设置为6，则2个Survivor区与1个Eden区的比值为2:6，一个Survivor区占整个年轻代的1/8。
+-XX:ParallelGCThreads=8 配置并行收集器的线程数，即同时8个线程一起进行垃圾回收。此值一般配置为与CPU数目相等。
+-XX:MaxTenuringThreshold=0 设置垃圾最大年龄（在年轻代的存活次数）。如果设置为0的话，则年轻代对象不经过Survivor区直接进入年老代。对于年老代比较多的应用，可以提高效率；如果将此值设置为一个较大值，则年轻代对象会在Survivor区进行多次复制，这样可以增加对象再年轻代的存活时间，增加在年轻代即被回收的概率。根据被海量访问的动态Web应用之特点，其内存要么被缓存起来以减少直接访问DB，要么被快速回收以支持高并发海量请求，因此其内存对象在年轻代存活多次意义不大，可以直接进入年老代，根据实际应用效果，在这里设置此值为0。
+-XX:+UseConcMarkSweepGC 设置年老代为并发收集。CMS（ConcMarkSweepGC）收集的目标是尽量减少应用的暂停时间，减少Full GC发生的几率，利用和应用程序线程并发的垃圾回收线程来标记清除年老代内存，适用于应用中存在比较多的长生命周期对象的情况。
+内部集成构建服务器案例
+高性能数据处理的工具应用
+服务器配置：1 CPU, 4G MEM, JDK 1.6.X
+参数方案：
+-server -XX:PermSize=196m -XX:MaxPermSize=196m -Xmn320m -Xms768m -Xmx1024m
+调优说明：
+-XX:PermSize=196m -XX:MaxPermSize=196m 根据集成构建的特点，大规模的系统编译可能需要加载大量的Java类到内存中，所以预先分配好大量的持久代内存是高效和必要的。
+-Xmn320m 遵循年轻代大小为整个堆的3/8原则。
+-Xms768m -Xmx1024m 根据系统大致能够承受的堆内存大小设置即可。
+
+其一是标准参数（-），所有的JVM实现都必须实现这些参数的功能，而且向后兼容；
+其二是非标准参数（-X），默认jvm实现这些参数的功能，但是并不保证所有jvm实现都满足，且不保证向后兼容；
+其三是非Stable参数（-XX），此类参数各个jvm实现会有所不同，这些都是不稳定的并且不推荐在生产环境中使用。将来可能会随时取消，需要慎重使用；上都被实现），而且如果在新版本有什么改动也不会发布通知。
+对响应时间要求很高的系统来说，良好掌握JVM关于GC调优的参数是很重要的。比如一个高流量地延迟的电子交易平台，他要求的响应时间都是毫秒级的。要获得适合的参数组合需要大量的分析和不断的尝试，更依赖于交易系统的特性。
+
+关于JVM选项的几点：
+1) 布尔型参数选项：-XX:+ 打开， -XX:- 关闭。（比如-XX:+PrintGCDetails）
+2) 数字型参数选项通过-XX:=设定。数字可以是m/M(兆字节)，k/K(千字节)，g/G(G字节)。
+比如：32K表示32768字节。（比如-XX:HeapDumpPath=./java_pid.hprof）
+3) 字符行参数选项通过-XX:=设定，通常用来指定一个文件，路径，或者一个命令列表。（比如-XX:+PrintGCDetails）
+命令 java -help可以列出java 应用启动时标准选项（不同的JVM实现是不同的）。
+java -X可以列出不标准的参数（这是JVM的扩展特性）。-X相关的选项不是标准的，被改变也不会通知。
+如果你想查看当前应用使用的JVM参数，你可以使用：ManagementFactory.getRuntimeMXBean().getInputArguments()。
+
+verbose
+-verbose:class
+输出jvm载入类的相关信息，当jvm报告说找不到类或者类冲突时可此进行诊断。
+-verbose:gc
+输出每次GC的相关情况。
+-verbose:jni
+输出native方法调用的相关情况，一般用于诊断jni调用错误信息。
+
+命令查看java的class字节码文件、verbose、synchronize
+
+-Xms512m 设置JVM促使内存为512m。此值可以设置与-Xmx相同，以避免每次垃圾回收完成后JVM重新分配内存。
+-Xmx512m ，设置JVM最大可用内存为512M。
+-Xmn200m：设置年轻代大小为200M。此处的大小是（eden+ 2 survivor space).与jmap -heap中显示的New gen是（eden+1 survivor space）不同的。
+
+计算公式有：
+
+年老代大小=-Xmx减去-Xmn
+
+整个堆大小=年轻代大小 + 年老代大小 + 持久代大小。
+
+持久代一般固定大小为64m，所以增大年轻代（-Xmn）后，将会减小年老代大小。此值对系统性能影响较大，Sun官方推荐配置为整个堆的3/8。
+
+-XX:SurvivorRatio
+
+用于设置Eden和其中一个Survivor的比值，默认比例为8（Eden）：1（一个survivor），这个值也比较重要。
+
+例如：-XX:SurvivorRatio=4：设置年轻代中Eden区与Survivor区的大小比值。设置为4，则两个Survivor区与一个Eden区的比值为2:4，一个Survivor区占整个年轻代的1/6。
+
+
+-Xss128k：设置每个线程的堆栈大小。JDK5.0以后每个线程堆栈大小为1M，以前每个线程堆栈大小为256K。更具应用的线程所需内存大小进行调整。在相同物理内存下，减小这个值能生成更多的线程。但是操作系统对一个进程内的线程数还是有限制的，不能无限生成，经验值在3000~5000左右。
+-Xloggc:file
+与-verbose:gc功能类似，只是将每次GC事件的相关情况记录到一个文件中，文件的位置最好在本地，以避免网络的潜在问题。
+若与verbose命令同时出现在命令行中，则以-Xloggc为准。
+-Xprof
+跟踪正运行的程序，并将跟踪数据在标准输出输出；适合于开发环境调试。
+
+-Xrunhprof
+
+
+
+-Xdebug:JVM调试参数，用于远程调试
+
+例如在tomcat中的远程调试设置方法为-Xdebug -Xnoagent -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=8000
+
+-Xbootclasspath:
+
+-Xbootclasspath用来指定你需要加载，但不想通过校验的类路径。JVM 会对所有的类在加载前进行校验并为每个类通过一个int数值来应用。这个是保证 JVM稳定的必要过程，但比较耗时，如果你希望跳过这个过程，就把你的类通过这个参数来指定。-Xbootclasspath参数、java -jar参数运行应用时classpath的设置方法
+
+-Xnoclassgc：
+
+ -Xnoclassgc 表示不对方法区进行垃圾回收。请谨慎使用。见GC 的算法分析、各类垃圾收集器介绍
+
+-XX:MaxMetaspaceSize
+
+java8中-XX:MaxMetaspaceSize=10M设置MetaSpace的最大值为10m。默认是Java的Metaspace空间：不受限制
+
+用-XX作为前缀的参数列表在jvm中可能是不健壮的，SUN也不推荐使用，后续可能会在没有通知的情况下就直接取消了；但是由于这些参数中的确有很多是对我们很有用的，比如我们经常会见到的-XX:PermSize、-XX:MaxPermSize等等；
+
+首先来介绍行为参数：
+参数及其默认值
+
+描述
+
+-XX:-DisableExplicitGC
+
+禁止调用System.gc()；但jvm的gc仍然有效
+
+-XX:+MaxFDLimit
+
+最大化文件描述符的数量限制
+
+-XX:+ScavengeBeforeFullGC
+
+新生代GC优先于Full GC执行
+
+-XX:+UseGCOverheadLimit
+
+在抛出OOM之前限制jvm耗费在GC上的时间比例
+
+-XX:-UseConcMarkSweepGC
+
+对老生代采用并发标记交换算法进行GC
+
+-XX:-UseParallelGC
+
+启用并行GC
+
+-XX:-UseParallelOldGC
+
+对Full GC启用并行，当-XX:-UseParallelGC启用时该项自动启用
+
+-XX:-UseSerialGC
+
+启用串行GC
+
+-XX:+UseThreadPriorities
+
+启用本地线程优先级
+
+
+上面表格中黑体的三个参数代表着jvm中GC执行的三种方式，即串行、并行、并发；
+串行（SerialGC）是jvm的默认GC方式，一般适用于小型应用和单处理器，算法比较简单，GC效率也较高，但可能会给应用带来停顿；
+并行（ParallelGC）是指GC运行时，对应用程序运行没有影响，GC和app两者的线程在并发执行，这样可以最大限度不影响app的运行；
+并发（ConcMarkSweepGC）是指多个线程并发执行GC，一般适用于多处理器系统中，可以提高GC的效率，但算法复杂，系统消耗较大；
+
+性能调优参数列表：
+
+参数及其默认值
+
+描述
+
+-XX:LargePageSizeInBytes=4m
+
+设置用于Java堆的大页面尺寸
+
+-XX:MaxHeapFreeRatio=70
+
+GC后java堆中空闲量占的最大比例
+
+-XX:MaxNewSize=size
+
+新生成对象能占用内存的最大值
+
+-XX:MaxPermSize=64m
+
+老生代对象能占用内存的最大值
+
+-XX:MinHeapFreeRatio=40
+
+GC后java堆中空闲量占的最小比例
+
+-XX:NewRatio=2
+
+新生代内存容量与老生代内存容量的比例
+
+-XX:NewSize=2.125m
+
+新生代对象生成时占用内存的默认值
+
+-XX:ReservedCodeCacheSize=32m
+
+保留代码占用的内存容量
+
+-XX:ThreadStackSize=512
+
+设置线程栈大小，若为0则使用系统默认值
+
+-XX:+UseLargePages
+
+使用大页面内存
+
+
+我们在日常性能调优中基本上都会用到以上黑体的这几个属性；
+
+
+调试参数列表：
+
+参数及其默认值
+
+描述
+
+-XX:-CITime
+
+打印消耗在JIT编译的时间
+
+-XX:ErrorFile=./hs_err_pid<pid>.log
+
+保存错误日志或者数据到文件中
+
+-XX:-ExtendedDTraceProbes
+
+开启solaris特有的dtrace探针
+
+-XX:HeapDumpPath=./java_pid<pid>.hprof
+
+指定导出堆信息时的路径或文件名
+
+-XX:-HeapDumpOnOutOfMemoryError
+
+当首次遭遇OOM时导出此时堆中相关信息
+
+-XX:OnError="<cmd args>;<cmd args>"
+
+出现致命ERROR之后运行自定义命令
+
+-XX:OnOutOfMemoryError="<cmd args>;<cmd args>"
+
+当首次遭遇OOM时执行自定义命令
+
+-XX:-PrintClassHistogram
+
+遇到Ctrl-Break后打印类实例的柱状信息，与jmap -histo功能相同
+
+-XX:-PrintConcurrentLocks
+
+遇到Ctrl-Break后打印并发锁的相关信息，与jstack -l功能相同
+
+-XX:-PrintCommandLineFlags
+
+打印在命令行中出现过的标记
+
+-XX:-PrintCompilation
+
+当一个方法被编译时打印相关信息
+
+-XX:-PrintGC
+
+每次GC时打印相关信息
+
+-XX:-PrintGCDetails
+
+每次GC时打印详细信息
+
+-XX:-PrintGCTimeStamps
+
+打印每次GC的时间戳
+
+-XX:-TraceClassLoading
+
+跟踪类的加载信息
+
+-XX:-TraceClassLoadingPreorder
+
+跟踪被引用到的所有类的加载信息
+
+-XX:-TraceClassResolution
+
+跟踪常量池
+
+-XX:-TraceClassUnloading
+
+跟踪类的卸载信息
+
+-XX:-TraceLoaderConstraints
+
+跟踪类加载器约束的相关信息
+
+1、eclipse中在VM arguments中配置
+
+例如：项目-->properties-->run/debug setting-->选择目标类Test.java-->edit-->arguments-->VM arguments-->输入：-XX:+TraceClassLoading
+
+将会打印class加载明细。
+
+2、java命令中带参数
+
+然后先用javac Test.java进行编译。然后用java -XX:+TraceClassLoading Test。然后就能在控制台打印出一大串的log。
+
+3、启动脚本中增加
+
+-XX:+TraceClassLoading
+
+不管是YGC还是Full GC,GC过程中都会对导致程序运行中中断,正确的选择不同的GC策略,调整JVM、GC的参数，可以极大的减少由于GC工作，而导致的程序运行中断方面的问题，进而适当的提高Java程序的工作效率。但是调整GC是以个极为复杂的过程，由于各个程序具备不同的特点，如：web和GUI程序就有很大区别（Web可以适当的停顿，但GUI停顿是客户无法接受的），而且由于跑在各个机器上的配置不同（主要cup个数，内存不同），所以使用的GC种类也会不同(如何选择见GC种类及如何选择)。本文将注重介绍JVM、GC的一些重要参数的设置来提高系统的性能。
+
+       JVM内存组成及GC相关内容请见之前的文章:JVM内存组成 GC策略&内存申请。
+
+JVM参数的含义 实例见实例分析
+
+参数名称	含义	默认值
+-Xms	初始堆大小	物理内存的1/64(<1GB)	默认(MinHeapFreeRatio参数可以调整)空余堆内存小于40%时，JVM就会增大堆直到-Xmx的最大限制.
+-Xmx	最大堆大小	物理内存的1/4(<1GB)	默认(MaxHeapFreeRatio参数可以调整)空余堆内存大于70%时，JVM会减少堆直到 -Xms的最小限制
+-Xmn	年轻代大小(1.4or lator)	 	注意：此处的大小是（eden+ 2 survivor space).与jmap -heap中显示的New gen是不同的。
+整个堆大小=年轻代大小 + 年老代大小 + 持久代大小.
+增大年轻代后,将会减小年老代大小.此值对系统性能影响较大,Sun官方推荐配置为整个堆的3/8
+-XX:NewSize	设置年轻代大小(for 1.3/1.4)
+-XX:MaxNewSize	年轻代最大值(for 1.3/1.4)
+-XX:PermSize	设置持久代(perm gen)初始值	物理内存的1/64
+-XX:MaxPermSize	设置持久代最大值	物理内存的1/4
+-Xss	每个线程的堆栈大小	 	JDK5.0以后每个线程堆栈大小为1M,以前每个线程堆栈大小为256K.更具应用的线程所需内存大小进行 调整.在相同物理内存下,减小这个值能生成更多的线程.但是操作系统对一个进程内的线程数还是有限制的,不能无限生成,经验值在3000~5000左右
+一般小的应用， 如果栈不是很深， 应该是128k够用的 大的应用建议使用256k。这个选项对性能影响比较大，需要严格的测试。（校长）
+和threadstacksize选项解释很类似,官方文档似乎没有解释,在论坛中有这样一句话:"”
+-Xss is translated in a VM flag named ThreadStackSize”
+一般设置这个值就可以了。
+-XX:ThreadStackSize	Thread Stack Size	 	(0 means use default stack size) [Sparc: 512; Solaris x86: 320 (was 256 prior in 5.0 and earlier); Sparc 64 bit: 1024; Linux amd64: 1024 (was 0 in 5.0 and earlier); all others 0.]
+-XX:NewRatio	年轻代(包括Eden和两个Survivor区)与年老代的比值(除去持久代)	 	-XX:NewRatio=4表示年轻代与年老代所占比值为1:4,年轻代占整个堆栈的1/5
+Xms=Xmx并且设置了Xmn的情况下，该参数不需要进行设置。
+-XX:SurvivorRatio	Eden区与Survivor区的大小比值	 	设置为8,则两个Survivor区与一个Eden区的比值为2:8,一个Survivor区占整个年轻代的1/10
+-XX:LargePageSizeInBytes	内存页的大小不可设置过大， 会影响Perm的大小	 	=128m
+-XX:+UseFastAccessorMethods	原始类型的快速优化
+-XX:+DisableExplicitGC	关闭System.gc()	 	这个参数需要严格的测试
+-XX:MaxTenuringThreshold	垃圾最大年龄	 	如果设置为0的话,则年轻代对象不经过Survivor区,直接进入年老代. 对于年老代比较多的应用,可以提高效率.如果将此值设置为一个较大值,则年轻代对象会在Survivor区进行多次复制,这样可以增加对象再年轻代的存活 时间,增加在年轻代即被回收的概率
+该参数只有在串行GC时才有效.
+-XX:+AggressiveOpts	加快编译
+-XX:+UseBiasedLocking	锁机制的性能改善
+-Xnoclassgc	禁用垃圾回收
+-XX:SoftRefLRUPolicyMSPerMB	每兆堆空闲空间中SoftReference的存活时间	1s	softly reachable objects will remain alive for some amount of time after the last time they were referenced. The default value is one second of lifetime per free megabyte in the heap
+-XX:PretenureSizeThreshold	对象超过多大是直接在旧生代分配	0	单位字节 新生代采用Parallel Scavenge GC时无效
+另一种直接在旧生代分配的情况是大的数组对象,且数组中无外部引用对象.
+-XX:TLABWasteTargetPercent	TLAB占eden区的百分比	1%
+-XX:+CollectGen0First	FullGC时是否先YGC	false
+并行收集器相关参数
+
+-XX:+UseParallelGC	Full GC采用parallel MSC
+(此项待验证)
+选择垃圾收集器为并行收集器.此配置仅对年轻代有效.即上述配置下,年轻代使用并发收集,而年老代仍旧使用串行收集.(此项待验证)
+
+-XX:+UseParNewGC	设置年轻代为并行收集	 	可与CMS收集同时使用
+JDK5.0以上,JVM会根据系统配置自行设置,所以无需再设置此值
+-XX:ParallelGCThreads	并行收集器的线程数	 	此值最好配置与处理器数目相等 同样适用于CMS
+-XX:+UseParallelOldGC	年老代垃圾收集方式为并行收集(Parallel Compacting)	 	这个是JAVA 6出现的参数选项
+-XX:MaxGCPauseMillis	每次年轻代垃圾回收的最长时间(最大暂停时间)	 	如果无法满足此时间,JVM会自动调整年轻代大小,以满足此值.
+-XX:+UseAdaptiveSizePolicy	自动选择年轻代区大小和相应的Survivor区比例	 	设置此选项后,并行收集器会自动选择年轻代区大小和相应的Survivor区比例,以达到目标系统规定的最低相应时间或者收集频率等,此值建议使用并行收集器时,一直打开.
+-XX:GCTimeRatio	设置垃圾回收时间占程序运行时间的百分比	 	公式为1/(1+n)
+-XX:+ScavengeBeforeFullGC	Full GC前调用YGC	true	Do young generation GC prior to a full GC. (Introduced in 1.4.1.)
+CMS相关参数
+
+-XX:+UseConcMarkSweepGC	使用CMS内存收集	 	测试中配置这个以后,-XX:NewRatio=4的配置失效了,原因不明.所以,此时年轻代大小最好用-Xmn设置.???
+-XX:+AggressiveHeap	 	 	试图是使用大量的物理内存
+长时间大内存使用的优化，能检查计算资源（内存， 处理器数量）
+至少需要256MB内存
+大量的CPU／内存， （在1.4.1在4CPU的机器上已经显示有提升）
+-XX:CMSFullGCsBeforeCompaction	多少次后进行内存压缩	 	由于并发收集器不对内存空间进行压缩,整理,所以运行一段时间以后会产生"碎片",使得运行效率降低.此值设置运行多少次GC以后对内存空间进行压缩,整理.
+-XX:+CMSParallelRemarkEnabled	降低标记停顿
+-XX+UseCMSCompactAtFullCollection	在FULL GC的时候， 对年老代的压缩	 	CMS是不会移动内存的， 因此， 这个非常容易产生碎片， 导致内存不够用， 因此， 内存的压缩这个时候就会被启用。 增加这个参数是个好习惯。
+可能会影响性能,但是可以消除碎片
+-XX:+UseCMSInitiatingOccupancyOnly	使用手动定义初始化定义开始CMS收集	 	禁止hostspot自行触发CMS GC
+-XX:CMSInitiatingOccupancyFraction=70	使用cms作为垃圾回收
+使用70％后开始CMS收集	92	为了保证不出现promotion failed(见下面介绍)错误,该值的设置需要满足以下公式CMSInitiatingOccupancyFraction计算公式
+-XX:CMSInitiatingPermOccupancyFraction	设置Perm Gen使用到达多少比率时触发	92
+-XX:+CMSIncrementalMode	设置为增量模式	 	用于单CPU情况
+-XX:+CMSClassUnloadingEnabled
+辅助信息
+
+-XX:+PrintGC
+输出形式:
+
+[GC 118250K->113543K(130112K), 0.0094143 secs]
+[Full GC 121376K->10414K(130112K), 0.0650971 secs]
+
+-XX:+PrintGCDetails
+输出形式:[GC [DefNew: 8614K->781K(9088K), 0.0123035 secs] 118250K->113543K(130112K), 0.0124633 secs]
+[GC [DefNew: 8614K->8614K(9088K), 0.0000665 secs][Tenured: 112761K->10414K(121024K), 0.0433488 secs] 121376K->10414K(130112K), 0.0436268 secs]
+
+-XX:+PrintGCTimeStamps
+-XX:+PrintGC:PrintGCTimeStamps	 	 	可与-XX:+PrintGC -XX:+PrintGCDetails混合使用
+输出形式:11.851: [GC 98328K->93620K(130112K), 0.0082960 secs]
+-XX:+PrintGCApplicationStoppedTime	打印垃圾回收期间程序暂停的时间.可与上面混合使用	 	输出形式:Total time for which application threads were stopped: 0.0468229 seconds
+-XX:+PrintGCApplicationConcurrentTime	打印每次垃圾回收前,程序未中断的执行时间.可与上面混合使用	 	输出形式:Application time: 0.5291524 seconds
+-XX:+PrintHeapAtGC	打印GC前后的详细堆栈信息
+-Xloggc:filename	把相关日志信息记录到文件以便分析.
+与上面几个配合使用
+-XX:+PrintClassHistogram
+
+garbage collects before printing the histogram.
+-XX:+PrintTLAB	查看TLAB空间的使用情况
+XX:+PrintTenuringDistribution	查看每次minor GC后新的存活周期的阈值
+Desired survivor size 1048576 bytes, new threshold 7 (max 15)
+new threshold 7即标识新的存活周期的阈值为7。
+
+  对于GC的性能主要有2个方面的指标：吞吐量throughput（工作时间不算gc的时间占总的时间比）和暂停pause（gc发生时app对外显示的无法响应）。
+
+1. Total Heap
+
+       默认情况下，vm会增加/减少heap大小以维持free space在整个vm中占的比例，这个比例由MinHeapFreeRatio和MaxHeapFreeRatio指定。
+
+一般而言，server端的app会有以下规则：
+
+对vm分配尽可能多的memory；
+将Xms和Xmx设为一样的值。如果虚拟机启动时设置使用的内存比较小，这个时候又需要初始化很多对象，虚拟机就必须重复地增加内存。
+处理器核数增加，内存也跟着增大。
+2. The Young Generation
+
+       另外一个对于app流畅性运行影响的因素是young generation的大小。young generation越大，minor collection越少；但是在固定heap size情况下，更大的young generation就意味着小的tenured generation，就意味着更多的major collection(major collection会引发minor collection)。
+
+       NewRatio反映的是young和tenured generation的大小比例。NewSize和MaxNewSize反映的是young generation大小的下限和上限，将这两个值设为一样就固定了young generation的大小（同Xms和Xmx设为一样）。
+
+       如果希望，SurvivorRatio也可以优化survivor的大小，不过这对于性能的影响不是很大。SurvivorRatio是eden和survior大小比例。
+
+一般而言，server端的app会有以下规则：
+
+首先决定能分配给vm的最大的heap size，然后设定最佳的young generation的大小；
+如果heap size固定后，增加young generation的大小意味着减小tenured generation大小。让tenured generation在任何时候够大，能够容纳所有live的data（留10%-20%的空余）。
+经验&&规则
+
+年轻代大小选择
+响应时间优先的应用:尽可能设大,直到接近系统的最低响应时间限制(根据实际情况选择).在此种情况下,年轻代收集发生的频率也是最小的.同时,减少到达年老代的对象.
+吞吐量优先的应用:尽可能的设置大,可能到达Gbit的程度.因为对响应时间没有要求,垃圾收集可以并行进行,一般适合8CPU以上的应用.
+避免设置过小.当新生代设置过小时会导致:1.YGC次数更加频繁 2.可能导致YGC对象直接进入旧生代,如果此时旧生代满了,会触发FGC.
+年老代大小选择
+响应时间优先的应用:年老代使用并发收集器,所以其大小需要小心设置,一般要考虑并发会话率和会话持续时间等一些参数.如果堆设置小了,可以会造成内存碎 片,高回收频率以及应用暂停而使用传统的标记清除方式;如果堆大了,则需要较长的收集时间.最优化的方案,一般需要参考以下数据获得:
+并发垃圾收集信息、持久代并发收集次数、传统GC信息、花在年轻代和年老代回收上的时间比例。
+吞吐量优先的应用:一般吞吐量优先的应用都有一个很大的年轻代和一个较小的年老代.原因是,这样可以尽可能回收掉大部分短期对象,减少中期的对象,而年老代尽存放长期存活对象.
+较小堆引起的碎片问题
+因为年老代的并发收集器使用标记,清除算法,所以不会对堆进行压缩.当收集器回收时,他会把相邻的空间进行合并,这样可以分配给较大的对象.但是,当堆空间较小时,运行一段时间以后,就会出现"碎片",如果并发收集器找不到足够的空间,那么并发收集器将会停止,然后使用传统的标记,清除方式进行回收.如果出现"碎片",可能需要进行如下配置:
+-XX:+UseCMSCompactAtFullCollection:使用并发收集器时,开启对年老代的压缩.
+-XX:CMSFullGCsBeforeCompaction=0:上面配置开启的情况下,这里设置多少次Full GC后,对年老代进行压缩
+用64位操作系统，Linux下64位的jdk比32位jdk要慢一些，但是吃得内存更多，吞吐量更大
+XMX和XMS设置一样大，MaxPermSize和MinPermSize设置一样大，这样可以减轻伸缩堆大小带来的压力
+使用CMS的好处是用尽量少的新生代，经验值是128M－256M， 然后老生代利用CMS并行收集， 这样能保证系统低延迟的吞吐效率。 实际上cms的收集停顿时间非常的短，2G的内存， 大约20－80ms的应用程序停顿时间
+系统停顿的时候可能是GC的问题也可能是程序的问题，多用jmap和jstack查看，或者killall -3 java，然后查看java控制台日志，能看出很多问题。(相关工具的使用方法将在后面的blog中介绍)
+仔细了解自己的应用，如果用了缓存，那么年老代应该大一些，缓存的HashMap不应该无限制长，建议采用LRU算法的Map做缓存，LRUMap的最大长度也要根据实际情况设定。
+采用并发回收时，年轻代小一点，年老代要大，因为年老大用的是并发回收，即使时间长点也不会影响其他程序继续运行，网站不会停顿
+JVM参数的设置(特别是 –Xmx –Xms –Xmn -XX:SurvivorRatio  -XX:MaxTenuringThreshold等参数的设置没有一个固定的公式，需要根据PV old区实际数据 YGC次数等多方面来衡量。为了避免promotion faild可能会导致xmn设置偏小，也意味着YGC的次数会增多，处理并发访问的能力下降等问题。每个参数的调整都需要经过详细的性能测试，才能找到特定应用的最佳配置。
+promotion failed:
+
+垃圾回收时promotion failed是个很头痛的问题，一般可能是两种原因产生，第一个原因是救助空间不够，救助空间里的对象还不应该被移动到年老代，但年轻代又有很多对象需要放入救助空间；第二个原因是年老代没有足够的空间接纳来自年轻代的对象；这两种情况都会转向Full GC，网站停顿时间较长。
+
+解决方方案一：
+
+第一个原因我的最终解决办法是去掉救助空间，设置-XX:SurvivorRatio=65536 -XX:MaxTenuringThreshold=0即可，第二个原因我的解决办法是设置CMSInitiatingOccupancyFraction为某个值（假设70），这样年老代空间到70%时就开始执行CMS，年老代有足够的空间接纳来自年轻代的对象。
+
+解决方案一的改进方案：
+
+又有改进了，上面方法不太好，因为没有用到救助空间，所以年老代容易满，CMS执行会比较频繁。我改善了一下，还是用救助空间，但是把救助空间加大，这样也不会有promotion failed。具体操作上，32位Linux和64位Linux好像不一样，64位系统似乎只要配置MaxTenuringThreshold参数，CMS还是有暂停。为了解决暂停问题和promotion failed问题，最后我设置-XX:SurvivorRatio=1 ，并把MaxTenuringThreshold去掉，这样即没有暂停又不会有promotoin failed，而且更重要的是，年老代和永久代上升非常慢（因为好多对象到不了年老代就被回收了），所以CMS执行频率非常低，好几个小时才执行一次，这样，服务器都不用重启了。
+
+-Xmx4000M -Xms4000M -Xmn600M -XX:PermSize=500M -XX:MaxPermSize=500M -Xss256K -XX:+DisableExplicitGC -XX:SurvivorRatio=1 -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+CMSParallelRemarkEnabled -XX:+UseCMSCompactAtFullCollection -XX:CMSFullGCsBeforeCompaction=0 -XX:+CMSClassUnloadingEnabled -XX:LargePageSizeInBytes=128M -XX:+UseFastAccessorMethods -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=80 -XX:SoftRefLRUPolicyMSPerMB=0 -XX:+PrintClassHistogram -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintHeapAtGC -Xloggc:log/gc.log
+
+
+
+CMSInitiatingOccupancyFraction值与Xmn的关系公式
+
+上面介绍了promontion faild产生的原因是EDEN空间不足的情况下将EDEN与From survivor中的存活对象存入To survivor区时,To survivor区的空间不足，再次晋升到old gen区，而old gen区内存也不够的情况下产生了promontion faild从而导致full gc.那可以推断出：eden+from survivor < old gen区剩余内存时，不会出现promontion faild的情况，即：
+(Xmx-Xmn)*(1-CMSInitiatingOccupancyFraction/100)>=(Xmn-Xmn/(SurvivorRatior+2))  进而推断出：
+
+CMSInitiatingOccupancyFraction <=((Xmx-Xmn)-(Xmn-Xmn/(SurvivorRatior+2)))/(Xmx-Xmn)*100
+
+例如：
+
+当xmx=128 xmn=36 SurvivorRatior=1时 CMSInitiatingOccupancyFraction<=((128.0-36)-(36-36/(1+2)))/(128-36)*100 =73.913
+
+当xmx=128 xmn=24 SurvivorRatior=1时 CMSInitiatingOccupancyFraction<=((128.0-24)-(24-24/(1+2)))/(128-24)*100=84.615…
+
+当xmx=3000 xmn=600 SurvivorRatior=1时  CMSInitiatingOccupancyFraction<=((3000.0-600)-(600-600/(1+2)))/(3000-600)*100=83.33
+
+CMSInitiatingOccupancyFraction低于70% 需要调整xmn或SurvivorRatior值。
+
+网上一童鞋推断出的公式是：:(Xmx-Xmn)*(100-CMSInitiatingOccupancyFraction)/100>=Xmn 这个公式个人认为不是很严谨，在内存小的时候会影响xmn的计算。
+
+

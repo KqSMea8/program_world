@@ -4068,3 +4068,457 @@ public class QuartzConfig {
 上面都是简单的介绍了关于SpringBoot定时任务的处理，直接使用SpringTask注解的方式应该是最方便的，
 而使用Quartz从2.0开始也变得很方便。对于这两种方式，应该说各有长处吧，按需选择。
 另外关于Quartz的详细内容可以查看官方文档：传送门
+
+
+
+如何优雅地在 Spring Boot 中使用自定义注解，AOP 切面统一打印出入参日志 | 修订版
+犬小哈  JAVA葵花宝典  昨天
+Spring Boot 自定义注解，AOP 切面统一打印出入参日志
+
+其实，小哈在之前就出过一篇关于如何使用 AOP 切面统一打印请求日志的文章，那为什么还要再出一篇呢？没东西写了？
+
+哈哈，当然不是！原因是当时的实现方案还是存在缺陷的，原因如下：
+
+不够灵活，由于是以所有 Controller 方法中的方法为切面，也就是说切死了，如果说我们不想让某个接口打印出入参日志，就办不到了；
+
+Controller 包层级过深时，导致很多包下的接口切不到；
+
+今天主要说说如何通过自定义注解的方式，在 Spring Boot 中来实现 AOP 切面统一打印出入参日志。小伙伴们可以收藏一波。
+
+废话不多说，进入正题 ！
+
+目录
+一、先看看切面日志输出效果
+
+二、添加 AOP Maven 依赖
+
+三、自定义日志注解
+
+四、配置 AOP 切面
+
+五、怎么使用呢？
+
+六、对于文件上传好使不？
+
+七、只想在开发环境和测试环境中使用？
+
+八、多切面如何指定优先级？
+
+文末送 10G 学习福利哦
+
+一、先看看切面日志输出效果
+在看看实现方法之前，我们先看下切面日志输出效果咋样：
+
+Spring boot 自定义注解，aop切面统一打印请求日志效果图
+
+从上图中可以看到，每个对于每个请求，开始与结束一目了然，并且打印了以下参数：
+
+URL: 请求接口地址；
+
+Description: 接口的中文说明信息；
+
+HTTP Method: 请求的方法，是 POST, GET, 还是 DELETE 等；
+
+Class Method: 被请求的方法路径 : 包名 + 方法名;
+
+IP: 请求方的 IP 地址；
+
+Request Args: 请求入参，以 JSON 格式输出；
+
+Response Args: 响应出参，以 JSON 格式输出；
+
+Time-Consuming: 请求耗时，以此估算每个接口的性能指数；
+
+怎么样？看上去效果还不错呢？接下来看看，我们要如何一步一步实现它呢？
+
+二、添加 AOP Maven 依赖
+在项目 pom.xml 文件中添加依赖：
+
+<!-- aop 依赖 -->
+
+<dependency>
+
+
+<groupId>
+org.springframework.boot
+</groupId>
+
+
+<artifactId>
+spring-boot-starter-aop
+</artifactId>
+
+</dependency>
+
+
+
+<!-- 用于日志切面中，以 json 格式打印出入参 -->
+
+<dependency>
+
+
+<groupId>
+com.google.code.gson
+</groupId>
+
+
+<artifactId>
+gson
+</artifactId>
+
+
+<version>
+2.8.5
+</version>
+
+</dependency>
+
+三、自定义日志注解
+让我们来自定义一个日志注解，如下所示：
+
+自定义注解
+
+①：什么时候使用该注解，我们定义为运行时；
+
+②：注解用于什么地方，我们定义为作用于方法上；
+
+③：注解是否将包含在 JavaDoc 中；
+
+④：注解名为 WebLog;
+
+⑤：定义一个属性，默认为空字符串；
+
+到这里，一个完整的自定义注解就定义完成了。
+
+四、配置 AOP 切面
+在配置 AOP 切面之前，我们需要了解下 aspectj 相关注解的作用：
+
+@Aspect：声明该类为一个注解类；
+
+@Pointcut：定义一个切点，后面跟随一个表达式，表达式可以定义为切某个注解，也可以切某个 package 下的方法；
+
+切点定义好后，就是围绕这个切点做文章了：
+
+@Before: 在切点之前，织入相关代码；
+
+@After: 在切点之后，织入相关代码;
+
+@AfterReturning: 在切点返回内容后，织入相关代码，一般用于对返回值做些加工处理的场景；
+
+@AfterThrowing: 用来处理当织入的代码抛出异常后的逻辑处理;
+
+@Around: 环绕，可以在切入点前后织入代码，并且可以自由的控制何时执行切点；
+
+注解执行顺序
+
+接下来，定义一个 WebLogAspect.java 切面类，声明一个切点：
+
+定义一个切点
+
+然后，定义 @Around 环绕，用于何时执行切点：
+
+环绕
+
+①：记录一下调用接口的开始时间；
+
+②：执行切点，执行切点后，会去依次调用 @Before -> 接口逻辑代码 -> @After -> @AfterReturning；
+
+③：打印出参；
+
+④：打印接口处理耗时；
+
+⑤：返回接口返参结果；
+
+再来看看 @Before 方法：
+
+@Before
+
+看注释功能说明，因为注释说得还是比较清楚的！
+
+最后，用 @After 来做个收尾：
+
+换行
+
+@After
+
+我们在每个接口的最后，打印日志结束标志。最后再看下项目包结构：
+
+项目包结构
+
+到这里，切面相关的代码就完成了！
+
+五、怎么使用呢？
+因为我们的切点是自定义注解 @WebLog, 所以我们仅仅需要在 Controller 控制器的每个接口方法添加 @WebLog 注解即可，如果我们不想某个接口打印出入参日志，不加注解就可以了：
+
+用户登录接口
+
+六、对于文件上传好使不？
+是好使的！不论是单文件上传，抑或是多文件上传，切面日志均运行良好，这里测试的东西，小哈就不贴出来了。有兴趣的小伙伴可以试试！
+
+七、只想在开发环境和测试环境中使用？
+对于那些性能要求较高的应用，不想在生产环境中打印日志，只想在开发环境或者测试环境中使用，要怎么做呢？我们只需为切面添加 @Profile 就可以了，如下图所示：
+
+指定profile
+
+这样就指定了只能作用于 dev 开发环境和 test 测试环境，生产环境 prod 是不生效的！
+
+八、多切面如何指定优先级？
+假设说我们的服务中不止定义了一个切面，比如说我们针对 Web 层的接口，不止要打印日志，还要校验 token 等。要如何指定切面的优先级呢？也就是如何指定切面的执行顺序？
+
+我们可以通过 @Order(i)注解来指定优先级，注意：i 值越小，优先级则越高。
+
+假设说我们定义上面这个日志切面的优先级为 @Order(10), 然后我们还有个校验 token 的切面 CheckTokenAspect.java，我们定义为了 @Order(11), 那么它们之间的执行顺序如下：
+
+@Order 执行顺序
+
+我们可以总结一下：
+
+在切点之前， @Order 从小到大被执行，也就是说越小的优先级越高；
+
+在切点之后， @Order 从大到小被执行，也就是说越大的优先级越高；
+
+九、Ref
+http://blog.didispace.com/springbootaoplog
+
+十、GitHub 源码地址
+https://github.com/weiwosuoai/spring-boot-tutorial/tree/master/spring-boot-aop-web-request
+
+推荐阅读
+
+八个开源的 Spring Boot 学习资源，你值得拥有
+
+Spring Boot MyBatis 动态数据源切换、多数据源，读写分离
+
+JAVA中令人眼花撩乱的数字魔法
+
+一次非常有意思的SQL优化经历:从30248.271s到0.001s
+
+
+==========
+
+优化你的springboot
+Java知音  方志朋  3天前
+点击上方“方志朋”，选择“置顶公众号”
+
+技术文章第一时间送达！
+
+
+作者：Janti
+
+cnblogs.com/superfj/p/8667977.html
+
+介绍
+在SpringBoot的Web项目中，默认采用的是内置Tomcat，当然也可以配置支持内置的jetty，内置有什么好处呢？
+
+方便微服务部署。
+
+方便项目启动，不需要下载Tomcat或者Jetty
+
+针对目前的容器优化，目前来说没有太多地方，需要考虑如下几个点
+
+线程数
+
+超时时间
+
+jvm优化
+
+针对上述的优化点来说，首先线程数是一个重点，初始线程数和最大线程数，初始线程数保障启动的时候，如果有大量用户访问，能够很稳定的接受请求。
+
+而最大线程数量用来保证系统的稳定性，而超时时间用来保障连接数不容易被压垮，如果大批量的请求过来，延迟比较高，不容易把线程打满。这种情况在生产中是比较常见的 ，一旦网络不稳定，宁愿丢包也不愿意把机器压垮。
+
+jvm优化一般来说没有太多场景，无非就是加大初始的堆，和最大限制堆,当然也不是无限增大，根据的情况进快速开始
+
+在spring boot配置文件中application.yml，添加以下配置
+
+server:
+  tomcat:
+    min-spare-threads: 20
+    max-threads: 100
+  connection-timeout: 5000
+这块对tomcat进行了一个优化配置，最大线程数是100，初始化线程是20,超时时间是5000ms
+
+Jvm优化
+这块主要不是谈如何优化，jvm优化是一个需要场景化的，没有什么太多特定参数，一般来说在server端运行都会指定如下参数
+
+初始内存和最大内存基本会设置成一样的，具体大小根据场景设置，-server是一个必须要用的参数，至于收集器这些使用默认的就可以了，除非有特定需求。
+
+1.使用-server模式
+设置JVM使用server模式。64位JDK默认启动该模式
+
+java -server -jar springboot-1.0.jar
+2.指定堆参数
+这个根据服务器的内存大小，来设置堆参数。
+
+-Xms :设置Java堆栈的初始化大小
+
+-Xmx :设置最大的java堆大小
+
+
+java -server -Xms512m -Xmx768m  -jar springboot-1.0.jar
+设置初始化堆内存为512MB，最大为768MB。
+
+3.远程Debug
+在服务器上将启动参数修改为：
+
+java -Djavax.net.debug=
+ssl -Xdebug -Xnoagent -Djava.compiler=
+NONE -Xrunjdwp:transport=
+dt_socket,server=y,suspend=
+n,address=8888 -jar springboot-1.0.jar
+这个时候服务端远程Debug模式开启，端口号为8888。
+
+在IDEA中，点击Edit Configuration按钮。
+
+
+
+出现弹窗，点击+按钮，找到Remote选项。
+
+
+
+在【1】中填入Remote项目名称，在【2】中填IP地址和端口号，在【3】选择远程调试的项目module，配置完成后点击OK即可
+
+如果碰到连接超时的情况，很有可能服务器的防火墙的问题，举例CentOs7,关闭防火墙
+
+systemctl stop firewalld.service #停止firewall
+systemctl disable firewalld.service #禁止firewall开机启动
+点击debug按钮，IDEA控制台打印信息：
+
+
+
+说明远程调试成功。
+
+JVM工具远程连接
+jconsole与Jvisualvm远程连接
+通常我们的web服务都输部署在服务器上的，在window使用jconsole是很方便的，相对于Linux就有一些麻烦了，需要进行一些设置。
+
+1.查看hostname,首先使用
+
+hostname -i
+
+查看，服务器的hostname为127.0.0.1，这个是不对的，需要进行修改
+
+2.修改hostname
+
+修改/etc/hosts文件，将其第一行的“127.0.0.1 localhost.localdomain localhost”，修改为：“192.168.44.128 localhost.localdomain localhost”.“192.168.44.128”为实际的服务器的IP地
+
+3.重启Linux，在服务器上输入hostname -i，查看实际设置的IP地址是否为你设置的
+
+4.启动服务，参数为：
+
+java -jar -Djava.rmi.server.hostname=192.168.44.128 -
+Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=911 -
+Dcom.sun.management.jmxremote.ssl=false -
+Dcom.sun.management.jmxremote.authenticate=false jantent-1.0-SNAPSHOT.jar
+ip为192.168.44.128，端口为911 。
+
+5.打开Jconsole，进行远程连接,输入IP和端口即可
+
+
+
+点击连接，经过稍稍等待之后，即可完成连接，如下图所示：
+
+
+
+同理，JvisualVm的远程连接是同样的，启动参数也是一样。
+
+然后在本机JvisualVm输入IP：PORT，即可进行远程连接：如下图所示：
+
+
+
+相比较Jvisualvm功能更加强大一下，界面也更美观
+
+-更多文章-
+
+
+
+淘宝服务端高并发分布式架构演进之路
+
+有没有想过，手写一个连接池？
+
+一个Java对象到底有多大？
+
+Spring Cloud Alibba教程：如何使用Nacos作为配置中心
+
+Spring Cloud Alibaba教程：使用Nacos作为服务注册中心
+
+======================================================
+
+SpringBoot核心功能
+
+1、独立运行Spring项目
+
+Spring boot 可以以jar包形式独立运行，运行一个Spring Boot项目只需要通过java -jar xx.jar来运行。
+
+2、内嵌servlet容器
+
+Spring Boot可以选择内嵌Tomcat、jetty或者Undertow,这样我们无须以war包形式部署项目。
+
+3、提供starter简化Maven配置
+
+spring提供了一系列的start pom来简化Maven的依赖加载，例如，当你使用了spring-boot-starter-web，会自动加入如图5-1所示的依赖包。
+
+4、自动装配Spring
+
+SpringBoot会根据在类路径中的jar包，类、为jar包里面的类自动配置Bean，这样会极大地减少我们要使用的配置。当然，SpringBoot只考虑大多数的开发场景，并不是所有的场景，若在实际开发中我们需要配置Bean，而SpringBoot灭有提供支持，则可以自定义自动配置。
+
+5、准生产的应用监控
+
+SpringBoot提供基于http ssh telnet对运行时的项目进行监控。
+
+6、无代码生产和xml配置　　
+
+SpringBoot不是借助与代码生成来实现的，而是通过条件注解来实现的，这是Spring4.x提供的新特性。
+
+SpringBoot优缺点
+优点：
+快速构建项目。
+
+对主流开发框架的无配置集成。
+
+项目可独立运行，无须外部依赖Servlet容器。
+-提供运行时的应用监控。
+
+极大的提高了开发、部署效率。
+
+与云计算的天然集成。
+
+缺点：
+如果你不认同spring框架，也许这就是缺点。
+
+SpringBoot特性
+创建独立的Spring项目
+
+内置Tomcat和Jetty容器
+
+提供一个starter POMs来简化Maven配置
+
+提供了一系列大型项目中常见的非功能性特性，如安全、指标，健康检测、外部配置等
+
+完全没有代码生成和xml配置文件
+
+SpringBoot CLI
+SpringBoot CLI 是SpringBoot提供的控制台命令工具。
+
+SpringBoot maven 构建项目
+spring-boot-starter-parent：是一个特殊Start，它用来提供相关的Maven依赖项，使用它之后，常用的包依赖可以省去version标签。
+
+SpringBoot几个常用的注解
+（1）@RestController和@Controller指定一个类，作为控制器的注解 ，并说明其区别
+
+（2）@RequestMapping方法级别的映射注解，这一个用过Spring MVC的小伙伴相信都很熟悉
+
+（3）@EnableAutoConfiguration和@SpringBootApplication是类级别的注解，根据maven依赖的jar来自动猜测完成正确的spring的对应配置，只要引入了spring-boot-starter-web的依赖，默认会自动配置Spring MVC和tomcat容器
+
+（4）@Configuration类级别的注解，一般这个注解，我们用来标识main方法所在的类,完成元数据bean的初始化。
+
+（5）@ComponentScan类级别的注解，自动扫描加载所有的Spring组件包括Bean注入，一般用在main方法所在的类上
+
+（6）@ImportResource类级别注解，当我们必须使用一个xml的配置时，使用@ImportResource和@Configuration来标识这个文件资源的类。
+
+（7）@Autowired注解，一般结合@ComponentScan注解，来自动注入一个Service或Dao级别的Bean
+
+（8）@Component类级别注解，用来标识一个组件，比如我自定了一个filter，则需要此注解标识之后，Spring Boot才会正确识别。
+
+springboot是如何管理事务的？直接写@transactional注解就行，在方法就是方法事务，类上就是类事务。
+
+

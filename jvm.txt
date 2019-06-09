@@ -1,5 +1,4 @@
 阿里小哥带你玩转JVM：揭秘try-catch-finally在JVM底层都干了些啥？
-原创： 李瑞杰  石杉的架构笔记  前天
 
 BAT 面试官是如何360°无死角考察候选人的（上篇）
 
@@ -2095,3 +2094,288 @@ D对象包含一个对象头和引用类型，12+4=16，正好是8的倍数，�
 感兴趣的同学，可以动手实践一下，这样可以加深对象内存布局的理解。
 
 经过这段时间对MAT和VisualVM的源码研究，发现MAT的功能不是强大一点点，建议大家以后尽量使用MAT。
+
+==================================================
+
+阿里面试官：字符串在JVM中如何存放？90%的人就真的只回答在哪里存放
+阿杜的世界  石杉的架构笔记  昨天
+点击上方石杉的架构笔记，右上角选择“设为星标”
+
+每日早8点半，技术文章准时送上
+
+公众号后台回复“学习”，获取作者独家秘制精品资料
+
+
+
+
+
+往期文章
+
+BAT 面试官是如何360°无死角考察候选人的（上篇）
+
+每秒上万并发下的Spring Cloud参数优化实战
+
+分布式事务如何保障实际生产中99.99%高可用
+
+记一位朋友斩获 BAT 技术专家Offer的面试经历
+
+亿级流量架构系列之如何支撑百亿级数据的存储与计算
+
+
+本文来源：javaadu
+
+
+
+目录：
+
+一道面试题的引出
+
+案例分析
+
+intern 源码分析
+
+总结
+
+
+
+1. 一道面试题的引出
+
+在面试BAT这种一线大厂时，如果面试官问道：字符串在 JVM 中如何存放？大多数人能顺利的给出如下答案：
+
+
+
+字符串对象在JVM中可能有两个存放的位置：字符串常量池或堆内存。
+
+
+
+使用常量字符串初始化的字符串对象，它的值存放在字符串常量池中；
+
+
+使用字符串构造方法创建的字符串对象，它的值存放在堆内存中；
+
+
+
+但是如果能针对上述回答，做进一步扩展，会给你的面试表现加分不少，让你从一大波候选人中脱颖而出。下面就一起来分析一下。
+
+
+
+首先来看，String提供了一个API, java.lang.String.intern()，这个API可以手动将一个字符串对象的值转移到字符串常量池中
+
+
+
+在1.7之前，字符串常量池是在PermGen区域，这个区域的大小是固定的，不能在运行时根据需要扩大，也不能被垃圾收集器回收，因此如果程序中有太多的字符串调用了intern方法的话，就可能造成OOM。
+
+
+
+在1.7以后，字符串常量池移到了堆内存中，并且可以被垃圾收集器回收，这个改动降低了字符串常量池OOM的风险。
+
+
+
+2. 案例分析
+
+
+验证代码：
+
+public
+
+class
+
+StringTest
+ {
+
+
+
+
+public
+
+static
+
+void
+ main(
+String
+[] args) {
+
+
+String
+ s1 =
+"javaadu"
+;
+
+
+String
+ s2 =
+"javaadu"
+;
+
+
+String
+ s3 =
+new
+
+String
+(
+"javaadu"
+);
+
+
+System
+.
+out
+.println(s1 == s2);
+//true
+
+
+System
+.
+out
+.println(s1 == s3);
+//false
+
+
+
+
+String
+ s4 = s3.intern();
+
+
+System
+.
+out
+.println(s1 == s4);
+//true
+
+    }
+
+}
+
+
+3. intern源码分析
+我们来看intern方法的实现，intern方法的底层是一个native方法，在Hotspot JVM里字符串常量池它的逻辑在注释里写得很清楚：
+
+
+
+如果常量池中有这个字符串常量，就直接返回，否则将该字符串对象的值存入常量池，再返回。
+
+
+
+这里以Openjdk1.8的源码为例，跟下intern方法的底层实现，String.java文件对应的C文件是String.c：
+
+JNIEXPORT jobject JNICALL
+
+Java_java_lang_String_intern
+(
+JNIEnv
+
+*
+env
+,
+ jobject
+this
+)
+
+{
+
+
+return
+ JVM_InternString
+(
+env
+,
+
+this
+);
+
+}
+
+JVM_InternString这个方法的定义在jvm.h，实现在jvm.cpp中，在JVM中，Java世界和C++世界的连接层就是jvm.h和jvm.cpp这两文件。
+
+JVM_ENTRY
+(
+jstring
+,
+ JVM_InternString
+(
+JNIEnv
+
+*
+env
+,
+ jstring str
+))
+
+
+JVMWrapper
+(
+"JVM_InternString"
+);
+
+
+JvmtiVMObjectAllocEventCollector
+ oam
+;
+
+
+if
+
+(
+str
+==
+ NULL
+)
+
+return
+ NULL
+;
+
+ oop
+string
+
+=
+
+JNIHandles
+::
+resolve_non_null
+(
+str
+);
+
+ oop result
+=
+
+StringTable
+::
+intern
+(
+string
+,
+ CHECK_NULL
+);
+
+
+return
+
+(
+jstring
+)
+
+JNIHandles
+::
+make_local
+(
+env
+,
+ result
+);
+
+JVM_END
+
+可以看出，字符串常量池在JVM内部就是一个HashTable，也就是上面代码中的StringTable。
+
+从 StringTable::intern方法跟下去，可以发现：如果找到了这次操作的字符串，就直接返回found_string；如果没有找到，就将当前的字符串加入到HashTable中，然后再返回。
+
+
+
+4. 总结
+在Java应用恰当得使用String.intern()方法有助于节省内存空间，但是在使用的时候，也需要注意，因为StringTable的大小是固定的，如果常量池中的字符串过多，会影响程序运行效率。
+
+====================
