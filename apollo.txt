@@ -1,0 +1,2347 @@
+《Apollo 源码解析 —— 调试环境搭建》
+《Apollo 源码解析 —— Portal 创建 App》
+《Apollo 源码解析 —— Portal 创建 Cluster》
+《Apollo 源码解析 —— Portal 创建 Namespace》
+《Apollo 源码解析 —— Portal 关联 Namespace》
+《Apollo 源码解析 —— Portal 创建 Item》
+《Apollo 源码解析 —— Portal 批量变更 Item》
+《Apollo 源码解析 —— Admin Service 锁定 Namespace》
+《Apollo 源码解析 —— Portal 发布配置》
+《Apollo 源码解析 —— Admin Service 发送 ReleaseMessage》
+《Apollo 源码解析 —— Config Service 通知配置变化》
+《Apollo 源码解析 —— Config Service 配置读取接口》
+《Apollo 源码解析 —— Client 轮询配置》
+《Apollo 源码解析 —— Config Service 记录 Instance》
+《Apollo 源码解析 —— Portal 创建灰度》
+《Apollo 源码解析 —— Portal 配置灰度规则》
+《Apollo 源码解析 —— Portal 灰度发布》
+《Apollo 源码解析 —— Portal 灰度全量发布》
+《Apollo 源码解析 —— 服务自身配置 ServerConfig》
+《Apollo 源码解析 —— Config Service 操作审计日志 Audit》
+《Apollo 源码解析 —— Portal 认证与授权（一）之认证》
+《Apollo 源码解析 —— Portal 认证与授权（二）之授权》
+《Apollo 源码解析 —— OpenAPI 认证与授权（一）之认证》
+《Apollo 源码解析 —— OpenAPI 认证与授权（二）之授权》
+《Apollo 源码解析 —— 服务的注册与发现》
+《Apollo 源码解析 —— 客户端 API 配置（一）之一览》
+《Apollo 源码解析 —— 客户端 API 配置（二）之 Config》
+《Apollo 源码解析 —— 客户端 API 配置（三）之 ConfigFile》
+《Apollo 源码解析 —— 客户端 API 配置（四）之 ConfigRepository》
+《Apollo 源码解析 —— 客户端配置 Spring 集成（一）之 XML 配置》
+《Apollo 源码解析 —— 客户端配置 Spring 集成（二）之注解配置》
+《Apollo 源码解析 —— 客户端配置 Spring 集成（三）之外部化配置》
+
+1. 概述
+2. App
+2.1 BaseEntity
+2.2 为什么需要同步
+3. Portal 侧
+3.1 AppController
+3.2 AppService
+3.3 AppRepository
+3.4 AppCreationEvent
+3.5 AdminServiceAPI
+4. Admin Service 侧
+4.1 AppController
+4.2 AdminService
+4.3 AppService
+4.4 AppRepository
+666. 彩蛋
+
+
+
+RocketMQ / MyCAT / Sharding-JDBC 所有源码分析文章列表
+RocketMQ / MyCAT / Sharding-JDBC 中文注释源码 GitHub 地址
+您对于源码的疑问每条留言都将得到认真回复。甚至不知道如何读源码也可以请教噢。
+新的源码解析文章实时收到通知。每周更新一篇左右。
+认真的源码交流微信群。
+1. 概述
+老艿艿：本系列假定胖友已经阅读过 《Apollo 官方 wiki 文档》 。
+
+本文分享 Portal 创建 App 的流程，整个过程涉及 Portal、Admin Service ，如下图所示：
+
+流程
+
+下面，我们先来看看 App 的实体结构
+
+老艿艿：因为 Portal 是管理后台，所以从代码实现上，和业务系统非常相像。也因此，本文会略显啰嗦。
+
+2. App
+在 apollo-common 项目中， com.ctrip.framework.apollo.common.entity.App ，继承 BaseEntity 抽象类，应用信息实体。代码如下：
+
+@Entity
+@Table(name = "App")
+@SQLDelete(sql = "Update App set isDeleted = 1 where id = ?")
+@Where(clause = "isDeleted = 0")
+public class App extends BaseEntity {
+
+
+    @Column(name = "Name", nullable = false)
+    private String name;
+
+    @Column(name = "AppId", nullable = false)
+    private String appId;
+
+    @Column(name = "OrgId", nullable = false)
+    private String orgId;
+
+    @Column(name = "OrgName", nullable = false)
+    private String orgName;
+
+    @Column(name = "OwnerName", nullable = false)
+    private String ownerName;
+
+    @Column(name = "OwnerEmail", nullable = false)
+    private String ownerEmail;
+}
+ORM 选用 Hibernate 框架。
+@SQLDelete(...) + @Where(...) 注解，配合 BaseEntity.extends 字段，实现 App 的逻辑删除。
+字段比较简单，胖友看下注释。
+2.1 BaseEntity
+com.ctrip.framework.apollo.common.entity.BaseEntity ，基础实体抽象类。代码如下：
+
+@MappedSuperclass
+@Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
+public abstract class BaseEntity {
+
+
+    @Id
+    @GeneratedValue
+    @Column(name = "Id")
+    private long id;
+
+    @Column(name = "IsDeleted", columnDefinition = "Bit default '0'")
+    protected boolean isDeleted = false;
+
+    @Column(name = "DataChange_CreatedBy", nullable = false)
+    private String dataChangeCreatedBy;
+
+    @Column(name = "DataChange_CreatedTime", nullable = false)
+    private Date dataChangeCreatedTime;
+
+    @Column(name = "DataChange_LastModifiedBy")
+    private String dataChangeLastModifiedBy;
+
+    @Column(name = "DataChange_LastTime")
+    private Date dataChangeLastModifiedTime;
+
+
+    @PrePersist
+    protected void prePersist() {
+        if (this.dataChangeCreatedTime == null) dataChangeCreatedTime = new Date();
+        if (this.dataChangeLastModifiedTime == null) dataChangeLastModifiedTime = new Date();
+    }
+
+
+    @PreUpdate
+    protected void preUpdate() {
+        this.dataChangeLastModifiedTime = new Date();
+    }
+
+
+    @PreRemove
+    protected void preRemove() {
+        this.dataChangeLastModifiedTime = new Date();
+    }
+
+    // ... 省略 setting / getting 方法
+}
+@MappedSuperclass 注解，见 《Hibernate 中 @MappedSuperclass 注解的使用说明》 文章。
+@Inheritance(...) 注解，见 《Hibernate（11）映射继承关系二之每个类对应一张表（@Inheritance(strategy=InheritanceType.TABLE_PER_CLASS）》 文章。
+id 字段，编号，Long 型，全局自增。
+isDeleted 字段，是否删除，用于逻辑删除的功能。
+dataChangeCreatedBy 和 dataChangeCreatedTime 字段，实现数据的创建人和时间的记录，方便追踪。
+dataChangeLastModifiedBy 和 dataChangeLastModifiedTime 字段，实现数据的更新人和时间的记录，方便追踪。
+@PrePersist、@PreUpdate、@PreRemove 注解，CRD 操作前，设置对应的时间字段。
+在 Apollo 中，所有实体都会继承 BaseEntity ，实现公用字段的统一定义。这种设计值得借鉴，特别是创建时间和更新时间这两个字段，特别适合线上追踪问题和数据同步。
+2.2 为什么需要同步
+在文初的流程图中，我们看到 App 创建时，在 Portal Service 存储完成后，会异步同步到 Admin Service 中，这是为什么呢？
+
+在 Apollo 的架构中，一个环境( Env ) 对应一套 Admin Service 和 Config Service 。
+而 Portal Service 会管理所有环境( Env ) 。因此，每次创建 App 后，需要进行同步。
+
+或者说，App 在 Portal Service 中，表示需要管理的 App 。而在 Admin Service 和 Config Service 中，表示存在的 App 。
+
+3. Portal 侧
+3.1 AppController
+在 apollo-portal 项目中，com.ctrip.framework.apollo.portal.controller.AppController ，提供 App 的 API 。
+
+在创建项目的界面中，点击【提交】按钮，调用创建 App 的 API 。
+
+创建项目
+
+代码如下：
+
+ 1: @RestController
+ 2: @RequestMapping("/apps")
+ 3: public class AppController {
+ 4:
+ 5:     @Autowired
+ 6:     private UserInfoHolder userInfoHolder;
+ 7:     @Autowired
+ 8:     private AppService appService;
+ 9:
+12:     @Autowired
+13:     private ApplicationEventPublisher publisher;
+14:     @Autowired
+15:     private RolePermissionService rolePermissionService;
+16:
+17:
+23:     @RequestMapping(value = "", method = RequestMethod.POST)
+24:     public App create(@RequestBody AppModel appModel) {
+25:         // 将 AppModel 转换成 App 对象
+26:         App app = transformToApp(appModel);
+27:         // 保存 App 对象到数据库
+28:         App createdApp = appService.createAppInLocal(app);
+29:         // 发布 AppCreationEvent 创建事件
+30:         publisher.publishEvent(new AppCreationEvent(createdApp));
+31:         // 授予 App 管理员的角色
+32:         Set<String> admins = appModel.getAdmins();
+33:         if (!CollectionUtils.isEmpty(admins)) {
+34:             rolePermissionService.assignRoleToUsers(RoleUtils.buildAppMasterRoleName(createdApp.getAppId()),
+35:                     admins, userInfoHolder.getUser().getUserId());
+36:         }
+37:         // 返回 App 对象
+38:         return createdApp;
+39:     }
+40:
+41:     // ... 省略其他接口和属性
+42: }
+POST apps 接口，Request Body 传递 JSON 对象。
+com.ctrip.framework.apollo.portal.entity.model.AppModel ，App Model 。在 com.ctrip.framework.apollo.portal.entity.model 包下，负责接收来自 Portal 界面的复杂请求对象。例如，AppModel 一方面带有创建 App 对象需要的属性，另外也带有需要授权管理员的编号集合 admins ，即存在跨模块的情况。
+第 26 行：调用 #transformToApp(AppModel) 方法，将 AppModel 转换成 App 对象。🙂 转换方法很简单，点击方法，直接查看。
+第 28 行：调用 AppService#createAppInLocal(App) 方法，保存 App 对象到 Portal DB 数据库。在 「3.2 AppService」 中，详细解析。
+第 30 行：调用 ApplicationEventPublisher#publishEvent(AppCreationEvent) 方法，发布 com.ctrip.framework.apollo.portal.listener.AppCreationEvent 事件。
+第 31 至 36 行：授予 App 管理员的角色。详细解析，见 《Apollo 源码解析 —— Portal 认证与授权（二）之授权》 。
+第 38 行：返回创建的 App 对象。
+3.2 AppService
+在 apollo-portal 项目中，com.ctrip.framework.apollo.portal.service.AppService ，提供 App 的 Service 逻辑。
+
+#createAppInLocal(App) 方法，保存 App 对象到 Portal DB 数据库。代码如下：
+
+ 1: @Autowired
+ 2: private UserInfoHolder userInfoHolder;
+ 3: @Autowired
+ 4: private AppRepository appRepository;
+ 5: @Autowired
+ 6: private AppNamespaceService appNamespaceService;
+ 7: @Autowired
+ 8: private RoleInitializationService roleInitializationService;
+ 9: @Autowired
+10: private UserService userService;
+11:
+12: @Transactional
+13: public App createAppInLocal(App app) {
+14:     String appId = app.getAppId();
+15:     // 判断 `appId` 是否已经存在对应的 App 对象。若已经存在，抛出 BadRequestException 异常。
+16:     App managedApp = appRepository.findByAppId(appId);
+17:     if (managedApp != null) {
+18:         throw new BadRequestException(String.format("App already exists. AppId = %s", appId));
+19:     }
+20:     // 获得 UserInfo 对象。若不存在，抛出 BadRequestException 异常
+21:     UserInfo owner = userService.findByUserId(app.getOwnerName());
+22:     if (owner == null) {
+23:         throw new BadRequestException("Application's owner not exist.");
+24:     }
+25:     app.setOwnerEmail(owner.getEmail()); // Email
+26:     // 设置 App 的创建和修改人
+27:     String operator = userInfoHolder.getUser().getUserId();
+28:     app.setDataChangeCreatedBy(operator);
+29:     app.setDataChangeLastModifiedBy(operator);
+30:     // 保存 App 对象到数据库
+31:     App createdApp = appRepository.save(app);
+32:     // 创建 App 的默认命名空间 "application"
+33:     appNamespaceService.createDefaultAppNamespace(appId);
+34:     // 初始化 App 角色
+35:     roleInitializationService.initAppRoles(createdApp);
+36:     // 【TODO 6001】Tracer 日志
+37:     Tracer.logEvent(TracerEventType.CREATE_APP, appId);
+38:     return createdApp;
+39: }
+第 15 至 19 行：调用 AppRepository#findByAppId(appId) 方法，判断 appId 是否已经存在对应的 App 对象。若已经存在，抛出 BadRequestException 异常。
+第 20 至 25 行：调用 UserService#findByUserId(userId) 方法，获得 com.ctrip.framework.apollo.portal.entity.bo.UserInfo 对象。com.ctrip.framework.apollo.portal.entity.bo 包下，负责返回 Service 的业务对象。例如，UserInfo 只包含 com.ctrip.framework.apollo.portal.entity.po.UserPO 的部分属性：userId、username、email 。
+第 27 至 29 行：调用 UserInfoHolder#getUser()#getUserId() 方法，获得当前登录用户，并设置为 App 的创建和修改人。关于 UserInfoHolder ，后续文章，详细分享。
+第 31 行：调用 AppRepository#save(App) 方法，保存 App 对象到数据库中。
+第 33 行：调用 AppNameSpaceService#createDefaultAppNamespace(appId) 方法，创建 App 的默认 Namespace (命名空间) "application" 。对于每个 App ，都会有一个默认 Namespace 。具体的代码实现，我们在 《Apollo 源码解析 —— Portal 创建 Namespace》
+第 35 行：初始化 App 角色。详解解析，见 《Apollo 源码解析 —— Portal 认证与授权（二）之授权》 。
+第 37 行：【TODO 6001】Tracer 日志
+3.3 AppRepository
+在 apollo-portal 项目中，com.ctrip.framework.apollo.common.entity.App.AppRepository ，继承 org.springframework.data.repository.PagingAndSortingRepository 接口，提供 App 的数据访问，即 DAO 。
+
+代码如下：
+
+public interface AppRepository extends PagingAndSortingRepository<App, Long> {
+
+  App findByAppId(String appId);
+
+  List<App> findByOwnerName(String ownerName, Pageable page);
+
+  List<App> findByAppIdIn(Set<String> appIds);
+
+}
+基于 Spring Data JPA 框架，使用 Hibernate 实现。详细参见 《Spring Data JPA、Hibernate、JPA 三者之间的关系》 文章。
+
+🙂 不熟悉 Spring Data JPA 的胖友，可以看下 《Spring Data JPA 介绍和使用》 文章。
+
+3.4 AppCreationEvent
+com.ctrip.framework.apollo.portal.listener.AppCreationEvent ，实现 org.springframework.context.ApplicationEvent 抽象类，App 创建事件。
+
+代码如下：
+
+public class AppCreationEvent extends ApplicationEvent {
+
+  public AppCreationEvent(Object source) {
+    super(source);
+  }
+
+  public App getApp() {
+    Preconditions.checkState(source != null);
+    return (App) this.source;
+  }
+
+}
+构造方法，将 App 对象作为方法参数传入。
+#getApp() 方法，获得事件对应的 App 对象。
+3.4.1 CreationListener
+com.ctrip.framework.apollo.portal.listener.CreationListener ，对象创建监听器，目前监听 AppCreationEvent 和 AppNamespaceCreationEvent 事件。
+
+我们以 AppCreationEvent 举例子，代码如下：
+
+ 1: @Autowired
+ 2: private PortalSettings portalSettings;
+ 3: @Autowired
+ 4: private AdminServiceAPI.AppAPI appAPI;
+ 5:
+ 6: @EventListener
+ 7: public void onAppCreationEvent(AppCreationEvent event) {
+ 8:     // 将 App 转成 AppDTO 对象
+ 9:     AppDTO appDTO = BeanUtils.transfrom(AppDTO.class, event.getApp());
+10:     // 获得有效的 Env 数组
+11:     List<Env> envs = portalSettings.getActiveEnvs();
+12:     // 循环 Env 数组，调用对应的 Admin Service 的 API ，创建 App 对象。
+13:     for (Env env : envs) {
+14:         try {
+15:             appAPI.createApp(env, appDTO);
+16:         } catch (Throwable e) {
+17:             logger.error("Create app failed. appId = {}, env = {})", appDTO.getAppId(), env, e);
+18:             Tracer.logError(String.format("Create app failed. appId = %s, env = %s", appDTO.getAppId(), env), e);
+19:         }
+20:     }
+21: }
+@EventListener 注解 + 方法参数，表示 #onAppCreationEvent(...) 方法，监听 AppCreationEvent 事件。不了解的胖友，可以看下 《Spring 4.2框架中注释驱动的事件监听器详解》 文章。
+第 9 行：调用 BeanUtils#transfrom(Class<T> clazz, Object src) 方法，将 App 转换成 com.ctrip.framework.apollo.common.dto.AppDTO 对象。com.ctrip.framework.apollo.common.dto 包下，提供 Controller 和 Service 层的数据传输。😈 笔者思考了下，Apollo 中，Model 和 DTO 对象很类似，差异点在 Model 更侧重 UI 界面提交“复杂”业务请求。另外 Apollo 中，还有 VO 对象，侧重 UI 界面返回复杂业务响应。整理如下图：各种 Entity 整理
+老艿艿认为，PO 对象，可以考虑不暴露给 Controller 层，只在 Service 和 Repository 之间传递和返回。
+和彩笔老徐交流了下，实际项目可以简化，使用 VO + DTO + PO 。
+第 11 行：调用 PortalSettings#getActiveEnvs() 方法，获得有效的 Env 数组，例如 PROD UAT 等。后续文章，详细分享该方法。
+第 12 至 20 行：循环 Env 数组，调用 AppAPI#createApp(Env, AppDTO) 方法，调用对应的 Admin Service 的 API ，创建 App 对象，从而同步 App 到 Config DB。
+3.5 AdminServiceAPI
+com.ctrip.framework.apollo.portal.api.AdminServiceAPI ，Admin Service API 集合，包含 Admin Service 所有模块 API 的调用封装。简化代码如下：
+
+代码
+
+3.5.1 API
+com.ctrip.framework.apollo.portal.api.API ，API 抽象类。代码如下：
+
+public abstract class API {
+
+  @Autowired
+  protected RetryableRestTemplate restTemplate;
+
+}
+提供统一的 restTemplate 的属性注入。对于 RetryableRestTemplate 的源码实现，我们放到后续文章分享。
+3.5.2 AppAPI
+com.ctrip.framework.apollo.portal.api.AdminServiceAPI.AppAPI ，实现 API 抽象类，封装对 Admin Service 的 App 模块的 API 调用。代码如下：
+
+@Service
+public static class AppAPI extends API {
+
+    public AppDTO loadApp(Env env, String appId) {
+        return restTemplate.get(env, "apps/{appId}", AppDTO.class, appId);
+    }
+
+    public AppDTO createApp(Env env, AppDTO app) {
+        return restTemplate.post(env, "apps", app, AppDTO.class);
+    }
+
+    public void updateApp(Env env, AppDTO app) {
+        restTemplate.put(env, "apps/{appId}", app, app.getAppId());
+    }
+
+}
+使用 restTemplate ，调用对应的 API 接口。
+4. Admin Service 侧
+4.1 AppController
+在 apollo-adminservice 项目中， com.ctrip.framework.apollo.adminservice.controller.AppController ，提供 App 的 API 。
+
+#create(AppDTO) 方法，创建 App 。代码如下：
+
+ 1: @RestController
+ 2: public class AppController {
+ 3:
+ 4:     @Autowired
+ 5:     private AppService appService;
+ 6:     @Autowired
+ 7:     private AdminService adminService;
+ 8:
+ 9:
+15:     @RequestMapping(path = "/apps", method = RequestMethod.POST)
+16:     public AppDTO create(@RequestBody AppDTO dto) {
+17:         // 校验 appId 格式。若不合法，抛出 BadRequestException 异常
+18:         if (!InputValidator.isValidClusterNamespace(dto.getAppId())) {
+19:             throw new BadRequestException(String.format("AppId格式错误: %s", InputValidator.INVALID_CLUSTER_NAMESPACE_MESSAGE));
+20:         }
+21:         // 将 AppDTO 转换成 App 对象
+22:         App entity = BeanUtils.transfrom(App.class, dto);
+23:         // 判断 `appId` 是否已经存在对应的 App 对象。若已经存在，抛出 BadRequestException 异常。
+24:         App managedEntity = appService.findOne(entity.getAppId());
+25:         if (managedEntity != null) {
+26:             throw new BadRequestException("app already exist.");
+27:         }
+28:         // 保存 App 对象到数据库
+29:         entity = adminService.createNewApp(entity);
+30:         // 将保存的 App 对象，转换成 AppDTO 返回
+31:         dto = BeanUtils.transfrom(AppDTO.class, entity);
+32:         return dto;
+33:     }
+34:
+35:     // ... 省略其他接口和属性
+36: }
+POST apps 接口，Request Body 传递 JSON 对象。
+第 17 至 20 行：调用 InputValidator#isValidClusterNamespace(appId) 方法，校验 appId 是否满足 "[0-9a-zA-Z_.-]+" 格式。若不合法，抛出 BadRequestException 异常。
+第 22 行：调用 BeanUtils#transfrom(Class<T> clazz, Object src) 方法，将 AppDTO 转换成 App对象。
+第 24 至 27 行：调用 AppService#findOne(appId) 方法，判断 appId 是否已经存在对应的 App 对象。若已经存在，抛出 BadRequestException 异常。
+第 29 行：调用 AdminService#createNewApp(App) 方法，保存 App 对象到数据库。
+第 30 至 32 行：调用 BeanUtils#transfrom(Class<T> clazz, Object src) 方法，将保存的 App 对象，转换成 AppDTO 返回。
+4.2 AdminService
+com.ctrip.framework.apollo.biz.service.AdminService ，😈 无法定义是什么模块的 Service ，目前仅有 #createNewApp(App) 方法，代码如下：
+
+ 1: @Service
+ 2: public class AdminService {
+ 3:
+ 4:     @Autowired
+ 5:     private AppService appService;
+ 6:     @Autowired
+ 7:     private AppNamespaceService appNamespaceService;
+ 8:     @Autowired
+ 9:     private ClusterService clusterService;
+10:     @Autowired
+11:     private NamespaceService namespaceService;
+12:
+13:     @Transactional
+14:     public App createNewApp(App app) {
+15:         // 保存 App 对象到数据库
+16:         String createBy = app.getDataChangeCreatedBy();
+17:         App createdApp = appService.save(app);
+18:         String appId = createdApp.getAppId();
+19:         // 创建 App 的默认命名空间 "application"
+20:         appNamespaceService.createDefaultAppNamespace(appId, createBy);
+21:         // 创建 App 的默认集群 "default"
+22:         clusterService.createDefaultCluster(appId, createBy);
+23:         // 创建 Cluster 的默认命名空间
+24:         namespaceService.instanceOfAppNamespaces(appId, ConfigConsts.CLUSTER_NAME_DEFAULT, createBy);
+25:         return app;
+26:     }
+27:
+28: }
+第 15 至 18 行：调用 AppService#save(App) 方法，保存 App 对象到数据库中。
+第 20 行：调用 AppNamespaceService#createDefaultAppNamespace(appId, createBy) 方法，创建 App 的默认 Namespace (命名空间) "application" 。具体的代码实现，我们在 《Apollo 源码解析 —— Portal 创建 Namespace》 详细解析。
+========== 如下部分，是 Admin Service 独有 ==========
+App 下有哪些 Cluster ，在 Portal 中是不进行保存，通过 Admin Service API 读取获得。
+【AppNamespace】第 22 行：调用 ClusterService#createDefaultCluster(appId, createBy) 方法，创建 App 的默认 Cluster "default" 。后续文章，详细分享。
+【Namespace】第 24 行：调用 NamespaceService#instanceOfAppNamespaces(appId, createBy) 方法，创建 Cluster 的默认命名空间。
+4.3 AppService
+在 apollo-biz 项目中，com.ctrip.framework.apollo.biz.service.AppService ，提供 App 的 Service 逻辑给 Admin Service 和 Config Service 。
+
+#save(App) 方法，保存 App 对象到数据库中。代码如下：
+
+ 1: @Autowired
+ 2: private AppRepository appRepository;
+ 3: @Autowired
+ 4: private AuditService auditService;
+ 5:
+ 6: @Transactional
+ 7: public App save(App entity) {
+ 8:     // 判断是否已经存在。若是，抛出 ServiceException 异常。
+ 9:     if (!isAppIdUnique(entity.getAppId())) {
+10:         throw new ServiceException("appId not unique");
+11:     }
+12:     // 保护代码，避免 App 对象中，已经有 id 属性。
+13:     entity.setId(0); // protection
+14:     App app = appRepository.save(entity);
+15:     // 记录 Audit 到数据库中
+16:     auditService.audit(App.class.getSimpleName(), app.getId(), Audit.OP.INSERT, app.getDataChangeCreatedBy());
+17:     return app;
+18: }
+第 8 至 11 行：调用 #isAppIdUnique(appId) 方法，判断是否已经存在。若是，抛出 ServiceException 异常。代码如下：
+
+public boolean isAppIdUnique(String appId) {
+    Objects.requireNonNull(appId, "AppId must not be null");
+    return Objects.isNull(appRepository.findByAppId(appId));
+}
+第 13 行：置“空” App 对象，防御性编程，避免 App 对象中，已经有 id 属性。
+
+第 14 行：调用 AppRepository#save(App) 方法，保存 App 对象到数据库中。
+第 16 行：记录 Audit 到数据库中。
+4.4 AppRepository
+com.ctrip.framework.apollo.biz.repository.AppRepository ，继承 org.springframework.data.repository.PagingAndSortingRepository 接口，提供 App 的数据访问 给 Admin Service 和 Config Service 。代码如下：
+
+public interface AppRepository extends PagingAndSortingRepository<App, Long> {
+
+  @Query("SELECT a from App a WHERE a.name LIKE %:name%")
+  List<App> findByName(@Param("name") String name);
+
+  App findByAppId(String appId);
+
+}
+666. 彩蛋
+我们知道，但凡涉及跨系统的同步，无可避免会有事务的问题，对于 App 创建也会碰到这样的问题，例如：
+
+Portal 在同步 App 到 Admin Service 时，发生网络异常，同步失败。那么此时会出现该 App 存在于 Portal ，却不存在于 Admin Service 中。
+新增了一套环境( Env ) ，也会导致 Portal 和 Admin Service 不一致的情况。
+那么 Apollo 是怎么解决这个问题的呢？😈 感兴趣的胖友，可以先自己翻翻源码。嘿嘿。
+
+
+1. 概述
+2. Cluster
+3. Portal 侧
+3.1 ClusterController
+3.2 ClusterService
+3.3 ClusterAPI
+4. Admin Service 侧
+4.1 ClusterController
+4.2 ClusterService
+4.3 ClusterRepository
+666. 彩蛋
+
+
+您对于源码的疑问每条留言都将得到认真回复。甚至不知道如何读源码也可以请教噢。
+新的源码解析文章实时收到通知。每周更新一篇左右。
+认真的源码交流微信群
+
+
+
+1. 概述
+老艿艿：本系列假定胖友已经阅读过 《Apollo 官方 wiki 文档》 。
+
+本文分享 Portal 创建 Cluster 的流程，整个过程涉及 Portal、Admin Service ，如下图所示：
+
+流程
+
+下面，我们先来看看 Cluster 的实体结构
+
+老艿艿：因为 Portal 是管理后台，所以从代码实现上，和业务系统非常相像。也因此，本文会略显啰嗦。
+
+2. Cluster
+com.ctrip.framework.apollo.biz.entity.Cluster ，继承 BaseEntity 抽象类，Cluster 实体。代码如下：
+
+@Entity
+@Table(name = "Cluster")
+@SQLDelete(sql = "Update Cluster set isDeleted = 1 where id = ?")
+@Where(clause = "isDeleted = 0")
+public class Cluster extends BaseEntity implements Comparable<Cluster> {
+
+
+    @Column(name = "Name", nullable = false)
+    private String name;
+
+    @Column(name = "AppId", nullable = false)
+    private String appId;
+
+    @Column(name = "ParentClusterId", nullable = false)
+    private long parentClusterId;
+}
+appId 字段，App 编号，指向对应的 App 。App : Cluster = 1 : N 。
+parentClusterId 字段，父 App 编号。用于灰度发布，在 《Apollo 源码解析 —— Portal 创建灰度》 有详细解析。
+3. Portal 侧
+3.1 ClusterController
+在 apollo-portal 项目中，com.ctrip.framework.apollo.portal.controller.ClusterController ，提供 Cluster 的 API 。
+
+在创建 Cluster的界面中，点击【提交】按钮，调用创建 Cluster 的 API 。
+
+创建 Cluster
+
+代码如下：
+
+ 1: @RestController
+ 2: public class ClusterController {
+ 3:
+ 4:     @Autowired
+ 5:     private ClusterService clusterService;
+ 6:     @Autowired
+ 7:     private UserInfoHolder userInfoHolder;
+ 8:
+ 9:     @PreAuthorize(value = "@permissionValidator.hasCreateClusterPermission(#appId)")
+10:     @RequestMapping(value = "apps/{appId}/envs/{env}/clusters", method = RequestMethod.POST)
+11:     public ClusterDTO createCluster(@PathVariable String appId, @PathVariable String env,
+12:                                     @RequestBody ClusterDTO cluster) {
+13:         // 校验 ClusterDTO 非空
+14:         checkModel(Objects.nonNull(cluster));
+15:         // 校验 ClusterDTO 的 `appId` 和 `name` 非空。
+16:         RequestPrecondition.checkArgumentsNotEmpty(cluster.getAppId(), cluster.getName());
+17:         // 校验 ClusterDTO 的 `name` 格式正确。
+18:         if (!InputValidator.isValidClusterNamespace(cluster.getName())) {
+19:             throw new BadRequestException(String.format("Cluster格式错误: %s", InputValidator.INVALID_CLUSTER_NAMESPACE_MESSAGE));
+20:         }
+21:         // 设置 ClusterDTO 的创建和修改人为当前管理员
+22:         String operator = userInfoHolder.getUser().getUserId();
+23:         cluster.setDataChangeLastModifiedBy(operator);
+24:         cluster.setDataChangeCreatedBy(operator);
+25:         // 创建 Cluster 到 Admin Service
+26:         return clusterService.createCluster(Env.valueOf(env), cluster);
+27:     }
+28:
+29:     // ... 省略 deleteCluster 接口
+30: }
+POST apps/{appId}/envs/{env}/cluster 接口，Request Body 传递 JSON 对象。
+@PreAuthorize(...) 注解，调用 PermissionValidator#hasCreateClusterPermission(appId,) 方法，校验是否有创建 Cluster 的权限。后续文章，详细分享。
+第 14 行：校验 ClusterDTO 非空。注意，此处使用的接收请求参数是 ClusterDTO 。
+第 16 行：调用 RequestPrecondition#checkArgumentsNotEmpty(String... args) 方法，校验 ClusterDTO 的 appId 和 name 非空。
+第 16 至 21 行：调用 InputValidator#isValidClusterNamespace(name) 方法，校验 ClusterDTO 的 name 格式正确，符合 [0-9a-zA-Z_.-]+" 格式。
+第 21 至 24 行：设置 ClusterDTO 的创建和修改人为当前管理员。
+第 26 行：调用 ClusterService#createCluster(Env, ClusterDTO) 方法，创建并保存 Cluster 到 Admin Service 。在 「3.2 ClusterService」 中，详细解析。
+3.2 ClusterService
+在 apollo-portal 项目中，com.ctrip.framework.apollo.portal.service.ClusterService ，提供 Cluster 的 Service 逻辑。
+
+#createCluster(Env, ClusterDTO) 方法，创建并保存 Cluster 到 Admin Service 。代码如下：
+
+ 1: @Autowired
+ 2: private AdminServiceAPI.ClusterAPI clusterAPI;
+ 3:
+ 4: public ClusterDTO createCluster(Env env, ClusterDTO cluster) {
+ 5:     // 根据 `appId` 和 `name` 校验 Cluster 的唯一性
+ 6:     if (!clusterAPI.isClusterUnique(cluster.getAppId(), env, cluster.getName())) {
+ 7:         throw new BadRequestException(String.format("cluster %s already exists.", cluster.getName()));
+ 8:     }
+ 9:     // 创建 Cluster 到 Admin Service
+10:     ClusterDTO clusterDTO = clusterAPI.create(env, cluster);
+11:     // 【TODO 6001】Tracer 日志
+12:     Tracer.logEvent(TracerEventType.CREATE_CLUSTER, cluster.getAppId(), "0", cluster.getName());
+13:     return clusterDTO;
+14: }
+第 5 至 8 行：调用 ClusterAPI#isClusterUnique(appId, Env, clusterName) 方法，根据 appId 和 name 校验 Cluster 的唯一性。注意，此处是远程调用 Admin Service 的 API 。
+第 10 行：调用 ClusterAPI#create(Env, ClusterDTO) 方法，创建 Cluster 到 Admin Service 。
+第 12 行：【TODO 6001】Tracer 日志
+3.3 ClusterAPI
+com.ctrip.framework.apollo.portal.api.ClusterAPI ，实现 API 抽象类，封装对 Admin Service 的 Cluster 模块的 API 调用。代码如下：
+
+ClusterAPI
+
+4. Admin Service 侧
+4.1 ClusterController
+在 apollo-adminservice 项目中， com.ctrip.framework.apollo.adminservice.controller.ClusterController ，提供 Cluster 的 API 。
+
+#create(appId, autoCreatePrivateNamespace, ClusterDTO) 方法，创建 Cluster 。代码如下：
+
+    @RestController
+ 1: public class ClusterController {
+ 2:
+ 3:     @Autowired
+ 4:     private ClusterService clusterService;
+ 5:
+ 6:     @RequestMapping(path = "/apps/{appId}/clusters", method = RequestMethod.POST)
+ 7:     public ClusterDTO create(@PathVariable("appId") String appId,
+ 8:                              @RequestParam(value = "autoCreatePrivateNamespace", defaultValue = "true") boolean autoCreatePrivateNamespace,
+ 9:                              @RequestBody ClusterDTO dto) {
+10:         // 校验 ClusterDTO 的 `name` 格式正确。
+11:         if (!InputValidator.isValidClusterNamespace(dto.getName())) {
+12:             throw new BadRequestException(String.format("Cluster格式错误: %s", InputValidator.INVALID_CLUSTER_NAMESPACE_MESSAGE));
+13:         }
+14:         // 将 ClusterDTO 转换成 Cluster 对象
+15:         Cluster entity = BeanUtils.transfrom(Cluster.class, dto);
+16:         // 判断 `name` 在 App 下是否已经存在对应的 Cluster 对象。若已经存在，抛出 BadRequestException 异常。
+17:         Cluster managedEntity = clusterService.findOne(appId, entity.getName());
+18:         if (managedEntity != null) {
+19:             throw new BadRequestException("cluster already exist.");
+20:         }
+21:         // 保存 Cluster 对象，并创建其 Namespace
+22:         if (autoCreatePrivateNamespace) {
+23:             entity = clusterService.saveWithInstanceOfAppNamespaces(entity);
+24:         // 保存 Cluster 对象，不创建其 Namespace
+25:         } else {
+26:             entity = clusterService.saveWithoutInstanceOfAppNamespaces(entity);
+27:         }
+28:         // 将保存的 Cluster 对象转换成 ClusterDTO
+29:         dto = BeanUtils.transfrom(ClusterDTO.class, entity);
+30:         return dto;
+31:     }
+32:
+33:      // ... 省略其他接口和属性
+34: }
+POST /apps/{appId}/clusters 接口，Request Body 传递 JSON 对象。
+第 10 至 13 行：调用 InputValidator#isValidClusterNamespace(name) 方法，校验 ClusterDTO 的 name 格式正确，符合 [0-9a-zA-Z_.-]+" 格式。
+第 15 行：调用 BeanUtils#transfrom(Class<T> clazz, Object src) 方法，将 ClusterDTO 转换成 Cluster 对象。
+第 16 至 20 行：调用 ClusterService#findOne(appId, name) 方法，校验 name 在 App 下，是否已经存在对应的 Cluster 对象。若已经存在，抛出 BadRequestException 异常。
+第 21 至 23 行：若 autoCreatePrivateNamespace = true 时，调用 ClusterService#saveWithInstanceOfAppNamespaces(Cluster) 方法，保存 Cluster 对象，并创建其 Namespace 。
+第 24 至 27 行：若 autoCreatePrivateNamespace = false 时，调用 ClusterService#saveWithoutInstanceOfAppNamespaces(Cluster) 方法，保存 Cluster 对象，不创建其 Namespace 。
+第 29 行：调用 BeanUtils#transfrom(Class<T> clazz, Object src) 方法，将 Cluster 转换成 ClusterDTO 对象。
+4.2 ClusterService
+在 apollo-biz 项目中，com.ctrip.framework.apollo.biz.service.ClusterService ，提供 Cluster 的 Service 逻辑给 Admin Service 和 Config Service 。
+
+#saveWithInstanceOfAppNamespaces(Cluster) 方法，保存 Cluster 对象，并创建其 Namespace 。代码如下：
+
+ 1: @Autowired
+ 2: private ClusterRepository clusterRepository;
+ 3: @Autowired
+ 4: private AuditService auditService;
+ 5: @Autowired
+ 6: private NamespaceService namespaceService;
+ 7:
+ 8: @Transactional
+ 9: public Cluster saveWithInstanceOfAppNamespaces(Cluster entity) {
+10:     // 保存 Cluster 对象
+11:     Cluster savedCluster = saveWithoutInstanceOfAppNamespaces(entity);
+12:     // 创建 Cluster 的 Namespace 们
+13:     namespaceService.instanceOfAppNamespaces(savedCluster.getAppId(), savedCluster.getName(), savedCluster.getDataChangeCreatedBy());
+14:     return savedCluster;
+15: }
+第 11 行：调用 #saveWithoutInstanceOfAppNamespaces(Cluster) 方法，保存 Cluster 对象。
+第 13 行：调用 NamespaceService#instanceOfAppNamespaces(appId, clusterName, createBy) 方法，创建 Cluster 的 Namespace 们。在 《Apollo 源码解析 —— Portal 创建 Namespace》 中，有详细解析。
+#saveWithoutInstanceOfAppNamespaces(Cluster) 方法，保存 Cluster 对象。代码如下：
+
+@Transactional
+public Cluster saveWithoutInstanceOfAppNamespaces(Cluster entity) {
+    // 判断 `name` 在 App 下是否已经存在对应的 Cluster 对象。若已经存在，抛出 BadRequestException 异常。
+    if (!isClusterNameUnique(entity.getAppId(), entity.getName())) {
+        throw new BadRequestException("cluster not unique");
+    }
+    // 保存 Cluster 对象到数据库
+    entity.setId(0);//protection
+    Cluster cluster = clusterRepository.save(entity);
+    // 【TODO 6001】Tracer 日志
+    auditService.audit(Cluster.class.getSimpleName(), cluster.getId(), Audit.OP.INSERT, cluster.getDataChangeCreatedBy());
+    return cluster;
+}
+4.3 ClusterRepository
+com.ctrip.framework.apollo.biz.repository.ClusterRepository ，继承 org.springframework.data.repository.PagingAndSortingRepository 接口，提供 Cluster 的数据访问 给 Admin Service 和 Config Service 。代码如下：
+
+public interface ClusterRepository extends PagingAndSortingRepository<Cluster, Long> {
+
+  List<Cluster> findByAppIdAndParentClusterId(String appId, Long parentClusterId);
+
+  List<Cluster> findByAppId(String appId);
+
+  Cluster findByAppIdAndName(String appId, String name);
+
+  List<Cluster> findByParentClusterId(Long parentClusterId);
+
+}
+
+1. 概述
+2. ReleaseService
+2.1 publishBranchNamespace
+2.2 mergeFromMasterAndPublishBranch
+3. 加载灰度配置
+3.1 GrayReleaseRulesHolder
+3.2 GrayReleaseRuleCache
+666. 彩蛋
+
+
+🙂🙂🙂关注微信公众号：【芋道源码】有福利：
+
+RocketMQ / MyCAT / Sharding-JDBC 所有源码分析文章列表
+RocketMQ / MyCAT / Sharding-JDBC 中文注释源码 GitHub 地址
+您对于源码的疑问每条留言都将得到认真回复。甚至不知道如何读源码也可以请教噢。
+新的源码解析文章实时收到通知。每周更新一篇左右。
+认真的源码交流微信群。
+1. 概述
+老艿艿：本系列假定胖友已经阅读过 《Apollo 官方 wiki 文档》 ，特别是 《Apollo 官方 wiki 文档 —— 灰度发布使用指南》。
+
+灰度发布，实际上是子 Namespace ( 分支 Namespace )发布 Release 。所以，调用的接口和 《Apollo 源码解析 —— Portal 发布配置》 是一样的。
+
+差异点，在于 apollo-biz 项目中，ReleaseService#publish(...) 方法中，多了一个处理灰度发布的分支逻辑。
+
+2. ReleaseService
+2.1 publishBranchNamespace
+#publishBranchNamespace(...) 方法，子 Namespace 发布 Release 。子 Namespace 会自动继承 父 Namespace 已经发布的配置。若有相同的配置项，使用 子 Namespace 的。配置处理的逻辑上，和关联 Namespace 是一致的。代码如下：
+
+ 1: private Release publishBranchNamespace(Namespace parentNamespace, Namespace childNamespace,
+ 2:                                        Map<String, String> childNamespaceItems,
+ 3:                                        String releaseName, String releaseComment,
+ 4:                                        String operator, boolean isEmergencyPublish) {
+ 5:     // 获得父 Namespace 的最后有效 Release 对象
+ 6:     Release parentLatestRelease = findLatestActiveRelease(parentNamespace);
+ 7:     // 获得父 Namespace 的配置项
+ 8:     Map<String, String> parentConfigurations = parentLatestRelease != null ? gson.fromJson(parentLatestRelease.getConfigurations(), GsonType.CONFIG) : new HashMap<>();
+ 9:     // 获得父 Namespace 的 releaseId 属性
+10:     long baseReleaseId = parentLatestRelease == null ? 0 : parentLatestRelease.getId();
+11:     // 合并配置项
+12:     Map<String, String> childNamespaceToPublishConfigs = mergeConfiguration(parentConfigurations, childNamespaceItems);
+13:     // 发布子 Namespace 的 Release
+14:     return branchRelease(parentNamespace, childNamespace, releaseName, releaseComment,
+15:             childNamespaceToPublishConfigs, baseReleaseId, operator,
+16:             ReleaseOperation.GRAY_RELEASE, isEmergencyPublish);
+17:
+18: }
+第 5 至 12 行：获得最终的配置 Map 。
+
+第 6 行：调用 #findLatestActiveRelease(parentNamespace) 方法，获得父 Namespace 的最后有效 Release 对象。
+第 8 行：获得父 Namespace 的配置 Map 。
+第 10 行：获得父 Namespace 的 releaseId 属性。
+第 12 行：调用 #mergeConfiguration(parentConfigurations, childNamespaceItems) 方法，合并父子 Namespace 的配置 Map 。代码如下：
+
+private Map<String, String> mergeConfiguration(Map<String, String> baseConfigurations, Map<String, String> coverConfigurations) {
+    Map<String, String> result = new HashMap<>();
+    // copy base configuration
+    // 父 Namespace 的配置项
+    for (Map.Entry<String, String> entry : baseConfigurations.entrySet()) {
+        result.put(entry.getKey(), entry.getValue());
+    }
+    // update and publish
+    // 子 Namespace 的配置项
+    for (Map.Entry<String, String> entry : coverConfigurations.entrySet()) {
+        result.put(entry.getKey(), entry.getValue());
+    }
+    // 返回合并后的配置项
+    return result;
+}
+x
+第 14 行：调用 #branchRelease(...) 方法，发布子 Namespace 的 Release 。代码如下：
+
+ 1: private Release branchRelease(Namespace parentNamespace, Namespace childNamespace,
+ 2:                               String releaseName, String releaseComment,
+ 3:                               Map<String, String> configurations, long baseReleaseId,
+ 4:                               String operator, int releaseOperation, boolean isEmergencyPublish) {
+ 5:     // 获得父 Namespace 最后有效的 Release 对象
+ 6:     Release previousRelease = findLatestActiveRelease(childNamespace.getAppId(), childNamespace.getClusterName(), childNamespace.getNamespaceName());
+ 7:     // 获得父 Namespace 最后有效的 Release 对象的编号
+ 8:     long previousReleaseId = previousRelease == null ? 0 : previousRelease.getId();
+ 9:
+10:     // 创建 Map ，用于 ReleaseHistory 对象的 `operationContext` 属性。
+11:     Map<String, Object> releaseOperationContext = Maps.newHashMap();
+12:     releaseOperationContext.put(ReleaseOperationContext.BASE_RELEASE_ID, baseReleaseId);
+13:     releaseOperationContext.put(ReleaseOperationContext.IS_EMERGENCY_PUBLISH, isEmergencyPublish);
+14:
+15:     // 创建子 Namespace 的 Release 对象，并保存
+16:     Release release = createRelease(childNamespace, releaseName, releaseComment, configurations, operator);
+17:
+18:     // 更新 GrayReleaseRule 的 releaseId 属性
+19:     // update gray release rules
+20:     GrayReleaseRule grayReleaseRule = namespaceBranchService.updateRulesReleaseId(childNamespace.getAppId(),
+21:             parentNamespace.getClusterName(),
+22:             childNamespace.getNamespaceName(),
+23:             childNamespace.getClusterName(),
+24:             release.getId(), operator);
+25:
+26:     // 创建 ReleaseHistory 对象，并保存
+27:     if (grayReleaseRule != null) {
+28:         releaseOperationContext.put(ReleaseOperationContext.RULES, GrayReleaseRuleItemTransformer.batchTransformFromJSON(grayReleaseRule.getRules()));
+29:     }
+30:     releaseHistoryService.createReleaseHistory(parentNamespace.getAppId(), parentNamespace.getClusterName(),
+31:             parentNamespace.getNamespaceName(), childNamespace.getClusterName(),
+32:             release.getId(),
+33:             previousReleaseId, releaseOperation, releaseOperationContext, operator);
+34:     return release;
+35: }
+第 6 行：获得父 Namespace 最后有效的 Release 对象。
+第 8 行：获得父 Namespace 的 releaseId 属性。
+第 10 至 13 行：创建 Map ，用于 ReleaseHistory 对象的 operationContext 属性。
+第 16 行：调用 #createRelease(...) 方法，创建子 Namespace 的 Release 对象，并保存到数据库中。
+第 18 至 24 行：更新 GrayReleaseRule 的 releaseId 属性到数据库中。代码如下：
+
+@Transactional
+public GrayReleaseRule updateRulesReleaseId(String appId, String clusterName, String namespaceName, String branchName, long latestReleaseId, String operator) {
+    // 获得老的 GrayReleaseRule 对象
+    GrayReleaseRule oldRules = grayReleaseRuleRepository.findTopByAppIdAndClusterNameAndNamespaceNameAndBranchNameOrderByIdDesc(appId, clusterName, namespaceName, branchName);
+    if (oldRules == null) {
+        return null;
+    }
+
+    // 创建新的 GrayReleaseRule 对象
+    GrayReleaseRule newRules = new GrayReleaseRule();
+    newRules.setBranchStatus(NamespaceBranchStatus.ACTIVE);
+    newRules.setReleaseId(latestReleaseId); // update
+    newRules.setRules(oldRules.getRules());
+    newRules.setAppId(oldRules.getAppId());
+    newRules.setClusterName(oldRules.getClusterName());
+    newRules.setNamespaceName(oldRules.getNamespaceName());
+    newRules.setBranchName(oldRules.getBranchName());
+    newRules.setDataChangeCreatedBy(operator); // update
+    newRules.setDataChangeLastModifiedBy(operator); // update
+
+    // 保存新的 GrayReleaseRule 对象
+    grayReleaseRuleRepository.save(newRules);
+    // 删除老的 GrayReleaseRule 对象
+    grayReleaseRuleRepository.delete(oldRules);
+    return newRules;
+}
+删除老的 GrayReleaseRule 对象。
+保存新的 GrayReleaseRule 对象。
+第 26 至 33 行：调用 ReleaseHistoryService#createReleaseHistory(...) 方法，创建 ReleaseHistory 对象，并保存到数据库中。
+
+2.2 mergeFromMasterAndPublishBranch
+本小节不属于本文，考虑到和灰度发布相关，所以放在此处。
+
+在父 Namespace 发布 Release 后，会调用 #mergeFromMasterAndPublishBranch(...) 方法，自动将 父 Namespace (主干) 合并到子 Namespace (分支)，并进行一次子 Namespace 的发布。代码如下：
+
+ 1: private void mergeFromMasterAndPublishBranch(Namespace parentNamespace, Namespace childNamespace,
+ 2:                                              Map<String, String> parentNamespaceItems,
+ 3:                                              String releaseName, String releaseComment,
+ 4:                                              String operator, Release masterPreviousRelease,
+ 5:                                              Release parentRelease, boolean isEmergencyPublish) {
+ 6:     // 获得子 Namespace 的配置 Map
+ 7:     // create release for child namespace
+ 8:     Map<String, String> childReleaseConfiguration = getNamespaceReleaseConfiguration(childNamespace);
+ 9:     // 获得父 Namespace 的配置 Map
+10:     Map<String, String> parentNamespaceOldConfiguration = masterPreviousRelease == null ? null : gson.fromJson(masterPreviousRelease.getConfigurations(), GsonType.CONFIG);
+11:
+12:     // 计算合并最新父 Namespace 的配置 Map 后的子 Namespace 的配置 Map
+13:     Map<String, String> childNamespaceToPublishConfigs = calculateChildNamespaceToPublishConfiguration(parentNamespaceOldConfiguration,
+14:                     parentNamespaceItems, childNamespace);
+15:
+16:     // compare
+17:     // 若发生了变化，则进行一次子 Namespace 的发布
+18:     if (!childNamespaceToPublishConfigs.equals(childReleaseConfiguration)) {
+19:         branchRelease(parentNamespace, childNamespace, releaseName, releaseComment,
+20:                 childNamespaceToPublishConfigs, parentRelease.getId(), operator,
+21:                 ReleaseOperation.MASTER_NORMAL_RELEASE_MERGE_TO_GRAY, isEmergencyPublish);
+22:     }
+23: }
+第 8 行：调用 #getNamespaceReleaseConfiguration(childNamespace) 方法，获得子 Namespace 的最新且有效的 Release 的配置 Map 。代码如下：
+
+private Map<String, String> getNamespaceReleaseConfiguration(Namespace namespace) {
+    // 获得最后有效的 Release 对象
+    Release release = findLatestActiveRelease(namespace);
+    Map<String, String> configuration = new HashMap<>();
+    // 获得配置 Map
+    if (release != null) {
+        configuration = new Gson().fromJson(release.getConfigurations(), GsonType.CONFIG);
+    }
+    return configuration;
+}
+第 10 行：获得父 Namespace 的配置 Map 。
+
+第 12 至 14 行：计算合并最新父 Namespace 的配置 Map 后，子 Namespace 的配置 Map 。代码如下：
+
+// 计算合并最新父 Namespace 的配置 Map 后的子 Namespace 的配置 Map
+private Map<String, String> calculateChildNamespaceToPublishConfiguration(
+        Map<String, String> parentNamespaceOldConfiguration, Map<String, String> parentNamespaceNewConfiguration,
+        Namespace childNamespace) {
+    // 获得子 Namespace 的最后有效的 Release 对象
+    // first. calculate child namespace modified configs
+    Release childNamespaceLatestActiveRelease = findLatestActiveRelease(childNamespace);
+    // 获得子 Namespace 的配置 Map
+    Map<String, String> childNamespaceLatestActiveConfiguration = childNamespaceLatestActiveRelease == null ? null :
+            gson.fromJson(childNamespaceLatestActiveRelease.getConfigurations(), GsonType.CONFIG);
+
+    // 以子 Namespace 的配置 Map 为基础，计算出差异的 Map
+    Map<String, String> childNamespaceModifiedConfiguration = calculateBranchModifiedItemsAccordingToRelease(parentNamespaceOldConfiguration,
+            childNamespaceLatestActiveConfiguration);
+
+    // second. append child namespace modified configs to parent namespace new latest configuration
+    return mergeConfiguration(parentNamespaceNewConfiguration, childNamespaceModifiedConfiguration);
+}
+
+// 以子 Namespace 的配置 Map 为基础，计算出差异的 Map
+private Map<String, String> calculateBranchModifiedItemsAccordingToRelease(
+        Map<String, String> masterReleaseConfigs,
+        Map<String, String> branchReleaseConfigs) {
+    // 差异 Map
+    Map<String, String> modifiedConfigs = new HashMap<>();
+    // 若子 Namespace 的配置 Map 为空，直接返回空 Map
+    if (CollectionUtils.isEmpty(branchReleaseConfigs)) {
+        return modifiedConfigs;
+    }
+    // 若父 Namespace 的配置 Map 为空，直接返回子 Namespace 的配置 Map
+    if (CollectionUtils.isEmpty(masterReleaseConfigs)) {
+        return branchReleaseConfigs;
+    }
+
+    // 以子 Namespace 的配置 Map 为基础，计算出差异的 Map
+    for (Map.Entry<String, String> entry : branchReleaseConfigs.entrySet()) {
+        if (!Objects.equals(entry.getValue(), masterReleaseConfigs.get(entry.getKey()))) { // 对比
+            modifiedConfigs.put(entry.getKey(), entry.getValue());
+        }
+    }
+    return modifiedConfigs;
+}
+【第一步】逻辑看起来比较冗长和“绕”。简单的说，子 Namespace 的配置 Map 是包含老的父 Namespace 的配置 Map ，所以需要剔除。但是呢，剔除的过程中，又需要保留子 Namespace 的自定义的配置项。这就是第二个方法，#calculateBranchModifiedItemsAccordingToRelease(...) 的逻辑。
+【第二步】做完上面的步骤后，就可以调用 #mergeConfiguration(...) 方法，合并新的父 Namespace 的配置 Map 。
+胖友好好理解下。
+第 17 至 22 行：若发生了变化，则调用 #branchRelease(...) 方法，进行一次子 Namespace 的发布。这块就和 「2.1 publishBranchNamespace」 一致了。
+
+什么情况下会未发生变化呢？例如，父 Namespace 修改配置项 timeout: 2000=> 3000 ，而恰好子 Namespace 修改配置项 timeout: 2000=> 3000 并且已经灰度发布。
+3. 加载灰度配置
+在 《Apollo 源码解析 —— Config Service 配置读取接口》 中，我们看到 AbstractConfigService#findRelease(...) 方法中，会读取根据客户端的情况，匹配是否有灰度 Release ，代码如下：
+
+ 1:
+14: private Release findRelease(String clientAppId, String clientIp, String configAppId, String configClusterName,
+15:                             String configNamespace, ApolloNotificationMessages clientMessages) {
+16:     // 读取灰度发布编号
+17:     Long grayReleaseId = grayReleaseRulesHolder.findReleaseIdFromGrayReleaseRule(clientAppId, clientIp, configAppId, configClusterName, configNamespace);
+18:     // 读取灰度 Release 对象
+19:     Release release = null;
+20:     if (grayReleaseId != null) {
+21:         release = findActiveOne(grayReleaseId, clientMessages);
+22:     }
+23:     // 非灰度，获得最新的，并且有效的 Release 对象
+24:     if (release == null) {
+25:         release = findLatestActiveRelease(configAppId, configClusterName, configNamespace, clientMessages);
+26:     }
+27:     return release;
+28: }
+第 17 行：调用 GrayReleaseRulesHolder#findReleaseIdFromGrayReleaseRule(...) 方法，读取灰度发布编号，即 GrayReleaseRule.releaseId 属性。详细解析，在 「3.1 GrayReleaseRulesHolder」 中。
+第 18 至 22 行：调用 #findActiveOne(grayReleaseId, clientMessages) 方法，读取灰度 Release 对象。
+3.1 GrayReleaseRulesHolder
+com.ctrip.framework.apollo.biz.grayReleaseRule.GrayReleaseRulesHolder ，实现 InitializingBean 和 ReleaseMessageListener 接口，GrayReleaseRule 缓存 Holder ，用于提高对 GrayReleaseRule 的读取速度。
+
+3.1.1 构造方法
+private static final Logger logger = LoggerFactory.getLogger(GrayReleaseRulesHolder.class);
+
+private static final Joiner STRING_JOINER = Joiner.on(ConfigConsts.CLUSTER_NAMESPACE_SEPARATOR);
+private static final Splitter STRING_SPLITTER = Splitter.on(ConfigConsts.CLUSTER_NAMESPACE_SEPARATOR).omitEmptyStrings();
+
+@Autowired
+private GrayReleaseRuleRepository grayReleaseRuleRepository;
+@Autowired
+private BizConfig bizConfig;
+
+
+private int databaseScanInterval;
+
+private ScheduledExecutorService executorService;
+
+//store configAppId+configCluster+configNamespace -> GrayReleaseRuleCache map
+private Multimap<String, GrayReleaseRuleCache> grayReleaseRuleCache;
+
+//store clientAppId+clientNamespace+ip -> ruleId map
+private Multimap<String, Long> reversedGrayReleaseRuleCache;
+
+// an auto increment version to indicate the age of rules
+private AtomicLong loadVersion;
+
+public GrayReleaseRulesHolder() {
+    loadVersion = new AtomicLong();
+    grayReleaseRuleCache = Multimaps.synchronizedSetMultimap(HashMultimap.create());
+    reversedGrayReleaseRuleCache = Multimaps.synchronizedSetMultimap(HashMultimap.create());
+    executorService = Executors.newScheduledThreadPool(1, ApolloThreadFactory.create("GrayReleaseRulesHolder", true));
+}
+缓存相关
+
+GrayReleaseRuleCache ，胖友先去 「3.2 GrayReleaseRuleCache」 ，在回过来。
+grayReleaseRuleCache 属性， GrayReleaseRuleCache 缓存。
+KEY： configAppId + configCluster + configNamespace 拼接成，不包含 branchName 。因为我们在匹配灰度规则时，不关注 branchName 属性。
+VALUE：GrayReleaseRuleCache 数组。因为 branchName 不包含在 KEY 中，而同一个 Namespace 可以创建多次灰度( 创建下一个需要将前一个灰度放弃 )版本，所以就会形成数组。
+reversedGrayReleaseRuleCache 属性，反转的 GrayReleaseRuleCache 缓存。
+KEY：clientAppId + clientNamespace + ip 。注意，不包含 clusterName 属性。具体原因，我们下面的 #hasGrayReleaseRule(clientAppId, clientIp, namespaceName) 方法中，详细分享。
+VALUE：GrayReleaseRule 的编号数组。
+为什么叫做反转呢？因为使用 GrayReleaseRule 的具体属性作为键，而使用 GrayReleaseRule 的编号作为值。
+通过定时扫描 + ReleaseMessage 近实时通知，更新缓存。
+定时任务相关
+
+executorService 属性，ExecutorService 对象。
+databaseScanInterval 属性，数据库扫描频率，单位：秒。
+loadVersion 属性，加载版本。
+3.1.2 初始化
+#afterPropertiesSet() 方法，通过 Spring 调用，初始化 Scan 任务。代码如下：
+
+@Override
+  1: public void afterPropertiesSet() throws Exception {
+  2:     // 从 ServerConfig 中，读取任务的周期配置
+  3:     populateDataBaseInterval();
+  4:     // 初始拉取 GrayReleaseRuleCache 到缓存
+  5:     // force sync load for the first time
+  6:     periodicScanRules();
+  7:     // 定时拉取 GrayReleaseRuleCache 到缓存
+  8:     executorService.scheduleWithFixedDelay(this::periodicScanRules,
+  9:             getDatabaseScanIntervalSecond(), getDatabaseScanIntervalSecond(), getDatabaseScanTimeUnit()
+ 10:     );
+ 11: }
+第 3 行：调用 #populateDataBaseInterval() 方法，从 ServerConfig 中，读取定时任务的周期配置。代码如下：
+
+private void populateDataBaseInterval() {
+    databaseScanInterval = bizConfig.grayReleaseRuleScanInterval(); // "apollo.gray-release-rule-scan.interval" ，默认为 60 。
+}
+第 6 行：调用 #periodicScanRules() 方法，初始拉取 GrayReleaseRuleCache 到缓存。代码如下：
+
+private void periodicScanRules() {
+    // 【TODO 6001】Tracer 日志
+    Transaction transaction = Tracer.newTransaction("Apollo.GrayReleaseRulesScanner", "scanGrayReleaseRules");
+    try {
+        // 递增加载版本号
+        loadVersion.incrementAndGet();
+        // 从数据卷库中，扫描所有 GrayReleaseRules ，并合并到缓存中
+        scanGrayReleaseRules();
+        // 【TODO 6001】Tracer 日志
+        transaction.setStatus(Transaction.SUCCESS);
+    } catch (Throwable ex) {
+        // 【TODO 6001】Tracer 日志
+        transaction.setStatus(ex);
+        logger.error("Scan gray release rule failed", ex);
+    } finally {
+        // 【TODO 6001】Tracer 日志
+        transaction.complete();
+    }
+}
+
+private void scanGrayReleaseRules() {
+    long maxIdScanned = 0;
+    boolean hasMore = true;
+    // 循环顺序分批加载 GrayReleaseRule ，直到结束或者线程打断
+    while (hasMore && !Thread.currentThread().isInterrupted()) {
+        // 顺序分批加载 GrayReleaseRule 500 条
+        List<GrayReleaseRule> grayReleaseRules = grayReleaseRuleRepository.findFirst500ByIdGreaterThanOrderByIdAsc(maxIdScanned);
+        if (CollectionUtils.isEmpty(grayReleaseRules)) {
+            break;
+        }
+        // 合并到 GrayReleaseRule 缓存
+        mergeGrayReleaseRules(grayReleaseRules);
+        // 获得新的 maxIdScanned ，取最后一条记录
+        int rulesScanned = grayReleaseRules.size();
+        maxIdScanned = grayReleaseRules.get(rulesScanned - 1).getId();
+        // batch is 500
+        // 若拉取不足 500 条，说明无 GrayReleaseRule 了
+        hasMore = rulesScanned == 500;
+    }
+}
+循环顺序、分批加载 GrayReleaseRule ，直到全部加载完或者线程打断。
+loadVersion 属性，递增加载版本号。
+调用 #mergeGrayReleaseRules(List<GrayReleaseRule>) 方法，合并 GrayReleaseRule 数组，到缓存中。详细解析，见 「3.1.4 mergeGrayReleaseRules」 。
+🙂 其他代码比较简单，胖友自己看代码注释。
+第 7 至 10 行：创建定时任务，定时调用 #scanGrayReleaseRules() 方法，重新全量拉取 GrayReleaseRuleCache 到缓存。
+3.1.3 handleMessage
+#handleMessage(ReleaseMessage, channel) 实现方法，基于 ReleaseMessage 近实时通知，更新缓存。代码如下：
+
+ 1: @Override
+ 2: public void handleMessage(ReleaseMessage message, String channel) {
+ 3:     logger.info("message received - channel: {}, message: {}", channel, message);
+ 4:     String releaseMessage = message.getMessage();
+ 5:     // 只处理 APOLLO_RELEASE_TOPIC 的消息
+ 6:     if (!Topics.APOLLO_RELEASE_TOPIC.equals(channel) || Strings.isNullOrEmpty(releaseMessage)) {
+ 7:         return;
+ 8:     }
+ 9:     // 获得 appId cluster namespace 参数
+10:     List<String> keys = STRING_SPLITTER.splitToList(releaseMessage);
+11:     //message should be appId+cluster+namespace
+12:     if (keys.size() != 3) {
+13:         logger.error("message format invalid - {}", releaseMessage);
+14:         return;
+15:     }
+16:     String appId = keys.get(0);
+17:     String cluster = keys.get(1);
+18:     String namespace = keys.get(2);
+19:
+20:     // 获得对应的 GrayReleaseRule 数组
+21:     List<GrayReleaseRule> rules = grayReleaseRuleRepository.findByAppIdAndClusterNameAndNamespaceName(appId, cluster, namespace);
+22:     // 合并到 GrayReleaseRule 缓存中
+23:     mergeGrayReleaseRules(rules);
+24: }
+第 5 至 8 行：只处理 APOLLO_RELEASE_TOPIC 的消息。
+第 9 至 18 行：获得 appId cluster namespace 参数。
+第 21 行：调用 grayReleaseRuleRepository#findByAppIdAndClusterNameAndNamespaceName(appId, cluster, namespace) 方法，获得对应的 GrayReleaseRule 数组。
+第 23 行：调用 #mergeGrayReleaseRules(List<GrayReleaseRule>) 方法，合并到 GrayReleaseRule 缓存中。详细解析，见 「3.1.4 mergeGrayReleaseRules」 。
+3.1.4 mergeGrayReleaseRules
+#mergeGrayReleaseRules(List<GrayReleaseRule>) 方法，合并 GrayReleaseRule 到缓存中。代码如下：
+
+ 1: private void mergeGrayReleaseRules(List<GrayReleaseRule> grayReleaseRules) {
+ 2:     if (CollectionUtils.isEmpty(grayReleaseRules)) {
+ 3:         return;
+ 4:     }
+ 5:     // !!! 注意，下面我们说的“老”，指的是已经在缓存中，但是实际不一定“老”。
+ 6:     for (GrayReleaseRule grayReleaseRule : grayReleaseRules) {
+ 7:         // 无对应的 Release 编号，记未灰度发布，则无视
+ 8:         if (grayReleaseRule.getReleaseId() == null || grayReleaseRule.getReleaseId() == 0) {
+ 9:             // filter rules with no release id, i.e. never released
+10:             continue;
+11:         }
+12:         // 创建 `grayReleaseRuleCache` 的 KEY
+13:         String key = assembleGrayReleaseRuleKey(grayReleaseRule.getAppId(), grayReleaseRule.getClusterName(), grayReleaseRule.getNamespaceName());
+14:         // 从缓存 `grayReleaseRuleCache` 读取，并创建数组，避免并发
+15:         // create a new list to avoid ConcurrentModificationException
+16:         List<GrayReleaseRuleCache> rules = Lists.newArrayList(grayReleaseRuleCache.get(key));
+17:         // 获得子 Namespace 对应的老的 GrayReleaseRuleCache 对象
+18:         GrayReleaseRuleCache oldRule = null;
+19:         for (GrayReleaseRuleCache ruleCache : rules) {
+20:             if (ruleCache.getBranchName().equals(grayReleaseRule.getBranchName())) {
+21:                 oldRule = ruleCache;
+22:                 break;
+23:             }
+24:         }
+25:
+26:         // 忽略，若不存在老的 GrayReleaseRuleCache ，并且当前 GrayReleaseRule 对应的分支不处于激活( 有效 )状态
+27:         // if old rule is null and new rule's branch status is not active, ignore
+28:         if (oldRule == null && grayReleaseRule.getBranchStatus() != NamespaceBranchStatus.ACTIVE) {
+29:             continue;
+30:         }
+31:
+32:         // 若新的 GrayReleaseRule 为新增或更新，进行缓存更新
+33:         // use id comparison to avoid synchronization
+34:         if (oldRule == null || grayReleaseRule.getId() > oldRule.getRuleId()) {
+35:             // 添加新的 GrayReleaseRuleCache 到缓存中
+36:             addCache(key, transformRuleToRuleCache(grayReleaseRule));
+37:             // 移除老的 GrayReleaseRuleCache 出缓存中
+38:             if (oldRule != null) {
+39:                 removeCache(key, oldRule);
+40:             }
+41:         } else {
+42:             // 老的 GrayReleaseRuleCache 对应的分支处于激活( 有效 )状态，更新加载版本号。
+43:             // 例如，定时轮询，有可能，早于 `#handleMessage(...)` 拿到对应的新的 GrayReleaseRule 记录，那么此时规则编号是相等的，不符合上面的条件，但是符合这个条件。
+44:             // 再例如，两次定时轮询，第二次和第一次的规则编号是相等的，不符合上面的条件，但是符合这个条件。
+45:             if (oldRule.getBranchStatus() == NamespaceBranchStatus.ACTIVE) {
+46:                 // update load version
+47:                 oldRule.setLoadVersion(loadVersion.get());
+48:             // 保留两轮，
+49:             // 适用于，`GrayReleaseRule.branchStatus` 为 DELETED 或 MERGED 的情况。
+50:             } else if ((loadVersion.get() - oldRule.getLoadVersion()) > 1) {
+51:                 // remove outdated inactive branch rule after 2 update cycles
+52:                 removeCache(key, oldRule);
+53:             }
+54:         }
+55:     }
+56: }
+第 5 行：!!! 注意，下面我们说的“老”，指的是已经在缓存中，但是实际不一定“老”。
+第 6 行：循环 GrayReleaseRule 数组，合并到缓存中。被缓存到的 GrayReleaseRule 对象，我们成为“新”的。
+第 7 至 11 行：无视，若 GrayReleaseRule 无对应的 Release 编号，说明该子 Namespace 还未灰度发布。
+第 12 至 24 行：获得子 Namespace 对应的老的 GrayReleaseRuleCache 对象。此处的“老”，指的是缓存中的。
+第 26 至 30 行：无视，若不存在老的 GrayReleaseRuleCache ，并且当前 GrayReleaseRule 对应的分支不处于激活( ACTIVE 有效 )状态。
+第 32 至 40 行：若新的 GrayReleaseRule 为新增或更新( 编号更大 )，进行缓存更新，并移除老的 GrayReleaseRule 出缓存。
+第 36 行：调用 transformRuleToRuleCache(GrayReleaseRule) 方法，将 GrayReleaseRule 转换成 GrayReleaseRuleCache 对象。详细解析，见 「3.1.4.1 transformRuleToRuleCache」 。
+第 36 行：调用 #addCache(key, GrayReleaseRuleCache) 方法，添加新的 GrayReleaseRuleCache 到缓存中。详细解析，见 「3.1.4.2 addCache」 。
+第 37 至 40 行：调用 #remove(key, oldRule) 方法，移除老 的 GrayReleaseRuleCache 出缓存。详细解析，见 「3.1.4.3 removeCache」 。
+第 42 至 47 行：老的 GrayReleaseRuleCache 对应的分支处于激活( 有效 )状态，更新加载版本号。
+例如，定时轮询，有可能，早于 #handleMessage(...) 拿到对应的新的 GrayReleaseRule 记录，那么此时规则编号是相等的，不符合上面的条件，但是符合这个条件。
+再例如，两次定时轮询，第二次和第一次的规则编号是相等的，不符合上面的条件，但是符合这个条件。
+总结，刷新有效的 GrayReleaseRuleCache 对象的 loadVersion 。
+第 50 至 53 行：若 GrayReleaseRule.branchStatus 为 DELETED 或 MERGED 的情况，保留两轮定时扫描，后调用 #remove(key, oldRule) 方法，移除出缓存。
+
+例如，灰度全量发布时，会添加 GrayReleaseRule.branchStatus 为 MERGED 到缓存中。保留两轮，进行移除出缓存。
+为什么是两轮？笔者请教了宋老师( Apollo 的作者之一 )，解答如下：
+
+这个是把已经inactive的rule删除，至于为啥保留两轮，这个可能只是个选择问题
+
+T T 笔者表示还是不太明白，继续思考ing 。如果有知道的胖友，烦请告知。
+3.1.4.1 transformRuleToRuleCache
+#transformRuleToRuleCache(GrayReleaseRule) 方法，将 GrayReleaseRule 转换成 GrayReleaseRuleCache 对象。代码如下：
+
+private GrayReleaseRuleCache transformRuleToRuleCache(GrayReleaseRule grayReleaseRule) {
+    // 转换出 GrayReleaseRuleItemDTO 数组
+    Set<GrayReleaseRuleItemDTO> ruleItems;
+    try {
+        ruleItems = GrayReleaseRuleItemTransformer.batchTransformFromJSON(grayReleaseRule.getRules());
+    } catch (Throwable ex) {
+        ruleItems = Sets.newHashSet();
+        Tracer.logError(ex);
+        logger.error("parse rule for gray release rule {} failed", grayReleaseRule.getId(), ex);
+    }
+    // 创建 GrayReleaseRuleCache 对象，并返回
+    return new GrayReleaseRuleCache(grayReleaseRule.getId(),
+            grayReleaseRule.getBranchName(), grayReleaseRule.getNamespaceName(), grayReleaseRule
+            .getReleaseId(), grayReleaseRule.getBranchStatus(), loadVersion.get(), ruleItems);
+}
+3.1.4.2 addCache
+#addCache(key, GrayReleaseRuleCache) 方法，添加新的 GrayReleaseRuleCache 到缓存中。代码如下：
+
+ 1: private void addCache(String key, GrayReleaseRuleCache ruleCache) {
+ 2:     // 添加到 reversedGrayReleaseRuleCache 中
+ 3:     // 为什么这里判断状态？因为删除灰度，或者灰度全量发布的情况下，是无效的，所以不添加到 reversedGrayReleaseRuleCache 中
+ 4:     if (ruleCache.getBranchStatus() == NamespaceBranchStatus.ACTIVE) {
+ 5:         for (GrayReleaseRuleItemDTO ruleItemDTO : ruleCache.getRuleItems()) {
+ 6:             for (String clientIp : ruleItemDTO.getClientIpList()) {
+ 7:                 reversedGrayReleaseRuleCache.put(assembleReversedGrayReleaseRuleKey(ruleItemDTO.getClientAppId(), ruleCache.getNamespaceName(), clientIp),
+ 8:                         ruleCache.getRuleId());
+ 9:             }
+10:         }
+11:     }
+12:     // 添加到 grayReleaseRuleCache
+13:     // 这里为什么可以添加？因为添加到 grayReleaseRuleCache 中是个对象，可以判断状态
+14:     grayReleaseRuleCache.put(key, ruleCache);
+15: }
+第 2 至 11 行：添加到 reversedGrayReleaseRuleCache 中。
+为什么这里判断状态？因为删除灰度，或者灰度全量发布的情况下，是无效的，所以不添加到 reversedGrayReleaseRuleCache 中。
+第 14 行：添加到 grayReleaseRuleCache 中。
+为什么这里可以添加？因为添加到 grayReleaseRuleCache 中是个对象，可以判断状态。
+3.1.4.3 removeCache
+#remove(key, oldRule) 方法，移除老 的 GrayReleaseRuleCache 出缓存。代码如下：
+
+private void removeCache(String key, GrayReleaseRuleCache ruleCache) {
+    // 移除出 grayReleaseRuleCache
+    grayReleaseRuleCache.remove(key, ruleCache);
+    // 移除出 reversedGrayReleaseRuleCache
+    for (GrayReleaseRuleItemDTO ruleItemDTO : ruleCache.getRuleItems()) {
+        for (String clientIp : ruleItemDTO.getClientIpList()) {
+            reversedGrayReleaseRuleCache.remove(assembleReversedGrayReleaseRuleKey(ruleItemDTO.getClientAppId(), ruleCache.getNamespaceName(), clientIp),
+                    ruleCache.getRuleId());
+        }
+    }
+}
+3.1.5 findReleaseIdFromGrayReleaseRule
+#findReleaseIdFromGrayReleaseRule(clientAppId, clientIp, configAppId, configCluster, configNamespaceName) 方法，若匹配上灰度规则，返回对应的 Release 编号。代码如下：
+
+public Long findReleaseIdFromGrayReleaseRule(String clientAppId, String clientIp, String
+        configAppId, String configCluster, String configNamespaceName) {
+    // 判断 grayReleaseRuleCache 中是否存在
+    String key = assembleGrayReleaseRuleKey(configAppId, configCluster, configNamespaceName);
+    if (!grayReleaseRuleCache.containsKey(key)) {
+        return null;
+    }
+    // 循环 GrayReleaseRuleCache 数组，获得匹配的 Release 编号
+    // create a new list to avoid ConcurrentModificationException
+    List<GrayReleaseRuleCache> rules = Lists.newArrayList(grayReleaseRuleCache.get(key));
+    for (GrayReleaseRuleCache rule : rules) {
+        // 校验 GrayReleaseRuleCache 对应的子 Namespace 的状态是否为有效
+        //check branch status
+        if (rule.getBranchStatus() != NamespaceBranchStatus.ACTIVE) {
+            continue;
+        }
+        // 是否匹配灰度规则。若是，则返回。
+        if (rule.matches(clientAppId, clientIp)) {
+            return rule.getReleaseId();
+        }
+    }
+    return null;
+}
+🙂 代码比较易懂，胖友自己看代码注释哈。
+3.1.6 hasGrayReleaseRule
+
+public boolean hasGrayReleaseRule(String clientAppId, String clientIp, String namespaceName) {
+    return reversedGrayReleaseRuleCache.containsKey(assembleReversedGrayReleaseRuleKey(clientAppId, namespaceName, clientIp))
+            || reversedGrayReleaseRuleCache.containsKey(assembleReversedGrayReleaseRuleKey(clientAppId, namespaceName, GrayReleaseRuleItemDTO.ALL_IP));
+}
+我们来翻一下英文注释哈，非直译哈。
+【一】Check whether there are gray release rules for the clientAppId, clientIp, namespace combination. 针对 clientAppId + clientIp + namespaceName ，校验是否有灰度规则。
+【二】Please note that even there are gray release rules, it doesn’t mean it will always load gray releases. 请注意，即使返回 true ，也不意味着调用方能加载到灰度发布的配置。
+【三】 Because gray release rules actually apply to one more dimension - cluster. 因为，reversedGrayReleaseRuleCache 的 KEY 不包含 branchName ，所以 reversedGrayReleaseRuleCache 的 VALUE 为多个 branchName 的 Release 编号的集合。
+那么为什么不包含 branchName 呢？在 《Apollo 源码解析 —— Config Service 配置读取接口》 一文中，我们看到 AbstractConfigService 中，#loadConfig(...) 方法中，是按照集群的优先级加载，代码如下：
+
+@Override
+public Release loadConfig(String clientAppId, String clientIp, String configAppId, String configClusterName,
+                          String configNamespace, String dataCenter, ApolloNotificationMessages clientMessages) {
+    // 优先，获得指定 Cluster 的 Release 。若存在，直接返回。
+    // load from specified cluster fist
+    if (!Objects.equals(ConfigConsts.CLUSTER_NAME_DEFAULT, configClusterName)) {
+        Release clusterRelease = findRelease(clientAppId, clientIp, configAppId, configClusterName, configNamespace,
+                clientMessages);
+        if (!Objects.isNull(clusterRelease)) {
+            return clusterRelease;
+        }
+    }
+
+    // 其次，获得所属 IDC 的 Cluster 的 Release 。若存在，直接返回
+    // try to load via data center
+    if (!Strings.isNullOrEmpty(dataCenter) && !Objects.equals(dataCenter, configClusterName)) {
+        Release dataCenterRelease = findRelease(clientAppId, clientIp, configAppId, dataCenter, configNamespace, clientMessages);
+        if (!Objects.isNull(dataCenterRelease)) {
+            return dataCenterRelease;
+        }
+    }
+
+    // 最后，获得默认 Cluster 的 Release 。
+    // fallback to default release
+    return findRelease(clientAppId, clientIp, configAppId, ConfigConsts.CLUSTER_NAME_DEFAULT, configNamespace, clientMessages);
+}
+但是，笔者又想了想，应该也不是这个方法的原因，因为这个方法里，每个调用的方法，clusterName 是明确的，那么把 clusterName 融入到缓存 KEY 也是可以的。所以应该不是这个原因。
+目前 #hasGrayReleaseRule(clientAppId, clientIp, namespaceName) 方法，仅仅被 ConfigFileController 调用。而 ConfigFileController 在调用时，确实是不知道自己使用哪个 clusterName 。恩恩，应该是这个原因。
+
+3.2 GrayReleaseRuleCache
+com.ctrip.framework.apollo.biz.grayReleaseRule.GrayReleaseRuleCache ，GrayReleaseRule 的缓存类。代码如下：
+
+private long ruleId;
+
+// 缺少 appId
+// 缺少 clusterName
+
+private String namespaceName;
+private String branchName;
+private Set<GrayReleaseRuleItemDTO> ruleItems;
+private long releaseId;
+private int branchStatus;
+
+private long loadVersion;
+
+// 匹配 clientAppId + clientIp
+public boolean matches(String clientAppId, String clientIp) {
+    for (GrayReleaseRuleItemDTO ruleItem : ruleItems) {
+        if (ruleItem.matches(clientAppId, clientIp)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+相比 GrayReleaseRule 来说：
+
+少了 appId + clusterName 字段，因为在 GrayReleaseRulesHolder 中，缓存 KEY 会根据需要包含这两个字段。
+
+多了 loadVersion 字段，用于记录 GrayReleaseRuleCache 的加载版本，用于自动过期逻辑。
+666. 彩蛋
+
+T T ，GrayReleaseRulesHolder 看的还是有点懵逼，后面自己有机会写配置中心的灰度发布功能的时候，在捉摸捉摸。如果有些写的不对的地方，欢迎指正。
+
+
+1. 概述
+2. AuthConfiguration
+2.1 SpringSecurityAuthAutoConfiguration
+2.2 SpringSecurityConfigureration
+3. Users
+3.1 UserInfo
+4. Authorities
+5. UserService
+5.1 SpringSecurityUserService
+5.2 UserInfoController
+6. UserInfoHolder
+6.1 SpringSecurityUserInfoHolder
+7. SsoHeartbeatHandler
+7.1 DefaultSsoHeartbeatHandler
+7.2 SsoHeartbeatController
+8. LogoutHandler
+8.1 DefaultLogoutHandler
+
+
+RocketMQ / MyCAT / Sharding-JDBC 所有源码分析文章列表
+RocketMQ / MyCAT / Sharding-JDBC 中文注释源码 GitHub 地址
+您对于源码的疑问每条留言都将得到认真回复。甚至不知道如何读源码也可以请教噢。
+新的源码解析文章实时收到通知。每周更新一篇左右。
+认真的源码交流微信群。
+
+1. 概述
+
+老艿艿：本系列假定胖友已经阅读过 《Apollo 官方 wiki 文档》 ，特别是 《Portal 实现用户登录功能》 。
+
+本文分享 Portal 的认证与授权，侧重在认证部分。
+
+在 《Portal 实现用户登录功能》 文档的开头：
+
+Apollo 是配置管理系统，会提供权限管理（Authorization），理论上是不负责用户登录认证功能的实现（Authentication）。
+
+所以 Apollo 定义了一些SPI用来解耦，Apollo 接入登录的关键就是实现这些 SPI 。
+
+和我们理解的 JDK SPI 不同，Apollo 是基于 Spring Profile 的特性，配合上 Spring Java Configuration 实现了类似 SPI 的功能。对于大多数人，我们可能比较熟悉的是，基于不同的 Profile 加载不同环境的 yaml 或 properties 配置文件。所以，当笔者看到这样的玩法，也是眼前一亮。
+
+在 apollo-portal 项目中，spi 包下，我们可以看到认证相关的配置与实现，如下图所示：代码结构
+
+绿框：接口。
+紫框：实现。
+红框：配置接口对应的实现。
+2. AuthConfiguration
+com.ctrip.framework.apollo.portal.spi.configuration.AuthConfiguration ，认证 Spring Java 配置。如下图：AuthConfiguration
+
+目前有三种实现：
+
+第一种， profile=ctrip ，携程内部实现，接入了SSO并实现用户搜索、查询接口。
+第二种，profile=auth ，使用 Apollo 提供的 Spring Security 简单认证。
+第三种，profile 为空，使用默认实现，全局只有 apollo 一个账号。
+一般情况下，我们使用第二种，基于 Spring Security 的实现。所以本文仅分享这种方式。对其他方式感兴趣的胖友，可以自己读下代码哈。
+
+整体类图如下：类图
+
+2.1 SpringSecurityAuthAutoConfiguration
+UserService ，配置如下：
+
+@Bean
+@ConditionalOnMissingBean(UserService.class)
+public UserService springSecurityUserService() {
+    return new SpringSecurityUserService();
+}
+使用 SpringSecurityUserService 实现类，在 「5. UserService」 中，详细解析。
+UserInfoHolder ，配置如下：
+
+@Bean
+@ConditionalOnMissingBean(UserInfoHolder.class)
+public UserInfoHolder springSecurityUserInfoHolder() {
+    return new SpringSecurityUserInfoHolder();
+}
+使用 SpringSecurityUserInfoHolder 实现类，在 「6. UserInfoHolder」 中，详细解析。
+JdbcUserDetailsManager ，配置如下：
+
+@Bean
+public JdbcUserDetailsManager jdbcUserDetailsManager(AuthenticationManagerBuilder auth, DataSource datasource) throws Exception {
+    JdbcUserDetailsManager jdbcUserDetailsManager = auth.jdbcAuthentication() // 基于 JDBC
+            .passwordEncoder(new BCryptPasswordEncoder()) // 加密方式为 BCryptPasswordEncoder
+            .dataSource(datasource) // 数据源
+            .usersByUsernameQuery("select Username,Password,Enabled from `Users` where Username = ?") // 使用 Username 查询 User
+            .authoritiesByUsernameQuery("select Username,Authority from `Authorities` where Username = ?") // 使用 Username 查询 Authorities
+            .getUserDetailsService();
+
+    jdbcUserDetailsManager.setUserExistsSql("select Username from `Users` where Username = ?"); // 判断 User 是否存在
+    jdbcUserDetailsManager.setCreateUserSql("insert into `Users` (Username, Password, Enabled) values (?,?,?)"); // 插入 User
+    jdbcUserDetailsManager.setUpdateUserSql("update `Users` set Password = ?, Enabled = ? where Username = ?"); // 更新 User
+    jdbcUserDetailsManager.setDeleteUserSql("delete from `Users` where Username = ?"); // 删除 User
+    jdbcUserDetailsManager.setCreateAuthoritySql("insert into `Authorities` (Username, Authority) values (?,?)"); // 插入 Authorities
+    jdbcUserDetailsManager.setDeleteUserAuthoritiesSql("delete from `Authorities` where Username = ?"); // 删除 Authorities
+    jdbcUserDetailsManager.setChangePasswordSql("update `Users` set Password = ? where Username = ?"); // 更新 Authorities
+
+    return jdbcUserDetailsManager;
+}
+
+
+org.springframework.security.provisioning.JdbcUserDetailsManager ，继承 JdbcDaoImpl 的功能，提供了一些很有用的与 Users 和 Authorities 表相关的方法。
+
+胖友先看下 「3. Users」 和 「4. Authorities」 小节，然后回过头继续往下看。
+
+SsoHeartbeatHandler ，配置如下：
+
+@Bean
+@ConditionalOnMissingBean(SsoHeartbeatHandler.class)
+public SsoHeartbeatHandler defaultSsoHeartbeatHandler() {
+    return new DefaultSsoHeartbeatHandler();
+}
+使用 DefaultSsoHeartbeatHandler 实现类，在 「7. SsoHeartbeatHandler」 中，详细解析。
+LogoutHandler ，配置如下：
+
+@Bean
+@ConditionalOnMissingBean(LogoutHandler.class)
+public LogoutHandler logoutHandler() {
+    return new DefaultLogoutHandler();
+}
+使用 DefaultLogoutHandler 实现类，在 「8. LogoutHandler」 中，详细解析。
+2.2 SpringSecurityConfigureration
+@Order(99)
+@Profile("auth")
+@Configuration
+@EnableWebSecurity
+@EnableGlobalMethodSecurity(prePostEnabled = true)
+static class SpringSecurityConfigurer extends WebSecurityConfigurerAdapter {
+
+    public static final String USER_ROLE = "user";
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http.csrf().disable(); // 关闭打开的 csrf 保护
+        http.headers().frameOptions().sameOrigin(); // 仅允许相同 origin 访问
+        http.authorizeRequests()
+                .antMatchers("/openapi
+    @Id
+    @GeneratedValue
+    @Column(name = "Id")
+    private long id;
+
+    @Column(name = "Username", nullable = false)
+    private String username;
+
+    @Column(name = "Password", nullable = false)
+    private String password;
+
+    @Column(name = "Email", nullable = false)
+    private String email;
+
+    @Column(name = "Enabled", nullable = false)
+    private int enabled;
+
+}
+
+字段比较简单，胖友自己看注释。
+
+3.1 UserInfo
+com.ctrip.framework.apollo.portal.entity.bo.UserInfo ，User BO 。代码如下：
+
+public class UserInfo {
+
+    private String userId;
+
+
+    private String name;
+
+
+    private String email;
+
+
+}
+
+
+在 UserPO 的 #toUserInfo() 方法中，将 UserPO 转换成 UserBO ，代码如下：
+
+public UserInfo toUserInfo() {
+    UserInfo userInfo = new UserInfo();
+    userInfo.setName(this.getUsername());
+    userInfo.setUserId(this.getUsername());
+    userInfo.setEmail(this.getEmail());
+    return userInfo;
+}
+
+
+注意，userId 和 name 属性，都是指向 User.username 。
+
+
+
+4. Authorities
+
+
+Authorities 表，Spring Security 中的 Authority ，实际和 Role 角色等价。表结构如下
+
+`Id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '自增Id',
+
+`Username` varchar(50) NOT NULL,
+
+`Authority` varchar(50) NOT NULL,
+
+目前 Portal 只有一种角色 "ROLE_user" 。如下图所示：Authorities
+
+为什么是这样的呢？在 Apollo 中，
+
+统一的 URL 的权限校验，只判断是否为登陆用户，在 SpringSecurityConfigureration 中，我们可以看到。
+
+具体每个 URL 的权限校验，通过在对应的方法上，添加 @PreAuthorize 方法注解，配合具体的方法参数，一起校验功能 + 数据级的权限校验。
+
+
+5. UserService
+
+com.ctrip.framework.apollo.portal.spi.UserService ，User 服务接口，用来给 Portal 提供用户搜索相关功能。代码如下：
+
+public interface UserService {
+
+    List<UserInfo> searchUsers(String keyword, int offset, int limit);
+
+    UserInfo findByUserId(String userId);
+
+    List<UserInfo> findByUserIds(List<String> userIds);
+
+}
+
+5.1 SpringSecurityUserService
+
+com.ctrip.framework.apollo.portal.spi.springsecurity.SpringSecurityUserService ，基于 Spring Security 的 UserService 实现类。
+
+5.5.1 构造方法
+
+private PasswordEncoder encoder = new BCryptPasswordEncoder();
+
+private List<GrantedAuthority> authorities;
+
+@Autowired
+private JdbcUserDetailsManager userDetailsManager;
+@Autowired
+private UserRepository userRepository;
+
+@PostConstruct
+public void init() {
+    authorities = new ArrayList<>();
+    authorities.add(new SimpleGrantedAuthority("ROLE_user"));
+}
+authorities 属性，只有一个元素，为 "ROLE_user" 。
+
+5.5.2 createOrUpdate
+#createOrUpdate(UserPO) 方法，创建或更新 User 。代码如下：
+
+ 1: @Transactional
+ 2: public void createOrUpdate(UserPO user) {
+ 3:     String username = user.getUsername();
+ 4:     // 创建 Spring Security User
+ 5:     User userDetails = new User(username, encoder.encode(user.getPassword()), authorities);
+ 6:     // 若存在，则进行更新
+ 7:     if (userDetailsManager.userExists(username)) {
+ 8:         userDetailsManager.updateUser(userDetails);
+ 9:     // 若不存在，则进行新增
+10:     } else {
+11:         userDetailsManager.createUser(userDetails);
+12:     }
+13:     // 更新邮箱
+14:     UserPO managedUser = userRepository.findByUsername(username);
+15:     managedUser.setEmail(user.getEmail());
+16:     userRepository.save(managedUser);
+17: }
+第 5 行：创建 com.ctrip.framework.apollo.portal.spi.springsecurity.User 对象。
+使用 PasswordEncoder 对 password 加密。
+传入对应的角色 authorities 参数。
+第 6 至 12 行：新增或更新 User 。
+第 13 至 16 行：更新 email 。不直接在【第 6 至 12 行】处理的原因是，com.ctrip.framework.apollo.portal.spi.springsecurity.User 中没有 email 属性。
+
+5.5.3 其他实现方法
+🙂 胖友自己查看代码。嘿嘿。
+
+5.2 UserInfoController
+
+在 apollo-portal 项目中，com.ctrip.framework.apollo.portal.controller.UserInfoController ，提供 User 的 API 。
+
+5.2.1 createOrUpdateUser
+
+在用户管理的界面中，点击【提交】按钮，调用创建或更新 User 的 API 。
+
+创建或更新 User 界面
+
+#createOrUpdateUser(UserPO) 方法，创建或更新 User 。代码如下：
+
+@Autowired
+private UserService userService;
+
+@PreAuthorize(value = "@permissionValidator.isSuperAdmin()")
+@RequestMapping(value = "/users", method = RequestMethod.POST)
+public void createOrUpdateUser(@RequestBody UserPO user) {
+    // 校验 `username` `password` 非空
+    if (StringUtils.isContainEmpty(user.getUsername(), user.getPassword())) {
+        throw new BadRequestException("Username and password can not be empty.");
+    }
+    // 新增或更新 User
+    if (userService instanceof SpringSecurityUserService) {
+        ((SpringSecurityUserService) userService).createOrUpdate(user);
+    } else {
+        throw new UnsupportedOperationException("Create or update user operation is unsupported");
+    }
+}
+POST /users 接口，Request Body 传递 JSON 对象。
+@PreAuthorize(...) 注解，调用 PermissionValidator#isSuperAdmin() 方法，校验是否为超级管理员。后续文章，详细分享。
+调用 SpringSecurityUserService#createOrUpdate(UserPO) 方法，新增或更新 User 。
+5.2.2 logout
+#logout(request, response) 方法，User 登出。代码如下：
+
+@Autowired
+private LogoutHandler logoutHandler;
+
+@RequestMapping(value = "/user/logout", method = RequestMethod.GET)
+public void logout(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    logoutHandler.logout(request, response);
+}
+GET /user/logout 接口。
+调用 LogoutHandler#logout(request, response) 方法，登出 User 。在 「8. LogoutHandler」 中，详细解析。
+
+
+
+6. UserInfoHolder
+
+com.ctrip.framework.apollo.portal.spi.UserInfoHolder ，获取当前登录用户信息，SSO 一般都是把当前登录用户信息放在线程 ThreadLocal 上。代码如下：
+
+public interface UserInfoHolder {
+
+    UserInfo getUser();
+
+}
+
+
+6.1 SpringSecurityUserInfoHolder
+
+com.ctrip.framework.apollo.portal.spi.springsecurity.SpringSecurityUserInfoHolder ，实现 UserInfoHolder 接口，基于 Spring Security 的 UserInfoHolder 实现类。代码如下：
+
+public class SpringSecurityUserInfoHolder implements UserInfoHolder {
+
+    @Override
+    public UserInfo getUser() {
+        // 创建 UserInfo 对象，设置 `username` 到 `UserInfo.userId` 中。
+        UserInfo userInfo = new UserInfo();
+        userInfo.setUserId(getCurrentUsername());
+        return userInfo;
+    }
+
+
+    private String getCurrentUsername() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof UserDetails) {
+            return ((UserDetails) principal).getUsername();
+        }
+        if (principal instanceof Principal) {
+            return ((Principal) principal).getName();
+        }
+        return String.valueOf(principal);
+    }
+}
+
+
+
+7. SsoHeartbeatHandler
+
+com.ctrip.framework.apollo.portal.spi.SsoHeartbeatHandler
+
+Portal 页面如果长时间不刷新，登录信息会过期。通过此接口来刷新登录信息
+
+public interface SsoHeartbeatHandler {
+
+    void doHeartbeat(HttpServletRequest request, HttpServletResponse response);
+
+}
+
+
+
+7.1 DefaultSsoHeartbeatHandler
+
+com.ctrip.framework.apollo.portal.spi.defaultimpl.DefaultSsoHeartbeatHandler ，实现 SsoHeartbeatHandler 接口，代码如下：
+
+public class DefaultSsoHeartbeatHandler implements SsoHeartbeatHandler {
+
+    @Override
+    public void doHeartbeat(HttpServletRequest request, HttpServletResponse response) {
+        try {
+            response.sendRedirect("default_sso_heartbeat.html");
+        } catch (IOException e) {
+        }
+    }
+
+}
+
+
+跳转到 default_sso_heartbeat.html 中。页面如下：
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SSO Heartbeat</title>
+    <script type="text/javascript">
+        var reloading = false;
+        setInterval(function () {
+            if (reloading) {
+                return;
+            }
+            reloading = true;
+            location.reload(true);
+        }, 60000);
+    </script>
+</head>
+<body>
+</body>
+</html>
+
+
+每 60 秒刷新一次页面。🙂 一脸懵逼，这是干啥的？继续往下看~
+
+
+
+7.2 SsoHeartbeatController
+
+com.ctrip.framework.apollo.portal.controller.SsoHeartbeatController ，代码如下：
+
+@Controller
+@RequestMapping("/sso_heartbeat")
+public class SsoHeartbeatController {
+
+    @Autowired
+    private SsoHeartbeatHandler handler;
+
+    @RequestMapping(value = "", method = RequestMethod.GET)
+    public void heartbeat(HttpServletRequest request, HttpServletResponse response) {
+        handler.doHeartbeat(request, response);
+    }
+
+}
+
+
+通过打开一个新的窗口，访问 http://ip:prot/sso_hearbeat 地址，每 60 秒刷新一次页面，从而避免 SSO 登陆过期。
+
+因此，相关类的类名都包含 Heartbeat ，代表心跳的意思。
+
+
+
+8. LogoutHandler
+
+com.ctrip.framework.apollo.portal.spi.LogoutHandler ，用来实现登出功能。代码如下：
+
+public interface LogoutHandler {
+
+    void logout(HttpServletRequest request, HttpServletResponse response);
+
+}
+
+
+8.1 DefaultLogoutHandler
+
+com.ctrip.framework.apollo.portal.spi.defaultimpl.DefaultLogoutHandler ，实现 LogoutHandler 接口，代码如下：
+
+public class DefaultLogoutHandler implements LogoutHandler {
+
+    @Override
+    public void logout(HttpServletRequest request, HttpServletResponse response) {
+        try {
+            response.sendRedirect("/");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+}
+
+在使用 Spring Security 的请款下，不会调用到。注意，因为，我们配置了登出页。
+
+《【Spring】关于Boot应用中集成Spring Security你必须了解的那些事》
+
+《徐靖峰大彩笔 —— Spring Security》
+
+
+================================================================================================================
+
+
+1. 概述
+老艿艿：本系列假定胖友已经阅读过 《Apollo 官方 wiki 文档》 ，特别是 《Portal 实现用户登录功能》 。
+
+本文分享 Portal 的认证与授权，侧重在认证部分。
+
+在 《Portal 实现用户登录功能》 文档的开头：
+
+Apollo 是配置管理系统，会提供权限管理（Authorization），理论上是不负责用户登录认证功能的实现（Authentication）。
+
+所以 Apollo 定义了一些SPI用来解耦，Apollo 接入登录的关键就是实现这些 SPI 。
+
+和我们理解的 JDK SPI 不同，Apollo 是基于 Spring Profile 的特性，配合上 Spring Java Configuration 实现了类似 SPI 的功能。对于大多数人，我们可能比较熟悉的是，基于不同的 Profile 加载不同环境的 yaml 或 properties 配置文件。所以，当笔者看到这样的玩法，也是眼前一亮。
+
+在 apollo-portal 项目中，spi 包下，我们可以看到认证相关的配置与实现，如下图所示：代码结构
+
+绿框：接口。
+紫框：实现。
+红框：配置接口对应的实现。
+2. AuthConfiguration
+com.ctrip.framework.apollo.portal.spi.configuration.AuthConfiguration ，认证 Spring Java 配置。如下图：AuthConfiguration
+
+目前有三种实现：
+
+第一种， profile=ctrip ，携程内部实现，接入了SSO并实现用户搜索、查询接口。
+第二种，profile=auth ，使用 Apollo 提供的 Spring Security 简单认证。
+第三种，profile 为空，使用默认实现，全局只有 apollo 一个账号。
+一般情况下，我们使用第二种，基于 Spring Security 的实现。所以本文仅分享这种方式。对其他方式感兴趣的胖友，可以自己读下代码哈。
+
+整体类图如下：类图
+
+2.1 SpringSecurityAuthAutoConfiguration
+UserService ，配置如下：
+
+@Bean
+@ConditionalOnMissingBean(UserService.class)
+public UserService springSecurityUserService() {
+    return new SpringSecurityUserService();
+}
+使用 SpringSecurityUserService 实现类，在 「5. UserService」 中，详细解析。
+UserInfoHolder ，配置如下：
+
+@Bean
+@ConditionalOnMissingBean(UserInfoHolder.class)
+public UserInfoHolder springSecurityUserInfoHolder() {
+    return new SpringSecurityUserInfoHolder();
+}
+使用 SpringSecurityUserInfoHolder 实现类，在 「6. UserInfoHolder」 中，详细解析。
+JdbcUserDetailsManager ，配置如下：
+
+@Bean
+public JdbcUserDetailsManager jdbcUserDetailsManager(AuthenticationManagerBuilder auth, DataSource datasource) throws Exception {
+    JdbcUserDetailsManager jdbcUserDetailsManager = auth.jdbcAuthentication() // 基于 JDBC
+            .passwordEncoder(new BCryptPasswordEncoder()) // 加密方式为 BCryptPasswordEncoder
+            .dataSource(datasource) // 数据源
+            .usersByUsernameQuery("select Username,Password,Enabled from `Users` where Username = ?") // 使用 Username 查询 User
+            .authoritiesByUsernameQuery("select Username,Authority from `Authorities` where Username = ?") // 使用 Username 查询 Authorities
+            .getUserDetailsService();
+
+    jdbcUserDetailsManager.setUserExistsSql("select Username from `Users` where Username = ?"); // 判断 User 是否存在
+    jdbcUserDetailsManager.setCreateUserSql("insert into `Users` (Username, Password, Enabled) values (?,?,?)"); // 插入 User
+    jdbcUserDetailsManager.setUpdateUserSql("update `Users` set Password = ?, Enabled = ? where Username = ?"); // 更新 User
+    jdbcUserDetailsManager.setDeleteUserSql("delete from `Users` where Username = ?"); // 删除 User
+    jdbcUserDetailsManager.setCreateAuthoritySql("insert into `Authorities` (Username, Authority) values (?,?)"); // 插入 Authorities
+    jdbcUserDetailsManager.setDeleteUserAuthoritiesSql("delete from `Authorities` where Username = ?"); // 删除 Authorities
+    jdbcUserDetailsManager.setChangePasswordSql("update `Users` set Password = ? where Username = ?"); // 更新 Authorities
+
+    return jdbcUserDetailsManager;
+}
+org.springframework.security.provisioning.JdbcUserDetailsManager ，继承 JdbcDaoImpl 的功能，提供了一些很有用的与 Users 和 Authorities 表相关的方法。
+胖友先看下 「3. Users」 和 「4. Authorities」 小节，然后回过头继续往下看。
+SsoHeartbeatHandler ，配置如下：
+
+@Bean
+@ConditionalOnMissingBean(SsoHeartbeatHandler.class)
+public SsoHeartbeatHandler defaultSsoHeartbeatHandler() {
+    return new DefaultSsoHeartbeatHandler();
+}
+使用 DefaultSsoHeartbeatHandler 实现类，在 「7. SsoHeartbeatHandler」 中，详细解析。
+LogoutHandler ，配置如下：
+
+@Bean
+@ConditionalOnMissingBean(LogoutHandler.class)
+public LogoutHandler logoutHandler() {
+    return new DefaultLogoutHandler();
+}
+使用 DefaultLogoutHandler 实现类，在 「8. LogoutHandler」 中，详细解析。
+2.2 SpringSecurityConfigureration
+@Order(99)
+@Profile("auth")
+@Configuration
+@EnableWebSecurity
+@EnableGlobalMethodSecurity(prePostEnabled = true)
+static class SpringSecurityConfigurer extends WebSecurityConfigurerAdapter {
+
+    public static final String USER_ROLE = "user";
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http.csrf().disable(); // 关闭打开的 csrf 保护
+        http.headers().frameOptions().sameOrigin(); // 仅允许相同 origin 访问
+        http.authorizeRequests()
+                .antMatchers("/openapi
+    @Id
+    @GeneratedValue
+    @Column(name = "Id")
+    private long id;
+
+    @Column(name = "Username", nullable = false)
+    private String username;
+
+    @Column(name = "Password", nullable = false)
+    private String password;
+
+    @Column(name = "Email", nullable = false)
+    private String email;
+
+    @Column(name = "Enabled", nullable = false)
+    private int enabled;
+
+}
+字段比较简单，胖友自己看注释。
+3.1 UserInfo
+com.ctrip.framework.apollo.portal.entity.bo.UserInfo ，User BO 。代码如下：
+
+public class UserInfo {
+
+
+    private String userId;
+
+    private String name;
+
+    private String email;
+
+}
+在 UserPO 的 #toUserInfo() 方法中，将 UserPO 转换成 UserBO ，代码如下：
+
+public UserInfo toUserInfo() {
+    UserInfo userInfo = new UserInfo();
+    userInfo.setName(this.getUsername());
+    userInfo.setUserId(this.getUsername());
+    userInfo.setEmail(this.getEmail());
+    return userInfo;
+}
+注意，userId 和 name 属性，都是指向 User.username 。
+4. Authorities
+Authorities 表，Spring Security 中的 Authority ，实际和 Role 角色等价。表结构如下：
+
+`Id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '自增Id',
+`Username` varchar(50) NOT NULL,
+`Authority` varchar(50) NOT NULL,
+目前 Portal 只有一种角色 "ROLE_user" 。如下图所示：Authorities
+为什么是这样的呢？在 Apollo 中，
+统一的 URL 的权限校验，只判断是否为登陆用户，在 SpringSecurityConfigureration 中，我们可以看到。
+具体每个 URL 的权限校验，通过在对应的方法上，添加 @PreAuthorize 方法注解，配合具体的方法参数，一起校验功能 + 数据级的权限校验。
+5. UserService
+com.ctrip.framework.apollo.portal.spi.UserService ，User 服务接口，用来给 Portal 提供用户搜索相关功能。代码如下：
+
+public interface UserService {
+
+    List<UserInfo> searchUsers(String keyword, int offset, int limit);
+
+    UserInfo findByUserId(String userId);
+
+    List<UserInfo> findByUserIds(List<String> userIds);
+
+}
+5.1 SpringSecurityUserService
+com.ctrip.framework.apollo.portal.spi.springsecurity.SpringSecurityUserService ，基于 Spring Security 的 UserService 实现类。
+
+5.5.1 构造方法
+private PasswordEncoder encoder = new BCryptPasswordEncoder();
+
+private List<GrantedAuthority> authorities;
+
+@Autowired
+private JdbcUserDetailsManager userDetailsManager;
+@Autowired
+private UserRepository userRepository;
+
+@PostConstruct
+public void init() {
+    authorities = new ArrayList<>();
+    authorities.add(new SimpleGrantedAuthority("ROLE_user"));
+}
+authorities 属性，只有一个元素，为 "ROLE_user" 。
+5.5.2 createOrUpdate
+#createOrUpdate(UserPO) 方法，创建或更新 User 。代码如下：
+
+ 1: @Transactional
+ 2: public void createOrUpdate(UserPO user) {
+ 3:     String username = user.getUsername();
+ 4:     // 创建 Spring Security User
+ 5:     User userDetails = new User(username, encoder.encode(user.getPassword()), authorities);
+ 6:     // 若存在，则进行更新
+ 7:     if (userDetailsManager.userExists(username)) {
+ 8:         userDetailsManager.updateUser(userDetails);
+ 9:     // 若不存在，则进行新增
+10:     } else {
+11:         userDetailsManager.createUser(userDetails);
+12:     }
+13:     // 更新邮箱
+14:     UserPO managedUser = userRepository.findByUsername(username);
+15:     managedUser.setEmail(user.getEmail());
+16:     userRepository.save(managedUser);
+17: }
+第 5 行：创建 com.ctrip.framework.apollo.portal.spi.springsecurity.User 对象。
+使用 PasswordEncoder 对 password 加密。
+传入对应的角色 authorities 参数。
+第 6 至 12 行：新增或更新 User 。
+第 13 至 16 行：更新 email 。不直接在【第 6 至 12 行】处理的原因是，com.ctrip.framework.apollo.portal.spi.springsecurity.User 中没有 email 属性。
+5.5.3 其他实现方法
+🙂 胖友自己查看代码。嘿嘿。
+
+5.2 UserInfoController
+在 apollo-portal 项目中，com.ctrip.framework.apollo.portal.controller.UserInfoController ，提供 User 的 API 。
+
+5.2.1 createOrUpdateUser
+在用户管理的界面中，点击【提交】按钮，调用创建或更新 User 的 API 。
+
+创建或更新 User 界面
+
+#createOrUpdateUser(UserPO) 方法，创建或更新 User 。代码如下：
+
+@Autowired
+private UserService userService;
+
+@PreAuthorize(value = "@permissionValidator.isSuperAdmin()")
+@RequestMapping(value = "/users", method = RequestMethod.POST)
+public void createOrUpdateUser(@RequestBody UserPO user) {
+    // 校验 `username` `password` 非空
+    if (StringUtils.isContainEmpty(user.getUsername(), user.getPassword())) {
+        throw new BadRequestException("Username and password can not be empty.");
+    }
+    // 新增或更新 User
+    if (userService instanceof SpringSecurityUserService) {
+        ((SpringSecurityUserService) userService).createOrUpdate(user);
+    } else {
+        throw new UnsupportedOperationException("Create or update user operation is unsupported");
+    }
+}
+POST /users 接口，Request Body 传递 JSON 对象。
+@PreAuthorize(...) 注解，调用 PermissionValidator#isSuperAdmin() 方法，校验是否为超级管理员。后续文章，详细分享。
+调用 SpringSecurityUserService#createOrUpdate(UserPO) 方法，新增或更新 User 。
+5.2.2 logout
+#logout(request, response) 方法，User 登出。代码如下：
+
+@Autowired
+private LogoutHandler logoutHandler;
+
+@RequestMapping(value = "/user/logout", method = RequestMethod.GET)
+public void logout(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    logoutHandler.logout(request, response);
+}
+GET /user/logout 接口。
+调用 LogoutHandler#logout(request, response) 方法，登出 User 。在 「8. LogoutHandler」 中，详细解析。
+6. UserInfoHolder
+com.ctrip.framework.apollo.portal.spi.UserInfoHolder ，获取当前登录用户信息，SSO 一般都是把当前登录用户信息放在线程 ThreadLocal 上。代码如下：
+
+public interface UserInfoHolder {
+
+    UserInfo getUser();
+
+}
+6.1 SpringSecurityUserInfoHolder
+com.ctrip.framework.apollo.portal.spi.springsecurity.SpringSecurityUserInfoHolder ，实现 UserInfoHolder 接口，基于 Spring Security 的 UserInfoHolder 实现类。代码如下：
+
+public class SpringSecurityUserInfoHolder implements UserInfoHolder {
+
+    @Override
+    public UserInfo getUser() {
+        // 创建 UserInfo 对象，设置 `username` 到 `UserInfo.userId` 中。
+        UserInfo userInfo = new UserInfo();
+        userInfo.setUserId(getCurrentUsername());
+        return userInfo;
+    }
+
+
+    private String getCurrentUsername() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof UserDetails) {
+            return ((UserDetails) principal).getUsername();
+        }
+        if (principal instanceof Principal) {
+            return ((Principal) principal).getName();
+        }
+        return String.valueOf(principal);
+    }
+
+}
+7. SsoHeartbeatHandler
+com.ctrip.framework.apollo.portal.spi.SsoHeartbeatHandler ，Portal 页面如果长时间不刷新，登录信息会过期。通过此接口来刷新登录信息。代码如下：
+
+public interface SsoHeartbeatHandler {
+
+    void doHeartbeat(HttpServletRequest request, HttpServletResponse response);
+
+}
+7.1 DefaultSsoHeartbeatHandler
+com.ctrip.framework.apollo.portal.spi.defaultimpl.DefaultSsoHeartbeatHandler ，实现 SsoHeartbeatHandler 接口，代码如下：
+
+public class DefaultSsoHeartbeatHandler implements SsoHeartbeatHandler {
+
+    @Override
+    public void doHeartbeat(HttpServletRequest request, HttpServletResponse response) {
+        try {
+            response.sendRedirect("default_sso_heartbeat.html");
+        } catch (IOException e) {
+        }
+    }
+
+}
+跳转到 default_sso_heartbeat.html 中。页面如下：
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SSO Heartbeat</title>
+    <script type="text/javascript">
+        var reloading = false;
+        setInterval(function () {
+            if (reloading) {
+                return;
+            }
+            reloading = true;
+            location.reload(true);
+        }, 60000);
+    </script>
+</head>
+<body>
+</body>
+</html>
+每 60 秒刷新一次页面。🙂 一脸懵逼，这是干啥的？继续往下看。
+7.2 SsoHeartbeatController
+com.ctrip.framework.apollo.portal.controller.SsoHeartbeatController ，代码如下：
+
+@Controller
+@RequestMapping("/sso_heartbeat")
+public class SsoHeartbeatController {
+
+    @Autowired
+    private SsoHeartbeatHandler handler;
+
+    @RequestMapping(value = "", method = RequestMethod.GET)
+    public void heartbeat(HttpServletRequest request, HttpServletResponse response) {
+        handler.doHeartbeat(request, response);
+    }
+
+}
+通过打开一个新的窗口，访问 http://ip:prot/sso_hearbeat 地址，每 60 秒刷新一次页面，从而避免 SSO 登陆过期。因此，相关类的类名都包含 Heartbeat ，代表心跳的意思。
+8. LogoutHandler
+com.ctrip.framework.apollo.portal.spi.LogoutHandler ，用来实现登出功能。代码如下：
+
+public interface LogoutHandler {
+
+    void logout(HttpServletRequest request, HttpServletResponse response);
+
+}
+8.1 DefaultLogoutHandler
+com.ctrip.framework.apollo.portal.spi.defaultimpl.DefaultLogoutHandler ，实现 LogoutHandler 接口，代码如下：
+
+public class DefaultLogoutHandler implements LogoutHandler {
+
+    @Override
+    public void logout(HttpServletRequest request, HttpServletResponse response) {
+        try {
+            response.sendRedirect("/");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+}
+登出后，跳转到 / 地址。
+😈 在使用 Spring Security 的请款下，不会调用到。注意，因为，我们配置了登出页。
+
+=======================================================================================
+
+调试环境搭建
+
+1. 依赖工具
+老艿艿：本文参考 《Apollo 官方文档 —— 开发指南》 ，进行精简。
+官方很良心，文档很细心。
+
+建议胖友后面阅读 Apollo 设计文档：
+
+《Apollo 配置中心介绍》
+《Apollo 配置中心设计》
+《Apollo核心概念之“Namespace”》
+JDK ：1.8+
+MySQL ：5.6.5+
+Maven
+IntelliJ IDEA
+2. 创建数据库
+Apollo 服务端共有两个数据库：
+
+ApolloPortalDB
+ApolloConfigDB
+在Apollo 项目下的scripts` 目录，提供了对应的初始化脚本：scripts
+
+2.1 创建 ApolloPortalDB
+通过各种 MySQL 客户端导入 sql/apolloportaldb.sql 脚本。例如笔者喜欢用 Navicat 。
+
+基情提示：Navicat 导入 SQL 脚本，可阅读文章：《navicat里导入和导出.sql文件》 。
+
+导入成功后，表结构如下：表结构
+
+2.2 创建 ApolloConfigDB
+通过各种 MySQL 客户端导入 sql/apolloconfigdb.sql 脚本。
+
+导入成功后，表结构如下：表结构
+
+3. ConfigService && AdminService
+同时启动 apollo-adminservice 和 apollo-configservice 项目，基于 apollo-assembly 项目来启动。
+
+1、新建 IDEA Application 新建 Application
+
+2、配置 IDEA Application 配置 Application
+
+Main class ：com.ctrip.framework.apollo.assembly.ApolloApplication 。
+VM options ：
+
+-Dapollo_profile=github
+-Dspring.datasource.url=jdbc:mysql://localhost:33061/ApolloConfigDB? characterEncoding=utf8
+-Dspring.datasource.username=root
+-Dspring.datasource.password=123456
+-Dlogging.file=/Users/yunai/apollo-assembly.log
+
+spring.datasource 配置连接 ApolloConfigDB 数据库。
+loggine.file 配置日志输出文件。
+Use classpath of module ：apollo-assembly 。
+
+3、启动 IDEA Application 启动 Application
+
+启动时间需要 3 分钟左右，请耐心等待。当打开 http://localhost:8080/ 看到 APOLLO-ADMINSERVICE 和 APOLLO-CONFIGSERVICE 注册到 Eureka 中，代表启动成功。http://localhost:8080/
+
+4. PortalService
+1、新建 IDEA Application
+
+2、配置 IDEA Application 配置 Application
+
+Main class ：com.ctrip.framework.apollo.portal.PortalApplication 。
+VM options ：
+
+-Dapollo_profile=github,auth
+-Ddev_meta=http://localhost:8080/
+-Dserver.port=8070
+-Dspring.datasource.url=jdbc:mysql://localhost:3306/ApolloPortalDB?characterEncoding=utf8
+-Dspring.datasource.username=root
+-Dspring.datasource.password=
+-Dlogging.file=/Users/yunai/apollo-portal.log
+
+spring.datasource 配置连接 ApolloPortalDB 数据库。
+loggine.file 配置日志输出文件。
+Use classpath of module ：apollo-portal 。
+
+内置账号
+
+username ：Apollo
+password ：admin
+3、启动 IDEA Application
+
+启动时间很快。当打开 http://localhost:8070/ 。http://localhost:8070/
+
+5. Demo
+考虑到下面的测试，需要创建测试的应用，编号为 100004458 。如下图所示：100004458
+
+1、新建 IDEA Application
+
+2、配置 IDEA Application 配置 Application
+
+Main class ：com.ctrip.framework.apollo.demo.api.SimpleApolloConfigDemo 。
+VM options ：
+
+-Denv=dev
+-Ddev_meta=http://localhost:8080
+
+Use classpath of module ：apollo-demo 。
+
+3、启动 IDEA Application
+
+成功后，输出日志如下：
+
+Apollo Config Demo. Please input key to get the value. Input quit to exit.
+输入 "timeout" ，回车，输出如下：
+
+timeout> [apollo-demo][main]2018-04-22 11:12:43,345 INFO  [com.ctrip.framework.apollo.demo.api.SimpleApolloConfigDemo] Loading key : timeout with value: 6666
+此处便是我们在 Apollo Portal 中配置的 "timeout" 值。
+666. 彩蛋
+官方文档真的是完善。搭建环境 + 写文章，只花了 3 个小时左右。
+
+另外，本文写的比较简单，详细的建议多看看官方文档。
+
+
+
+
+
+
+
+
