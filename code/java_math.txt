@@ -1,4 +1,4 @@
-package cn.com.pingan.common;
+package .common;
 
 
 import java.math.BigDecimal;
@@ -236,7 +236,7 @@ public class MathTool {
         BigDecimal b = new BigDecimal(v);
         return b.setScale(scale, round_mode).toString();
     }
-}package cn.com.pingan.common;
+}package .common;
 
 
 import java.math.BigDecimal;

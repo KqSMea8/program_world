@@ -721,7 +721,7 @@ object Actor01 {
 
 }
 
-package com.pingan.lcloud.ifrs17.scala.learn
+package .ifrs17.scala.learn
 
 /**
   * Created by EX-ZHANGYONGTIAN001 on 2018-10-23.
@@ -1016,7 +1016,7 @@ class Ant extends {
 
 
 
-package com.pingan.lcloud.ifrs17.scala.learn
+package .ifrs17.scala.learn
 
 import java.awt.Font
 import java.awt.datatransfer.SystemFlavorMap
@@ -1531,7 +1531,7 @@ object BookKuaixueScala {
 
 
 
-package com.pingan.lcloud.ifrs17.scala.learn
+package .ifrs17.scala.learn
 
 /**
   * Created by EX-ZHANGYONGTIAN001 on 2018-9-27.
@@ -1568,7 +1568,7 @@ import ChecksumAccumulator.calculate
 //  for (season<-List("fall","winter","spring")){
 //    println(calculate(season))
 //  }
-//}//package com.pingan.lcloud.ifrs17.scala.learn
+//}//package .ifrs17.scala.learn
 //
 //import org.apache.spark.sql.catalyst.expressions.{Cast, Divide, Literal, MakeDecimal, UnscaledValue}
 //import org.apache.spark.sql.catalyst.expressions.aggregate.{Average, Sum}
@@ -1607,7 +1607,7 @@ import ChecksumAccumulator.calculate
 //        )
 //    }
 //}
-package com.pingan.lcloud.ifrs17.scala.learn
+package .ifrs17.scala.learn
 
 import java.io._
 
@@ -1680,7 +1680,7 @@ object DeSerial {
 
 
 }
-package com.pingan.lcloud.ifrs17.scala.learn
+package .ifrs17.scala.learn
 
 import java.sql.Connection
 import java.util.{LinkedList, ResourceBundle}
@@ -1708,7 +1708,7 @@ object JdbcTest {
 
   }
 }
-package com.pingan.lcloud.ifrs17.scala.learn
+package .ifrs17.scala.learn
 
 /**
   * Created by EX-ZHANGYONGTIAN001 on 2018-9-27.
@@ -1926,7 +1926,7 @@ object Scala01 {
 
 
 
-package com.pingan.lcloud.ifrs17.scala.learn
+package .ifrs17.scala.learn
 
 import org.apache.spark.SparkContext
 
@@ -1991,7 +1991,7 @@ object SecondarySort {
     System.exit(0)
   }
 }
-package com.pingan.lcloud.ifrs17.scala.learn
+package .ifrs17.scala.learn
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
@@ -2156,7 +2156,7 @@ object SparkPerformanceTest {
     }
 
 
-}package com.pingan.lcloud.ifrs17.scala.learn
+}package .ifrs17.scala.learn
 
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.SQLContext
@@ -2220,10 +2220,10 @@ object SparkSQLDemo extends Logging with Serializable {
   }
 
 }
-package com.pingan.lcloud.ifrs17.scala.learn
+package .ifrs17.scala.learn
 
-import com.pingan.lcloud.ifrs17.core.framework.comm.MPConstants
-import com.pingan.lcloud.ifrs17.core.framework.schema.BAS_PALA_POL_BEN_IND
+import .ifrs17.core.framework.comm.MPConstants
+import .ifrs17.core.framework.schema.BAS_PALA_POL_BEN_IND
 import scala.reflect.runtime.{universe => ru}
 import scala.collection.mutable
 

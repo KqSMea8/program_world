@@ -1679,7 +1679,7 @@ startJob $startDate $endDate $jobType
    --conf spark.sql.files.maxPartitionBytes=134217728 \
    --conf spark.sql.files.openCostInBytes=5242880  \
    --conf "spark.executor.extraJavaOptions=-XX:+UseG1GC -XX:+UseCompressedStrings" \
-   --class com.pingan.lcloud.ifrs17.dcs.launcher.DcsIndExecutor \
+   --class .ifrs17.dcs.launcher.DcsIndExecutor \
    lbdp_corepub_ifrs17_job-1.0.0.jar  \
    env=prd  \
    log.level=error \
@@ -1770,7 +1770,7 @@ cd $JOB_HOME
    --conf spark.kryoserializer.buffer.max=512m \
    --conf spark.kryoserializer.buffer=128k \
    --conf "spark.executor.extraJavaOptions=-XX:+UseG1GC -XX:+UseCompressedStrings" \
-   --class com.pingan.lcloud.ifrs17.grouping.launcher.IndGroupingExecutor \
+   --class .ifrs17.grouping.launcher.IndGroupingExecutor \
    lbdp_corepub_ifrs17_job-1.0.0.jar \
    env=prd  \
    log.level=error \
@@ -1893,7 +1893,7 @@ cd $JOB_HOME
    --conf spark.sql.files.maxPartitionBytes=134217728 \
    --conf spark.sql.files.openCostInBytes=5242880  \
    --conf "spark.executor.extraJavaOptions=-XX:+UseG1GC -XX:+UseCompressedStrings" \
-   --class com.pingan.lcloud.ifrs17.mp.launcher.MPIndExecutor \
+   --class .ifrs17.mp.launcher.MPIndExecutor \
    lbdp_corepub_ifrs17_job-1.0.0.jar \
    env=prd  \
    log.level=error \
@@ -1978,7 +1978,7 @@ cd $JOB_HOME
    --conf spark.sql.files.maxPartitionBytes=134217728 \
    --conf spark.sql.files.openCostInBytes=5242880  \
    --conf "spark.executor.extraJavaOptions=-XX:+UseG1GC -XX:+UseCompressedStrings" \
-   --class com.pingan.lcloud.ifrs17.mp.launcher.MPIndExecutor \
+   --class .ifrs17.mp.launcher.MPIndExecutor \
    lbdp_corepub_ifrs17_job-1.0.0.jar \
    env=prd  \
    log.level=error \
@@ -2074,7 +2074,7 @@ cd $JOB_HOME
    --conf spark.sql.files.maxPartitionBytes=134217728 \
    --conf spark.sql.files.openCostInBytes=5242880  \
    --conf "spark.executor.extraJavaOptions=-XX:+UseG1GC -XX:+UseCompressedStrings" \
-   --class com.pingan.lcloud.ifrs17.tool.SparkSQLExecute \
+   --class .ifrs17.tool.SparkSQLExecute \
    lbdp_corepub_ifrs17_job-1.0.0.jar \
    prd  \
    error \
@@ -2161,7 +2161,7 @@ job_name=$0
    --conf spark.sql.files.maxPartitionBytes=134217728 \
    --conf spark.sql.files.openCostInBytes=5242880  \
    --conf "spark.executor.extraJavaOptions=-XX:+UseG1GC -XX:+UseCompressedStrings" \
-   --class com.pingan.lcloud.ifrs17.dcs.launcher.DcsIndExecutor \
+   --class .ifrs17.dcs.launcher.DcsIndExecutor \
    lbdp_corepub_ifrs17_job-1.0.0.jar  \
    env=prd  \
    log.level=error \
@@ -2251,7 +2251,7 @@ cd $JOB_HOME
    --conf spark.sql.files.maxPartitionBytes=134217728 \
    --conf spark.sql.files.openCostInBytes=5242880  \
    --conf "spark.executor.extraJavaOptions=-XX:+UseG1GC -XX:+UseCompressedStrings" \
-   --class com.pingan.lcloud.ifrs17.mp.job.SqlConfJobTest \
+   --class .ifrs17.mp.job.SqlConfJobTest \
    lbdp_corepub_ifrs17_1_0_0_demo-1.0.0.jar \
    env=prd  \
    log.level=error \
