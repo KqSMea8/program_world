@@ -35,20 +35,6 @@ static class ThreadLocalMap {
         private int threshold; // Default to 0
         //部分省略
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
 ThreadLocal类中一共有4个方法：
 
 T get()
@@ -71,19 +57,6 @@ void set(T value)
     ThreadLocalMap getMap(Thread t) {
         return t.threadLocals;
     }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
 get()方法的源码如上所示，可以看到map中真正的key是线程ThreadLocal实例本身（ThreadLocalMap.Entry e = map.getEntry(this);中的this）。可以看一下getEntry(ThreadLocal key)的源码.
 【代码4】
 
@@ -95,14 +68,6 @@ get()方法的源码如上所示，可以看到map中真正的key是线程Thread
             else
                 return getEntryAfterMiss(key, i, e);
         }
-1
-2
-3
-4
-5
-6
-7
-8
 那么map中的value是什么呢？我们继续来看源码：
 【代码5】
 
@@ -119,19 +84,6 @@ get()方法的源码如上所示，可以看到map中真正的key是线程Thread
     protected T initialValue() {
         return null;
     }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
 代码5中只能够观察到通过[protected T initialValue()]方法设置了一个初始值，当然也可以通过set方法来赋值，继续看源码：
 【代码6】
 

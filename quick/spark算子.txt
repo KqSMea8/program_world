@@ -696,22 +696,24 @@ abstract class RDD[T: ClassTag](
   }
 
   /**
-   * Return an RDD of grouped items. Each group consists of a key and a sequence of elements
-   * mapping to that key. The ordering of elements within each group is not guaranteed, and
-   * may even differ each time the resulting RDD is evaluated.
+   * 返回分组项的RDD。每组由一个键和一系列元素组成
+     *映射到该键。不保证每组元素的顺序，以及
+     *甚至在每次评估结果RDD时可能会有所不同。
+
+
+   * @注意，此操作可能非常昂贵。如果要进行分组以执行
+     *使用'pairddfunctions.aggregateByKey对每个键进行聚合（如求和或平均值）`
+     *或“pairddfunctions.reducebykey”将提供更好的性能。
    *
-   * @note This operation may be very expensive. If you are grouping in order to perform an
-   * aggregation (such as a sum or average) over each key, using `PairRDDFunctions.aggregateByKey`
-   * or `PairRDDFunctions.reduceByKey` will provide much better performance.
    */
   def groupBy[K](f: T => K)(implicit kt: ClassTag[K]): RDD[(K, Iterable[T])] = withScope {
     groupBy[K](f, defaultPartitioner(this))
   }
 
   /**
-   * Return an RDD of grouped elements. Each group consists of a key and a sequence of elements
-   * mapping to that key. The ordering of elements within each group is not guaranteed, and
-   * may even differ each time the resulting RDD is evaluated.
+   *  返回分组元素的RDD。每组由一个键和一系列元素组成
+      *映射到该键。不保证每组元素的顺序，以及
+      *甚至在每次评估结果RDD时可能会有所不同。
    *
    * @note This operation may be very expensive. If you are grouping in order to perform an
    * aggregation (such as a sum or average) over each key, using `PairRDDFunctions.aggregateByKey`
@@ -724,13 +726,15 @@ abstract class RDD[T: ClassTag](
   }
 
   /**
-   * Return an RDD of grouped items. Each group consists of a key and a sequence of elements
-   * mapping to that key. The ordering of elements within each group is not guaranteed, and
-   * may even differ each time the resulting RDD is evaluated.
+   * 返回分组项的RDD。每组由一个键和一系列元素组成
+     *映射到该键。不保证每组元素的顺序，以及
+     *甚至在每次评估结果RDD时可能会有所不同。
    *
-   * @note This operation may be very expensive. If you are grouping in order to perform an
-   * aggregation (such as a sum or average) over each key, using `PairRDDFunctions.aggregateByKey`
-   * or `PairRDDFunctions.reduceByKey` will provide much better performance.
+   * @注意，此操作可能非常昂贵。如果要进行分组以执行
+
+     *使用'pairddfunctions.aggregateByKey对每个键进行聚合（如求和或平均值）`
+
+     *或“pairddfunctions.reducebykey”将提供更好的性能。
    */
   def groupBy[K](f: T => K, p: Partitioner)(implicit kt: ClassTag[K], ord: Ordering[K] = null)
       : RDD[(K, Iterable[T])] = withScope {
@@ -739,7 +743,7 @@ abstract class RDD[T: ClassTag](
   }
 
   /**
-   * Return an RDD created by piping elements to a forked external process.
+   * 将管道元素创建的RDD返回到分叉的外部流程。
    */
   def pipe(command: String): RDD[String] = withScope {
     // Similar to Runtime.exec(), if we are given a single string, split it into words
@@ -749,6 +753,35 @@ abstract class RDD[T: ClassTag](
 
   /**
    * Return an RDD created by piping elements to a forked external process.
+
+   spark 中，有种特殊的Rdd，即pipedRdd，提供了调用外部程序如基于CUDA的C++程序，使其能够更快的进行计算。caffe on spark 和tensorflow on spark 也是基于此机制，那么，spark 和 外部程序是怎么交互的呢？ 下面通过一个简单的例子验证。
+
+   步骤1：创建外部脚本
+   #!/bin/sh
+   echo "Running shell script"
+   while read LINE; do
+      echo ${LINE}!
+   done
+   步骤2：spark rdd 调用
+   val data = sc.parallelize(List("hi","hello","how","are","you"))
+   val scriptPath = "/root/echo.sh"
+   val pipeRDD = dataRDD.pipe(scriptPath)
+   pipeRDD.collect()
+   查看运行结果，发现为：
+
+   Array[String] = Array(Running shell script, hi!, Running shell script, hello!, Running shell script, how!, Running shell script, are!, you!)
+   1
+   其中，Running shell script只出现了4次，rdd的count为9，可见有两次共享了一个外部进程。在此推断和RDD并行度有关。
+
+   步骤3：调整并行度
+   dataRDD.repartition(5)
+   结果为：
+
+   Array[String] = Array(Running shell script, are!, Running shell script, hi!, hello!, you!, Running shell script, Running shell script, Running shell script, how!)
+   Running shell script只出现了5次，rdd的count为10了。
+
+   结论
+   rdd pipe 每个分区，启动一次外部程序，输入通过stdin传入，结果通过stdout传出。
    */
   def pipe(command: String, env: Map[String, String]): RDD[String] = withScope {
     // Similar to Runtime.exec(), if we are given a single string, split it into words
@@ -757,14 +790,19 @@ abstract class RDD[T: ClassTag](
   }
 
   /**
-   * Return an RDD created by piping elements to a forked external process. The resulting RDD
-   * is computed by executing the given process once per partition. All elements
-   * of each input partition are written to a process's stdin as lines of input separated
-   * by a newline. The resulting partition consists of the process's stdout output, with
-   * each line of stdout resulting in one element of the output partition. A process is invoked
-   * even for empty partitions.
+   * 将管道元素创建的RDD返回到分叉的外部流程。结果RDD
+
+     *是通过对每个分区执行一次给定的进程来计算的。所有元素
+
+     *将每个输入分区的行作为单独的输入行写入进程的stdin。
+
+     *换行。生成的分区由进程的stdout输出组成，其中
+
+     *stdout的每一行产生输出分区的一个元素。调用进程
+
+     *即使是空分区。
    *
-   * The print behavior can be customized by providing two functions.
+   *  打印行为可以通过提供两个功能进行定制。
    *
    * @param command command to run in forked process.
    * @param env environment variables to set.
@@ -803,10 +841,12 @@ abstract class RDD[T: ClassTag](
   }
 
   /**
-   * Return a new RDD by applying a function to each partition of this RDD.
+   * .
+    Return a new RDD by applying a function to each partition of this RDD
+    通过向这个RDD的每个分区应用一个函数来返回一个新的RDD
    *
-   * `preservesPartitioning` indicates whether the input function preserves the partitioner, which
-   * should be `false` unless this is a pair RDD and the input function doesn't modify the keys.
+   * ` preservespartitioning`指示输入函数是否保留分区程序，该分区程序
+     *应为“false”，除非这是一对RDD，并且输入函数不修改键。
    */
   def mapPartitions[U: ClassTag](
       f: Iterator[T] => Iterator[U],
@@ -819,7 +859,18 @@ abstract class RDD[T: ClassTag](
   }
 
   /**
+  Spark的内部映射部分使用了跳过关闭清理的Thindex方法。
+  *只有在我们确信RDD元素
+  *可序列化，不需要关闭清洗。
+
+  只有在我们确信RDD元素可序列化，不需要关闭清洗的时候使用
+
+  输入函数是否保留分区程序，
+  *它应该是“false”，除非这是一对RDD，并且输入函数不修改
+  *钥匙。
+
    * [performance] Spark's internal mapPartitionsWithIndex method that skips closure cleaning.
+
    * It is a performance API to be used carefully only if we are sure that the RDD elements are
    * serializable and don't require closure cleaning.
    *
@@ -851,7 +902,9 @@ abstract class RDD[T: ClassTag](
   /**
    * Return a new RDD by applying a function to each partition of this RDD, while tracking the index
    * of the original partition.
-   *
+   * 通过向这个RDD的每个分区应用一个函数，同时跟踪索引，返回一个新的RDD。
+
+     *原始分区的。
    * `preservesPartitioning` indicates whether the input function preserves the partitioner, which
    * should be `false` unless this is a pair RDD and the input function doesn't modify the keys.
    */
@@ -870,6 +923,16 @@ abstract class RDD[T: ClassTag](
    * second element in each RDD, etc. Assumes that the two RDDs have the *same number of
    * partitions* and the *same number of elements in each partition* (e.g. one was made through
    * a map on the other).
+
+   用另一个RDD压缩这个RDD，返回与每个RDD中第一个元素的键值对，
+
+   *每个RDD中的第二个元素等假定两个RDD具有*相同数量的
+
+   *分区*和*每个分区中相同数量的元素*（例如，通过
+
+   *另一张地图）。
+
+
    */
   def zip[U: ClassTag](other: RDD[U]): RDD[(T, U)] = withScope {
     zipPartitions(other, preservesPartitioning = false) { (thisIter, otherIter) =>
@@ -890,6 +953,12 @@ abstract class RDD[T: ClassTag](
    * applying a function to the zipped partitions. Assumes that all the RDDs have the
    * *same number of partitions*, but does *not* require them to have the same number
    * of elements in each partition.
+
+   用一个（或多个）RDD压缩这个RDD的分区，并返回一个新的RDD
+   *对压缩分区应用函数。假设所有RDD都具有
+   **相同数量的分区*，但*不*要求它们具有相同的数量
+   *每个分区中的元素。
+
    */
   def zipPartitions[B: ClassTag, V: ClassTag]
       (rdd2: RDD[B], preservesPartitioning: Boolean)
@@ -932,6 +1001,7 @@ abstract class RDD[T: ClassTag](
 
   /**
    * Applies a function f to all elements of this RDD.
+   将函数f应用于此RDD的所有元素
    */
   def foreach(f: T => Unit): Unit = withScope {
     val cleanF = sc.clean(f)
@@ -948,9 +1018,13 @@ abstract class RDD[T: ClassTag](
 
   /**
    * Return an array that contains all of the elements in this RDD.
-   *
+   *返回包含此RDD中所有元素的数组。
    * @note This method should only be used if the resulting array is expected to be small, as
    * all the data is loaded into the driver's memory.
+
+   只有当结果数组预计很小时才应使用此方法，因为
+
+   *所有的数据都被载入 driver's memory。
    */
   def collect(): Array[T] = withScope {
     val results = sc.runJob(this, (iter: Iterator[T]) => iter.toArray)
@@ -965,6 +1039,15 @@ abstract class RDD[T: ClassTag](
    * @note This results in multiple Spark jobs, and if the input RDD is the result
    * of a wide transformation (e.g. join with different partitioners), to avoid
    * recomputing the input RDD should be cached first.
+
+   返回包含此RDD中所有元素的迭代器。
+
+   *迭代器将消耗与此RDD中最大分区相同的内存。
+
+   *@注意，这会导致多个火花作业，如果输入RDD是结果
+
+   *为了避免应首先缓存重新计算输入RDD。
+
    */
   def toLocalIterator: Iterator[T] = withScope {
     def collectPartition(p: Int): Array[T] = {
@@ -975,6 +1058,10 @@ abstract class RDD[T: ClassTag](
 
   /**
    * Return an RDD that contains all matching values by applying `f`.
+
+   通过应用“f”返回包含所有匹配值的RDD。
+
+
    */
   def collect[U: ClassTag](f: PartialFunction[T, U]): RDD[U] = withScope {
     val cleanF = sc.clean(f)
@@ -986,6 +1073,12 @@ abstract class RDD[T: ClassTag](
    *
    * Uses `this` partitioner/partition size, because even if `other` is huge, the resulting
    * RDD will be &lt;= us.
+
+   返回包含“this”中不在“other”中的元素的RDD。
+
+   *使用“this”分区器/分区大小，因为即使“other”很大，结果
+   *RDD将是&lt；=我们。
+
    */
   def subtract(other: RDD[T]): RDD[T] = withScope {
     subtract(other, partitioner.getOrElse(new HashPartitioner(partitions.length)))
@@ -1024,6 +1117,10 @@ abstract class RDD[T: ClassTag](
   /**
    * Reduces the elements of this RDD using the specified commutative and
    * associative binary operator.
+
+   使用指定的交换性和
+   *关联二元运算符
+
    */
   def reduce(f: (T, T) => T): T = withScope {
     val cleanF = sc.clean(f)
@@ -1050,7 +1147,7 @@ abstract class RDD[T: ClassTag](
 
   /**
    * Reduces the elements of this RDD in a multi-level tree pattern.
-   *
+   * 以多级树模式减少此RDD的元素。
    * @param depth suggested depth of the tree (default: 2)
    * @see [[org.apache.spark.rdd.RDD#reduce]]
    */
@@ -1086,22 +1183,52 @@ abstract class RDD[T: ClassTag](
    * op(t1, t2) is allowed to modify t1 and return it as its result value to avoid object
    * allocation; however, it should not modify t2.
    *
+   聚合每个分区的元素，然后使用
+   *给定关联函数和中性“零值”。功能
+   *允许op（T1，T2）修改T1并将其作为结果值返回以避免对象
+   *分配；但是，它不应该修改t2。
+
    * This behaves somewhat differently from fold operations implemented for non-distributed
    * collections in functional languages like Scala. This fold operation may be applied to
    * partitions individually, and then fold those results into the final result, rather than
    * apply the fold to each element sequentially in some defined ordering. For functions
    * that are not commutative, the result may differ from that of a fold applied to a
    * non-distributed collection.
+
+   这与为非分布式系统实现的折叠操作有些不同。
+
+   *使用类似scala的函数语言的集合。此折叠操作可应用于
+   *单独分区，然后将这些结果折叠到最终结果中，
+
+   而不是按定义的顺序将折叠应用于每个元素。
+
+   对于函数这不是交换的，结果可能与应用于
+
+   *非分布式集合。
+
+
    *
    * @param zeroValue the initial value for the accumulated result of each partition for the `op`
    *                  operator, and also the initial value for the combine results from different
    *                  partitions for the `op` operator - this will typically be the neutral
    *                  element (e.g. `Nil` for list concatenation or `0` for summation)
+
+   'op'的每个分区的累积结果的初始值`
+   *运算符，以及来自不同
+   *“op”运算符的分区-这通常是中性的
+   *元素（例如，“nil”用于列表连接，或“0”用于求和）
+
+   用于在一个分区内积累结果并组合来自不同分区结果的运算符。
+
    * @param op an operator used to both accumulate results within a partition and combine results
    *                  from different partitions
    */
   def fold(zeroValue: T)(op: (T, T) => T): T = withScope {
+
     // Clone the zero value since we will also be serializing it as part of tasks
+
+    // 克隆零值，因为我们还将把它作为任务的一部分序列化
+
     var jobResult = Utils.clone(zeroValue, sc.env.closureSerializer.newInstance())
     val cleanOp = sc.clean(op)
     val foldPartition = (iter: Iterator[T]) => iter.fold(zeroValue)(cleanOp)
@@ -1117,6 +1244,24 @@ abstract class RDD[T: ClassTag](
    * and one operation for merging two U's, as in scala.TraversableOnce. Both of these functions are
    * allowed to modify and return their first argument instead of creating a new U to avoid memory
    * allocation.
+
+   *使用聚合每个分区的元素，然后聚合所有分区的结果
+       *给定组合函数和中性“零值”。此函数可以返回不同的结果
+       *类型，u，而不是这个RDD的类型，t。因此，我们需要一个将t合并成u的操作。
+       *一个合并两个U的操作，如scala.traversableOnce。这两个功能都是
+       *允许修改并返回第一个参数，而不是创建新的u以避免内存分配。
+
+       每个分区的累积结果的初始值
+
+       *` seqop`运算符，以及合并结果的初始值
+       *“combop”运算符的不同分区-这通常是
+       *中性元素（例如，“nil”用于列表连接，或“0”用于求和）
+
+    @param seqop用于在分区内累积结果的运算符
+
+    *@param combop用于组合来自不同分区的结果的关联运算符
+
+
    *
    * @param zeroValue the initial value for the accumulated result of each partition for the
    *                  `seqOp` operator, and also the initial value for the combine results from
@@ -1142,6 +1287,14 @@ abstract class RDD[T: ClassTag](
    *
    * @param depth suggested depth of the tree (default: 2)
    */
+   *以多级树模式聚合此RDD的元素。
+
+   *这个方法在语义上与[[org.apache.spark.rdd.rdd aggregate]]相同。
+
+   *@参数深度建议的树深度（默认值：2）
+
+   */
+
   def treeAggregate[U: ClassTag](zeroValue: U)(
       seqOp: (U, T) => U,
       combOp: (U, U) => U,
@@ -1209,6 +1362,14 @@ abstract class RDD[T: ClassTag](
   }
 
   /**
+  *返回此RDD中每个唯一值的计数，作为（value，count）对的本地映射。
+
+  *@注意：只有当结果映射很小时才应使用此方法，如
+
+  *整个事情都被载入司机的记忆中。
+
+  *要处理非常大的结果，请考虑使用
+
    * Return the count of each unique value in this RDD as a local map of (value, count) pairs.
    *
    * @note This method should only be used if the resulting map is expected to be small, as
@@ -1224,6 +1385,17 @@ abstract class RDD[T: ClassTag](
   def countByValue()(implicit ord: Ordering[T] = null): Map[T, Long] = withScope {
     map(value => (value, null)).countByKey()
   }
+
+    /**
+
+    *CountByValue（）的近似版本。
+    *@参数超时等待作业的最长时间（毫秒）
+
+    *@参数置信度结果中所需的统计置信度
+
+    *@返回一个可能不完整的结果，带有错误界限
+
+    */
 
   /**
    * Approximate version of countByValue().
@@ -1249,6 +1421,30 @@ abstract class RDD[T: ClassTag](
     val evaluator = new GroupedCountEvaluator[T](partitions.length, confidence)
     sc.runApproximateJob(this, countPartition, evaluator, timeout)
   }
+
+
+
+        *返回RDD中不同元素的近似数目。
+
+        *所使用的算法基于streamlib实现的“超级日志实践：
+
+        *最先进的基数估计算法的算法工程”，可用
+
+        *<a href=“http://dx.doi.org/10.1145/2452376.2452452456”>here.>
+
+        *相对准确度约为1.054/sqrt（2^p）。设置非零（`sp`更大
+
+        *而“p”）则会触发寄存器的稀疏表示，这可能会减少内存
+
+        *当基数较小时消耗并提高精度。
+
+        *@param p正常设置的精度值。
+
+        *`如果“sp”不是零（最大值为32），则“p”必须是介于4和“sp”之间的值。
+
+        *@param sp稀疏集的精度值，介于0和32之间。
+
+        *如果“sp”等于0，则跳过稀疏表示。
 
   /**
    * Return approximate number of distinct elements in the RDD.
@@ -1282,6 +1478,21 @@ abstract class RDD[T: ClassTag](
       }).cardinality()
   }
 
+
+    返回RDD中不同元素的近似数目。
+
+    *
+
+    *所使用的算法基于streamlib实现的“超级日志实践：
+
+    *最先进的基数估计算法的算法工程”，可用
+
+    *<a href=“http://dx.doi.org/10.1145/2452376.2452452456”>here.>
+    *@参数相对精度。较小的值创建需要更多空间的计数器。
+
+    *必须大于0.000017。
+
+    */
   /**
    * Return approximate number of distinct elements in the RDD.
    *
@@ -1298,6 +1509,18 @@ abstract class RDD[T: ClassTag](
     countApproxDistinct(if (p < 4) 4 else p, 0)
   }
 
+
+    用元素索引压缩这个RDD。排序首先基于分区索引
+    然后对每个分区中的项进行排序。
+    所以第一个项目
+    *分区获取索引0，最后一个分区中的最后一个项接收最大的索引。
+    *这类似于scala的zipwithindex，但它使用long而不是int作为索引类型。
+    *当此RDD包含多个分区时，此方法需要触发Spark作业。
+    *@注意一些RDD，例如groupby（）返回的RDD，不保证
+    *分区中的元素。因此，不能保证分配给每个元素的索引，
+    *如果重新评估RDD，甚至可能发生变化。如果需要固定订购来保证
+    *对于相同的索引分配，您应该使用sortBykey（）对RDD进行排序，或者将其保存到一个文件中。
+该函数将RDD中的元素和这个元素在RDD中的ID（索引号）组合成键/值对。
   /**
    * Zips this RDD with its element indices. The ordering is first based on the partition index
    * and then the ordering of items within each partition. So the first item in the first
@@ -1315,6 +1538,26 @@ abstract class RDD[T: ClassTag](
     new ZippedWithIndexRDD(this)
   }
 
+  用生成的唯一长ID压缩此RDD。KTH分区中的项将获得ID K、N+K，
+  *2*n+k，…，其中n是分区数。所以可能存在差距，但这种方法
+  *不会触发火花作业，这与[[org.apache.spark.rdd.rdd zipwithindex]不同。
+
+  *@注意一些RDD，例如groupby（）返回的RDD，不保证
+  *分区中的元素。因此，不能保证分配给每个元素的唯一ID，
+  *如果重新评估RDD，甚至可能发生变化。
+  如果需要固定订购来保证
+  *对于相同的索引分配，您应该使用sortBykey（）对RDD进行排序，或者将其保存到一个文件中。
+
+该函数将RDD中元素和一个唯一ID组合成键/值对，该唯一ID生成算法如下：
+
+每个分区中第一个元素的唯一ID值为：该分区索引号，
+
+每个分区中第N个元素的唯一ID值为：(前一个元素的唯一ID值) + (该RDD总的分区数)
+
+//总分区数为2
+//第一个分区第一个元素ID为0，第二个分区第一个元素ID为1
+//第一个分区第二个元素ID为0+2=2，第一个分区第三个元素ID为2+2=4
+//第二个分区第二个元素ID为1+2=3，第二个分区第三个元素ID为3+2=5
   /**
    * Zips this RDD with generated unique Long ids. Items in the kth partition will get ids k, n+k,
    * 2*n+k, ..., where n is the number of partitions. So there may exist gaps, but this method
@@ -1333,6 +1576,25 @@ abstract class RDD[T: ClassTag](
       }
     }
   }
+
+
+*取RDD的第一个num元素。它首先扫描一个分区，然后使用
+
+*该分区的结果，以估计需要满足的附加分区的数量
+
+*极限。
+
+*
+
+*@注意：只有当结果数组很小时才应使用此方法，因为
+
+*所有的数据都被载入司机的记忆中。
+
+*
+
+*@注：由于内部实施的复杂性，此方法将提高
+
+*如果对“Nothing”或“null”的RDD调用，则为异常
 
   /**
    * Take the first num elements of the RDD. It works by first scanning one partition, and use the
@@ -1392,6 +1654,41 @@ abstract class RDD[T: ClassTag](
     }
   }
 
+    返回此RDD中由指定的
+
+    *隐式排序并保持排序。这与
+
+    *[预订外卖].例如：
+
+    *{{{
+
+    *sc.平行化（seq（10，4，2，12，3））。顶部（1）
+
+    *//返回数组（12）
+
+    *
+
+    *sc.平行化（seq（2，3，4，5，6））。顶部（2）
+
+    *//返回数组（6，5）
+
+    ＊} }
+
+    *
+
+    *@注意：只有当结果数组很小时才应使用此方法，因为
+
+    *所有的数据都被载入司机的记忆中。
+
+    *
+
+    *@param num k，返回的顶级元素数
+
+    *@参数或t的隐式排序
+
+    *@返回顶级元素数组
+
+
   /**
    * Returns the top k (largest) elements from this RDD as defined by the specified
    * implicit Ordering[T] and maintains the ordering. This does the opposite of
@@ -1414,6 +1711,12 @@ abstract class RDD[T: ClassTag](
   def top(num: Int)(implicit ord: Ordering[T]): Array[T] = withScope {
     takeOrdered(num)(ord.reverse)
   }
+
+
+    *返回此RDD中由指定的
+
+    *隐式排序并保持排序。这与[[顶部]]相反。
+
 
   /**
    * Returns the first k (smallest) elements from this RDD as defined by the specified
@@ -1912,22 +2215,6 @@ object RDD {
 
 ==================
 
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 
 package org.apache.spark.sql
 

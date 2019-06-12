@@ -1,0 +1,239 @@
+  /** ********* Zookeeper Configuration ***********/
+  val ZkSessionTimeoutMs = 6000
+ "zookeeper.session.timeout.ms"
+
+
+  val ZkSyncTimeMs = 2000
+  "zookeeper.sync.time.ms"
+ "How far a ZK follower can be behind a ZK leader"
+
+  val ZkEnableSecureAcls = false
+  "zookeeper.set.acl"
+
+   "Set client to use secure ACLs"
+
+  /** ********* General Configuration ***********/
+  val BrokerIdGenerationEnable = true
+  val MaxReservedBrokerId = 1000
+  val BrokerId = -1
+  val MessageMaxBytes = 1000000 + MessageSet.LogOverhead
+  val NumNetworkThreads = 3
+  val NumIoThreads = 8
+  val BackgroundThreads = 10
+  val QueuedMaxRequests = 500
+
+  /************* Authorizer Configuration ***********/
+  val AuthorizerClassName = ""
+
+  /** ********* Socket Server Configuration ***********/
+  val Port = 9092
+  val HostName: String = new String("")
+
+  val ListenerSecurityProtocolMap: String = EndPoint.DefaultSecurityProtocolMap.map { case (listenerName, securityProtocol) =>
+    s"${listenerName.value}:${securityProtocol.name}"
+  }.mkString(",")
+
+  val SocketSendBufferBytes: Int = 100 * 1024
+  val SocketReceiveBufferBytes: Int = 100 * 1024
+  val SocketRequestMaxBytes: Int = 100 * 1024 * 1024
+  val MaxConnectionsPerIp: Int = Int.MaxValue
+  val MaxConnectionsPerIpOverrides: String = ""
+  val ConnectionsMaxIdleMs = 10 * 60 * 1000L
+  val RequestTimeoutMs = 30000
+
+  /** ********* Log Configuration ***********/
+  val NumPartitions = 1
+  val LogDir = "/tmp/kafka-logs"
+  val LogSegmentBytes = 1 * 1024 * 1024 * 1024
+  val LogRollHours = 24 * 7
+  val LogRollJitterHours = 0
+  val LogRetentionHours = 24 * 7
+
+  val LogRetentionBytes = -1L
+  val LogCleanupIntervalMs = 5 * 60 * 1000L
+  val Delete = "delete"
+  val Compact = "compact"
+  val LogCleanupPolicy = Delete
+  val LogCleanerThreads = 1
+  val LogCleanerIoMaxBytesPerSecond = Double.MaxValue
+  val LogCleanerDedupeBufferSize = 128 * 1024 * 1024L
+  val LogCleanerIoBufferSize = 512 * 1024
+  val LogCleanerDedupeBufferLoadFactor = 0.9d
+  val LogCleanerBackoffMs = 15 * 1000
+  val LogCleanerMinCleanRatio = 0.5d
+  val LogCleanerEnable = true
+  val LogCleanerDeleteRetentionMs = 24 * 60 * 60 * 1000L
+  val LogCleanerMinCompactionLagMs = 0L
+  val LogIndexSizeMaxBytes = 10 * 1024 * 1024
+  val LogIndexIntervalBytes = 4096
+  val LogFlushIntervalMessages = Long.MaxValue
+  val LogDeleteDelayMs = 60000
+  val LogFlushSchedulerIntervalMs = Long.MaxValue
+  val LogFlushOffsetCheckpointIntervalMs = 60000
+  val LogFlushStartOffsetCheckpointIntervalMs = 60000
+  val LogPreAllocateEnable = false
+  // lazy val as `InterBrokerProtocolVersion` is defined later
+  lazy val LogMessageFormatVersion = InterBrokerProtocolVersion
+  val LogMessageTimestampType = "CreateTime"
+  val LogMessageTimestampDifferenceMaxMs = Long.MaxValue
+  val NumRecoveryThreadsPerDataDir = 1
+  val AutoCreateTopicsEnable = true
+  val MinInSyncReplicas = 1
+
+  /** ********* Replication configuration ***********/
+  val ControllerSocketTimeoutMs = RequestTimeoutMs
+  val ControllerMessageQueueSize = Int.MaxValue
+  val DefaultReplicationFactor = 1
+  val ReplicaLagTimeMaxMs = 10000L
+  val ReplicaSocketTimeoutMs = ConsumerConfig.SocketTimeout
+  val ReplicaSocketReceiveBufferBytes = ConsumerConfig.SocketBufferSize
+  val ReplicaFetchMaxBytes = ConsumerConfig.FetchSize
+  val ReplicaFetchWaitMaxMs = 500
+  val ReplicaFetchMinBytes = 1
+  val ReplicaFetchResponseMaxBytes = 10 * 1024 * 1024
+  val NumReplicaFetchers = 1
+  val ReplicaFetchBackoffMs = 1000
+  val ReplicaHighWatermarkCheckpointIntervalMs = 5000L
+  val FetchPurgatoryPurgeIntervalRequests = 1000
+  val ProducerPurgatoryPurgeIntervalRequests = 1000
+  val DeleteRecordsPurgatoryPurgeIntervalRequests = 1
+  val AutoLeaderRebalanceEnable = true
+  val LeaderImbalancePerBrokerPercentage = 10
+  val LeaderImbalanceCheckIntervalSeconds = 300
+  val UncleanLeaderElectionEnable = false
+  val InterBrokerSecurityProtocol = SecurityProtocol.PLAINTEXT.toString
+  val InterBrokerProtocolVersion = ApiVersion.latestVersion.toString
+
+  /** ********* Controlled shutdown configuration ***********/
+  val ControlledShutdownMaxRetries = 3
+  val ControlledShutdownRetryBackoffMs = 5000
+  val ControlledShutdownEnable = true
+
+  /** ********* Group coordinator configuration ***********/
+  val GroupMinSessionTimeoutMs = 6000
+  val GroupMaxSessionTimeoutMs = 300000
+  val GroupInitialRebalanceDelayMs = 3000
+
+  /** ********* Offset management configuration ***********/
+  val OffsetMetadataMaxSize = OffsetConfig.DefaultMaxMetadataSize
+  val OffsetsLoadBufferSize = OffsetConfig.DefaultLoadBufferSize
+  val OffsetsTopicReplicationFactor = OffsetConfig.DefaultOffsetsTopicReplicationFactor
+  val OffsetsTopicPartitions: Int = OffsetConfig.DefaultOffsetsTopicNumPartitions
+  val OffsetsTopicSegmentBytes: Int = OffsetConfig.DefaultOffsetsTopicSegmentBytes
+  val OffsetsTopicCompressionCodec: Int = OffsetConfig.DefaultOffsetsTopicCompressionCodec.codec
+  val OffsetsRetentionMinutes: Int = 24 * 60
+  val OffsetsRetentionCheckIntervalMs: Long = OffsetConfig.DefaultOffsetsRetentionCheckIntervalMs
+  val OffsetCommitTimeoutMs = OffsetConfig.DefaultOffsetCommitTimeoutMs
+  val OffsetCommitRequiredAcks = OffsetConfig.DefaultOffsetCommitRequiredAcks
+
+  /** ********* Transaction management configuration ***********/
+  val TransactionalIdExpirationMs = TransactionStateManager.DefaultTransactionalIdExpirationMs
+  val TransactionsMaxTimeoutMs = TransactionStateManager.DefaultTransactionsMaxTimeoutMs
+  val TransactionsTopicMinISR = TransactionLog.DefaultMinInSyncReplicas
+  val TransactionsLoadBufferSize = TransactionLog.DefaultLoadBufferSize
+  val TransactionsTopicReplicationFactor = TransactionLog.DefaultReplicationFactor
+  val TransactionsTopicPartitions = TransactionLog.DefaultNumPartitions
+  val TransactionsTopicSegmentBytes = TransactionLog.DefaultSegmentBytes
+  val TransactionsAbortTimedOutTransactionsCleanupIntervalMS = TransactionStateManager.DefaultAbortTimedOutTransactionsIntervalMs
+  val TransactionsRemoveExpiredTransactionsCleanupIntervalMS = TransactionStateManager.DefaultRemoveExpiredTransactionalIdsIntervalMs
+
+  /** ********* Quota Configuration ***********/
+  val ProducerQuotaBytesPerSecondDefault = ClientQuotaManagerConfig.QuotaBytesPerSecondDefault
+  val ConsumerQuotaBytesPerSecondDefault = ClientQuotaManagerConfig.QuotaBytesPerSecondDefault
+  val NumQuotaSamples: Int = ClientQuotaManagerConfig.DefaultNumQuotaSamples
+  val QuotaWindowSizeSeconds: Int = ClientQuotaManagerConfig.DefaultQuotaWindowSizeSeconds
+  val NumReplicationQuotaSamples: Int = ReplicationQuotaManagerConfig.DefaultNumQuotaSamples
+  val ReplicationQuotaWindowSizeSeconds: Int = ReplicationQuotaManagerConfig.DefaultQuotaWindowSizeSeconds
+
+  /** ********* Transaction Configuration ***********/
+  val TransactionalIdExpirationMsDefault = 604800000
+
+  val DeleteTopicEnable = false
+
+  val CompressionType = "producer"
+
+  val MaxIdMapSnapshots = 2
+  /** ********* Kafka Metrics Configuration ***********/
+  val MetricNumSamples = 2
+  val MetricSampleWindowMs = 30000
+  val MetricReporterClasses = ""
+  val MetricRecordingLevel = Sensor.RecordingLevel.INFO.toString()
+
+  /** ********* SSL configuration ***********/
+  val PrincipalBuilderClass = SslConfigs.DEFAULT_PRINCIPAL_BUILDER_CLASS
+  val SslProtocol = SslConfigs.DEFAULT_SSL_PROTOCOL
+  val SslEnabledProtocols = SslConfigs.DEFAULT_SSL_ENABLED_PROTOCOLS
+  val SslKeystoreType = SslConfigs.DEFAULT_SSL_KEYSTORE_TYPE
+  val SslTruststoreType = SslConfigs.DEFAULT_SSL_TRUSTSTORE_TYPE
+  val SslKeyManagerAlgorithm = SslConfigs.DEFAULT_SSL_KEYMANGER_ALGORITHM
+  val SslTrustManagerAlgorithm = SslConfigs.DEFAULT_SSL_TRUSTMANAGER_ALGORITHM
+  val SslClientAuthRequired = "required"
+  val SslClientAuthRequested = "requested"
+  val SslClientAuthNone = "none"
+  val SslClientAuth = SslClientAuthNone
+
+  /** ********* Sasl configuration ***********/
+  val SaslMechanismInterBrokerProtocol = SaslConfigs.DEFAULT_SASL_MECHANISM
+  val SaslEnabledMechanisms = SaslConfigs.DEFAULT_SASL_ENABLED_MECHANISMS
+  val SaslKerberosKinitCmd = SaslConfigs.DEFAULT_KERBEROS_KINIT_CMD
+  val SaslKerberosTicketRenewWindowFactor = SaslConfigs.DEFAULT_KERBEROS_TICKET_RENEW_WINDOW_FACTOR
+  val SaslKerberosTicketRenewJitter = SaslConfigs.DEFAULT_KERBEROS_TICKET_RENEW_JITTER
+  val SaslKerberosMinTimeBeforeRelogin = SaslConfigs.DEFAULT_KERBEROS_MIN_TIME_BEFORE_RELOGIN
+  val SaslKerberosPrincipalToLocalRules = SaslConfigs.DEFAULT_SASL_KERBEROS_PRINCIPAL_TO_LOCAL_RULES
+
+    /*
+     * NOTE: DO NOT CHANGE EITHER CONFIG NAMES AS THESE ARE PART OF THE PUBLIC API AND CHANGE WILL BREAK USER CODE.
+     */
+    /** SASL mechanism configuration - standard mechanism names are listed <a href="http://www.iana.org/assignments/sasl-mechanisms/sasl-mechanisms.xhtml">here</a>. */
+    public static final String SASL_MECHANISM = "sasl.mechanism";
+    public static final String SASL_MECHANISM_DOC = "SASL mechanism used for client connections. This may be any mechanism for which a security provider is available. GSSAPI is the default mechanism.";
+    public static final String GSSAPI_MECHANISM = "GSSAPI";
+    public static final String DEFAULT_SASL_MECHANISM = GSSAPI_MECHANISM;
+
+    public static final String SASL_ENABLED_MECHANISMS = "sasl.enabled.mechanisms";
+    public static final String SASL_ENABLED_MECHANISMS_DOC = "The list of SASL mechanisms enabled in the Kafka server. "
+        + "The list may contain any mechanism for which a security provider is available. "
+        + "Only GSSAPI is enabled by default.";
+    public static final List<String> DEFAULT_SASL_ENABLED_MECHANISMS = Collections.singletonList(GSSAPI_MECHANISM);
+
+    public static final String SASL_JAAS_CONFIG = "sasl.jaas.config";
+    public static final String SASL_JAAS_CONFIG_DOC = "JAAS login context parameters for SASL connections in the format used by JAAS configuration files. "
+        + "JAAS configuration file format is described <a href=\"http://docs.oracle.com/javase/8/docs/technotes/guides/security/jgss/tutorials/LoginConfigFile.html\">here</a>. "
+        + "The format for the value is: '<loginModuleClass> <controlFlag> (<optionName>=<optionValue>)*;'";
+
+    public static final String SASL_KERBEROS_SERVICE_NAME = "sasl.kerberos.service.name";
+    public static final String SASL_KERBEROS_SERVICE_NAME_DOC = "The Kerberos principal name that Kafka runs as. "
+        + "This can be defined either in Kafka's JAAS config or in Kafka's config.";
+
+    public static final String SASL_KERBEROS_KINIT_CMD = "sasl.kerberos.kinit.cmd";
+    public static final String SASL_KERBEROS_KINIT_CMD_DOC = "Kerberos kinit command path.";
+    public static final String DEFAULT_KERBEROS_KINIT_CMD = "/usr/bin/kinit";
+
+    public static final String SASL_KERBEROS_TICKET_RENEW_WINDOW_FACTOR = "sasl.kerberos.ticket.renew.window.factor";
+    public static final String SASL_KERBEROS_TICKET_RENEW_WINDOW_FACTOR_DOC = "Login thread will sleep until the specified window factor of time from last refresh"
+        + " to ticket's expiry has been reached, at which time it will try to renew the ticket.";
+    public static final double DEFAULT_KERBEROS_TICKET_RENEW_WINDOW_FACTOR = 0.80;
+
+    public static final String SASL_KERBEROS_TICKET_RENEW_JITTER = "sasl.kerberos.ticket.renew.jitter";
+    public static final String SASL_KERBEROS_TICKET_RENEW_JITTER_DOC = "Percentage of random jitter added to the renewal time.";
+    public static final double DEFAULT_KERBEROS_TICKET_RENEW_JITTER = 0.05;
+
+    public static final String SASL_KERBEROS_MIN_TIME_BEFORE_RELOGIN = "sasl.kerberos.min.time.before.relogin";
+    public static final String SASL_KERBEROS_MIN_TIME_BEFORE_RELOGIN_DOC = "Login thread sleep time between refresh attempts.";
+    public static final long DEFAULT_KERBEROS_MIN_TIME_BEFORE_RELOGIN = 1 * 60 * 1000L;
+
+    public static final String SASL_KERBEROS_PRINCIPAL_TO_LOCAL_RULES = "sasl.kerberos.principal.to.local.rules";
+    public static final String SASL_KERBEROS_PRINCIPAL_TO_LOCAL_RULES_DOC = "A list of rules for mapping from principal names to short names (typically operating system usernames). " +
+            "The rules are evaluated in order and the first rule that matches a principal name is used to map it to a short name. Any later rules in the list are ignored. " +
+            "By default, principal names of the form {username}/{hostname}@{REALM} are mapped to {username}. " +
+            "For more details on the format please see <a href=\"#security_authz\"> security authorization and acls</a>.";
+    public static final List<String> DEFAULT_SASL_KERBEROS_PRINCIPAL_TO_LOCAL_RULES = Collections.singletonList("DEFAULT");
+
+    public static void addClientSaslSupport(ConfigDef config) {
+        config.define(SaslConfigs.SASL_KERBEROS_SERVICE_NAME, ConfigDef.Type.STRING, null, ConfigDef.Importance.MEDIUM, SaslConfigs.SASL_KERBEROS_SERVICE_NAME_DOC)
+                .define(SaslConfigs.SASL_KERBEROS_KINIT_CMD, ConfigDef.Type.STRING, SaslConfigs.DEFAULT_KERBEROS_KINIT_CMD, ConfigDef.Importance.LOW, SaslConfigs.SASL_KERBEROS_KINIT_CMD_DOC)
+                .define(SaslConfigs.SASL_KERBEROS_TICKET_RENEW_WINDOW_FACTOR, ConfigDef.Type.DOUBLE, SaslConfigs.DEFAULT_KERBEROS_TICKET_RENEW_WINDOW_FACTOR, ConfigDef.Importance.LOW, SaslConfigs.SASL_KERBEROS_TICKET_RENEW_WINDOW_FACTOR_DOC)
+                .define(SaslConfigs.SASL_KERBEROS_TICKET_RENEW_JITTER, ConfigDef.Type.DOUBLE, SaslConfigs.DEFAULT_KERBEROS_TICKET_RENEW_JITTER, ConfigDef.Importance.LOW, SaslConfigs.SASL_KERBEROS_TICKET_RENEW_JITTER_DOC)
+                .define(SaslConfigs.SASL_KERBEROS_MIN_TIME_BEFORE_RELOGIN, ConfigDef.Type.LONG, SaslConfigs.DEFAULT_KERBEROS_MIN_TIME_BEFORE_RELOGIN, ConfigDef.Importance.LOW, SaslConfigs.SASL_KERBEROS_MIN_TIME_BEFORE_RELOGIN_DOC)
+                .define(SaslConfigs.SASL_MECHANISM, ConfigDef.Type.STRING, SaslConfigs.DEFAULT_SASL_MECHANISM, ConfigDef.Importance.MEDIUM, SaslConfigs.SASL_MECHANISM_DOC)
+                .define(SaslConfigs.SASL_JAAS_CONFIG, ConfigDef.Type.PASSWORD, null, ConfigDef.Importance.MEDIUM, SaslConfigs.SASL_JAAS_CONFIG_DOC);

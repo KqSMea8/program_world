@@ -304,8 +304,6 @@ wordCounts.print()
 ssc.start()
 ssc.awaitTermination()
 
-关于自己编代码提交到Zookeeper，限于篇幅的原因，不在这里啰嗦。
-
 调优限速
 
 现实系统中会有流量尖峰，比如淘宝的双十一，那一秒钟的流量，大的吓人，假如有spark streaming处理的话，会有可能导致消息不能及时处理，甚至出现故障，应对这种流量尖峰，spark streaming内部实现了一个控制器，基于PID，具体PID的概念是啥，请自行百度。
@@ -314,10 +312,6 @@ ssc.awaitTermination()
 
 基于Receiver的要配置的参数是spark.streaming.receiver.maxRate
 
-
-
 基于direct的要配置的参数是spark.streaming.kafka.maxRatePerPartition
-
-
 
 通过我们压测我们的spark streaming任务每秒钟最大消费处理的消息数，然后使用这两个参数限消费消息的速率，来避免高峰期一批次消费过量消息导致应用不正常执行。
