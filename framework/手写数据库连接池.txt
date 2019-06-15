@@ -1,0 +1,341 @@
+同一类对象集合
+
+数据库管道对象集合
+
+数据库连接池
+
+高并发架构
+
+
+高峰请求 平缓过渡 增加管道 释放管道
+
+epoil 机制 复用管道
+
+
+
+配置->
+
+连接池
+
+driver
+url
+user
+password
+
+管道
+initCount
+stepSize
+poolMaxSize
+jdbcPool
+
+driver=pro.getProperty
+url=pro.getProperty
+user=pro.getProperty
+password=pro.getProperty
+
+
+
+
+================
+
+习惯优于默认配置
+
+configParam
+
+限制连接池管道的配置参数
+
+initCount
+
+stepSize
+
+MaxSize
+
+JDBC
+
+产生驱动
+
+driver,url,username,pwd
+
+java.sql.Connection
+管道对象
+
+isUser:boolean
+
+
+public class PooledConnection {
+
+    //标志  复用
+    private boolean isBusy = false;
+
+    private Connection connection;
+
+    public Connection getConnection (){
+        return connection;
+    }
+
+    public void setConnection(Connection connection){
+
+        this.connection = connection;
+    }
+
+    public void close(){
+        this.isBusy = false;
+    }
+
+    getPooledConnections();
+
+
+    //感知管道不够 产生管道
+
+
+}
+
+
+
+
+
+===========================
+
+jdbcPool.properties
+
+jdbcDriver=com.mysql.jdbc.Driver
+jdbcurl=jdbc:mysql://localhost:3306/mybatis
+userName=root
+password=root
+initCount=10
+stepSize=4
+poolMaxSize=150
+
+-----------------------------
+
+public interface IMyPool{
+
+    PooledConnection getConnection();
+
+    void createConnection(int count);
+
+}
+------------------------
+public class MyPoolImpl implements IMyPool{
+
+    private static String jdbcDriver = null;
+    private static String jdbcUrl = null;
+    private static String userName = null;
+    private static String password = null;
+
+    private static int intCount;
+
+    private static int stepSize;
+
+    private static int poolMaxSize;
+
+    private static Vector<PooledConnection> pooledConnections = new Vector<>();
+
+    public MyPoolImpl(){
+
+        init();
+    }
+
+    private void init(){
+
+        InputStream inputStream = this.getClass().getClassLoader().getResourceAsStream("jdbc.properties");
+
+        //字节信息 key value 形式化
+        Properties pro = new Properties();
+       try{
+         pro.load(in);
+       } catch (IOException e){
+            e.printStackTrace();
+       }
+
+        jdbcDriver = pro.getProperty("jdbcDriver");
+        jdbcUrl = pro.getProperty("jdbcurl");
+        userName = pro.getProperty("userName");
+        password = pro.getProperty("password");
+
+        initCount=Integer.valueOf(pro.getProperty("initCount"));
+        stepSize = Integer.valueOf(pro.getProperty("stepSize"));
+        poolMaxSize = Integer.valueOf(pro.getProperty("poolMaxSize"));
+
+        try{
+            Driver mysqlDriver = (Driver)Class.forName(jdbcDriver).newInstance();
+
+            DriverManager.registerDriver(MySqlDriver);
+
+        }catch(Expcetion e){
+            e.printStatckTrace();
+        }
+
+       Connection connection =  DriverManager.getConnection(url,userName,password);
+
+        createConnections(intCount);
+
+
+    }
+
+
+    public void createConnectoins(int count){
+        if(poolMaxSize>0 && PooledConnections.size()+count>poolMaxSize){
+            System.out.println("创建管道对象失败，原因是即将超过最大上限值");
+            throw new RuntimeException("创建管道对象失败，原因是即将超过最大上限值");
+         }
+
+         for(int i=0;i<count;i++){
+            try{
+                 Coonnection conn =  DriverManager.getConnectionn(jdbcUrl,userName,password);
+
+                 PooledConnection pooledConnection = new PooledConnection(conn,false);
+                 pooledConnections.add(pooledConnection);
+            } catch (SQLExpcetion e){
+                e.printStackTrace();
+             }
+
+         }
+
+    }
+
+
+    public PooledConnection getConnection(){
+        if(PooledConnections.size()==0){
+                System.out.println("获取链接管道失败，原因是连接池中没有可用管道");
+                            throw new RuntimeException("创建管道对象失败，原因是即将超过最大上限值");
+        }
+        //连接池中的管道是没有超时  没有呗其他线程占用
+        PooledConnection connection = getRealConnection();
+        //线程拿到的对象 正好死在这里 内存地址
+        while(connection==null){
+              creatConnections(stepSize);
+              connection = getRealConnection();
+
+              //经验之谈
+              Thread.sleep(300);
+        }
+        return connection;
+    }
+
+    private synchronized PooledConnection getRealConnection(){
+        for(PooledConnection conn:pooledConnections){
+            if(!conn.isBusy()){
+                Connection conn = conn.getConnection();
+               try{
+
+                //发送一个信息给数据库 2000毫秒内  收到返回信息 认为 这个管道没有超时
+                if(!connection.isValid(2000)){
+                     Connection validConn = DriverManager.getConnection(jdbcUrl,userName,password);
+                     conn.setConnection(validConn);
+                }
+               } catch (SQLException e){]
+                  e.printStatckTrace();
+               }
+                conn.setBusy(true);
+                return conn;
+            }
+        }
+        return null;
+    }
+
+
+}
+--------------
+
+public class PooledConnection{
+
+    private boolean isBusy = false;
+
+    private Connection connection;
+
+    public Conneciton getConnection(){
+        return connection;
+    }
+
+    public void setConnection(Connection conection){
+        this.connection = connection;
+    }
+
+}
+
+--------------
+public class PooleConnection {
+    private boolean isBusy = false;
+    private Connection connection;
+
+    public Connection getConnection(){
+        return connection;
+    }
+
+    public void setConnection(Connection connection){
+        this.connection = connection;
+    }
+
+    public boolean isBusy(){
+        return isBusy;
+    }
+
+    public void setBusy(boolean isBusy){
+        this.isBusy = isBusy;
+    }
+
+    public PooledConnection(Connection connection,boolean isBusy){
+        this.connection = connection;
+        this.isBusy = isBusy;
+    }
+
+     public void close(){
+        this.isBusy = false;
+     }
+
+    public ResultSet = queryBysql(String sql){
+        Statement sm = null;
+        Result rs = null;
+
+        try{
+            sm = connection.createStatement():
+            rs = sm.executeQuery(sql);
+        } catch (SQLException e){
+            e.printStackTrace();
+        }
+
+        return rs;
+    }
+
+}
+
+----------------------------------
+public class PoolManager{
+
+    private static class createPool{
+
+        private static MyPoolImpl poolImpl = new MyPoolImpl();
+    }
+
+    //内部类单利模式 实现线程完全  类加载原理
+
+    public static MyPoolImpl getInstance(){
+        return createPool.poolImpl;
+    }
+
+========================
+MyPoolTest
+public static void main(String[] args){
+
+    for(int i=0;i<1500;i++){
+        new Thread(new Runnable(){
+            public void run(){
+                selctData();
+            }
+        }.start();
+    }
+}
+
+public sychronized static void selctData(){
+    PoolConnection connection = poolImpl.getConnection();
+    ReusltSet rs = connection.queryBySql("select * from items");
+
+    try{
+            while(rs.next()){
+            }
+            rs.close();
+            connection.close();
+    }
+
+}

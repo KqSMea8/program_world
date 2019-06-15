@@ -1,0 +1,266 @@
+线程池：
+    提供和管理 大量的线程的集合体
+
+    大量的线程 重新创建 new Thead() JVM创建一个复合栈 0.5MB  随着我们的系统位限制 和系统本身的限制
+    一个操作系统 顶多成千上万数量线程对象在cpu当中
+
+    JVM -xms 修改线程池大小
+
+    如何在有限的资源情况下 提高并发与线程的合理调度
+
+    cpu当中 一组大量处理器 每个都会有执行线程
+
+    cpu 到工业流水线工艺
+
+    只能通过多核cpu走并发提高业务的高效性
+
+    对线程稀缺服务器资源进行管理调度
+
+-----------------------------------------------------------------------------
+
+JAVA线程池设计源于 哪里？
+
+Excutors 定义线程池的执行方式
+
+Exectuors
+
+性能
+
+管理
+
+重用 减少创建对象的开销
+控制最大并发数
+提高任务 定时执行 线程中断   任务队列
+
+--------------------------------------------
+
+
+等任务执行 懒加载
+
+corePoolSize
+maximumPoolSize
+keepAliveTime 空闲保持时间 终止状态 线程池的数量 大于核心大小 终止
+TimeUnit unit 时间转换
+BlockingQueue 队列 任务 管理队列
+
+
+队列的任务 是否已经满了
+
+是
+
+线程池 （ 任务存放队列  执行任务 ）
+
+核心线程是否满
+
+       满     队列 满
+
+                    线程池 满  提高策略
+                           否  执行任务
+                   否
+
+                    任务存放队列
+
+        否 执行任务
+
+
+
+线程池饱和情况下，四种提高策略
+
+1、AbortPolicy:直接抛异常 默认策略
+
+2、CallRunPolicy:用调用者所在的线程执行任务
+
+3、Discard01destPolicy:丢弃阻塞任务队列中靠前的任务 已经运行很久了  再次提交
+
+4、DiscardPolicy:直接丢弃任务
+
+
+
+提交任务的方式
+
+    execute(Runnable runnable);
+
+    submit(Callabel<T> task);
+
+
+
+int c = ctl.get();原子化 区分任务和工作线程
+
+当前线程池数量 小于 核心线程 增加
+
+运行状态 放在阻塞队列 不允许跑的状态 删除队列
+
+线程池数量 =0
+添加
+
+
+添加失败
+    reject 拒绝 调度
+
+    线程池不属于停止状态 删除 执行 靠前的任务 拿掉 在进行提交
+    塞进去
+
+if(workerCountOf(C) < corePoolSize){
+
+    addWorker
+}
+
+(isRunning workQueuer.offer(command)){{
+    recheck = ctl.get();
+
+}}
+
+
+原子封装 大量
+
+----------------------------------------------------------------------------
+抽取线程池接口
+
+public interface ThreadPool {
+
+
+    void execute(Runnable task);
+
+    void execute(Runnable[] tasks);
+
+    void execute(List<Runnable> tasks);
+
+    int getExecuteTaskNumber();
+
+    int getWaitTaskNumber();
+
+    int getWorkThreadNumber();
+
+    void destory();
+}
+
+
+--------------------------------------------
+public ThreadPoolManger implements ThreadPool {
+
+    private static int workerNum =5;
+
+    WorkThread[] workThreads;
+
+    //保证可见性
+    private static volatile int executeTaskNumber = 0;
+
+    private BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<Runnable>();
+
+    private static ThreadPoolManager threadPool;
+
+    private AtomicLong threadNum = new AtomicLong();
+
+    private ThreadPoolManager(){
+        this(workerNum);
+    }
+
+    private ThreadPoolManager(int workerNum2){
+        if(workerNum2 > 0){
+            workerNum = workerNum2;
+        }
+
+        //内存中开辟一个连续内存对象
+        workThrads = new WorkThread[workNum];
+
+        for(int i=0;i<workerNum;i++){
+            workThrads[i] = new WorkThread();
+            workThrads[i].setName("ThreadPool-worker"+threadNum.incrementAndGet());
+            System.out.println("初始化线程数："+(i+1)+"/"+(workerNum)+" ---当前线程名称是："+workThrads[i].getName());
+            workThrads[i].start();
+
+        }
+
+//保证原子性 操作  start 初始化 完成 执行
+
+    }
+
+
+
+
+    //将任务提交到队列 后续所有的调度执行全部交给execute()
+    @Override
+    public void execute(Runnable task){
+        synchronized(taskQueue){
+           try{
+             taskQueue.put(task);
+           } catch (InterruptedException e ){
+                e.printStackTrace();
+           }
+
+           taskQueue.notifyAll();
+        }
+    }
+
+
+
+
+
+    private class WorkThread extends Thread {
+
+
+        private boolean isRunning = true;
+
+        public void run(){
+
+            Runnable r = null;
+
+            while(isRunning){
+                sychronized(taskQueue){
+                    while(isRunning && taskQueue.isEmpty()){
+                        try{
+                            taskQueue.wait(20);
+                        }catch (InterrunptedException e){
+                            e.printStackTrace();
+                        }
+
+                    }
+
+                    if(!taskQueue.isEmpty()){
+                        try{
+                            r = taskQueue.take(0);
+                        }catch (InterrunptedException e){
+                           e.printStackTrace();
+                     }
+                    }
+
+                }
+
+                if(r!=null){
+                    ((java.lang.Runnable r).run();//执行任务
+                }
+
+                executeTaskNumber++;
+                r=null;
+            }
+        }
+
+
+        public void stopWorker(){
+            isRunning = false;
+        }
+
+    }
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,3 +1,86 @@
+
+--语法 http://forcedotcom.github.io/phoenix/
+
+create table test.test1(id bigint primary key,name varchar);
+
+upsert into test.test1(id,name) values(1,'aaa');
+
+delete from test.test1;
+
+drop table test.test1;
+
+#!/bin/bash
+
+PHIX_HOME='/opt/module/cdh-5.3.6-ha/phoenix-4.2.2'
+HBase_HOME='/opt/module/cdh-5.3.6-ha/hbase-0.98.6-cdh5.3.6'
+
+
+cd $PHIX_HOME
+sudo chown -R xiaoyuzhou:xiaoyuzhou ./*
+
+
+cp $PHIX_HOME/phoenix-4.2.2-client.jar $PHIX_HOME/lib/phoenix-core-4.2.2.jar $HBase_HOME/lib
+
+# # 追加$HBase_HOME/hbase-site.xml内容到$PHIX_HOME/bin/hbase-site.xml
+# cat $HBase_HOME/conf/hbase-site.xml >> $PHIX_HOME/bin/hbase-site.xml#!/bin/bash
+
+PHIX_HOME='/opt/module/cdh-5.3.6-ha/phoenix-4.2.2'
+HBase_HOME='/opt/module/cdh-5.3.6-ha/hbase-0.98.6-cdh5.3.6'
+
+cd $PHIX_HOME
+bin/psql.py -t example xyz01.aiso.com:2181 ~/example.csv
+#!/bin/bash
+
+PHIX_HOME='/opt/module/cdh-5.3.6-ha/phoenix-4.2.2'
+HBase_HOME='/opt/module/cdh-5.3.6-ha/hbase-0.98.6-cdh5.3.6'
+
+cd $PHIX_HOME
+$PHIX_HOME/bin/sqlline.py xyz01.aiso.com:2181
+# $PHIX_HOME/bin/sqlline.py zookeeper_host:2181
+
+=================================
+
+#!/bin/bash
+
+PHIX_HOME='/opt/module/cdh-5.3.6-ha/phoenix-4.7.0-HBase-0.98-bin'
+HBase_HOME='/opt/module/cdh-5.3.6-ha/hbase-0.98.6-cdh5.3.6'
+
+
+
+cd $PHIX_HOME
+sudo chown -R xiaoyuzhou:xiaoyuzhou ./*
+
+
+cp $PHIX_HOME/phoenix-4.7.0-HBase-0.98-server.jar $PHIX_HOME/phoenix-core-4.7.0-HBase-0.98.jar   $HBase_HOME/lib
+
+# # 追加$HBase_HOME/hbase-site.xml内容到$PHIX_HOME/bin/hbase-site.xml
+# cat $HBase_HOME/conf/hbase-site.xml >> $PHIX_HOME/bin/hbase-site.xml
+
+
+# 下载对应HBase版本的 Phoenix
+# http://www.apache.org/dyn/closer.lua/phoenix/
+
+# Phoenix 2.x - HBase 0.94.x
+# Phoenix 3.x - HBase 0.94.x
+# Phoenix 4.x - HBase 0.98.1+
+
+# #拷贝phoenix相关jar包到$HBASE_HOME/lib下
+# phoenix-4.7.0-HBase-0.98-server.jar
+# phoenix-core-4.7.0-HBase-0.98.jar
+# 集群环境需要每台regionserver拷贝，
+# 重启hbase server
+#!/bin/bash
+
+PHIX_HOME='/opt/module/cdh-5.3.6-ha/phoenix-4.7.0-HBase-0.98-bin'
+HBase_HOME='/opt/module/cdh-5.3.6-ha/hbase-0.98.6-cdh5.3.6'
+
+$PHIX_HOME/bin/sqlline.py xyz01.aiso.com
+
+=======================
+
+
+
+
 首先说下集群环境,采用的CDH5.12.1搭建的原生集群,没有采用CM,phoenix选用的4.14.0 ,环境搭建比较简单,直接解压后将phoenix-4.14.0-cdh5.12.2-server.jar放入到hbase所有节点的,然后修改hbase下的hbase-site.xml文件,加入以下配置
 
         <property>

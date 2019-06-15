@@ -1,0 +1,230 @@
+public interface MyMap<K,v>{
+
+    public V put(K k,V v);
+
+    public V get(K k);
+
+    public interface Entry<K,V>{
+        public K getKey();
+        public V getValue();
+    }
+
+}
+
+降低冲突
+0000 1111 >>>3 -> 0000 000 1
+
+15移除完
+
+数组的长度 2N-1
+
+haahCosw(kwy)& length-1
+
+1111 操作位置 有改变
+
+111
+4 2 1
+
+=================================================
+
+public class MyHashMap<K,V> implements MyMap<K,V>{
+
+    private static int defaultLenth = 1<<4;
+
+    #扩容因子 条件 太大扩容很难 userSize /数组长度 > 0.75
+    #过大  扩容概率变低 存储小 存取的效率降低
+    #0.9过大 有限的数组长度空间位置内会形成链表 存取值都需要大量的遍历和判断（逻辑）
+    private static double defaultAddSizeFactor=0.75
+
+    private int useSize;
+
+    private Entry<K,V>[] table = null;
+
+    #，门面模式
+    public MyHashMap(){
+        this(defaultLenth,defaultAddSizeFactor);
+    }
+
+    public MyHashMap(int length,double defaultAddSizeFactor){
+        if(length<0){
+            throw new IllegalArgumentException("参数不能为负数"+length);
+        }
+
+        if(defaultAddSizeFactor <=0 || Double.isNaN(defaultAddSizeFactor)){
+            throw new IlleagelArgumentException("扩容标准必须是大于0的数字"+defaultAddSizeFactor);
+        }
+
+        this.defaultLength=length;
+        this.defaultAddSizeFacotr = defaultAddSizeFactor;
+        this.table = new Entry[defaultLenth];
+
+    }
+
+    //快存
+    public V put(K k,V v){
+
+        //判断是否需要扩容
+        if(userSize>defualtAddSizeFactor * defaultLenth){
+            //进行2倍扩容 开辟内存空间
+            up2Size();
+        }
+        int index = getIndex(k,table.length);
+        Entry<K,V> entry = table[index];
+        if(entry==null){
+            table[index]= new Entry(k,v,null);
+            useSize++;
+        }else if(entry!=null){
+            //挤压下去 形成链表
+            table[index] = new Entry(k,v,entry);
+        }
+        return table[index].getValue();
+    }
+
+    private void up2Size(){
+        Entry<K,V>[] newTable = new Entry[2*defaultLenth];
+
+        //将老数组存的内容 转移到新数组
+        againHash(newTable);
+        for(int i=0;i<:table){
+
+        }
+
+
+
+
+    }
+
+    private void againHash(MyHashMap<K,V>.Entry<K,V>[] newTable){
+
+        List<Entry<K,V>> entryList = new ArrayList<MyHashMap<K,V>.Entry<K,V>();
+
+        for(int i=0;i<table.length;i++){
+
+            if(table[i]==null){
+                continue;
+            }
+
+            //这个方法就是找到对象 存入entryList
+            foundEntryByNext(table[i],entryList);
+        }
+
+        if(entryList.size>0){
+            useSize=0;
+            defaultLenth=2*defaultLenth;
+            table=newTable;
+            for(Entry<K,V> entry:entryList){
+                //取消链表结构
+                if(entry.next!=null){
+                    entry.next=null;
+                }
+                put(entry.getKey(),entry.getValue());
+
+            }
+
+
+        }
+
+
+    }
+
+
+    private void foundEntryByNext(MyHashMap<K,V>.Entry<K,V> entry,List<MyHashMap<K,V>.Entry<K,V>> entryList()){
+        if(entry!=null && entry.next!=null){
+            entryList.add(entry);
+            //递归
+            foundEntryByNext(entry.next,entryList);
+        }else{
+            entryList.add(entry);
+        }
+
+    }
+
+
+
+
+
+
+    //通过key和数组的长度范围获取数组的下标值
+    private int getIndex(K k,int length){
+       //length 2^n  000 1111
+        int m = length -1;
+        //index [0,length)
+        int index = hash(k.hashCode())& m;
+        return index;
+    }
+
+    private int hash(int hashCode){
+        hashCode=hashCode^((hashCode >>> 20)^(hashCode>>>12));
+        return hashCode^((hashCode >>> 7)^(hashCode>>>4));
+    }
+
+
+
+
+
+    public V get(K k){
+        int index=getIndex(k,table.length);
+        if(tbale[index]==null){
+            throw new NullPointerException();
+        }
+
+        //key 存在情况
+        return   findValueByEqualKey(k,table[index]);
+
+
+    }
+
+    private V findValueByEqualKey(K k,MyHashMap<K,V>.Entry<K,V> entry){
+        if(k==entry.getKey()|| k.equals(entry.getKey())){
+            return entry.getValue():
+        }else if(entry.next!=null){
+            return findValueByEqualKey(k,entry.next);
+        }
+        retur null;
+    }
+
+    class Entry<K,V> implements MyMap.Entry<K,V>{
+        K k;
+        V v;
+
+        //指向被this挤压下去的Entry对象
+        Entry<K,V> next;
+
+        public Entry(K k,V v,Entry<K,V> next){
+            this.k=k;
+            this.v=v;
+            this.next=next;
+        }
+
+        public K getKey{
+            return k;
+        }
+
+        public V getValue(){
+            return v;
+        }
+
+    }
+
+}
+
+==============================
+public class Test {
+
+    public static void main(String[] args){
+        MyMap<String,String> myMap = new MyHashMap<String,String)();
+
+        for(int i=0;i<1000;i++)){
+            myMap.put("key"+i,"value"+i);
+        }
+
+        for(int i=0;i<1000;i++){
+            System.out.println(myMap.get("key"+i)))l
+        }
+
+
+    }
+
+
+
+}

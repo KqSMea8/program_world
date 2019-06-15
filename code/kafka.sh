@@ -1,3 +1,9 @@
+
+
+
+
+
+
 bin/kafka-server-stop.sh || true
 vagrant/broker.sh:43:bin/kafka-server-start.sh $kafka_dir/config/server-$BROKER_ID.properties 1>> /tmp/broker.log 2>> /tmp/broker.log &
 vagrant/README.md:54:    bin/kafka-topics.sh --create --zookeeper 192.168.50.11:2181 --replication-factor 3 --partitions 1 --topic sandbox

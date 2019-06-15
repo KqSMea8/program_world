@@ -1,0 +1,272 @@
+tomcat
+
+bin
+conf
+work
+webapps
+
+容器 servlet
+
+server applet
+
+request response 由servlet 实例化
+
+-------------------------------
+
+catalina
+
+    GPTomcat
+
+        端口号 8080
+        web.xml
+
+        private int port =8080;
+
+        private Server server;
+
+        private Map<Pattern,Class<?>> servletMapping = new HashMap<Pattern,Class<?>>();
+
+        private Properties webxml = new Properties();
+
+        private String WEB_INF = this.getClass().getResource("/").getPath();
+
+
+        public GPTomcat(int port) {
+                    this.port =port
+        }
+
+
+        private void init(){
+
+            FileInputStream fis = null;
+            try{
+
+                fis = new FileInputStream(WEB_INF+"web.properties");
+
+                webxml.load(fis);
+
+                for(Object k:webxml.keySet)){
+                    String key = k.toString();
+                    if(key,endsWith(".url")){
+
+                        String url = webxml.getProperty(key);
+
+                        String servletName = key.replaceAll("\\.url$","");
+
+                        Pattern pattern = Pattern.compile(url);
+
+                        String className = webxml.getPropertey(servletName+".className");
+
+                        Class<?> serlvetClass = Class.forName(className):
+
+                        servletMapping.put(pattern,serlvetClass);
+
+                    }
+
+                }
+
+            }
+
+        }
+
+
+        private void process(Socket client) throws Exception{
+
+          InputStream   is = client.getInputStream();
+          OutputStream out = client.getOutputStream();
+
+           GpRquest request = new GpRequest(is
+
+           GpResonse response = new GpResonse(out)
+
+            try{
+
+
+                Request 对InputStream的一个封装
+                Response OutputStream 的封装
+
+                //service(Request,Response) doGet doPost
+
+                //通过读取web.xml文件来获取自己的servlet
+                //反射
+
+                String url =  request.getUrl();
+
+                boolean isPattern = false;
+
+
+                for(Entry<Pattern,Class<?>> entyry:iterable_:servletMapping.entyrSet()){
+
+                       if(entry.getKey().matcher(url).matches()){
+
+                            GpServlet servlet = (GPServlet)entry.getValue().newInstance();
+                            serlvet.service(request,response);
+
+                            isPattern = true;
+                       }
+
+               }
+
+                if(!isPattern){
+                    response.write("404 - Not Found");
+                }
+
+                new FirstServlet().service(request,response);
+
+
+
+                respose.write("hello");
+
+
+            }catch(Exceptione e){
+                reponse.write("500",+e.getMessage());
+            }
+            finally{
+            }
+                    is.close();
+                    out.close();
+                    client.close();
+            }
+
+        }
+
+
+
+        public GPTomcat(){
+
+            try{
+
+             server = new ServerSocket(this.port);
+
+            Sout("TOmcat 已启动 静听端口"+this.port);
+
+            } catch (IOException e){
+
+                sout(gp tomcat 启动失败+e.getMessage())
+
+                return;
+
+            }
+
+            while(){
+
+                Socket client = server.accept();
+
+                process(client);
+
+              }
+        }
+
+        public void start() {
+
+            init();
+
+        }
+
+http
+
+    Request
+
+        public GPRequest(IntputStream is){
+
+            private String method;
+
+            private String url;
+
+            String content = "";
+        try{
+            byte[] buff = new byte[1024];
+            int len = 0;
+            if(len = is.read(buff)>0){
+                content = new String(buff,0,len);
+            }
+            system.out.print(content);
+            String line = content.split("\\n")[0];
+            String[] arr = line.split("\\s"));
+
+             this.method = arr[0];
+
+             this.url = arr[1].split("\\?")[0];
+
+        }catch(Exception e){
+
+
+        }
+
+
+        }
+
+
+        public String getMethod(){
+
+            return method;
+        }
+
+        public String getUrl(){
+            this.url;
+        }
+
+        public Map<String,String> getParamerter(){
+              return null;
+        }
+
+
+
+    Response
+
+        private OutputStream os;
+
+        public Resonse(OutputStream os){
+
+            this.os = os;
+        }
+
+        public void write(String outstr) throws Exception {
+
+
+            os.write(outstr.getBytes()));
+            os.flush;
+        }
+
+    abstract class GpServlet
+    {
+        public void servie(GpRequest request,Response response) throw Exception {
+
+            if("GET".equelsIgoreCase(request.getMethond(()）) {
+                doGet(request,response);
+            }else{
+                doPost(request,response);
+            }
+
+        }
+
+        public abstract void doGet(Request request,Reponse response){
+
+        }
+
+        public abstract void doPost(Request request,Reponse response){
+    }
+
+
+    FirstServlet extends GpServlet{
+
+        public void doGet(GPRequest request,GpResponse response)  throws Exception{
+
+            response.write("hello"+request.getMethod()+",url="+request.getUrl());
+
+        }
+
+        public void doPost(GpRequest request,GpResponse reponse) throws Exception {
+
+            reponse.write("hello");
+        }
+    }
+
+---------------------------------------------
+web.properties
+    serlvet.one.url=/fisrtServelt.do
+    className=com.gupaoedu.servlet.FirstServlet
+
+     serlvet.two.url=/twoServelt.do
+        className=com.gupaoedu.servlet.FirstServlet
+

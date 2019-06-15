@@ -1,0 +1,77 @@
+SCOPE
+
+SqlSessionFactory
+SqlSession
+Mapper
+
+Controller
+Service
+MyBatis
+JDBC
+DB
+
+------------
+
+public class BootStrap{
+
+    public static void start(){
+        MySqlSession sqlSession = new MySqlSession();
+        TestMapper testMapper =
+
+    }
+
+}
+
+拿到sql
+
+System.out.println(String.format("SQL"))
+
+
+MapperProxy
+
+executor.query("")
+
+验证
+
+抄袭
+
+设计方式
+
+Configuration - SqlSession
+
+单一职责
+
+Configuration configuration = new Configuration();
+configuration.build
+
+
+
+2.0 硬编码
+泛型的方式 取代
+
+类型传递
+
+
+MapperRegistory.MapperData mapperData =
+
+SqlSession 1.0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
