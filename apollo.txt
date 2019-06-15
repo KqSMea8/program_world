@@ -50,17 +50,9 @@
 
 
 
-RocketMQ / MyCAT / Sharding-JDBC 所有源码分析文章列表
-RocketMQ / MyCAT / Sharding-JDBC 中文注释源码 GitHub 地址
-您对于源码的疑问每条留言都将得到认真回复。甚至不知道如何读源码也可以请教噢。
-新的源码解析文章实时收到通知。每周更新一篇左右。
-认真的源码交流微信群。
-1. 概述
-老艿艿：本系列假定胖友已经阅读过 《Apollo 官方 wiki 文档》 。
 
 本文分享 Portal 创建 App 的流程，整个过程涉及 Portal、Admin Service ，如下图所示：
 
-流程
 
 下面，我们先来看看 App 的实体结构
 
@@ -519,9 +511,8 @@ Portal 在同步 App 到 Admin Service 时，发生网络异常，同步失败�
 认真的源码交流微信群
 
 
+---------------------
 
-1. 概述
-老艿艿：本系列假定胖友已经阅读过 《Apollo 官方 wiki 文档》 。
 
 本文分享 Portal 创建 Cluster 的流程，整个过程涉及 Portal、Admin Service ，如下图所示：
 

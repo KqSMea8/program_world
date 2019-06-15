@@ -3399,11 +3399,6 @@ http://download.csdn.net/detail/igoqhb/9590561
 ===========
 Spring与Akka的集成
 
-
-
-
-Spring与Akka的集成
-
    近年来随着Spark的火热，Spark本身使用的开发语言Scala、用到的分布式内存文件系统Tachyon（现已更名为Alluxio）以及基于
 
    由于历史原因，
@@ -3440,10 +3435,8 @@ ActorSystem system = ActorSystem.create("Hello");
 <bean id="actorSystem" class="akka.actor.ActorSystem" factory-method="create" destroy-method="shutdown" scope="singleton">
 <constructor-arg value="helloAkkaSystem"/>
 </bean>
-1
-2
-3
-4
+
+
 然后在你需要的地方依赖注入即可。
 
 Actor编程模型
@@ -3477,24 +3470,6 @@ public class Greeter extends UntypedActor
   }
 
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
 一般情况下我们的Actor都需要继承自UntypedActor，并实现其onReceive方法。onReceive用于接收消息，你可以在其中实现对消息的匹配并做不同的处理。
 
 HelloWorld是用于向Greeter发送问候消息的访客：
