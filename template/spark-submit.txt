@@ -1,3 +1,4 @@
+
 --conf spark.memory.offHeap.size=5368709120 \
 --conf spark.memory.offHeap.enabled=true \
 
@@ -2430,3 +2431,776 @@ SELECT  a.polno,
 
 sparksql.sh "$sql"
 
+
+==============================================================================================
+
+#!/bin/bash
+SPARK_HOME='/opt/module/cdh-5.3.6-ha/spark-1.6.1-bin-2.5.0-cdh5.3.6'
+
+
+$SPARK_HOME/bin/pyspark
+>>> textFile = sc.textFile("README.md")
+>>> textFile.count() # Number of items in this RDD
+126
+
+>>> textFile.first() # First item in this RDD
+u'# Apache Spark'
+>>> linesWithSpark = textFile.filter(lambda line: "Spark" in line)
+>>> textFile.filter(lambda line: "Spark" in line).count() # How many lines contain "Spark"?
+15
+
+
+>>> textFile.map(lambda line: len(line.split())).reduce(lambda a, b: a if (a > b) else b)
+15
+
+>>> def max(a, b):
+...     if a > b:
+...         return a
+...     else:
+...         return b
+...
+
+>>> textFile.map(lambda line: len(line.split())).reduce(max)
+15
+
+
+>>> wordCounts = textFile.flatMap(lambda line: line.split()).map(lambda word: (word, 1)).reduceByKey(lambda a, b: a+b)
+
+
+>>> wordCounts.collect()
+[(u'and', 9), (u'A', 1), (u'webpage', 1), (u'README', 1), (u'Note', 1), (u'"local"', 1), (u'variable', 1), ...]
+
+
+>>> linesWithSpark.cache()
+
+>>> linesWithSpark.count()
+19
+
+>>> linesWithSpark.count()
+
+=========
+
+
+Cluster
+http://xyz01.aiso.com:8081/
+
+task
+http://xyz01.aiso.com:4040/
+
+http://xyz01.aiso.com:7777/
+
+#!/bin/bash
+SPARK_HOME='/opt/module/cdh-5.3.6-ha/spark-1.6.1-$SPARK_HOME/bin-2.5.0-cdh5.3.6'
+# local模式出了伪集群模式(local-cluster)，所有的local都是用到了LocalBackend和TaskSchedulerImpl类。LocalBackend接收来自TaskSchedulerImpl的receiveOffers()调用，并根据运行Application传进来的CPU核生成WorkerOffer，并调用scheduler.resourceOffers(offers)生成Task，最后通过 executor.launchTask来执行这些Task。
+
+$SPARK_HOME/bin/spark-submit \
+  --master spark://hadoop-senior.ibeifeng.com:7077 \
+  jars/sparkApp.jar
+
+
+#默认在本地localhost
+$SPARK_HOME/bin/spark-shell --master spark://hadoop01.ibeifeng.com:7077
+
+
+$SPARK_HOME/bin/spark-submit scalaProject.jar
+$SPARK_HOME/bin/spark-submit examples/src/main/python/pi.py
+$SPARK_HOME/bin/spark-submit examples/src/main/r/dataframe.R
+$SPARK_HOME/bin/spark-submit --master spark://hadoop01.ibeifeng.com:7707 /opt/tools/scalaProject.jar
+# Run application locally on 8 cores
+$SPARK_HOME/bin/spark-submit \
+  --class org.apache.spark.examples.SparkPi \
+  --master local[8] \
+  /path/to/examples.jar \
+  100
+
+---------
+#!/bin/bash
+SPARK_HOME='/opt/module/cdh-5.3.6-ha/spark-1.6.1-bin-2.5.0-cdh5.3.6'
+
+# Mesos模式调度方式有两种：粗粒度和细粒度。粗粒度涉及到的类有CoarseMesosSchedulerBackend和TaskSchedulerImpl类；而细粒度涉及到的类有MesosSchedulerBackend和TaskSchedulerImpl类。CoarseMesosSchedulerBackend和 MesosSchedulerBackend都继承了MScheduler(其实是Mesos的Scheduler)，便于注册到Mesos资源调度的框架中。选择哪种模式可以通过spark.mesos.coarse参数配置。默认的是MesosSchedulerBackend。
+
+# 上面涉及到Spark的许多部署模式，究竟哪种模式好这个很难说，需要根据你的需求，如果你只是测试Spark Application，你可以选择local模式。而如果你数据量不是很多，Standalone 是个不错的选择。当你需要统一管理集群资源（Hadoop、Spark等）那么你可以选择Yarn，但是这样维护成本就会变高。yarn-cluster和yarn-client模式内部实现还是有很大的区别。如果你需要用于生产环境，那么请选择yarn-cluster；而如果你仅仅是Debug程序，可以选择yarn-client。
+
+
+# Run on a Mesos cluster in cluster deploy mode with supervise
+$SPARK_HOME/bin/spark-submit \
+  --class org.apache.spark.examples.SparkPi \
+  --master mesos://207.184.161.138:7077 \
+  --deploy-mode cluster
+  --supervise
+  --executor-memory 20G \
+  --total-executor-cores 100 \
+  http://path/to/examples.jar \
+  1000
+
+-----------
+#!/bin/bash
+SPARK_HOME='/opt/module/cdh-5.3.6-ha/spark-1.6.1-$SPARK_HOME/bin-2.5.0-cdh5.3.6'
+
+source /etc/profile
+nohup $SPARK_HOME/bin/spark-submit \
+--master spark://10.130.2.20:7077 \
+--conf "spark.executor.extraJavaOptions=-verbose:gc -XX:PermSize=8m -XX:SurvivorRatio=4 -XX:NewRatio=4 -XX:+PrintGCDetails -XX:+PrintGCTimeStamps" \
+--driver-memory 1g \
+--executor-memory 1g \
+--total-executor-cores 48 \
+--conf "spark.ui.port=8088"  \
+--jars /opt/bin/sparkJars/kafka_2.10-0.8.2.1.jar,/opt/bin/sparkJars/spark-streaming-kafka_2.10-1.4.1.jar,/opt/bin/sparkJars/metrics-core-2.2.0.jar,/opt/bin/sparkJars
+/mysql-connector-java-5.1.26-bin.jar,/opt/bin/sparkJars/spark-streaming-kafka_2.10-1.4.1.jar \
+--class com.spark.streaming.Top3HotProduct \
+SparkApp.jar \
+> sparkApp.log 2>&1 & \
+
+
+
+---------
+#!/bin/bash
+SPARK_HOME='/opt/module/cdh-5.3.6-ha/spark-1.6.1-bin-2.5.0-cdh5.3.6'
+
+# Run on a Spark standalone cluster in client deploy mode
+$SPARK_HOME/bin/spark-submit \
+  --class org.apache.spark.examples.SparkPi \
+  --master spark://xyz01.aiso.com:7077 \
+  --executor-memory 1G \
+  --total-executor-cores 100 \
+  --num-executors 3
+  $SPARK_HOME/jars/examples.jar \
+  1000
+
+
+
+
+------
+# Run on a Spark standalone cluster in client deploy mode
+# Standalone模式使用SparkDeploySchedulerBackend和TaskSchedulerImpl，SparkDeploySchedulerBackend是继承自CoarseGrainedSchedulerBackend类，并重写了其中的一些方法。
+
+# CoarseGrainedSchedulerBackend是一个粗粒度的资源调度类，在Spark job运行的整个期间，它会保存所有的Executor，在task运行完的时候，并不释放该Executor，也不向Scheduler申请一个新的Executor。Executor的启动方式有很多中，需要根据Application提交的Master URL进行判断。在CoarseGrainedSchedulerBackend中封装了一个DriverActor类，它接受Executor注册（RegisterExecutor）、状态更新（StatusUpdate）、响应Scheduler的ReviveOffers请求、杀死Task等等。
+
+# 在本模式中将会启动一个或者多个CoarseGrainedExecutorBackend。具体是通过AppClient类向Master请求注册Application。当注册成功之后，Master会向Client进行反馈，并调用schedule启动Driver和CoarseGrainedExecutorBackend，启动的Executor会向DriverActor进行注册。然后CoarseGrainedExecutorBackend通过aunchTask方法启动已经提交的Task。
+
+$SPARK_HOME/bin/spark-submit \
+  --class org.apache.spark.examples.SparkPi \
+  --master spark://207.184.161.138:7077 \
+  --executor-memory 20G \
+  --total-executor-cores 100 \
+  /path/to/examples.jar \
+  1000
+
+
+
+# Run on a Spark standalone cluster in cluster deploy mode with supervise
+$SPARK_HOME/bin/spark-submit \
+  --class org.apache.spark.examples.SparkPi \
+  --master spark://207.184.161.138:7077 \
+  --deploy-mode cluster
+  --supervise
+  --executor-memory 20G \
+  --total-executor-cores 100 \
+  /path/to/examples.jar \
+  1000
+
+
+# Run a Python application on a Spark standalone cluster
+$SPARK_HOME/bin/spark-submit \
+  --master spark://207.184.161.138:7077 \
+  examples/src/main/python/pi.py \
+  1000
+
+----------
+#!/bin/bash
+SPARK_HOME='/opt/module/cdh-5.3.6-ha/spark-1.6.1-bin-2.5.0-cdh5.3.6'
+
+
+
+# Spark
+
+# 的部署方式其实比官方文档中介绍的还要多，这里我来列举一下：
+
+# 1、local：这种方式是在本地启动一个线程来运行作业；
+
+# 2、local[N]：也是本地模式，但是启动了N个线程；
+
+# 3、local[*]：还是本地模式，但是用了系统中所有的核；
+
+# 4、local[N,M]：这里有两个参数，第一个代表的是用到的核个数；第二个参数代表的是容许该作业失败M次。上面的几种模式没有指定M参数，其默认值都是1；
+
+# 5、local-cluster[N, cores, memory]：本地伪集群模式，参数的含义我就不说了，看名字就知道；式；
+
+# 6、spark:// ：这是用到了 Spark 的Standalone模
+
+# 7、(mesos|zk)://：这是Mesos模式；
+
+# 8、yarn-standalone\yarn-cluster\yarn-client：这是YARN模式。前面两种代表的是集群模式；后面代表的是客户端模式；
+
+# 9、simr://：这种你就不知道了吧？simr其实是Spark In MapReduce的缩写。我们知道MapReduce 1中是没有YARN的，如果你在MapReduce 1中使用Spark，那么就用这种模式吧。
+
+# 总体来说，上面列出的各种部署方式运行的流程大致一样：都是从SparkContext切入，在SparkContext的初始化过程中主要做了以下几件事：
+
+# 1、根据SparkConf创建SparkEnv
+
+# private [spark] val env = SparkEnv.create(
+# conf,
+# "<driver>" ,
+# conf.get( "spark.driver.host" ),
+# conf.get( "spark.driver.port" ).toInt,
+# isDriver = true ,
+# isLocal = isLocal,
+# listenerBus = listenerBus)
+# SparkEnv.set(env)
+# 2、初始化executor的环境变量executorEnvs
+
+# 这个步骤代码太多了，我就不贴出来。
+
+# 3、创建TaskScheduler
+
+# // Create and start the scheduler
+# private [spark] var taskScheduler = SparkContext.createTaskScheduler( this , master)
+# 4、创建DAGScheduler
+# @ volatile private [spark] var dagScheduler : DAGScheduler = _
+# try {
+# dagScheduler = new DAGScheduler( this )
+# } catch {
+# case e : Exception = > throw
+# new SparkException( "DAGScheduler
+# cannot be initialized due to %s" .format(e.getMessage))
+# }
+# 5、启动TaskScheduler
+# // constructor
+# taskScheduler.start()
+# 那么，DAGScheduler和TaskScheduler都是什么？
+
+# DAGScheduler称为作业调度，它基于Stage的高层调度模块的实现，它为每个Job的Stages计算DAG，记录哪些RDD和Stage的输出已经实物化，然后找到最小的调度方式来运行这个Job。然后以Task Sets的形式提交给底层的任务调度模块来具体执行。
+
+# TaskScheduler称为任务调度。它是低层次的task调度接口，目前仅仅被TaskSchedulerImpl实现。这个接口可以以插件的形式应用在不同的task调度器中。每个TaskScheduler只给一个SparkContext调度task，这些调度器接受来自DAGScheduler中的每个stage提交的tasks，并负责将这些tasks提交给cluster运行。如果提交失败了，它将会重试；并处理stragglers。所有的事件都返回到DAGScheduler中。
+
+# 在创建DAGScheduler的时候，程序已经将taskScheduler作为参数传进去了，代码如下：
+
+# def this (sc : SparkContext, taskScheduler : TaskScheduler) = {
+# this (
+# sc,
+# taskScheduler,
+# sc.listenerBus,
+# sc.env.mapOutputTracker.asInstanceOf[MapOutputTrackerMaster],
+# sc.env.blockManager.master,
+# sc.env)
+# }
+# def this (sc : SparkContext) = this (sc, sc.taskScheduler)
+# 也就是DAGScheduler封装了TaskScheduler。TaskScheduler中有两个比较重要的方法：
+
+# def submitTasks(taskSet : TaskSet) : Unit
+# // Cancel a stage.
+# def cancelTasks(stageId : Int, interruptThread : Boolean)
+# 这些方法在DAGScheduler中被调用，而TaskSchedulerImpl实现了TaskScheduler，为各种调度模式提供了任务调度接口，在TaskSchedulerImpl中还实现了resourceOffers和statusUpdate两个接口给Backend调用，用于提供调度资源和更新任务状态。在YARN模式中，还提供了YarnClusterScheduler类，他只是简单地继承TaskSchedulerImpl类，主要重写了getRackForHost(hostPort: String)和postStartHook() 方法。继承图如下：
+
+
+# 在 上文 我们谈到了 Spark Context的初始化过程会做好几件事情，其中做了一件重要的事情就是 创建TaskScheduler 。
+
+# // Create and start the scheduler
+# private [spark] var taskScheduler = < span class = "wp_keywordlink_affiliate" >< a href = "http://www.iteblog.com/archives/tag/spark" title = "" target = "_blank" data-original-title = "View all posts in Spark" > Spark < /a >< /span > Context.createTaskScheduler( this , master)
+# 在createTaskScheduler方法中，会根据用户传进来的master URL分别初始化不同的SchedulerBackend和ExecutorBackend。而且从代码中我们可以看到master URL多大九种格式。但是在代码中SchedulerBackend的种类可没九种，只有五种；而ExecutorBackend只有三种，我们先来看看这些SchedulerBackend和ExecutorBackend的类继承关系：
+
+
+# 每一个Application都对应了一个SchedulerBackend和多个ExecutorBackend。下面我们分别介绍各种运行模式所涉及到的类
+
+
+
+
+# Usage: spark-submit [options] <app jar | python file> [app arguments]
+
+
+
+# Usage: spark-submit --kill [submission ID] --master [spark://...]
+# Usage: spark-submit --status [submission ID] --master [spark://...]
+
+# Options:
+  # --master MASTER_URL         spark://host:port, mesos://host:port, yarn, or local.
+  # --deploy-mode DEPLOY_MODE   Whether to launch the driver program locally ("client") or
+                              # on one of the worker machines inside the cluster ("cluster")
+                              # (Default: client).
+  # --class CLASS_NAME          Your application's main class (for Java / Scala apps).
+  # --name NAME                 A name of your application.
+  # --jars JARS                 Comma-separated list of local jars to include on the driver
+                              # and executor classpaths.
+  # --packages                  Comma-separated list of maven coordinates of jars to include
+                              # on the driver and executor classpaths. Will search the local
+                              # maven repo, then maven central and any additional remote
+                              # repositories given by --repositories. The format for the
+                              # coordinates should be groupId:artifactId:version.
+  # --exclude-packages          Comma-separated list of groupId:artifactId, to exclude while
+                              # resolving the dependencies provided in --packages to avoid
+                              # dependency conflicts.
+  # --repositories              Comma-separated list of additional remote repositories to
+                              # search for the maven coordinates given with --packages.
+  # --py-files PY_FILES         Comma-separated list of .zip, .egg, or .py files to place
+                              # on the PYTHONPATH for Python apps.
+  # --files FILES               Comma-separated list of files to be placed in the working
+                              # directory of each executor.
+
+  # --conf PROP=VALUE           Arbitrary Spark configuration property.
+  # --properties-file FILE      Path to a file from which to load extra properties. If not
+                              # specified, this will look for conf/spark-defaults.conf.
+
+  # --driver-memory MEM         Memory for driver (e.g. 1000M, 2G) (Default: 1024M).
+  # --driver-java-options       Extra Java options to pass to the driver.
+  # --driver-library-path       Extra library path entries to pass to the driver.
+  # --driver-class-path         Extra class path entries to pass to the driver. Note that
+                              # jars added with --jars are automatically included in the
+                              # classpath.
+
+  # --executor-memory MEM       Memory per executor (e.g. 1000M, 2G) (Default: 1G).
+
+  # --proxy-user NAME           User to impersonate when submitting the application.
+
+  # --help, -h                  Show this help message and exit
+  # --verbose, -v               Print additional debug output
+  # --version,                  Print the version of current Spark
+
+ # Spark standalone with cluster deploy mode only:
+  # --driver-cores NUM          Cores for driver (Default: 1).
+
+ # Spark standalone or Mesos with cluster deploy mode only:
+  # --supervise                 If given, restarts the driver on failure.
+  # --kill SUBMISSION_ID        If given, kills the driver specified.
+  # --status SUBMISSION_ID      If given, requests the status of the driver specified.
+
+ # Spark standalone and Mesos only:
+  # --total-executor-cores NUM  Total cores for all executors.
+
+ # Spark standalone and YARN only:
+  # --executor-cores NUM        Number of cores per executor. (Default: 1 in YARN mode,
+                              # or all available cores on the worker in standalone mode)
+
+
+
+
+
+---------
+#!/bin/bash
+SPARK_HOME='/opt/module/cdh-5.3.6-ha/spark-1.6.1-bin-2.5.0-cdh5.3.6'
+
+# yarn-cluster集群模式涉及到的类有YarnClientClusterScheduler和YarnClientSchedulerBackend。YarnClientClusterScheduler继承自TaskSchedulerImpl，并对其中的getRackForHost方法进行了重写。Yarn-client模式下，会在集群外面启动一个ExecutorLauncher来作为driver，并想集群申请Container，来启动CoarseGrainedExecutorBackend，并向CoarseGrainedSchedulerBackend中的DriverActor进行注册。
+# 上面的spark-submit脚本命令会启动一个client program(客户端程序)，client program会启动一个默认的Application Master,运行主类会以Application Master的子线程的方式运行，Client program会周期性的轮询Application Master用于状态更新以及在控制台显示它们，一旦你的Application运行结束，那么Client Rpogram也随之退出。
+# 启动client模式：
+
+
+# YARN-only:
+  # --driver-cores NUM          Number of cores used by the driver, only in cluster mode
+                              # (Default: 1).
+  # --queue QUEUE_NAME          The YARN queue to submit to (Default: "default").
+  # --num-executors NUM         Number of executors to launch (Default: 2).
+  # --archives ARCHIVES         Comma separated list of archives to be extracted into the
+                              # working directory of each executor.
+  # --principal PRINCIPAL       Principal to be used to login to KDC, while running on
+                              # secure HDFS.
+  # --keytab KEYTAB             The full path to the file that contains the keytab for the
+                              # principal specified above. This keytab will be copied to
+                              # the node running the Application Master via the Secure
+                              # Distributed Cache, for renewing the login tickets and the
+                              # delegation tokens periodically.
+
+
+
+
+$SPARK_HOME/bin/spark-submit
+	--class org.apache.spark.examples.SparkPi \
+    --master yarn \
+    --deploy-mode client \
+    --driver-memory 4g \
+    --executor-memory 2g \
+    --executor-cores 1 \
+    --queue thequeue \
+    lib/spark-examples*.jar \
+    10
+
+
+
+---------
+#!/bin/bash
+SPARK_HOME='/opt/module/cdh-5.3.6-ha/spark-1.6.1-bin-2.5.0-cdh5.3.6'
+
+
+# 3、yarn-cluster
+# yarn-cluster集群模式涉及到的类有YarnClusterScheduler和YarnClusterSchedulerBackend。YarnClusterSchedulerBackend同样是继承自CoarseGrainedSchedulerBackend。而YarnClusterScheduler继承自TaskSchedulerImpl，它只是简单地对TaskSchedulerImpl进行封装，并重写了getRackForHost和postStartHook方法。
+
+# Client类通过YarnClient在Hadoop集群上启动一个Container，并在其中运行ApplicationMaster，并通过Yarn提供的接口在集群中启动多个Container用于运行CoarseGrainedExecutorBackend，并向CoarseGrainedSchedulerBackend中的DriverActor进行注册。
+
+# yarn-cluster模式作业从提交到运行的整个过程请参见本博客文章： 《Spark on YARN集群模式作业运行全过程分析》
+
+# YARN-only:
+  # --driver-cores NUM          Number of cores used by the driver, only in cluster mode
+                              # (Default: 1).
+  # --queue QUEUE_NAME          The YARN queue to submit to (Default: "default").
+  # --num-executors NUM         Number of executors to launch (Default: 2).
+  # --archives ARCHIVES         Comma separated list of archives to be extracted into the
+                              # working directory of each executor.
+  # --principal PRINCIPAL       Principal to be used to login to KDC, while running on
+                              # secure HDFS.
+  # --keytab KEYTAB             The full path to the file that contains the keytab for the
+                              # principal specified above. This keytab will be copied to
+                              # the node running the Application Master via the Secure
+                              # Distributed Cache, for renewing the login tickets and the
+                              # delegation tokens periodically.
+
+$SPARK_HOME/spark-submit 
+--master yarn 
+--deploy-mode cluster 
+--driver-java-options "-XX:MaxPermSize=512m" 
+scala-demo.jar 
+
+
+$SPARK_HOME/bin/spark-submit
+		--class org.apache.spark.examples.SparkPi \
+		--master yarn-cluster
+		--num-executors 3 \
+		--driver-memory 4g \
+		--executor-memory 2g \
+		--executor-cores 1 \
+		--queue thequeue \
+		lib/spark-examples*.jar \
+		10
+
+$SPARK_HOME/bin/spark-submit
+	--class org.apache.spark.examples.SparkPi \
+    --master yarn \
+    --deploy-mode cluster \
+    --driver-memory 4g \
+    --executor-memory 2g \
+    --executor-cores 1 \
+    --queue thequeue \
+    lib/spark-examples*.jar \
+    10
+
+$SPARK_HOME/bin/spark-submit
+	--class my.main.Class \
+    --master yarn \
+    --deploy-mode cluster \
+    --jars my-other-jar.jar,my-other-other-jar.jar
+    my-main-jar.jar
+    app_arg1 app_arg2
+
+#     在Cluster模式下，Driver和Client是运行在两台不同的机器上，所以SparkContext的addJar方式将不会生效。这时，你可以使用--jars参数指定本地的jar包。
+
+
+# yarn logs -applicationId <app ID>
+
+
+export HADOOP_CONF_DIR=XXX
+$SPARK_HOME/bin/spark-submit \
+  --class org.apache.spark.examples.SparkPi \
+  --master yarn \
+  --deploy-mode cluster \  # can be client for client mode
+  --executor-memory 20G \
+  --num-executors 50 \
+  /path/to/examples.jar \
+  1000
+
+
+bin/spark-submit --class org.apache.spark.examples.SparkPi \
+--master yarn \
+--deploy-mode cluster \
+--driver-memory 4g \
+--executor-memory 2g \
+--executor-cores 1 \
+--queue thequeue \
+lib/spark-examples*.jar \
+10
+
+上面的应用例子将会启动一个YARN client 程序，它将会启动默认的应用 Master 。而 SparkPi 将会作为应用 Master 的一个子线程运行。 client 将会周期性地轮询应用 Master 来达到转态的更新并把它们显示在 console 终端。一旦你的应用程序运行完毕， client 将会退出。
+
+在cluster 模式中， driver 程序和 client 在不同的机器上，所以只对于本机的可行的 SparkContext.addJar 将会失效。为了使 client 继续能使用 SparkContext.addJar, 可以在创建命令时给 --jars 选项赋值。
+
+bin/spark-submit --class my.main.Class \
+--master yarn \
+--deploy-mode cluster \
+
+--jars my-other-jar.jar,my-other-other-jar.jar
+
+my-main-jar.jar
+
+app_arg1 app_arg2
+
+
+
+在YARN 上运行 Spark
+
+在Spark0.6.0 版本开始支持 YARN 模式，随后的版本在逐渐地完善。
+
+在YARN 上启动 Spark
+
+确保HADOOP_CONF_DIR或YARN_CONF_DIR属性的值已经指向了Hadoop 集群的配置文件。 Spark 通常使用这些配置信息来向 HDFS 写入数据和连接到 YARN 资源管理器。这个目录下所有的文件将会被分发到 YARN 集群中，所以所有应用使用的容器都使用同样的配置。如果 Java 的系统属性或 YARN 没有管理的环境变量等配置，它们应该在 Spark  的应用配置项中配置。
+
+在YARN 上启动 Spark 有两种部署模式。在Cluster 模式中， Spark 的 driver 程序运行在被 YARN 管理的集群中的任何一个 master 进程中，并且 client 初始化应用后可以退出。在 Client 模式中， driver 程序运行在 client 进程中，并且这个应用程序的 master 只能被用来从 YARN 上请求资源。
+
+和Spark Standalone 和 Mesos 模式不同的是， master 的地址被指定在 --master 参数中，在 YARN 模式中， ResourceManager 的地址可以在 Hadoop 的配置文件中找到。这样， --master 的的参数是 yarn 。
+
+在cluster 模式中启动 Spark 应用程序：
+
+$ ./bin/spark-submit --class path.to.your.Class --master yarn --deploy-mode cluster [options] <app jar> [app options]
+
+举例:
+
+$ ./bin/spark-submit --class org.apache.spark.examples.SparkPi \
+
+--master yarn \
+
+--deploy-mode cluster \
+
+--driver-memory 4g \
+
+--executor-memory 2g \
+
+--executor-cores 1 \
+
+--queue thequeue \
+
+lib/spark-examples*.jar \
+
+10
+
+上面的应用例子将会启动一个YARN client 程序，它将会启动默认的应用 Master 。而 SparkPi 将会作为应用 Master 的一个子线程运行。 client 将会周期性地轮询应用 Master 来达到转态的更新并把它们显示在 console 终端。一旦你的应用程序运行完毕， client 将会退出。
+
+在client 模式中启动 Spark 应用和 cluster 模式一样，只是将 cluster 替换为 client 。如下所示：
+
+$ ./bin/spark-shell --master yarn --deploy-mode client
+
+添加其他Jar
+
+在cluster 模式中， driver 程序和 client 在不同的机器上，所以只对于本机的可行的 SparkContext.addJar 将会失效。为了使 client 继续能使用 SparkContext.addJar, 可以在创建命令时给 --jars 选项赋值。
+
+$ ./bin/spark-submit --class my.main.Class \
+
+--master yarn \
+
+--deploy-mode cluster \
+
+--jars my-other-jar.jar,my-other-other-jar.jar
+
+my-main-jar.jar
+
+app_arg1 app_arg2
+
+预备
+
+在YARN 上运行 Spark 要求一个支持 YARN 的一个二进制发布包。你可以在官网上下载，也可以自己编译一个。
+
+配置
+
+Spark on YARN 上的许多配置和其他模式基本上一样。
+
+调试你的应用程序
+
+在YARN 中， executor 和应用 master 运行在“ containers ”（容器）中。 应用程序运行完毕后， YARN 提供了两种存放容器日志的方式。如果日志聚合服务被开启的话（通过 yarn.log-aggregation-enable来配置），容器日志将会被拷贝到 HDFS 中并且删除本机上的日志文件。这些日志文件使用 yarn logs 命令可以在任何一台集群中的机器看到。如下：
+
+yarn logs -applicationId <app ID>
+
+上面的命令将会打印出应用程序申请到的所有容器日志文件的内容。你也可以通过HDFS shell 或 API 来直接看这些容器文件。这些日志文件的目录可以查看 YARN 配置（ yarn.nodemanager.remote-app-log-dir and yarn.nodemanager.remote-app-log-dir-suffix）。这些日志在 Spark Web UI 的“ Executors ”的选项卡中也能看到。你需要启动 Spark history server 和 MapReduce history server 并且正确地在 yarn-site.xml配置好 yarn.log.server.url选项。这个Spark history server UI 的日志 URL 将会把重定向到 MapReduce 的 history server ，从而显示日志信息。
+
+当日志聚合服务关闭时，日志被保留在每台机器的YARN_APP_LOGS_DIR目录下，该目录通常被用来配置为/tmp/logs或$HADOOP_HOME/logs/userlogs，这取决于Hadoop 的版本和安装。查看一个容器的日志信息需要到对应的主机上的这个目录下查找。子目录名称通过应用 ID 和容器 ID 来构成。这种日志在 Spark WebUI 的 Executors 选项卡中也能看到并且不要求启动 MapReduce history server ，因为不需要读取 HDFS 上的数据。
+
+回顾一下每个容器创建的环境，增加yarn.nodemanager.delete.debug-delay-sec到一个大数值（比如36000），并且在容器上创建的节点上的yarn.nodemanager.local-dirs中得到应用程序的缓存。这个目录包括创建的脚本，JARs 和用于创建每个容器的所有环境变量。它对于调试 classpath 问题是特别有用的。（注意允许这种方式在集群的设置和所有节点的重启需要管理员权限，这样的话它宿主机上不可用。）
+
+对每个应用的 master 或 executors 使用自定义的 log4j 配置的话， 请看下：
+
+用spark-submit 上传一个自己编写的 log4j.properties 文件，通过 --files 参数把它和应用一起提交。
+给每个driver 添加值 -Dlog4j.configuration=<location of configuration file>到spark.driver.extraJavaOptions选项中。注意如果使用该选项的话，该文件需要在所有的节点上都存在。
+l 上传$SPARK_CONF_DIR/log4j.properties文件后，它会和其他的配置一样自己更新。注意如果多个option 指定时，上面介绍的那种 option 比这种有更高的优先权。
+
+Note that for the first option, both executors and the application master will share the same log4j configuration, which may cause issues when they run on the same node (e.g. trying to write to the same log file).
+
+注意，对于第一种option 而言，所有的 executors 和应用程序 master 将会使用同样的 log4j 配置，当他们运行在一样的节点上可能会出问题（例如：写入到同样的日志文件中，也就是并发写，不难理解吧）
+
+如果在 Yarn 中你需要一个合适的位置来存放日志文件，通过在你的 log4j.properties 中配置 spark.yarn.app.container.log.dir，那么 yarn 可以更好的聚合它们并展示。例如：
+
+log4j.appender.file_appender.File=${spark.yarn.app.container.log.dir}/spark.log.对于Streaming 程序而言，配置 RollingFileAppender和yarn 的日志文件目录 将避免大日志文件造成的磁盘移除，而且，日志也可以很好地被 YARN 使用。
+
+重点提示
+
+在调度决策中主要的资源请求是否得到，取决于正在使用的调度器和它的具体配置。
+在cluster 模式中， Spark executors 和 driver 将会使用为 YARN 配置的本地文件目录（ Hadoop YARN 配置项  yarn.nodemanager.local-dirs）。如果使用特定的spark.local.dir，它将会失效。在client 模式中， Spark executors 将会使用 YARN 配置的本地目录，但 Spark driver 将使用 spark.local.dir选项定义好的。这是因为Client 模式下 Spark driver 只是 Spark 的 executor 在执行，没有运行在 YARN 集群中。
+--files和--archives选项支持和 Hadoop 一样使用 # 来指定文件别名。例如：你可以指定 --files localtest.txt#appSees.txt，那么它将会把本地文件的 localtest.txt 文件上传到 HDFS 中，可理解为，它在 HDFS 中文件名将是 appSees.tx ，在 YARN 中使用 appSees.txt 文件名即可。
+--jars 选项，如果你在使用本地文件和运行在cluster 模式时， SparkContext.addJar函数将会起作用。如果你正在用HDFS 、 HTTP 、 HTTPS 、 FTP 的文件时，它不需要。
+
+
+
+-------------
+
+#!/$SPARK_HOME/bin/bash
+SPARK_HOME='/opt/module/cdh-5.3.6-ha/spark-1.6.1-$SPARK_HOME/bin-2.5.0-cdh5.3.6'
+
+# Usage: ./bin/spark-shell [options]
+
+# Options:
+  # --master MASTER_URL         spark://host:port, mesos://host:port, yarn, or local.
+  # --deploy-mode DEPLOY_MODE   Whether to launch the driver program locally ("client") or
+                              # on one of the worker machines inside the cluster ("cluster")
+                              # (Default: client).
+  # --class CLASS_NAME          Your application's main class (for Java / Scala apps).
+  # --name NAME                 A name of your application.
+  # --jars JARS                 Comma-separated list of local jars to include on the driver
+                              # and executor classpaths.
+  # --packages                  Comma-separated list of maven coordinates of jars to include
+                              # on the driver and executor classpaths. Will search the local
+                              # maven repo, then maven central and any additional remote
+                              # repositories given by --repositories. The format for the
+                              # coordinates should be groupId:artifactId:version.
+  # --exclude-packages          Comma-separated list of groupId:artifactId, to exclude while
+                              # resolving the dependencies provided in --packages to avoid
+                              # dependency conflicts.
+  # --repositories              Comma-separated list of additional remote repositories to
+                              # search for the maven coordinates given with --packages.
+  # --py-files PY_FILES         Comma-separated list of .zip, .egg, or .py files to place
+                              # on the PYTHONPATH for Python apps.
+  # --files FILES               Comma-separated list of files to be placed in the working
+                              # directory of each executor.
+
+  # --conf PROP=VALUE           Arbitrary Spark configuration property.
+  # --properties-file FILE      Path to a file from which to load extra properties. If not
+                              # specified, this will look for conf/spark-defaults.conf.
+
+  # --driver-memory MEM         Memory for driver (e.g. 1000M, 2G) (Default: 1024M).
+  # --driver-java-options       Extra Java options to pass to the driver.
+  # --driver-library-path       Extra library path entries to pass to the driver.
+  # --driver-class-path         Extra class path entries to pass to the driver. Note that
+                              # jars added with --jars are automatically included in the
+                              # classpath.
+
+  # --executor-memory MEM       Memory per executor (e.g. 1000M, 2G) (Default: 1G).
+
+  # --proxy-user NAME           User to impersonate when submitting the application.
+
+  # --help, -h                  Show this help message and exit
+  # --verbose, -v               Print additional debug output
+  # --version,                  Print the version of current Spark
+
+ # Spark standalone with cluster deploy mode only:
+  # --driver-cores NUM          Cores for driver (Default: 1).
+
+ # Spark standalone or Mesos with cluster deploy mode only:
+  # --supervise                 If given, restarts the driver on failure.
+  # --kill SUBMISSION_ID        If given, kills the driver specified.
+  # --status SUBMISSION_ID      If given, requests the status of the driver specified.
+
+ # Spark standalone and Mesos only:
+  # --total-executor-cores NUM  Total cores for all executors.
+
+ # Spark standalone and YARN only:
+  # --executor-cores NUM        Number of cores per executor. (Default: 1 in YARN mode,
+                              # or all available cores on the worker in standalone mode)
+
+ # YARN-only:
+  # --driver-cores NUM          Number of cores used by the driver, only in cluster mode
+                              # (Default: 1).
+  # --queue QUEUE_NAME          The YARN queue to submit to (Default: "default").
+  # --num-executors NUM         Number of executors to launch (Default: 2).
+  # --archives ARCHIVES         Comma separated list of archives to be extracted into the
+                              # working directory of each executor.
+  # --principal PRINCIPAL       Principal to be used to login to KDC, while running on
+                              # secure HDFS.
+  # --keytab KEYTAB             The full path to the file that contains the keytab for the
+                              # principal specified above. This keytab will be copied to
+                              # the node running the Application Master via the Secure
+                              # Distributed Cache, for renewing the login tickets and the
+                              # delegation tokens periodically.
+
+bin/spark-shell
+bin/spark-shell --help
+bin/spark-shell --master local[4]
+bin/spark-shell --master local[4] --jars code.jar
+bin/spark-shell --master local[4] --packages "org.example:example:0.1"
+
+
+
+
+
+
+
+
+
+
+
+
+
+#如何在Spark-shell中执行某个scala代码
+ scala>:load /opt/cdh-5.3.6/spark-1.3.0-bin-2.5.0-cdh5.3.6/HDFSWordCount.scala
+  scala> System.setProperty("spark.akka.frameSize","10240m")
+
+ scala> val textFile = sc.textFile("README.md")
+textFile: spark.RDD[String] = spark.MappedRDD@2ee9b6e3
+
+scala> textFile.count() // Number of items in this RDD
+res0: Long = 126
+
+scala> textFile.first() // First item in this RDD
+res1: String = # Apache Spark
+
+scala> val linesWithSpark = textFile.filter(line => line.contains("Spark"))
+linesWithSpark: spark.RDD[String] = spark.FilteredRDD@7dd4af09
+
+scala> textFile.filter(line => line.contains("Spark")).count() // How many lines contain "Spark"?
+res3: Long = 15
+
+scala> textFile.map(line => line.split(" ").size).reduce((a, b) => if (a > b) a else b)
+res4: Long = 15
+
+scala> import java.lang.Math
+import java.lang.Math
+
+scala> textFile.map(line => line.split(" ").size).reduce((a, b) => Math.max(a, b))
+res5: Int = 15
+
+scala> val wordCounts = textFile.flatMap(line => line.split(" ")).map(word => (word, 1)).reduceByKey((a, b) => a + b)
+wordCounts: spark.RDD[(String, Int)] = spark.ShuffledAggregatedRDD@71f027b8
+
+scala> wordCounts.collect()
+res6: Array[(String, Int)] = Array((means,1), (under,2), (this,3), (Because,1), (Python,2), (agree,1), (cluster.,1), ...)
+
+scala> linesWithSpark.cache()
+res7: spark.RDD[String] = spark.FilteredRDD@17e51082
+
+scala> linesWithSpark.count()
+res8: Long = 19
+
+scala> linesWithSpark.count()
+res9: Long = 19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

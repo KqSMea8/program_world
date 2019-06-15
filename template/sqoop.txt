@@ -1,0 +1,101 @@
+#!/usr/bin/bash
+HADOOP_HOME="/opt/module/cdh-5.3.6-ha/hadoop-2.5.0-cdh5.3.6"
+HIVE_HOME='/opt/module/cdh-5.3.6-ha/hive-0.13.1-cdh5.3.6'
+SQOOP_HOME='/opt/module/cdh-5.3.6-ha/sqoop-1.4.5-cdh5.3.6'
+MYSQL_HOME='/opt/module/mysql-5.6'
+
+
+cd $SQOOP_HOME
+bin/sqoop
+import
+--connect
+jdbc:mysql://hadoop-senior.ibeifeng.com:3306/db_0625
+--username
+root
+--password
+123456
+--delete-target-dir
+--table
+my_user
+-m
+1
+--hive-database
+db_mysql2hive
+--hive-import
+--hive-table
+mysql2hive
+--fields-terminated-by
+"\t"
+
+
+bin/sqoop --options-file mysql2hive.opt
+
+
+"Some string, with a comma.","1","2","3"...
+"Another \"string with quotes\"","4","5","6"...
+
+
+$ sqoop import --optionally-enclosed-by '\"' (the rest as above)...
+
+
+--input-enclosed-by <char>	Sets a required field encloser
+--input-escaped-by <char>	Sets the input escape character
+--input-fields-terminated-by <char>	Sets the input field separator
+--input-lines-terminated-by <char>	Sets the input end-of-line character
+--input-optionally-enclosed-by <char>	Sets a field enclosing character
+
+
+--hive-home <dir>	Override $HIVE_HOME
+--hive-import	Import tables into Hive (Uses Hive¡¯s default delimiters if none are set.)
+--hive-overwrite	Overwrite existing data in the Hive table.
+--create-hive-table	If set, then the job will fail if the target hive
+table exits. By default this property is false.
+--hive-table <table-name>	Sets the table name to use when importing to Hive.
+--hive-drop-import-delims	Drops \n, \r, and \01 from string fields when importing to Hive.
+--hive-delims-replacement	Replace \n, \r, and \01 from string fields with user defined string when importing to Hive.
+--hive-partition-key	Name of a hive field to partition are sharded on
+--hive-partition-value <v>	String-value that serves as partition key for this imported into hive in this job.
+--map-column-hive <map>	Override default mapping from SQL type to Hive type for configured columns.
+
+
+ CREATE TABLE
+
+  --hive-overwrite
+
+
+
+ $HIVE_HOME/bin/hive
+
+ This function is incompatible with --as-avrodatafile and --as-sequencefile
+
+
+ --as-avrodatafile and --as-sequencefile.
+
+--hive-delims-replacement
+
+
+--hive-partition-key
+ --hive-partition-value
+
+ --compress and --compression-codec
+
+ CREATE TABLE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

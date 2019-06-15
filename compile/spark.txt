@@ -1,0 +1,15 @@
+#!/bin/bash
+SPARK_SRC_HOME='/opt/module/cdh-5.3.6-ha/spark-1.6.1-$SPARK_HOME/bin-2.5.0-cdh5.3.6'
+
+export MAVEN_OPTS="-Xmx2g -XX:MaxPermSize=512M -XX:ReservedCodeCacheSize=512m" && $SPARK_SRC_HOME/make-distribution.sh --tgz  -Phadoop-2.4 -Dhadoop.version=2.5.0 -Pyarn -Phive  -Phive-thriftserver
+
+
+# ./make-distribution.sh --tgz -Phadoop-2.6 -Pyarn -DskipTests -Dhadoop.version=2.6.0 -Phive#!/bin/bash
+SPARK_SRC_HOME='/opt/module/cdh-5.3.6-ha/spark-1.6.1-$SPARK_HOME/bin-2.5.0-cdh5.3.6'
+
+
+export MAVEN_OPTS="-Xmx2g -XX:MaxPermSize=512M -XX:ReservedCodeCacheSize=512m" && $SPARK_SRC_HOME/make-distribution.sh --tgz  -Phadoop-2.4 -Dhadoop.version=2.5.0-cdh5.3.6 -Pyarn -Phive  -Phive-thriftserver
+
+
+
+
