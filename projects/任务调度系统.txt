@@ -134,6 +134,7 @@ b) 备份日志
         Boolean lock = Boolean.FALSE;
         String lockKey = null;
         RetJsonMsg retJson = RetJsonMsg.success();
+
         //校验任务名
         taskInfoDTO = checkTaskName(taskName, retJson);
         if(StatusCodeEnum.SUCCESS.getCode() != retJson.getCode()){

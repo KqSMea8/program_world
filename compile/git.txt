@@ -1,0 +1,22 @@
+#!/bin/bash
+GIT_SRC='/opt/module/bak/git-2.10.1'
+GIT_HOME='/opt/module/git-2.10.1'
+
+# #安装依赖
+# sudo yum install curl-devel expat-devel gettext-devel openssl-devel zlib-devel
+
+cd $GIT_SRC
+
+#下载 https://github.com/git/git
+make prefix=$GIT_HOME/git all  &&  make prefix=$GIT_HOME/git install
+
+#我们要把编译安装的git路径放到环境变量里，让它替换"/usr/bin"下的git。为此我们可以修改“/etc/profile”文件（或者/etc/bashrc文件）。
+# vim /etc/profile
+
+# 然后在文件的最后一行，添加下面的内容，然后保存退出。
+# export PATH=/opt/module/git-2.10.1/bin:$PATH
+
+# 安装帮助文档
+# sudo yum -y install asciidoc
+
+sudo make prefix=$GIT_HOME doc info && sudo make prefix=$GIT_HOME install-doc install-html install-info

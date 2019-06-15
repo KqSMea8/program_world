@@ -123,7 +123,6 @@ https://segmentfault.com/a/1190000010895869
 上述步骤对于的流程图如下：
 
 
-
 图4 获取读写锁实现1流程图
 
 上面获取读写锁流程并不复杂，但却存在性能问题。以图3所示锁节点结构为例，第一个锁节点 host1-W-0000000001 被移除后，Zookeeper 会将 /share_lock 子节点变动的通知分发给所有的客户端。
@@ -167,3 +166,91 @@ https://segmentfault.com/a/1190000010895869
 GitHub 代码：
 
 https://github.com/code4wt/distributed_lock
+
+===========
+
+高性能分布式锁-redisson的使用
+1，概述：在一些高并发的场景中，比如秒杀，抢票，抢购这些场景，都存在对核心资源，商品库存的争夺，控制不好，库存数量可能被减少到负数，出现超卖的情况，或者 产生唯一的一个递增ID，由于web应用部署在多个机器上，简单的同步加锁是无法实现的，给数据库加锁的话，对于高并发，1000/s的并发，数据库可能由行锁变成表锁，性能下降会厉害。那相对而言，redis的分布式锁，相对而言，是个很好的选择，redis官方推荐使用的Redisson就提供了分布式锁和相关服务。
+下面介绍下如何使用Redisson。
+
+2，Redisson的使用方式十分简单，详见官方文档：https://github.com/redisson/redisson/wiki/2.-%E9%85%8D%E7%BD%AE%E6%96%B9%E6%B3%95
+
+3，加入jar包的依赖：
+
+<dependency>
+        <groupId>org.redisson</groupId>
+        <artifactId>redisson</artifactId>
+         <version>2.7.0</version>
+ </dependency>
+4，配置Redisson
+
+
+public class RedissonManager {
+    private static Config config = new Config();
+    //声明redisso对象
+    private static Redisson redisson = null;
+   //实例化redisson
+ static{
+     config.useSingleServer().setAddress("127.0.0.1:6379");
+          //得到redisson对象
+        redisson = (Redisson) Redisson.create(config);
+
+}
+
+ //获取redisson对象的方法
+    public static Redisson getRedisson(){
+        return redisson;
+    }
+}
+
+
+
+5，锁的获取和释放
+
+
+public class DistributedRedisLock {
+   //从配置类中获取redisson对象
+    private static Redisson redisson = RedissonManager.getRedisson();
+    private static final String LOCK_TITLE = "redisLock_";
+   //加锁
+    public static boolean acquire(String lockName){
+       //声明key对象
+        String key = LOCK_TITLE + lockName;
+       //获取锁对象
+        RLock mylock = redisson.getLock(key);
+       //加锁，并且设置锁过期时间，防止死锁的产生
+        mylock.lock(2, TimeUnit.MINUTES);
+        System.err.println("======lock======"+Thread.currentThread().getName());
+       //加锁成功
+        return  true;
+    }
+  //锁的释放
+    public static void release(String lockName){
+       //必须是和加锁时的同一个key
+        String key = LOCK_TITLE + lockName;
+       //获取所对象
+        RLock mylock = redisson.getLock(key);
+      //释放锁（解锁）
+        mylock.unlock();
+        System.err.println("======unlock======"+Thread.currentThread().getName());
+    }
+}
+
+
+
+6，业务逻辑中使用分布式锁
+
+@RequestMapping("/redder")
+    @ResponseBody
+    public String redder() throws IOException{
+         String key = "test123";
+        //加锁
+        DistributedRedisLock.acquire(key);
+        //执行具体业务逻辑
+        dosoming
+        //释放锁
+        DistributedRedisLock.release(key);
+       //返回结果
+        return soming;
+    }
+
