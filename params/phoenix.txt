@@ -1,0 +1,51 @@
+属性名称	属性描述	默认值
+phoenix.query.timeoutMs	查询超时时间，默认为10分钟，单位：毫秒	600000
+phoenix.query.keepAliveMs	当客户端的线程超过线程池的核心线程数量时，空闲线程等等待任务的默认时间。超过这个时间，空闲线程就会关闭，默认是60s	60000
+phoenix.query.threadPoolSize	客户端线程池的线程数量，当集群扩大时，这个数量最好也增大	128
+phoenix.query.queueSize	线程池的队列最在深度，超过这个深度的任务就会被拒绝。当值为0的时候，就会使用 SynchronousQueue	5000
+phoenix.stats.guidepost.width	服务器端参数，这个参数指定集群传输的字节指标，值较小时，会增加并行计算，但也增加客户端合并块的数量。（初步理解，当客户端数据数据到100MB时，就会发送到服务端。数值小的时候，可以多线程发送）	100MB
+phoenix.stats.guidepost.per.region	服务器端参数， 指定每个region的指标。如果这个值大于0，那么guidepost.width就会是 MAX_FILE_SIZE of table / phoenix.stats.guidepost.per.region. ，否则就会使用phoenix.stats.guidepost.width，没有默认值	None
+phoenix.stats.updateFrequency	服务器端参数, 指定 statistics table的统计信息的刷新频率，刷新后会通知客户端。默认是15分钟	900000
+phoenix.stats.useCurrentTime	服务器高级参数，为真：当hbase表发生合并或者compactions时，统计表会用服务器的当前时间作为行的时间戳。为false：就会使用表的被统计的最大的时间戳。除非你自己自己插入数据时，自己控制时间戳，最好使用默认。	TRUE
+phoenix.query.spoolThresholdBytes	并行查询结果的阈值，超过这个阈值，就会溢出到硬盘。默认为20MB，单位：字节	20971520
+phoenix.query.maxSpoolToDiskBytes	并行查询结果最大的字节数，超过这个阈值，查询就会失败。默认是1GB	1024000000
+phoenix.query.maxGlobalMemoryPercentage	所有线程使用的最大堆内存( Runtime.getRuntime().maxMemory())的百分比.只会对小的内存跟踪。主要是统计group by aggregation过程中产生的map内存的使用。当到达这个值的时候，会尝试获取更多的内存。主要就是节省内存的使用。默认是15%	15
+phoenix.query.maxGlobalMemorySize	所有线程使用的最大内存的字节数。如果设置这个参数，就会使用phoenix.query.maxGlobalMemorySize和phoenix.query.maxGlobalMemoryPercentage的最小值
+phoenix.query.maxGlobalMemoryWaitMs	当内存不够时，client就会被阻塞。这个参数是最大的等待时间。超过这个时间。就会抛出 InsufficientMemoryException 默认是10s	10000
+phoenix.query.maxTenantMemoryPercentage	所有消费者能够占用phoenix.query.maxGlobalMemoryPercentage的最大的占用比例，超过这个值，就会抛出 InsufficientMemoryException 默认是100%	100
+phoenix.query.dateFormat	默认时间格式。TO_CHAR(<date>), TO_DATE(<String>), resultSet.getString(<date-column>)	yyyy-MM-dd HH:mm:ss
+phoenix.query.dateFormatTimeZone	时区的ID，指定默认的时区。对date， time，timestamp，to_date()有效.可以简写为“PST”，也可以写为“ America/Los_Angeles”，或自定义偏移量如“ GMT-9:00”，“LOCAL”会使用当前的时区	GMT
+phoenix.query.numberFormat	数字和字符串互相转换的数字格式。 TO_CHAR(<decimal-number>), TO_NUMBER(<decimal-string>), resultSet.getString(<decimal-column>)	#,##0.##
+phoenix.mutate.maxSize	commit或rollback前，一次批量处理的最大的行数	500000
+phoenix.mutate.batchSize	自动提交时。一次批处理的数量，这个参数会被 connect 参数UpsertBatchSize 覆盖。注意，当这 UPSERT SELECT or DELETE 在服务器使用 coprocessor执行时。connect参数对bathcsize无效	1000
+phoenix.coprocessor.maxServerCacheTimeToLiveMs	服务器缓存的最大存活时间（毫秒）。从最后一次访问到现在的过期时间。当服务器端发生 IOException(“Could not find hash cache for joinId”) 时，可以考虑调整这个参数。当服务器端 有像“Earlier hash cache(s) might have expired on servers”这样的警告时，就是一个调大这个参数的信号。	30000
+phoenix.query.useIndexes	查询时是否作用索引	TRUE
+phoenix.index.mutableBatchSizeThreshold
+Number of mutations in a batch beyond which index metadata will be sent as a separate RPC to each region server as opposed to included inline with each mutation. Defaults to 5.
+
+批处理中的突变数量，超过此数量，索引元数据将作为单独的RPC发送到每个区域服务器，而不是包含在每个突变的内联中。默认为5。
+
+phoenix.schema.dropMetaData	删除一张phoenix表时，是否删除对应的Hbase表。默认是True	TRUE
+phoenix.groupby.spillable	在regionServer上 是否一个大量不重复的数据是否允许溢出到磁盘上(Group By 也不例外)。为False时，抛出 InsufficientMemoryException	TRUE
+phoenix.groupby.spillFiles	溢出文件的数量( Number of memory mapped spill files to be used when spilling GROUP BY distinct values to disk. Default is 2)	2
+phoenix.groupby.maxCacheSize	groupBy 溢出 时最大的缓存字节数。默认是100Mb	102400000
+phoenix.groupby.estimatedDistinctValues	当一个group by执行时预估的不同值的数量，( Used to perform initial sizing with growth of 1.5x each time reallocation is required)	1000
+phoenix.distinct.value.compress.threshold	使用聚合函数时。跟踪的不同值数量的阈值。超过这个数量后就会使用 Snappy压缩，默认是1MB	1024000
+phoenix.index.maxDataFileSizePerc	共享索引表MAX_FILESIZE对于数据表MAX_FIELSIZE的百分比。这个值应该根据索引行和数据行的预计平均大小来估算，默认是50%	50%
+phoenix.coprocessor.maxMetaDataCacheTimeToLiveMs	服务器端元数据缓存的过期时间。默认是30分钟。单位：毫秒	180000
+phoenix.coprocessor.maxMetaDataCacheSize	服务器端最大的元数据字节数。如果超过这个值。就会根据最后访问时间来删除一些数据。默认是20MB	20480000
+phoenix.client.maxMetaDataCacheSize	客户端最大的元数据字节数。如果超过这个值。就会根据最后访问时间来删除一些数据。默认是10MB	10240000
+phoenix.sequence.cacheSize	在下一个序列值被分配时，从服务器和缓存中保留的序列值的数目。在序列自己定义时这个参数无效（猜测：这个是主键的生成策略）。默认为100	100
+phoenix.clock.skew.interval
+Delay interval(in milliseconds) when opening SYSTEM.CATALOG to compensate possible time clock skew when SYSTEM.CATALOG moves among region servers.
+
+打开系统时的延迟间隔(毫秒)。目录，以补偿可能的时间时钟偏差时，系统。目录在区域服务器之间移动。
+
+2000
+phoenix.index.failure.handling.rebuild	当数据发生变化时，索引是否自动重建	TRUE
+phoenix.index.failure.handling.rebuild.interval	索引重建后。检查下一次重建的时间间隔（毫秒）	10000
+phoenix.index.failure.handling.rebuild.overlap.time	索引失效后到索引重建的时间间隔（毫秒）。这个参数是为了防止。存在time clock skew.的更新丢失。	300000
+phoenix.query.rowKeyOrderSaltedTable	对于salted表。非聚合函数总是返回以rowkey排序的数据。为true时，在表创建时，分割点可以先不指定，但就会在每个salt bucket使用默认的分割。默认是True	TRUE
+phoenix.connection.autoCommit	是否自动提交。对于所有连接有效	FALSE
+phoenix.spool.directory	数据量到20MB（phoenix.query.spoolThresholdBytes ）溢出到本地目录	/tmp
+phoenix.query.scanResultChunkSize	一次查询返回的批量数量	2999

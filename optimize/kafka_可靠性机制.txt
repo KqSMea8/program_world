@@ -332,10 +332,6 @@ Partition	物理上的概念，一个topic可以分为多个partition，每个pa
 # parallelism for consumption, but this will also result in more files across
 # the brokers.
 num.partitions=3
-1
-2
-3
-4
 在发送一条消息时，可以指定这个消息的key，producer根据这个key和partition机制来判断这个消息发送到哪个partition。partition机制可以通过指定producer的partition.class这一参数来指定，该class必须实现kafka.producer.Partitioner接口。
 
 有关Topic与Partition的更多细节，可以参考下面的“Kafka文件存储机制”这一节。
@@ -427,8 +423,6 @@ leader来维护：leader有单独的线程定期检测ISR中follower是否脱离
 1. request.required.acks=1
 
 producer发送数据到leader，leader写本地日志成功，返回客户端成功；此时ISR中的副本还没有来得及拉取该消息，leader就宕机了，那么此次发送的消息就会丢失。
-
-
 
 2. request.required.acks=-1
 
@@ -630,9 +624,6 @@ replicas	acks	TPS
 
 具体配置：一个producer；消息体大小为1KB；发送方式为sync；topic副本数为2；min.insync.replicas=2；acks=-1。partition数量设置为1/2/4/8/12。
 
-测试结果：
-
-
 
 测试结果分析：partition的不同会影响TPS，随着partition的个数的增长TPS会有所增长，但并不是一直成正比关系，到达一定临界值时，partition数量的增加反而会使TPS略微降低。
 
@@ -678,9 +669,6 @@ Kafka在acks=-1,min.insync.replicas>=1时，具有高可靠性，所有成功返
 kafka 使用多副本来保证消息不丢失，多副本就涉及到kafka的复制机制，在一个超大规模的集群中，时不时地这个点磁盘坏了，那个点cpu负载高了，出现各种各样的问题，多个副本之间的复制，如果想完全自动化容错，就要做一些考量和取舍了。我们举个例子说明下运维中面对的复杂性，我们都知道 kafka 有个 ISR集合，我先说明下这个概念：kafka不是完全同步，也不是完全异步，是一种ISR机制：  1. leader会维护一个与其基本保持同步的Replica列表，该列表称为ISR(in-sync Replica)，每个Partition都会有一个ISR，而且是由leader动态维护 2. 如果一个follower比一个leader落后太多，或者超过一定时间未发起数据复制请求，则leader将其重ISR中移除 3. 当ISR中所有Replica都向Leader发送ACK时，leader才commit，这时候producer才能认为一个请求中的消息都commit了。在这种机制下， 如果一个  producer 一个请求发送的消息条数太多，导致flower瞬间落后leader太多怎么办？如果 follower不停的移入移出 ISR 会不会影响性能？如果对这种情况加了报警，就有可能造成告警轰炸，如果我们不加报警，如果是broker 挂掉或者 broker 因为IO性能或者GC问题夯住的情况导致落后leader太多，这种真正需要报警情况怎么办呢？ 今天我们来看下 kafka 是怎么在设计上让我们完全避免这种运维中头疼的问题的。kafka的复制机制kafka 每个分区都是由顺序追加的不可变的消息序列组成，每条消息都一个唯一的offset 来标记位置。
 
 
-
-
-
 kafka中的副本机制是以分区粒度进行复制的，我们在kafka中创建 topic的时候，都可以设置一个复制因子，这个复制因子决定着分区副本的个数，如果leader 挂掉了，kafka 会把分区主节点failover到其他副本节点，这样就能保证这个分区的消息是可用的。leader节点负责接收producer 打过来的消息，其他副本节点（follower）从主节点上拷贝消息。
 
 
@@ -689,15 +677,7 @@ kafka中的副本机制是以分区粒度进行复制的，我们在kafka中创�
 
 kakfa 日志复制算法提供的保证是当一条消息在 producer 端认为已经 committed的之后，如果leader 节点挂掉了，其他节点被选举成为了 leader 节点后，这条消息同样是可以被消费到的。这样的话，leader 选举的时候，只能从 ISR集合中选举，集合中的每个点都必须是和leader消息同步的，也就是没有延迟，分区的leader 维护ISR 集合列表，如果某个点落后太多，就从 ISR集合中踢出去。 producer 发送一条消息到leader节点后， 只有当ISR中所有Replica都向Leader发送ACK确认这条消息时，leader才commit，这时候producer才能认为这条消息commit了，正是因为如此，kafka客户端的写性能取决于ISR集合中的最慢的一个broker的接收消息的性能，如果一个点性能太差，就必须尽快的识别出来，然后从ISR集合中踢出去，以免造成性能问题。kafka 复制机制详情参考  https://kafka.apache.org/documentation.html#replication一个副本怎么才算是跟得上leader的副本一个副本不能 “caught up” leader 节点，就有可能被从 ISR集合中踢出去，我们举个例子来说明，什么才是真正的 “caught up” —— 跟leader节点消息同步。kafka 中的一个单分区的 topic — foo，复制因子为 3 ，分区分布和 leader 和 follower 如下图，现在broker 2和3 是 follower 而且都在 ISR 集合中。我们设置  replica.lag.max.messages  为4，只要 follower 只要不落后leader 大于3条消息，就然后是跟得上leader的节点，就不会被踢出去， 设置 replica.lag.time.max.ms 为 500ms， 意味着只要 follower 在每 500ms内发送fetch请求，就不会被认为已经dead ，不会从ISR集合中踢出去。
 
-
-
-
-
 现在 producer 发送一条消息，offset 为3， 这时候 broker 3 发生了 GC， 入下图：
-
-
-
-
 
 因为 broker 3 现在在 ISR 集合中， 所以要么 broker 3  拉取同步上这条 offset 为3 的消息，要么 3 被从 ISR集合中踢出去，不然这条消息就不会 committed， 因为 replica.lag.max.messages=4 为4， broker 3 只落后一条消息，不会从ISR集合中踢出去， broker 3 如果这时候 GC  100ms， GC 结束，然后拉取到 offset 为3的消息，就再次跟 leader 保持完全同步，整个过程一直在 ISR集合中，如下图：
 
@@ -716,10 +696,52 @@ kakfa 日志复制算法提供的保证是当一条消息在 producer 端认为�
 
 
 
-
 这里的核心问题是，在海量的 topic 情况下，或者经常性的流量抖动情况下，我们不能对 topic 的producer 每次打过来的消息数目做任何假设，所以就不太好定出来一个 合适的 eplica.lag.max.messages 值一个配置全部搞定其实只有两种情况是异常的，一种就是卡住，另外一种是follower 性能慢，如果我们只根据 follower 落后 leader 多少来判断是否应该把 follower 提出ISR集合，就必须要对流量进行预测估计，怎么才能避免这种不靠谱的估计呢，kafka 给出 的方案是这样的，对   replica.lag.time.max.ms 这个配置的含义做了增强，和之前一样，如果 follower 卡住超过这个时间不发送fetch请求， 会被踢出ISR集合，新的增强逻辑是，在 follower 落后 leader 超过   eplica.lag.max.messages 条消息的时候，不会立马踢出ISR 集合，而是持续落后超过    replica.lag.time.max.ms 时间，才会被踢出，这样就能避免流量抖动造成的运维问题，因为follower 在下一次fetch的时候就会跟上leader， 这样就也不用对 topic 的写入速度做任何的估计喽。
 
-作者：Java大生
-链接：https://www.jianshu.com/p/ff296d51385a
-来源：简书
-简书著作权归作者所有，任何形式的转载都请联系作者获得授权并注明出处。
+
+
+数据可靠性
+
+Topic 分区副本
+
+在 Kafka 0.8.0 之前，Kafka 是没有副本的概念的，那时候人们只会用 Kafka 存储一些不重要的数据，因为没有副本，数据很可能会丢失。但是随着业务的发展，支持副本的功能越来越强烈，所以为了保证数据的可靠性，Kafka 从 0.8.0 版本开始引入了分区副本（详情请参见 KAFKA-50）。也就是说每个分区可以人为的配置几个副本（比如创建主题的时候指定 replication-factor，也可以在 Broker 级别进行配置 default.replication.factor），一般会设置为3。
+
+Kafka 可以保证单个分区里的事件是有序的，分区可以在线（可用），也可以离线（不可用）。在众多的分区副本里面有一个副本是 Leader，其余的副本是 follower，所有的读写操作都是经过 Leader 进行的，同时 follower 会定期地去 leader 上的复制数据。当 Leader 挂了的时候，其中一个 follower 会重新成为新的 Leader。通过分区副本，引入了数据冗余，同时也提供了 Kafka 的数据可靠性。
+
+Kafka 的分区多副本架构是 Kafka 可靠性保证的核心，把消息写入多个副本可以使 Kafka 在发生崩溃时仍能保证消息的持久性。
+
+Producer 往 Broker 发送消息
+如果我们要往 Kafka 对应的主题发送消息，我们需要通过 Producer 完成。前面我们讲过 Kafka 主题对应了多个分区，每个分区下面又对应了多个副本；为了让用户设置数据可靠性， Kafka 在 Producer 里面提供了消息确认机制。也就是说我们可以通过配置来决定消息发送到对应分区的几个副本才算消息发送成功。可以在定义 Producer 时通过 acks 参数指定（在 0.8.2.X 版本之前是通过 request.required.acks 参数设置的，详见 KAFKA-3043）。这个参数支持以下三种值：
+
+acks = 0：意味着如果生产者能够通过网络把消息发送出去，那么就认为消息已成功写入 Kafka 。在这种情况下还是有可能发生错误，比如发送的对象无能被序列化或者网卡发生故障，但如果是分区离线或整个集群长时间不可用，那就不会收到任何错误。在 acks=0 模式下的运行速度是非常快的（这就是为什么很多基准测试都是基于这个模式），你可以得到惊人的吞吐量和带宽利用率，不过如果选择了这种模式， 一定会丢失一些消息。
+
+acks = 1：意味若 Leader 在收到消息并把它写入到分区数据文件（不一定同步到磁盘上）时会返回确认或错误响应。在这个模式下，如果发生正常的 Leader 选举，生产者会在选举时收到一个 LeaderNotAvailableException 异常，如果生产者能恰当地处理这个错误，它会重试发送悄息，最终消息会安全到达新的 Leader 那里。不过在这个模式下仍然有可能丢失数据，比如消息已经成功写入 Leader，但在消息被复制到 follower 副本之前 Leader发生崩溃。
+
+acks = all（这个和 request.required.acks = -1 含义一样）：意味着 Leader 在返回确认或错误响应之前，会等待所有同步副本都收到悄息。如果和 min.insync.replicas 参数结合起来，就可以决定在返回确认前至少有多少个副本能够收到悄息，生产者会一直重试直到消息被成功提交。不过这也是最慢的做法，因为生产者在继续发送其他消息之前需要等待所有副本都收到当前的消息。
+
+根据实际的应用场景，我们设置不同的 acks，以此保证数据的可靠性。
+
+另外，Producer 发送消息还可以选择同步（默认，通过 producer.type=sync 配置） 或者异步（producer.type=async）模式。如果设置成异步，虽然会极大的提高消息发送的性能，但是这样会增加丢失数据的风险。如果需要确保消息的可靠性，必须将 producer.type 设置为 sync。
+
+Leader 选举
+在介绍 Leader 选举之前，让我们先来了解一下 ISR（in-sync replicas）列表。每个分区的 leader 会维护一个 ISR 列表，ISR 列表里面就是 follower 副本的 Borker 编号，只有跟得上 Leader 的 follower 副本才能加入到 ISR 里面，这个是通过 replica.lag.time.max.ms 参数配置的，具体可以参见《图文了解 Kafka 的副本复制机制》。只有 ISR 里的成员才有被选为 leader 的可能。
+
+所以当 Leader 挂掉了，而且 unclean.leader.election.enable=false 的情况下，Kafka 会从 ISR 列表中选择第一个 follower 作为新的 Leader，因为这个分区拥有最新的已经 committed 的消息。通过这个可以保证已经 committed 的消息的数据可靠性。
+
+综上所述，为了保证数据的可靠性，我们最少需要配置一下几个参数：
+
+producer 级别：acks=all（或者 request.required.acks=-1），同时发生模式为同步 producer.type=sync
+
+topic 级别：设置 replication.factor>=3，并且 min.insync.replicas>=2；
+
+broker 级别：关闭不完全的 Leader 选举，即 unclean.leader.election.enable=false；
+
+数据一致性
+这里介绍的数据一致性主要是说不论是老的 Leader 还是新选举的 Leader，Consumer 都能读到一样的数据。那么 Kafka 是如何实现的呢？
+
+
+假设分区的副本为3，其中副本0是 Leader，副本1和副本2是 follower，并且在 ISR 列表里面。虽然副本0已经写入了 Message4，但是 Consumer 只能读取到 Message2。因为所有的 ISR 都同步了 Message2，只有 High Water Mark 以上的消息才支持 Consumer 读取，而 High Water Mark 取决于 ISR 列表里面偏移量最小的分区，对应于上图的副本2，这个很类似于木桶原理。
+
+这样做的原因是还没有被足够多副本复制的消息被认为是“不安全”的，如果 Leader 发生崩溃，另一个副本成为新 Leader，那么这些消息很可能丢失了。如果我们允许消费者读取这些消息，可能就会破坏一致性。试想，一个消费者从当前 Leader（副本0） 读取并处理了 Message4，这个时候 Leader 挂掉了，选举了副本1为新的 Leader，这时候另一个消费者再去从新的 Leader 读取消息，发现这个消息其实并不存在，这就导致了数据不一致性问题。
+
+当然，引入了 High Water Mark 机制，会导致 Broker 间的消息复制因为某些原因变慢，那么消息到达消费者的时间也会随之变长（因为我们会先等待消息复制完毕）。延迟时间可以通过参数 replica.lag.time.max.ms 参数配置，它指定了副本在复制消息时可被允许的最大延迟时间。

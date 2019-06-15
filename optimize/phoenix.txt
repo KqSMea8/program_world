@@ -1,0 +1,808 @@
+基础知识
+1****、****Phoenix 主要技术点
+a、将SQL转化为HBase Scan，将结果封装为JDBC Result Set。
+b、表的元数据保存在HBase表(系统表)中。
+c、使用了coprocessor 和 custom filter 保证高效，使得小规模查询的延时在毫秒级，百万行的查询延时在秒级。
+· coprocessors to perform operations on the server-side thus minimizing client/server data transfer
+· custom filters to prune data as close to the source as possible In addition, to minimize any startup costs, Phoenix uses native HBase APIs rather than going through the map/reduce framework
+2****、****JDBC****连接的****URL
+jdbc:phoenix [ :<zookeeper quorum> [ :<port number> ] [ :<root node> ] ]
+如：
+Connection conn = DriverManager.getConnection("jdbc:phoenix:server1,server2:2181");
+属性对应于：hbase.zookeeper.quorum, hbase.zookeeper.property.clientPort, zookeeper.znode.parent
+3、Phoenix 不支持特性
+a、Full Transaction，  现在只支持 TRANSACTION_READ_COMMITTED，不支持其他类型。
+b、关系操作. Union, Intersect, Minus
+c、杂项内置函数
+4****、****映射到已存在****HBase****表
+使用 CREATE TABLE and CREATE VIEW
+区别：
+a、CREATE TABLE 启用  KEEP_DELETED_CELLS = true，  CREATE VIEW 不会
+b、CREATE TABLE 能添加HBase 中不存在的列族，CREATE VIEW 不会
+加盐处理
+因为HBase 数据储存按照 row key 排序，如果HBase表的 row key 是单调递增的，则HBase 容易有RegionServer 的局部热点问题。加盐可以缓解这个问题。
+create table H3 (id varchar not null primary key, cf1.a varchar, cf2.b varchar) SALT_BUCKETS=20; 只能在创建表格时候加，创建后不可更改。
+alter table h1 set salt_buckets=10;
+Error: ERROR 1024 (42Y83): Salt bucket number may only be specified when creating a table. tableName=H1
+加盐后的注意事项：
+a、sequential scan 返回的结果可能不是自然排序的，如果sequential scan使用了LIMIT语句，将与不加盐的情况不一样。
+b、 Spit point：If no split points are specified for the table, the salted table would be pre-split on salt bytes boundaries to ensure load distribution among region servers even during the initial phase of the table. If users are to provide split points manually, users need to include a salt byte in the split points they provide.
+c、Row Key 排序：Pre-spliting also ensures that all entries in the region server all starts with the same salt byte, and therefore are stored in a sorted manner. When doing a parallel scan across all region servers, we can take advantage of this properties to perform a merge sort of the client side. The resulting scan would still be return sequentially as if it is from a normal table
+实际上是改写了Row Key，添加了一个prefix
+new_row_key = (++index % BUCKETS_NUMBER) + original_key
+数据存储到 Buckects_Number 个Bucket中  ，每个Bucket的Prefix 相同，在query的时候，同时在各个Bucket进行。
+提升效率常用方法
+1****、加盐：
+加盐可以将数据存入多个region里，从而提升读写性能。
+CREATE TABLE TEST (HOST VARCHAR NOT NULL PRIMARY KEY, DESCRIPTION VARCHAR) SALT_BUCKETS=42
+如果有16台region server，每台server有4核CPU，则SALT_BUCKETS 设置为32~64之间。
+即如果集群总的CPU核数为N，则SALT_BUCKETS为 0.5N ~ N 之间。
+2****、****split
+如果不想通过加盐来分区，可以自己手动设置分区的方法。这样可以不引入额外的byte，或者改变row key的顺序，例子
+CREATE TABLE TEST (HOST VARCHAR NOT NULL PRIMARY KEY, DESCRIPTION VARCHAR) SPLIT ON ('CS','EU','NA')
+3****、使用多个列族
+CREATE TABLE TEST (MYKEY VARCHAR NOT NULL PRIMARY KEY, A.COL1 VARCHAR, A.COL2 VARCHAR, B.COL3 VARCHAR)
+4****、使用压缩
+CREATE TABLE TEST (HOST VARCHAR NOT NULL PRIMARY KEY, DESCRIPTION VARCHAR) COMPRESSION='GZ'
+5****、使用二级索引
+使用任意时间戳
+在Property里面设置属性 "CurrentSCN"。
+ts是一个long。
+Properties props = new Properties();
+props.setProperty(PhoenixRuntime.CURRENT_SCN_ATTRIB, Long.toString(ts));
+Connection conn = DriverManager.connect(myUrl, props);
+conn.createStatement().execute("UPSERT INTO myTable VALUES ('a')");
+conn.commit();
+相当于:
+myTable.put(Bytes.toBytes('a'),ts);
+
+索引基础
+
+1、immutable Index
+原文：Immutable indexing targets use cases that are write once, append only; this is common in time-series data, where you log once, but read multiple times. In this case, the indexing is managed entirely on the client - either we successfully write all the primary and index data or we return a failure to the client. Since once written, rows are never updated, no incremental index maintenance is required making them perform very well. This reduces the overhead of secondary indexing at write time. However, keep in mind that immutable indexing are only applicable in a limited set of use cases.
+One restriction of immutable indexes is that rows from the data table may not be deleted. Instead, the only way to delete rows is to drop the entire data table.
+
+Immutable 索引适用于一次写入，数据只添加不修改的情况，例如时间序列数据。因为只需要一次写入，数据行不会更新，不需要额外的索引维护，所以性能非常好。
+
+
+CREATE TABLE my_table (k VARCHAR PRIMARY KEY, v1 VARCHAR, v2 VARCHAR , v3 VARCHAR) IMMUTABLE_ROWS=true;
+
+CREATE INDEX my_index ON my_table (v2 DESC, v1) INCLUDE (v3)
+
+2.Global Indexing (Mutable)
+原文：Global indexing targets read heavy, low write uses cases. With global indexes, all the performance penalties for indexes occur at write time. We intercept the data table updates on write (DELETE, UPSERT VALUES and UPSERT SELECT), build the index update and then sent any necessary updates to all interested index tables. At read time, Phoenix will select the index table to use that will produce the fastest query time and directly scan it just like any other HBase table. Note, however, if a column is referenced in a query that isn’t part of the index, the index will not be used for that query.
+全局索引适用于  高数据量读取，低数据量写入的情况。全局索引的消耗主要在索引写入的时候，在对数据表进行写操作的时候，同时更新所有的索引表。在读取的时候，将直接从索引表扫描读取数据，如果读取另外一个表一样。如果query中某个列在索引表中不存在，全局索引将不会用到。
+CREATE TABLE my_table (k VARCHAR PRIMARY KEY, v1 VARCHAR, v2 VARCHAR , v3 VARCHAR)
+CREATE INDEX my_index ON my_table (v2 DESC, v1) INCLUDE (v3);
+3.Local Indexing  (Mutable)
+原文： Local indexing targets *****write heavy*****, *****space constrained***** use cases. With local indexes index data and table data are co-reside at same server so no network overhead during writes and reads. Local indexes can be used even when the query isn’t fully covered i.e. Phoenix automatically retrieve the columns not in the index through point gets against the data table. Unlike global indexes all local indexes data of a table are stored in a separate shared table. At read time when the local index is used, every region must be examined for the data as the exact region location of index data cannot be predetermined which incurs some overhead.
+局部索引适用于大数据量写、空间受限的情况下。使用局部索引，索引数据和表数据将同时放在同一台server上，所以在读写的时候不会有网络通信的开销。如果query中某个列在索引表中不存在，局部索引也能用到。不同于全局索引，一个表的全部局部索引的数据保存在同一个共享表中。在读取的时候，每一个region 都必须检查数据，因为索引数据的确切的区域位置无法预先，确定这会增加一些系统开销。
+例子：
+CREATE TABLE my_table (k VARCHAR PRIMARY KEY, v1 VARCHAR, v2 VARCHAR , v3 VARCHAR)
+CREATE LOCAL INDEX my_index ON my_table (v2 DESC, v1) INCLUDE (v3);
+
+4****、不会使用到二级索引的情况
+创建表：create table usertable (id varchar primary key, firstname varchar, lastname varchar);
+创建全局索引：create index idx_name on usertable (firstname);
+检索：select id, firstname, lastname from usertable where firstname = 'foo';
+
+不会使用到索引 idx_name。若要使用到，必须这样：
+create idx_name on usertable (firstname) include(lastname);
+
+5****、不会使用主键索引情况：
+
+创建表：CREATE TABLE TEST (pk1 char(1) not null, pk2 char(1) not null, pk3 char(1) not null, non-pk varchar **CONSTRAINT PK PRIMARY KEY(pk1, pk2, pk3) **);
+不会使用到索引的检索：select * from test where pk2='x' and pk3='y'
+会使用到索引的检索：select * from test where pk1='x' and pk2='y'
+子查询
+1、IN 和 Not In 的子查询
+SELECT ItemName
+FROM Items
+WHERE ItemID IN
+(SELECT ItemID
+FROM Orders
+WHERE Date >= to_date('2013/09/02'));
+2、Exists 和Not Exists的子查询
+SELECT ItemName
+FROM Items i
+WHERE EXISTS
+(SELECT *
+FROM Orders
+WHERE Date >= to_date('2013/09/02')
+AND ItemID = i.ItemID);
+3、半连接、反连接
+见Join
+4、比较运算
+SELECT ID, Name
+FROM Contest
+WHERE Score >
+(SELECT avg(Score)
+FROM Contest)
+ORDER BY Score DESC;
+5、ANY/SOME/ALL 运算
+SELECT OrderID
+FROM Orders
+WHERE quantity >= ANY
+(SELECT max(quantity)
+FROM Orders
+GROUP BY ItemID);
+6、相关子查询
+SELECT PatentID, Title
+FROM Patents p
+WHERE FileDate <= ALL
+(SELECT FileDate
+FROM Patents
+WHERE Region = p.Region);
+7、多重嵌套
+SELECT ItemID, ItemName
+FROM Items i
+WHERE NOT EXISTS
+(SELECT *
+FROM Orders
+WHERE CustomerID IN
+(SELECT CustomerID
+FROM Customers
+WHERE Country = ‘Belgium’)
+AND Quantity < 1000
+AND ItemID = i.ItemID)
+OR ItemID != ALL
+(SELECT ItemID
+FROM Orders
+WHERE CustomerID IN
+(SELECT CustomerID
+FROM Customers
+WHERE Country = ‘Germany’)
+AND Quantity < 2000);
+8、衍生表
+SELECT m, count(*)
+FROM
+(SELECT max(x) m
+FROM a1
+GROUP BY name) AS t
+GROUP BY m
+ORDER BY count(*) DESC;
+多租户
+创建多租户表：
+CREATE TABLE base.event (tenant_id VARCHAR, event_type CHAR(1), created_date DATE, event_id BIGINT)
+MULTI_TENANT=true;
+连接到某租户的数据库表：
+Properties props = new Properties();
+props.setProperty("TenantId", "Acme");
+Connection conn = DriverManager.getConnection("localhost", props);
+在特定租户连接的情况下，以下语句只创建特定租户的视图
+CREATE VIEW acme.event AS
+SELECT * FROM base.event;
+CREATE VIEW acme.login_event AS
+SELECT * FROM base.event
+WHERE event_type='L';
+Array类型
+creating a table:
+CREATE TABLE regions (
+region_name VARCHAR PRIMARY KEY,
+zips VARCHAR ARRAY[10],
+CONSTRAINT pk PRIMARY KEY (region_name));
+Insert
+UPSERT INTO regions(region_name,zips)
+VALUES('SF Bay Area',ARRAY['94115','94030','94125']);
+select：
+SELECT zip[1] FROM regions WHERE region_name = 'SF Bay Area';
+SELECT region_name FROM regions WHERE zip[1] = '94030' OR zip[2] = '94030' OR zip[3] = '94030';
+SELECT region_name FROM regions WHERE zip[1] = '94030' OR zip[2] = '94030' OR zip[3] = '94030';
+分页查询
+组合使用order  by,   > ,   LIMIT   :
+SELECT title, author, isbn, description
+FROM library
+WHERE published_date > 2010
+AND (title, author, isbn) > (?, ?, ?)
+ORDER BY title, author, isbn
+LIMIT 20
+Skip Scan
+SELECT * from T
+WHERE ((KEY1 >='a' AND KEY1 <= 'b') OR (KEY1 > 'c' AND KEY1 <= 'e'))
+AND KEY2 IN (1, 2)
+The List<List<KeyRange>> for SkipScanFilter for the above query would be [ [ [ a - b ], [ d - e ] ], [ 1, 2 ] ] where [ [ a - b ], [ d - e ] ] is the range for KEY1and [ 1, 2 ] keys for KEY2.
+跟踪Tracing
+只支持Hadoop2
+配置 hadoop-metrics2-phoenix.properties
+Sample from all the sources every 10 seconds
+*.period=10
+Write Traces to Phoenix
+##########################
+ensure that we receive traces on the server
+phoenix.sink.tracing.class=org.apache.phoenix.trace.PhoenixMetricsSink
+Tell the sink where to write the metrics
+phoenix.sink.tracing.writer-class=org.apache.phoenix.trace.PhoenixTableMetricsWriter
+Only handle traces with a context of "tracing"
+phoenix.sink.tracing.context=tracing
+配置 hadoop-metrics2-hbase.properties
+ensure that we receive traces on the server
+hbase.sink.tracing.class=org.apache.phoenix.trace.PhoenixMetricsSink
+Tell the sink where to write the metrics
+hbase.sink.tracing.writer-class=org.apache.phoenix.trace.PhoenixTableMetricsWriter
+Only handle traces with a context of "tracing"
+hbase.sink.tracing.context=tracing
+配置 hbase-site.xml
+<configuration>
+<property>
+<name>phoenix.trace.frequency</name>
+<value>always</value>
+</property>
+</configuration>
+<property>
+<name>phoenix.trace.statsTableName</name>
+<value><your custom tracing table name></value>
+</property>
+The tracing table is initialized via the ddl:
+CREATE TABLE SYSTEM.TRACING_STATS (
+trace_id BIGINT NOT NULL,
+parent_id BIGINT NOT NULL,
+span_id BIGINT NOT NULL,
+description VARCHAR,
+start_time BIGINT,
+end_time BIGINT,
+hostname VARCHAR,
+tags.count SMALLINT,
+annotations.count SMALLINT,
+CONSTRAINT pk PRIMARY KEY (trace_id, parent_id, span_id)
+统计收集
+统计收集有助于提升query性能。
+命令：
+UPDATE STATISTICS my_table
+等效于
+UPDATE STATISTICS my_table ALL
+如果只收集index或者column
+UPDATE STATISTICS my_table INDEX
+UPDATE STATISTICS my_table COLUMNS
+参数配置
+phoenix.stats.guidepost.width 默认104857600 (100 MB)
+phoenix.stats.guidepost.per.region
+phoenix.stats.updateFrequency 默认900000 (15 mins)
+phoenix.stats.minUpdateFrequency 默认7.5 mins
+phoenix.stats.useCurrentTime  默认true
+mutable 和 immutable 表区别
+分别创建表：
+create table** my_mutable** (id varchar not null primary key, cf1.a varchar , cf1.b varchar, cf2.c varchar, cf2.d varchar) ;
+create table my_immutable (id varchar not null primary key, cf1.a varchar , cf1.b varchar, cf2.c varchar, cf2.d varchar) immutable_rows=true ;
+分别创建索引：
+create index index_my_mutable on** my_mutable**(a,c) include (b,d);
+create index** index_my_immutable** on my_immutable(a,c) include (b,d);
+分别插入数据
+upsert into my_mutable values ('1000001','a1','b1','c1','d1');
+upsert into my_mutable values ('1000001','a2','b2','c2','d2');
+upsert into my_mutable values ('1000001','a3','b3','c3','d3');
+upsert into my_immutable values ('1000001','a1','b1','c1','d1');
+upsert into my_immutable values ('1000001','a2','b2','c2','d2');
+upsert into my_immutable values ('1000001','a3','b3','c3','d3');
+查看数据：
+select * from my_mutable ;
+|     ID            |     A      |     B        |     C       |     D        |
+| 1000001    | a3         | b3         | c3         | d3          |
+select * from my_immutable ;
+|     ID            |     A      |     B        |     C      |     D        |
+| 1000001    | a1         | b1         | c1         | d1         |
+| 1000001    | a2         | b2         | c2         | d2         |
+| 1000001    | a3         | b3         | c3         | d3         |
+
+select * from** index_my_mutable** ;
+|   CF1:A    |   CF2:C    |    :ID            |   CF1:B    |   CF2:D    |
+| a3            | c3              | 1000001    | b3            | d3             |
+select * from** index_my_immutable** ;
+|   CF1:A    |   CF2:C    |    :ID            |   CF1:B    |   CF2:D    |
+| a1             | c1             | 1000001    | b1            | d1             |
+| a2             | c2             | 1000001    | b2            | d2             |
+| a3             | c3             | 1000001    | b3            | d3             |
+
+Global 和　Local 索引。
+1****、创建表：
+create table **immutable_local **(id varchar not null primary key, cf1.a varchar, cf1.b varchar, cf2.c varchar, cf2.d varchar ) immutable_rows=true;
+create table **immutable_global **(id varchar not null primary key, cf1.a varchar, cf1.b varchar, cf2.c varchar, cf2.d varchar ) immutable_rows=true;
+create table **mutable_local **(id varchar not null primary key, cf1.a varchar, cf1.b varchar, cf2.c varchar, cf2.d varchar ) immutable_rows=false;
+create table **mutable_global **(id varchar not null primary key, cf1.a varchar, cf1.b varchar, cf2.c varchar, cf2.d varchar ) immutable_rows=false;
+2****、创建索引：
+create  index index_mutable_global on mutable_global(a,c) include(b);    成功
+create **local **index index_mutable_local on mutable_local(a,c) include(b);  成功
+create  index** index_immutable_global** on immutable_global(a,c) include(b);  成功
+create local index index_immutable_local on immutable_local(a,c) include(b);  失败，immutable 表无法创建Local .  Error: ERROR 1048 (43A04): Local indexes aren't allowed on tables with immutable rows. tableName=INDEX_IMMUTABLE_LOCAL (state=43A04,code=1048)
+3.****插入数据
+upsert into mutable_global values ('100001','a1','b1','c1','d1');
+upsert into mutable_global values ('100002','a2','b2','c2','d2');
+upsert into mutable_local values ('100001','a1','b1','c1','d1');
+upsert into mutable_local values ('100002','a2','b2','c2','d2');
+upsert into immutable_global values ('100001','a1','b1','c1','d1');
+upsert into immutable_global values ('100002','a2','b2','c2','d2');
+
+4****、测试检索
+检索中包含了列d,  此列不包含在索引中。
+a****、****immutable 表使用的时全表扫描，没有使用索引
+explain select a,b,c,d from immutable_global where a='a1';
+CLIENT PARALLEL 1-WAY **FULL SCAN **OVER IMMUTABLE_GLOBAL
+SERVER FILTER BY CF1.A = 'a1'
+b、mutable 表使用的时全表扫描，没有使用****Global****索引
+explain select a,b,c,d from mutable_global where a='a1';
+CLIENT PARALLEL 1-WAY** FULL SCAN** OVER MUTABLE_GLOBAL
+SERVER FILTER BY CF1.A = 'a1'
+c、mutable 表使用了 LOCAL 索引
+explain select a,b,c,d from mutable_local where a='a1';
+CLIENT PARALLEL 1-WAY RANGE SCAN OVER _LOCAL_IDX_MUTABLE_LOCAL [-32768,'a1'] |
+CLIENT MERGE SORT
+5****、****Local 索引细节
+索引定义：create local index index_mutable_local on mutable_local(a,c) include(b);
+索引内容：
+
+a****、使用部分索引：索引组合的第一个
+explain select a,b,c,d from mutable_local where a='a1' ;
+
+CLIENT PARALLEL 1-WAY **RANGE SCAN **OVER _LOCAL_IDX_MUTABLE_LOCAL [-32768,'a1']
+CLIENT MERGE SORT
+
+b****、使用部分索引：索引组合的第二个
+explain select a,b,c,d from mutable_local where c='c1' ;
+CLIENT PARALLEL 1-WAY RANGE SCAN OVER _LOCAL_IDX_MUTABLE_LOCAL [-32768]
+**SERVER FILTER BY **C = 'c1'
+CLIENT MERGE SORT
+
+c****、使用部分索引：****include****的部分
+explain select a,b,c,d from mutable_local where b='b1' ;
+CLIENT PARALLEL 1-WAY** RANGE SCAN** OVER _LOCAL_IDX_MUTABLE_LOCAL [-32768]
+SERVER FILTER BY CF1.B = 'b1'
+CLIENT MERGE SORT
+
+d****、使用全部索引
+explain select a,b,c,d from mutable_local where a='a1' and c='c1' ;
+CLIENT PARALLEL 1-WAY **RANGE SCAN **OVER _LOCAL_IDX_MUTABLE_LOCAL [-32768,'a1','c1']
+CLIENT MERGE SORT
+调换a和c的位置，phoenix会自动优化。
+explain select a,b,c,d from mutable_local where c='c1' and a='a1' ;
+CLIENT PARALLEL 1-WAY RANGE SCAN OVER _LOCAL_IDX_MUTABLE_LOCAL [-32768,'a1','c1']
+CLIENT MERGE SORT
+e****、使用索引中全部字段
+explain select a,b,c,d from mutable_local where c='c1' and b='b1' and a='a1' ;
+CLIENT PARALLEL 1-WAY RANGE SCAN OVER _LOCAL_IDX_MUTABLE_LOCAL [-32768,'a1','c1']
+SERVER FILTER BY CF1.B = 'b1'
+CLIENT MERGE SORT
+f****、使用了不存在于索引中的字段。
+explain select a,b,c,d from mutable_local where a='a1' and d='d1';
+CLIENT PARALLEL 1-WAY** FULL SCAN** OVER MUTABLE_LOCAL
+SERVER FILTER BY (CF1.A = 'a1' AND CF2.D = 'd1')
+g. 在****Select  ****中不要使用*********，*********会导致全表扫描
+explain select **a,b,c,d **from MUTABLE_LOCAL where a='a';
+CLIENT PARALLEL 1-WAY RANGE SCAN OVER _LOCAL_IDX_MUTABLE_LOCAL [-32768,'a']
+CLIENT MERGE SORT
+explain select * from MUTABLE_LOCAL where a='a';
+** CLIENT PARALLEL 1-WAY FULL SCAN OVER MUTABLE_LOCAL
+SERVER FILTER BY CF1.A = 'a' **
+===========================
+ CREATE INDEX IDX_T_EXTENSION_ALL_DATAS_SHOW_EMAIL ON T_EXTENSION_ALL_DATAS_SHOW(EMAIL)
+
+ select seq_id from T_EXTENSION_ALL_DATAS_SHOW where show_date='2018-11-24' and email='wjc@45555.com' order by seq_id desc limit 1;
+
+ CREATE INDEX IDX_T_EXTENSION_ALL_DATAS_SHOW_CAM_SITE ON T_EXTENSION_ALL_DATAS_SHOW(CAM_SITE);
+ 999,999 rows affected (59.081 seconds);
+
+explain select seq_id from T_EXTENSION_ALL_DATAS_SHOW where show_date='2018-11-24' and cam_site='cam4' and toy='ambi' order by seq_id desc limit 1;
++------------------------------------------------------------------------------------------------------------------------------+-----------------+----------------+----------------+
+|                                                             PLAN                                                             | EST_BYTES_READ  | EST_ROWS_READ  |  EST_INFO_TS   |
++------------------------------------------------------------------------------------------------------------------------------+-----------------+----------------+----------------+
+| CLIENT 2-CHUNK 639317 ROWS 314572822 BYTES PARALLEL 1-WAY REVERSE RANGE SCAN OVER T_EXTENSION_ALL_DATAS_SHOW ['2018-11-24']  | 314572822       | 639317         | 1543044967313  |
+|     SERVER FILTER BY (CAM_SITE = 'cam4' AND TOY = 'ambi')                                                                    | 314572822       | 639317         | 1543044967313  |
+|     SERVER 1 ROW LIMIT                                                                                                       | 314572822       | 639317         | 1543044967313  |
+| CLIENT 1 ROW LIMIT;
+
+
+CREATE INDEX IDX_T_EXTENSION_ALL_DATAS_SHOW_CAM_SITE_TOY ON T_EXTENSION_ALL_DATAS_SHOW(CAM_SITE,TOY);
+999,999 rows affected (56.776 seconds)
+
+
+同一张表，索引数量不得超过10，索引表越多，插入数据越慢！！
+
+1、从需求方面 (大数据查询，不适合太多条件的查询)。无意义的查询条件，统统PK掉。
+
+     需要规定一个必填的查询字段，比如最通用的：时间(yyyy-MM-dd)..
+
+2、从表设计方面，row key可以是联合主键。可以利用这点，减少二级索引数量。比如show_date 就是主键。
+
+3、从逻辑方面，比如我需要这几个查询条件，需要几个二级索引？？
+
+时间、邮箱、网站、玩具
+
+实际上，我只要4个二级索引，就够了。
+
+时间走 rowkey这就不说了。
+
+如果用户输入 时间、邮箱、玩具，那么怎么处理？ 耗时也挺长的41秒。
+
+
+phoenix ，通常是会自动选择最优的二级索引，但有时它并不是很聪明。
+
+这个时候就需要我们告诉它，应该使用哪个二级索引！！
+
+ select /*+ INDEX(T_EXTENSION_ALL_DATAS_SHOW IDX_T_EXTENSION_ALL_DATAS_SHOW_EMAIL) */ t1.seq_id as seq_id from (select seq_id,toy from T_EXTENSION_ALL_DATAS_SHOW where show_date='2018-11-24' and email='wjc@45555.com') t1 where t1.toy='ambi' order by t1.seq_id desc limit 1;
++---------+
+| SEQ_ID  |
++---------+
+| 45555   |
++---------+
+1 row selected (0.017 seconds)
+0: jdbc:phoenix:192.168.199.154> explain select /*+ INDEX(T_EXTENSION_ALL_DATAS_SHOW IDX_T_EXTENSION_ALL_DATAS_SHOW_EMAIL) */ t1.seq_id as seq_id from (select seq_id,toy from T_EXTENSION_ALL_DATAS_SHOW where show_date='2018-11-24' and email='wjc@45555.com') t1 where t1.toy='ambi' order by t1.seq_id desc limit 1;
++---------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------+----------------+----------------+
+|                                                                          PLAN                                                                           | EST_BYTES_READ  | EST_ROWS_READ  |  EST_INFO_TS   |
++---------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------+----------------+----------------+
+| CLIENT 1-CHUNK 1182604 ROWS 314572800 BYTES PARALLEL 1-WAY REVERSE RANGE SCAN OVER IDX_T_EXTENSION_ALL_DATAS_SHOW_EMAIL ['wjc@45555.com','2018-11-24']  | 314572800       | 1182604        | 1543050902166  |
+|     SERVER FILTER BY "TOY" = 'ambi'                                                                                                                     | 314572800       | 1182604        | 1543050902166  |
+|     SERVER 1 ROW LIMIT                                                                                                                                  | 314572800       | 1182604        | 1543050902166  |
+| CLIENT 1 ROW LIMIT                                                                                                                                      | 314572800       | 1182604        | 1543050902166  |
++---------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------+----------------+----------------+
+4 rows selected (0.048 seconds)
+
+0: jdbc:phoenix:192.168.199.154> select t1.seq_id from T_EXTENSION_ALL_DATAS_SHOW t1 inner join (select show_date,email,seq_id,toy from T_EXTENSION_ALL_DATAS_SHOW where show_date='2018-11-24' and email='wjc@45555.com') t2 on(t1.show_date=t2.show_date and t1.seq_id= t2.seq_id) where t1.toy='ambi' order by t1.seq_id desc limit 1;
++------------+
+| T1.SEQ_ID  |
++------------+
+| 45555      |
++------------+
+1 row selected (1.171 seconds)
+
+
+explain select t1.seq_id from T_EXTENSION_ALL_DATAS_SHOW t1 inner join (select show_date,email,seq_id,toy from T_EXTENSION_ALL_DATAS_SHOW where show_date='2018-11-24' and email='wjc@45555.com') t2 on(t1.show_date=t2.show_date and t1.seq_id= t2.seq_id) where t1.toy='ambi' order by t1.seq_id desc limit 1;
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------+----------------+----------------+
+|                                                                                PLAN                                                                                 | EST_BYTES_READ  | EST_ROWS_READ  |  EST_INFO_TS   |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------+----------------+----------------+
+| CLIENT 1-CHUNK PARALLEL 1-WAY RANGE SCAN OVER IDX_T_EXTENSION_ALL_DATAS_SHOW_TOY ['ambi']                                                                           | 314572800       | 1182604        | 1543050902166  |
+|     SERVER FILTER BY FIRST KEY ONLY                                                                                                                                 | 314572800       | 1182604        | 1543050902166  |
+|     SERVER TOP 1 ROW SORTED BY ["T1.:SEQ_ID" DESC]                                                                                                                  | 314572800       | 1182604        | 1543050902166  |
+| CLIENT MERGE SORT                                                                                                                                                   | 314572800       | 1182604        | 1543050902166  |
+| CLIENT LIMIT 1                                                                                                                                                      | 314572800       | 1182604        | 1543050902166  |
+|     PARALLEL INNER-JOIN TABLE 0 (SKIP MERGE)                                                                                                                        | 314572800       | 1182604        | 1543050902166  |
+|         CLIENT 1-CHUNK 1182604 ROWS 314572800 BYTES PARALLEL 1-WAY ROUND ROBIN RANGE SCAN OVER IDX_T_EXTENSION_ALL_DATAS_SHOW_EMAIL ['wjc@45555.com','2018-11-24']  | 314572800       | 1182604        | 1543050902166  |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------+----------------+----------------+
+7 rows selected (0.051 seconds)
+
+
+
+
+
+由于phoenix本质上在HBase读写数据，所以HBase集群的性能影响是最大的，一般使用多节点(一般hadoop集群节点要大于等于5个)、SSD、更大的内存与缓存和对phoenix/hbase/hadoop配置参数进行调优能获得更大性能的提升。下面列举一些针对phoenix的优化措施：
+
+主键：主键对应HBase的row key，HBase会把相近的row key放到相同的region里，如果选择的主键是单调递增的，那么某个region就会变成热点，写入的性能会变差，这种情况需要在建表的使用SALT_BUCKETS=N来自动对数据分片。
+优化读：使用全局索引，这会对写入的速度有一定影响。查询时注意使用exlain来看执行计划是否使用了索引。
+优化写：使用本地索引，建表时预先指定好分区方案(pre-split)。
+数据是否可变：如果数据只是写入，以后不会变更，可以在建表的时候指定IMMUTABLE_ROWS=true，这样可以提高写入的性能。
+适当使用查询hint来优化执行计划：用explain查看执行计划，用hint来优化。支持的语法见hinting。
+
+============
+
+1. SALT_BUCKETS
+
+
+    HBASE建表之初默认一个region，当写入数据超过region分裂阈值时才会触发region分裂。我们可以通过SALT_BUCKETS方法加盐，在表构建之初就对表进行预分区。
+
+    SALT_BUCKETS值的范围是1~256（2的8次方），一般将预分区的数量设置为0.5～1 倍核心数。
+
+    加盐的原理是在原始的rowkey前加上一个byte，并填充由rowkey计算得出的hash值，使得原本连续的rowkeys被均匀打散到多个region中，有效地解决了读写热点问题。
+
+    较多的region同时也增加了表读写并行度，从而提升了HBase表的读写效率。
+
+#表指定分区数
+CREATE TABLE test_salt
+ (
+  hrid         varchar not null primary key,
+  parentid     bigint,
+  departmentid varchar
+ ) SALT_BUCKETS=40;
+
+
+#索引指定分区数
+(索引不指定预分区数时，其默认分区数与表保持一致)
+CREATE INDEX idx_test_salt_departmentid ON TESTN(departmentid) SALT_BUCKETS=20;
+
+
+ 加盐原理图解
+
+
+2. Pre-split
+    除了使用加盐直接指定分区数外，我们也可以使用split on手动设置分区。这种方法同样是在构建之初就对表进行预分区，较多的region能够增加hbase的并行度，从而提升读取、写入效率。由于对rowkey不引入额外的byte，因此不会改变rowkey的原始顺序。
+
+#对表指定五个分区
+CREATE TABLE test_split
+ (
+  hrid         varchar,
+  parentid     bigint,
+  departmentid varchar
+CONSTRAINT my_pk PRIMARY KEY (departmentid, hrid))
+SPLIT ON ('market','device','develop','sale');
+
+
+3. 分列族
+    由于HBase表的不同列族是分开存储，因此把相关性大的列放在同一个列族，能够减少数据检索时扫描的数据量，从而提升读的效率。
+
+#对列指定a、b两个列族
+CREATE TABLE test_cf
+ (
+  a.hrid         varchar not null primary key,
+  a.parentid     bigint,
+  b.departmentid varchar
+ );
+
+4. 使用压缩
+    在数据量大的表上可以使用压缩算法来减少存储占用空间，从而提高性能 。常用的压缩方法有GZ，lzo等。
+
+#对表实施GZ压缩
+CREATE TABLE test_compress
+ (
+  hrid         varchar not null primary key,
+  parentid     bigint,
+  departmentid varchar
+ ) COMPRESSION='GZ'
+
+
+5. 二级索引
+    以Phoenix的全局索引为例，对departmentid建立全局索引，实际上是建立了一张索引表，索引表的rowkey由departmentid与原表rowkey拼接而来。由于departmentid是索引表rowkey的主维度，因此能够快速被查找并获取到对应的原表rowkey，再通过原表rowkey可以从原表中快速获取数据。
+
+#建表
+CREATE TABLE test_index
+ (
+  hrid         varchar not null primary key,
+  parentid     bigint,
+  departmentid varchar
+ );
+
+#对departmentid建立全局索引
+CREATE INDEX idx_test_index_departmentid ON test_index(departmentid);
+
+
+6.参数优化
+    根据集群配置情况设置合理参数有助于优化HBase性能，可以在hbase-site.xml里配置以下参数
+
+1. index.builder.threads.max （Default: 10）
+   为主表更新操作建立索引的最大线程数
+
+2. index.writer.threads.max（Default: 10）
+   将索引写入索引表的最大线程数
+
+3. hbase.htable.threads.max（Default: 2,147,483,647）
+   索引表写入数据的最大线程数
+
+4. index.tablefactory.cache.size（Default: 10）
+   缓存10个往索引表写数据的线程
+
+5. index.builder.threads.keepalivetime（Default: 60）
+   为主表更新操作建立索引的线程的超时时间
+
+6. index.writer.threads.keepalivetime（Default: 60）
+   将索引写入索引表的线程的超时时间
+
+7. hbase.htable.threads.keepalivetime（Default: 60）
+   索引表写入数据的线程的超时时间
+
+一．建表优化
+Salting 翻译成中文是加盐的意思，本质是在hbase的rowkey的byte数组的第一个字节位置设定一个系统生成的byte值， 这个byte值是由主键生成rowkey的byte数组做一个哈希算法，计算得来的。Salting之后可以把数据分布到不同的region上，这样有利于phoenix并发的读写操作。 示例：CREATE TABLE TEST (HOST VARCHAR NOT NULL PRIMARY KEY, DESCRIPTION VARCHAR) SALT_BUCKETS=16
+Pre-split 这个就是HBase的预分区了，在建phoenix表时，可以精确的指定要根据什么值来做预分区 示例： CREATE TABLE TEST (HOST VARCHAR NOT NULL PRIMARY KEY, DESCRIPTION VARCHAR) SPLIT ON ('CS','EU','NA')
+使用多个列族，在创建phoenix表是可以指定列所在的列族 示例： CREATE TABLE TEST (MYKEY VARCHAR NOT NULL PRIMARY KEY, A.COL1 VARCHAR, A.COL2 VARCHAR, B.COL3 VARCHAR)
+在数据量大的表上使用压缩算法来提高性能 GZ，lzo等 示例： CREATE TABLE TEST (HOST VARCHAR NOT NULL PRIMARY KEY, DESCRIPTION VARCHAR) COMPRESSION='GZ'
+
+二．二级索引
+Phoenix的二级索引从2.1版本开始支持可变和不可变（数据插入之后不可更新）数据了，之前的版本只支持不可变的数据，我们现在使用的版本是2.2.2是支持二级索引的，我们可以做一些尝试。
+
+可以通过explain select … 来看phoniex在执行sql时是否用上了二级索引。
+
+三．并行
+Phoenix会将一个聚合查询分成多个Scan，然后将这些Scan分配给phoenix自定义的hbase协处理器，这些协处理器可以在服务器端并行执行来提高查询性能。平衡的拆分表是Phoenix获得高效查询的最重要因素之一，这包括将相等大小的分区平均分配到不同的region server上。这个工具http://www.sentric.ch/blog/hbase-split-visualisation-introducing-hannibal可以帮助我们监控hbase表分区的情况。表中的数据在各个region sever上均匀分布可以保证每一个phoenix线程处理的数据量相当，这样就可以减少查询的等待时间。
+
+在客户端可以通过phoenix.query.targetConcurrency 和 phoenix.query.maxConcurrency 来控制查询如何来拆分扫描。并行查询最好可以将查询scan的切分和表数据的region切分对齐。如果扫描很不均匀，就需要用多个线程来处理数据量较大的分区扫描。
+
+并行执行扫描时的切分点定义如下，我们假设：
+t 是目标的并发数
+m 是最大的并发数
+r 是我们要扫描的分区数
+if r >= t
+        使用表的region边界
+Else if r/2 > t
+    将每个region都拆分成s份，s满足公式： s = max(x)  x满足 s * x < m
+Else
+    将每个region拆分成s份，s满足公式：s = max(x)  x满足 s * x < t
+可以根据客户端机器的内核数和集群的大小，来调大phoenix.query.threadPoolSize, phoenix.query.queueSize, phoenix.query.maxConcurrency, 和 phoenix.query.targetConcurrency的值，允许更多的线程做并行的查询，来降低延迟。
+
+但是这个方法也并非没有限制，最大的问题是phoenix没有足够的信息来拆分region。 如果查询结果跨越很多region，这没有问题，因为region中总会有一些大小相差不多的region，然而如果查询仅仅涉及到少数几个region，可能就会有问题
+
+
+
+-----------------
+
+Phoenix具体是什么呢，其本质是用Java写的基于JDBC API操作HBase的开源SQL引擎。它有如下几个功能特性：
+
+通过JDBC API实现了大部分的java.sql接口，包括元数据API
+DDL支持：通过CREATE TABLE、DROP TABLE及ALTER TABLE来添加/删除
+DML支持：用于逐行插入的UPSERT VALUES,用于相同或不同表之间大量数据传输的UPSERT SELECT,用于删除行的DELETE
+事务支持：通过客户端的批处理实现的有限的事务支持(beta测试中)
+二级索引支持：
+遵循ANSI SQL标准
+当前使用Phoenix的公司有很多，如下图所示：
+
+最新版本对HBase、Hadoop等有严格版本控制，对于已经用上HBase的业务来说要升级HBase版本适配Phoenix代价太大
+与HBase强相关，作为HBase中的一个组件启动，HBase元数据容易遭到破坏
+
+
+我觉得Phoenix总体思路还是很不错的，但本身太冒进，急于集成新功能，但现有的功能所存在的问题却并未有很好的解决方案，导致版本很多，但没有一个版本能放心在生产环境使用。
+
+
+二、Phoenix架构
+上面说到，Phoenix是以JDBC驱动方式嵌入到HBase中的，在部署时只有一个包，直接放HBase的lib目录，逻辑构架如下：
+
+![3]
+图3.phoenix_structure
+从图中可看出，每个RS结点上，都会有一个Phoenix协处理器来处理每个表、每个region的数据，应用端通过Phoneix客户端与HBase客户端打交道，从而实现Sql化访问HBase数据。下面先来说下Coprocessor。
+
+2.1 Coprocessor
+HBase的协处理器主要受Google BigTable的影响，具体可参考Dean-Keynote-Ladis2009-page 66-67。 对于HBase来说，引入Coprocessor也是为了提供更好的并行计算能力，而无需依赖于Hadoop的MapReduce。同时，基于Coprocessor，可以更好的实现二级索引、复杂过滤规则、权限访问控制等更接地气的特性。Coprocessor有两种类型，Observer和EndPoint。
+
+前者Observer，类似于RDBMS的触发器，主要作用于RegionServer服务端，通过重载Coprocessor框架的Upcall函数插入用户自己的逻辑，这些逻辑只有在固定的事件发生时才会被触发调用执行，主要有三类hook接口：RegionObserver、WALObserver和MasterObserver。RegionObserver提供了一些数据层操作事件的hook,如Put、Get、Delete和Scan等，在每个操作发生或结束时，会触发调用一些前置的Hook(pre+操作,如preGet)或后置的Hook(post+操作,如postGet)；WALObserver提供了WAL相关的Hook；MasterObserver提供了HMaster相关的Hook。
+
+后者EndPoint类似于RDBMS的存储过程，主要作用于客户端，客户端可以调用这些EndPoint执行一段Server端代码，并将Server端代码结果返回给客户端进一步处理，如常见聚合操作，找一张大表某个字段的最大值，如果不用Coprocesser则只能全表扫描，在客户端遍历所有结果找出最大值，且只能利用有限的客户端资源进行迭代计算，无法利用上HBase的并发计算能力；如果用了Coprocessor,则client端可在RegionServer端执行统计每个Region最大值的逻辑，并将Server端结果返回客户端，再找出所有Server端所返回的最大值中的最大值得到最终结果，很明显，这种方式尽量将统计执行下放到Server端，Client端只执行一些最后的聚合，大幅提高了统计效率;还有一个很常见的需求可能就是统计表的行数，其逻辑和上面一样,具体可参考Coprocessor Introduction,在这里就不展开了，后面有机会针对Coprocessor单独展开介绍。
+
+2.2 Phoenix 实现原理
+Phoenix的SQL实现原理主要也是基于一系列的Scan操作来完成，Scan是HBase的批量扫描过程。这一系列的Scan操作也是分散到各台RegionServer上通过Coprocessor来完成。主要用到的是RegionObserver，通过RegionObserver在postScannerOpen Hook中将RegionScanner替换成支持聚合操作的定制化Scanner，在真正执行聚合时，会通过自定的Scan属性传递给RegionScanner，在这个Scan中也可加入一些过滤规则，尽量减少返回Client的结果。
+
+2.3 Phoenix 数据模型
+Phoenix在数据模型上是将HBase非关系型形式转换成关系型数据模型 ，如下图所示
+6
+
+图4.Phoenix Data Model
+对于Phoenix来说，HBase的rowkey会被转换成primary key，column family如果不指定则为0否则字段名会带上，qualifier转换成表的字段名，如下是创建一个Phoenix表的例子，以创建表test为例，主键为id即为HBase的rowkey, column family为i, qualifier为name和age。
+
+create table "test" ("id" varchar(20) primary key,"i"."name" varchar(20) ,"i"."age" varchar(20));
+Phoenix还支持组合primary key，即由多个字段联合组成主键，对于组合主键来说，在HBase底层会把主键的多个字段组合成rowkey显示，其它字段为HBase的qualifier显示。如上面test表，假设id和name为主键，创建表语句又变成:
+
+create table "test" ("id" varchar(20), "name" varchar(20) ,"i"."age" varchar(20),constraint pk PRIMARY KEY("id","name"));
+这样，假设插入一条数据:如下所示
+
+upsert into "test" values ('1','a','23');
+在HBase中，rowkey即为"1a", i:age 为 23。这里，可能大家对双引号有点疑问，对于Phoenix来说，加了引号的话，不管是表还是字段名，会变成大小写敏感，不加的话，会统一转换成大写字母。
+
+2.4 Phoenix所支持的语法
+目前Phoenix已经支持关系型数据库的大部分语法，如下图所示：
+7
+
+图4.Phoenix 语法
+具体语法用法可参考Phoenix官网,写得比较详细。
+
+三、 Phoenix二级索引
+我相信，二级索引这个特性应该是大部分用户引入Phoenix主要考虑的因素之一。HBase因其历史原因只支持rowkey索引，当使用rowkey来查询数据时可以很快定位到数据位置。现实中，业务查询需求条件往往比较复杂，带有多个查询字段组合，如果用HBase查的话，只能全表扫描进行过滤，效率很低。而Phoenix支持除rowkey外的其它字段的索引创建，即二级索引，查询效率可大幅提升。
+
+3.1 索引类别
+3.1.1 Covered Indexes
+从字面上可理解为覆盖索引，什么意思呢，即索引表中就包含你想要的全部字段数据，这样就只需要通过访问索引表而无需访问主表就能得到数据。创建方式如下：
+
+create index my_index on test (v1) include(v2);
+当执行select v2 from test where v1='...'时，就只会查找索引表数据，不会去主表扫描。
+
+3.1.2 Global Indexes
+全局索引适用于读多写少的场景。全局索引在写数据时会消耗大量资源，所有对数据的增删改操作都会更新索引表，而索引表是分布在各个结点上的，性能会受到影响。好处就是，在读多的场景下如果查询的字段用到索引，效率会很快，因为可以很快定位到数据所在具体结点region上，对于写性能就很慢了，因为每写一次，需要更新所有结点上的索引表数据。创建方式如下：
+
+create index my_index on test (v1);
+如果执行`select v2 from test where v1='...'， 实际是用不上索引的，因为v2不在索引字段中，对于全局索引来说，如果查询的字段不包含在索引表中，则还是会去全表扫描主表。
+
+3.1.3 Local Indexes
+局部索引适用于写多读少场景，和全局索引类似，Phoenix会在查询时自动选择是否使用索引。如果定义为局部索引，索引表数据和主表数据会放在同一regionserver上，避免写操作时跨节点写索引表带来的额外开销(如Global Indexes)。当使用局部索引查询时，即使查询字段不是索引字段，索引表也会正常使用，这和Global Indexes是有区别的。在4.8版本之前，所有局部索引数据存放在一个单独的共享表中，4.8之后是存储在主表的一个独立的列族中。因为是局部索引，所以在client端查询使用索引时，需要扫描每个结点上的索引表以得到数据所在具体region位置，当region多时，查询时耗会很高，所以查询性能比较低，适合读少写多场景。创建局部索引方式：
+
+create local index my_index on test (v1);
+3.2 Mutable Indexing 和Immutable Indexing
+
+
+3.2.1 IMMutable Indexing
+不可变索引主要创建在不可变表上，适用于数据只写一次不会有Update等操作，在什么场景下会用到不可变索引呢，很经典的时序数据:write once read many times。在这种场景下，所有索引数据（primary和index)要么全部写成功，要么一个失败全都失败返回错误给客户端。不可变索引用到场景比较少，下面是创建不可变索引的方式：
+
+create table test (pk VARCHAR primary key,v1 VARCHAR, v2 VARCHAR) IMMUTABLE_ROWS=true;
+即在创建表时指定IMMUTABLE_ROWS参数为true，默认这个参数为false。如果想把不可变索引改为可变索引，可用alter修改：
+
+alter table test set IMMUTABLE_ROWS=false;
+
+
+3.2.2 Mutable Indexing
+可变索引意思是在修改数据如Insert、Update或Delete数据时会同时更新索引。这里的索引更新涉及WAL，即主表数据更新时，会把索引数据也同步更新到WAL，只有当WAL同步到磁盘时才会去更新实际的primary/index数据，以保证当中间任何一个环节异常时可通过WAL来恢复主表和索引表数据。
+
+四、性能
+在官网，有作一个性能测试，主要是将Phoenix和Hive、Impala作一个对比。
+先来看下和Hive的性能对比，测试基准如下：
+
+ select count(1) from table over 10M and 100M rows. Data is 5 narrow columns. Number of Region Servers: 4 (HBase heap: 10GB, Processor: 6 cores @ 3.3GHz Xeon)
+测试结果：
+9
+
+图6.Phoenix性能对比
+从图中可看出，带有Key过滤的Phoenix耗时最少，不带Key过滤的Phoenix和基于HDFS的Hive性能差不多，直接基于HBase的Hive性能最差。
+
+再来看下和Impala的对比，测试基准如下：
+
+select count(1) from table over 1M and 5M rows. Data is 3 narrow columns. Number of Region Server: 1 (Virtual Machine, HBase heap: 2GB, Processor: 2 cores @ 3.3GHz Xeon)
+测试结果：
+10
+
+图7.Phoenix性能对比Impala
+从图中可看出，Impala执行时间比Phoenix长很多，原因大概有几点：Impala基于内存进行并行计算，容易内存吃紧，对HBase和HDFS的支持也还远远不够，性能比较差。
+
+我在自己的HBase测试集群也作了下测试，主要测试数据插入和一些SQL操作的查询时耗。测试集群如下：
+
+![11]
+图8.测试集群
+先来测试下插入100万记录的测试基准，如下所示：
+
+1.创建基本表，表主键由4个字段组成，HOST字段称为First PK,DOMAIN为Second PK, 依此类推，SPLIT ON指定8个分区。
+CREATE TABLE IF NOT EXISTS %s (HOST CHAR(2) NOT NULL,
+DOMAIN VARCHAR NOT NULL,
+FEATURE VARCHAR NOT NULL,
+DATE DATE NOT NULL,
+USAGE.CORE BIGINT,
+USAGE.DB BIGINT,
+STATS.ACTIVE_VISITOR INTEGER
+CONSTRAINT PK PRIMARY KEY (HOST, DOMAIN, FEATURE, DATE))
+SPLIT ON   ('CSGoogle','CSSalesforce','EUApple','EUGoogle','EUSalesforce','NAApple','NAGoogle','NASalesforce')
+2.插入100万行记录
+3.执行如下查询条件测试
+Query # 1 - Count - SELECT COUNT(1) FROM PERFORMANCE_1000000;
+Query # 2 - Group By First PK - SELECT HOST FROM PERFORMANCE_1000000 GROUP BY HOST;
+Query # 3 - Group By Second PK - SELECT DOMAIN FROM PERFORMANCE_1000000 GROUP BY DOMAIN;
+Query # 4 - Truncate + Group By - SELECT TRUNC(DATE,'DAY') DAY FROM PERFORMANCE_1000000 GROUP BY TRUNC(DATE,'DAY');
+Query # 5 - Filter + Count - SELECT COUNT(1) FROM PERFORMANCE_1000000 WHERE CORE<10;
+测试结果如下：
+
+插入100万条记录耗时70s
+Query #1 耗时1.032s
+Query #2 耗时0.025s
+Query #3 耗时0.615s
+Query #4 耗时0.608s
+Query #5 耗时1.026s
+具体结果如下：
+
+csv columns from database.
+CSV Upsert complete. 1000000 rows upserted
+Time: 69.672 sec(s)
+
+                                COUNT(1)
+----------------------------------------
+                                 1000000
+Time: 1.032 sec(s)
+
+HO
+--
+CS
+EU
+NA
+Time: 0.025 sec(s)
+
+DOMAIN
+----------------------------------------
+Apple.com
+Google.com
+Salesforce.com
+Time: 0.615 sec(s)
+
+DAY
+-----------------------
+2018-01-28 00:00:00.000
+2018-01-29 00:00:00.000
+2018-01-30 00:00:00.000
+2018-01-31 00:00:00.000
+2018-02-01 00:00:00.000
+2018-02-02 00:00:00.000
+2018-02-03 00:00:00.000
+2018-02-04 00:00:00.000
+2018-02-05 00:00:00.000
+2018-02-06 00:00:00.000
+2018-02-07 00:00:00.000
+2018-02-08 00:00:00.000
+2018-02-09 00:00:00.000
+Time: 0.608 sec(s)
+
+                                COUNT(1)
+----------------------------------------
+                                   20209
+Time: 1.026 sec(s)
+还作了下三种不同数量级下的性能对比，作了5种SQL查询操作对比，如上测试基准第3条所描述的查询条件，结果如下：
+12
+
+图9.Phoenix不同数据量级测试对比
+从结果看，随着数量级的增加，查询时耗也随之增加，有一个例外，就是当用First PK索引字段作聚合查询时，用时相差不大。总的来说，Phoenix在用到索引时查询性能会比较好。那对于Count来说，如果不用Phoenix,用HBase自带的Count耗时是怎样的呢，测了一下，HBase Count 100万需要33s, 500万需要139s,1000万需要284s，性能还是很差的。对于大表来说基本不能用Count来统计行数，还得依赖于基于Coprocessor机制来统计。
+
+从上面测试来看下，Phoenix的性能不能说最好，也存在各种问题，就如开篇说的，版本不稳定，BUG过多，容易影响集群稳定性。
+
+

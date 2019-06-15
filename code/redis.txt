@@ -1,0 +1,31 @@
+公司的app里面需要加一个排行榜的功能,做完之后,分享给大家
+
+入口MQ----------操作Redis-----------同步mysql
+
+MQ consumer
+
+String publicKey="rank.public";
+String privateKey = "rank.private_"
+
+public void updateRank(int userId,long score){
+
+     //更新排行榜缓存
+     redisClient.zincrby(publicKey,score,userId);
+     //维护单个用户
+     redisClient.incrBy(privateKey+userId,score);
+    //异步更新mysql:因人而异(就不写出来了,简单的一个线程工具)
+    UpdateQueue.update(userId,score);
+}
+
+public void queryRankTopFive(){
+   //查询前5
+  Set<String> zrange = redisClient.zrevrange(publicKey,0,4);
+   //得到之后就可以去按照自己业务去做一些封装了
+  zrange.forEach(key -> {
+        Long score = redisClient.get(privateKey+key);
+        System.out.println(key+":"+score);
+  });
+}
+
+=======================================================
+

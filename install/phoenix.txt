@@ -1,0 +1,121 @@
+首先说下集群环境,采用的CDH5.12.1搭建的原生集群,没有采用CM,phoenix选用的4.14.0 ,环境搭建比较简单,直接解压后将phoenix-4.14.0-cdh5.12.2-server.jar放入到hbase所有节点的,然后修改hbase下的hbase-site.xml文件,加入以下配置
+
+        <property>
+                <name>hbase.regionserver.wal.codec</name>
+                <value>org.apache.hadoop.hbase.regionserver.wal.IndexedWALEditCodec</value>
+        </property>
+        
+        <property>
+                <name>hbase.coprocessor.master.classes</name>
+                <value>org.apache.phoenix.hbase.index.master.IndexMasterObserver</value>
+        </property>
+
+        <property>
+                <name>hbase.rpc.timeout</name>
+                <value>300000</value>
+        </property>
+
+        <property>
+                <name>hbase.region.server.rpc.scheduler.factory.class</name>
+                <value>org.apache.hadoop.hbase.ipc.PhoenixRpcSchedulerFactory</value>
+        </property>
+
+        <property>
+                <name>hbase.rpc.controllerfactory.class</name>
+                <value>org.apache.hadoop.hbase.ipc.controller.ServerRpcControllerFactory</value>
+        </property>
+
+在phoenix目录下的bin文件夹下软链接hbase的hbase-site.xml
+
+ls -n $HBASE_HOME/conf/hbase-site.xml
+
+然后重启hbase,在phoenix的bin下通过sqlline.py spark001:2181 开启phoenix的窗口
+
+phoenix的映射分为表映射以及视图映射,先讲讲各自的优缺点和使用场景
+
+首先要说一个,phoenix的表建立后不能通过hbase来插入数据,通过hbase就不会走phoenix的协处理器,那么phoenix的二级索引也不会被更新,后面还有更坑的地方,就是通过hbase插入的数据,phoenix会查询不到,不知道是bug还是设计如此或者是我姿势不对...
+
+表映射使用CREATE TABLE TABLE_NAME("row" varchar primary key ,"f"."name"varchar,"f"."age" varcahr),这样就能和hbase中已存在的表相关联在一起,注意表名要一样,f表示列族名,name和age表示字段名,如果hbase中不存在则会在phoenix中创建一张表,然后在hbase会也会创建一张表出来,下面是一些常用的配置
+
+column_encoded_bytes=0;如果hbase表存在加上这个,否则hbase的数据不会映射过来
+
+SPLIT ON ('133','158','159') phoenix的预分区,比hbase更直观明了
+
+SPLIT ON和column_encoded_bytes不能同时存在
+
+COMPRESSION='snappy'' 选择压缩方式
+
+SALT_BUCKETS=16 加盐预分区,会分配制定数目的预分区,会根据rowkey的hash将数据分配到指定分区,但是不可控会造成数据热点问题
+
+视图映射使用CREATE VIEW TABLE_NAME("row" varchar primary key ,"f"."name"varchar,"f"."age" varcahr),一般使用视图映射的情况是hbase表数据已经固定,因为视图表的数据只能进行查询操作,而且视图表比TABLE的查询效率会更快,怎么选择还是看需求
+
+下面说说二级索引,一般选择phoenix都是因为其简单建立二级索引的功能而入坑,不用自己写协处理器,当然对性能要求极致的还是老老实实自己写吧
+
+phoenix的二级索引有四种,我简单说两种,思路和之前通过协处理器为hbase建二级索引思路一样
+
+一种是local index,这种方式就是每次写入数据的时候讲索引和对应的rowkey写入到当前hbase表中,这样会增加当前hbase的数据量,好处是减少了跨集群之间的数据通信,相对于另一种方式节省了很多资源,语法比较简单,这种适用于写操作多,磁盘空间不那么充裕的情况
+
+CREATE LOCAL INDEX IDX_NAME ON TABLE_NAME("f"."name")
+
+这样就为name字段建立了一个索引,在phoenix中会生成一个IDX_NAME表,有两个字段是name和row,在hbase表中也会增加一个新的字段
+
+另一种global index,这种方式会在hbase中和phoenix都创建一个表,也是索引对应着rowkey,这种适用与写操作较少的时候,查询的速度也比local模式的快,但是因为会新增一张hbase表,那么就会增加集群之间的通信,而且磁盘也会被写入大量的数据,当数据越来越多的时候写数据也会慢下来
+
+CREATE INDEX IDX_NAME ON TABLE_NAME("f"."name")  INCLUDE(".f"."age")
+
+默认建立的就是global index,global需要制定include,意思是根据name字段查询age,如果根据name查询其他字段,name索引则会无效,所以include需要查询的字段都指出,但又会增加磁盘的压力
+
+上述算是phoenix的使用前环境准备,实际开发中phoenix的使用其实和sql一样,也能使用udf函数,自身也支持很多函数,下面是一段通过代码对phoenix的查询和写入操作,其实就是JDBC
+
+ 因为我使用的是CDH5.12.1版本的hbase,这边没找到对应5.12.1版本,所以使用了5.12.2版本,使用phoenix需要删除掉CDH5.12.1的hbase maven配置,使用其自带的hbase,否则会报一个错误,导致连接不上
+<dependency>
+    <groupId>org.apache.phoenix</groupId>
+    <artifactId>phoenix-core</artifactId>
+    <version>4.14.0-cdh5.12.2</version>
+</dependency>
+val props = new Properties()
+props.setProperty("phoenix.functions.allowUserDefinedFunctions", "true") //自定义函数 props.setProperty("phoenix.mutate.batchSize", "15000000") //执行过程被批处理的最大行数 props.setProperty("phoenix.mutate.maxSize", "2000000") //客户端批处理的最大行数 props.setProperty("phoenix.mutate.maxSizeBytes", "1048576000") //客户端批处理的最大数据量 1g
+val con = DriverManager.getConnection(jdbcUrl, props)
+
+//查询
+val stmt = con.createStatement()
+val statement = con.prepareStatement("select * from TEST_TABLE)
+val rset = statement.executeQuery
+while (rset.next) {
+  println(rset.getString("row"))
+}
+//插入
+
+con .setAutoCommit(false)
+pstmt = con .prepareStatement("upsert into TEST_TABLE VALUES(?,?,?)")
+var paramsList1 = ArrayBuffer[Array[String]]()
+for (i <- 3000000 to 3100000) {
+  var param = Array(getRowkeyPartition(i, i + "-name", i + "-age")
+  paramsList1 += param
+}
+if (paramsList != null && paramsList.length > 0) {
+  for (params <- paramsList) {
+    for (i <- 0 until params.length) {
+      pstmt.setObject(i + 1, params(i))
+    }
+    pstmt.addBatch()
+  }
+}
+
+rtn = pstmt.executeBatch()
+
+con.commit()
+statement.close 
+ 
+
+ 
+
+最后根据目前项目的实际情况,目前有四种方案
+
+①针对数据固定的hbase表,采用create view的方式,然后建立二级索引
+
+②针对已有的hbase表,并且每天大量数据写入,可以采用create table数据关联,然后禁止掉hbase的方式写入,全部采用phoenix,在合适的时候切换服务
+
+③针对已有的hbase表,同样每天大量数据写入,可以采用使用phoenix新建一张表,然后通过代码读取原有的hbase表,再将数据写入到phoenix表中,之后切换服务,删除掉原来的hbase表
+
+④对于新表,那就更方便了,直接使用phoenix,所有操作都通过phoenix来

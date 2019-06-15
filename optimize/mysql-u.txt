@@ -1,58 +1,35 @@
+1.更新频繁尽量使用innode引擎，支持行级锁，降低锁粒度，提高并发量。
+2.考虑使用mysql 主从做读写分离，可以利用主库更新，从库进行查询。分担数据库压力，提高并发。
+3.考虑使用reids nosql类内存数据库进行读写分离。查询通过先redis查询，无结果再查询mysql，同时将mysql数据库查询存入redis。
+4.利用mysql表分区（1-1024），减小表粒度，块式管理数据。可以提高块式查找数据。
+5.利用mysql独立表空间，自动回收删除后的表空间（独立表空间不会自动回收、会持续增长），同时有效减小数据库存储文件，提高存储性能。
+6.合理设计数据表索引，尽量利用主键更新，表更新频繁的话也会导致索引更新频繁，索引过多增加了开销，添加适当主键。
+7.选择合适的索引，B+数索引是记录索引字段，可以通过查询索引可能达到数据库查询的效果（查询字段刚好是索引字段），如果字段较小而且不多的话可以考虑，可以部分匹配（组合索引）。而hash索引是对整条记录进行hash，查询必须匹配所有索引字段，但是索引存储数据较小。
+8.合理的设计数据库的查询cache，减小数据库查询解析，提高查询效率和性能。
+
+9.对大表可以进行分表和分库处理。一般采用对表主键hash值处理分成几个hash段，对每个hash段的数据存储在一个表中。每次存取都通过hash值觉得存储对应的表。
+
+
+
 1、EXPLAIN
-
-
-
-做MySQL优化，我们要善用EXPLAIN查看SQL执行计划。
-
-
-
-下面来个简单的示例，标注（1、2、3、4、5）我们要重点关注的数据：
-
-
-
 type列，连接类型。一个好的SQL语句至少要达到range级别。杜绝出现all级别。
-
 key列，使用到的索引名。如果没有选择索引，值是NULL。可以采取强制索引方式。
-
 key_len列，索引长度。
-
 rows列，扫描行数。该值是个预估值。
-
 extra列，详细说明。注意，常见的不太友好的值，如下：Using filesort，Using temporary。
 
-
-
 2、SQL语句中IN包含的值不应过多
-
-
-
 MySQL对于IN做了相应的优化，即将IN中的常量全部存储在一个数组里面，而且这个数组是排好序的。但是如果数值较多，产生的消耗也是比较大的。再例如：select id from t where num in(1,2,3) 对于连续的数值，能用between就不要用in了；再或者使用连接来替换。
 
-
-
 3、SELECT语句务必指明字段名称
-
-
-
 SELECT*增加很多不必要的消耗（CPU、IO、内存、网络带宽）；增加了使用覆盖索引的可能性；当表结构发生改变时，前断也需要更新。所以要求直接在select后面接上字段名。
 
-
-
 4、当只需要一条数据的时候，使用limit 1
-
-
-
 这是为了使EXPLAIN中type列达到const类型
-
-
 
 5、如果排序字段没有用到索引，就尽量少排序
 
-
-
 6、如果限制条件中其他字段没有索引，尽量少用or
-
-
 
 or两边的字段中，如果有一个不是索引字段，而其他条件也不是索引字段，会造成该查询不走索引的情况。很多时候使用union all或者是union（必要的时候）的方式来代替“or”会得到更好的效果。
 
@@ -68,14 +45,10 @@ union和union all的差异主要是前者需要将结果集合并后再进行唯
 
 8、不使用ORDER BY RAND()
 
-
-
 select id from `dynamic` order by rand() limit 1000;
 
 
 上面的SQL语句，可优化为：
-
-
 
 select id from `dynamic` t1 join (select rand() * (select max(id) from `dynamic`) as nid) t2 on t1.id > t2.nidlimit 1000;
 
@@ -102,17 +75,11 @@ select * from 表A where exists(select * from 表B where 表B.id=表A.id)
 关于not in和not exists，推荐使用not exists，不仅仅是效率问题，not in可能存在逻辑问题。如何高效的写出一个替代not exists的SQL语句？
 
 
-
 原SQL语句：
-
-
 
 select colname … from A表 where a.id not in (select b.id from B表)
 
-
 高效的SQL语句：
-
-
 
 select colname … from A表 Left join B表 on where a.id = b.id where b.id is null
 
@@ -269,10 +236,6 @@ where子句中出现column字段的类型和传入的参数类型不一致的时
 
 
 
-
-
-
-
 LEFT JOIN A表为驱动表，INNER JOIN MySQL会自动找出那个数据少的表作用驱动表，RIGHT JOIN B表为驱动表。
 
 
@@ -308,25 +271,20 @@ select * from A left join B on B.name = A.namewhere B.name is nullunion allselec
 4）利用小表去驱动大表：
 
 
-
-
-
-
-
 从原理图能够直观的看出如果能够减少驱动表的话，减少嵌套循环中的循环次数，以减少 IO总量及CPU运算的次数。
 
 
 
 5）巧用STRAIGHT_JOIN：
 
-
-
 inner join是由MySQL选择驱动表，但是有些特殊情况需要选择另个表作为驱动表，比如有group by、order by等「Using filesort」、「Using temporary」时。STRAIGHT_JOIN来强制连接顺序，在STRAIGHT_JOIN左边的表名就是驱动表，右边则是被驱动表。在使用STRAIGHT_JOIN有个前提条件是该查询是内连接，也就是inner join。其他链接不推荐使用STRAIGHT_JOIN，否则可能造成查询结果不准确。
 
-
-
-
-
-
-
 这个方式有时能减少3倍的时间。
+
+================
+insert into table
+(field1,field2...field15)
+SELECT
+'',''...''
+FROM dual WHERE not exists
+(select url from table where url='')

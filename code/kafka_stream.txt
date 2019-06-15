@@ -1,0 +1,1306 @@
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.StreamsBuilder;
+import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.KTable;
+import org.apache.kafka.streams.kstream.Produced;
+
+import java.util.Arrays;
+import java.util.Locale;
+import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
+
+/**
+ * Demonstrates, using the high-level KStream DSL, how to implement the WordCount program
+ * that computes a simple word occurrence histogram from an input text.
+ * <p>
+ * In this example, the input stream reads from a topic named "streams-plaintext-input", where the values of messages
+ * represent lines of text; and the histogram output is written to topic "streams-wordcount-output" where each record
+ * is an updated count of a single word.
+ * <p>
+ * Before running this example you must create the input topic and the output topic (e.g. via
+ * {@code bin/kafka-topics.sh --create ...}), and write some data to the input topic (e.g. via
+ * {@code bin/kafka-console-producer.sh}). Otherwise you won't see any data arriving in the output topic.
+ */
+public final class WordCountDemo {
+
+    public static void main(final String[] args) {
+        final Properties props = new Properties();
+        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-wordcount");
+        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0);
+        props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
+        props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
+
+        // setting offset reset to earliest so that we can re-run the demo code with the same pre-loaded data
+        // Note: To re-run the demo, you need to use the offset reset tool:
+        // https://cwiki.apache.org/confluence/display/KAFKA/Kafka+Streams+Application+Reset+Tool
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        final StreamsBuilder builder = new StreamsBuilder();
+
+        final KStream<String, String> source = builder.stream("streams-plaintext-input");
+
+        final KTable<String, Long> counts = source
+            .flatMapValues(value -> Arrays.asList(value.toLowerCase(Locale.getDefault()).split(" ")))
+            .groupBy((key, value) -> value)
+            .count();
+
+        // need to override value serde to Long type
+        counts.toStream().to("streams-wordcount-output", Produced.with(Serdes.String(), Serdes.Long()));
+
+        final KafkaStreams streams = new KafkaStreams(builder.build(), props);
+        final CountDownLatch latch = new CountDownLatch(1);
+
+        // attach shutdown handler to catch control-c
+        Runtime.getRuntime().addShutdownHook(new Thread("streams-wordcount-shutdown-hook") {
+            @Override
+            public void run() {
+                streams.close();
+                latch.countDown();
+            }
+        });
+
+        try {
+            streams.start();
+            latch.await();
+        } catch (final Throwable e) {
+            System.exit(1);
+        }
+        System.exit(0);
+    }
+}
+
+
+import java.time.Duration;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.processor.Processor;
+import org.apache.kafka.streams.processor.ProcessorContext;
+import org.apache.kafka.streams.processor.ProcessorSupplier;
+import org.apache.kafka.streams.processor.PunctuationType;
+import org.apache.kafka.streams.state.KeyValueIterator;
+import org.apache.kafka.streams.state.KeyValueStore;
+import org.apache.kafka.streams.state.Stores;
+
+import java.util.Locale;
+import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
+
+/**
+ * Demonstrates, using the low-level Processor APIs, how to implement the WordCount program
+ * that computes a simple word occurrence histogram from an input text.
+ * <p>
+ * <strong>Note: This is simplified code that only works correctly for single partition input topics.
+ * Check out {@link WordCountDemo} for a generic example.</strong>
+ * <p>
+ * In this example, the input stream reads from a topic named "streams-plaintext-input", where the values of messages
+ * represent lines of text; and the histogram output is written to topic "streams-wordcount-processor-output" where each record
+ * is an updated count of a single word.
+ * <p>
+ * Before running this example you must create the input topic and the output topic (e.g. via
+ * {@code bin/kafka-topics.sh --create ...}), and write some data to the input topic (e.g. via
+ * {@code bin/kafka-console-producer.sh}). Otherwise you won't see any data arriving in the output topic.
+ */
+public final class WordCountProcessorDemo {
+
+    static class MyProcessorSupplier implements ProcessorSupplier<String, String> {
+
+        @Override
+        public Processor<String, String> get() {
+            return new Processor<String, String>() {
+                private ProcessorContext context;
+                private KeyValueStore<String, Integer> kvStore;
+
+                @Override
+                @SuppressWarnings("unchecked")
+                public void init(final ProcessorContext context) {
+                    this.context = context;
+                    this.context.schedule(Duration.ofSeconds(1), PunctuationType.STREAM_TIME, timestamp -> {
+                        try (final KeyValueIterator<String, Integer> iter = kvStore.all()) {
+                            System.out.println("----------- " + timestamp + " ----------- ");
+
+                            while (iter.hasNext()) {
+                                final KeyValue<String, Integer> entry = iter.next();
+
+                                System.out.println("[" + entry.key + ", " + entry.value + "]");
+
+                                context.forward(entry.key, entry.value.toString());
+                            }
+                        }
+                    });
+                    this.kvStore = (KeyValueStore<String, Integer>) context.getStateStore("Counts");
+                }
+
+                @Override
+                public void process(final String dummy, final String line) {
+                    final String[] words = line.toLowerCase(Locale.getDefault()).split(" ");
+
+                    for (final String word : words) {
+                        final Integer oldValue = this.kvStore.get(word);
+
+                        if (oldValue == null) {
+                            this.kvStore.put(word, 1);
+                        } else {
+                            this.kvStore.put(word, oldValue + 1);
+                        }
+                    }
+
+                    context.commit();
+                }
+
+                @Override
+                public void close() {}
+            };
+        }
+    }
+
+    public static void main(final String[] args) {
+        final Properties props = new Properties();
+        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-wordcount-processor");
+        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0);
+        props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
+        props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
+
+        // setting offset reset to earliest so that we can re-run the demo code with the same pre-loaded data
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        final Topology builder = new Topology();
+
+        builder.addSource("Source", "streams-plaintext-input");
+
+        builder.addProcessor("Process", new MyProcessorSupplier(), "Source");
+        builder.addStateStore(Stores.keyValueStoreBuilder(
+                Stores.inMemoryKeyValueStore("Counts"),
+                Serdes.String(),
+                Serdes.Integer()),
+                "Process");
+
+        builder.addSink("Sink", "streams-wordcount-processor-output", "Process");
+
+        final KafkaStreams streams = new KafkaStreams(builder, props);
+        final CountDownLatch latch = new CountDownLatch(1);
+
+        // attach shutdown handler to catch control-c
+        Runtime.getRuntime().addShutdownHook(new Thread("streams-wordcount-shutdown-hook") {
+            @Override
+            public void run() {
+                streams.close();
+                latch.countDown();
+            }
+        });
+
+        try {
+            streams.start();
+            latch.await();
+        } catch (final Throwable e) {
+            System.exit(1);
+        }
+        System.exit(0);
+    }
+}
+
+=======================
+
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.Serde;
+import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.StreamsBuilder;
+import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.Produced;
+import org.apache.kafka.streams.kstream.TimeWindows;
+import org.apache.kafka.streams.kstream.Windowed;
+import org.apache.kafka.streams.kstream.WindowedSerdes;
+
+import java.time.Duration;
+import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
+
+/**
+ * Demonstrates, using the high-level KStream DSL, how to implement an IoT demo application
+ * which ingests temperature value processing the maximum value in the latest TEMPERATURE_WINDOW_SIZE seconds (which
+ * is 5 seconds) sending a new message if it exceeds the TEMPERATURE_THRESHOLD (which is 20)
+ *
+ * In this example, the input stream reads from a topic named "iot-temperature", where the values of messages
+ * represent temperature values; using a TEMPERATURE_WINDOW_SIZE seconds "tumbling" window, the maximum value is processed and
+ * sent to a topic named "iot-temperature-max" if it exceeds the TEMPERATURE_THRESHOLD.
+ *
+ * Before running this example you must create the input topic for temperature values in the following way :
+ *
+ * bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic iot-temperature
+ *
+ * and at same time the output topic for filtered values :
+ *
+ * bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic iot-temperature-max
+ *
+ * After that, a console consumer can be started in order to read filtered values from the "iot-temperature-max" topic :
+ *
+ * bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic iot-temperature-max --from-beginning
+ *
+ * On the other side, a console producer can be used for sending temperature values (which needs to be integers)
+ * to "iot-temperature" typing them on the console :
+ *
+ * bin/kafka-console-producer.sh --broker-list localhost:9092 --topic iot-temperature
+ * > 10
+ * > 15
+ * > 22
+ */
+public class TemperatureDemo {
+
+    // threshold used for filtering max temperature values
+    private static final int TEMPERATURE_THRESHOLD = 20;
+    // window size within which the filtering is applied
+    private static final int TEMPERATURE_WINDOW_SIZE = 5;
+
+    public static void main(final String[] args) {
+
+        final Properties props = new Properties();
+        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-temperature");
+        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
+        props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
+
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0);
+
+        final StreamsBuilder builder = new StreamsBuilder();
+
+        final KStream<String, String> source = builder.stream("iot-temperature");
+
+        final KStream<Windowed<String>, String> max = source
+            // temperature values are sent without a key (null), so in order
+            // to group and reduce them, a key is needed ("temp" has been chosen)
+            .selectKey((key, value) -> "temp")
+            .groupByKey()
+            .windowedBy(TimeWindows.of(Duration.ofSeconds(TEMPERATURE_WINDOW_SIZE)))
+            .reduce((value1, value2) -> {
+                if (Integer.parseInt(value1) > Integer.parseInt(value2)) {
+                    return value1;
+                } else {
+                    return value2;
+                }
+            })
+            .toStream()
+            .filter((key, value) -> Integer.parseInt(value) > TEMPERATURE_THRESHOLD);
+
+        final Serde<Windowed<String>> windowedSerde = WindowedSerdes.timeWindowedSerdeFrom(String.class);
+
+        // need to override key serde to Windowed<String> type
+        max.to("iot-temperature-max", Produced.with(windowedSerde, Serdes.String()));
+
+        final KafkaStreams streams = new KafkaStreams(builder.build(), props);
+        final CountDownLatch latch = new CountDownLatch(1);
+
+        // attach shutdown handler to catch control-c
+        Runtime.getRuntime().addShutdownHook(new Thread("streams-temperature-shutdown-hook") {
+            @Override
+            public void run() {
+                streams.close();
+                latch.countDown();
+            }
+        });
+
+        try {
+            streams.start();
+            latch.await();
+        } catch (final Throwable e) {
+            System.exit(1);
+        }
+        System.exit(0);
+    }
+}
+=========
+
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.StreamsBuilder;
+import org.apache.kafka.streams.StreamsConfig;
+
+import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
+
+/**
+ * Demonstrates, using the high-level KStream DSL, how to read data from a source (input) topic and how to
+ * write data to a sink (output) topic.
+ *
+ * In this example, we implement a simple "pipe" program that reads from a source topic "streams-file-input"
+ * and writes the data as-is (i.e. unmodified) into a sink topic "streams-pipe-output".
+ *
+ * Before running this example you must create the input topic and the output topic (e.g. via
+ * bin/kafka-topics.sh --create ...), and write some data to the input topic (e.g. via
+ * bin/kafka-console-producer.sh). Otherwise you won't see any data arriving in the output topic.
+ */
+public class PipeDemo {
+
+    public static void main(final String[] args) {
+        final Properties props = new Properties();
+        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-pipe");
+        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
+        props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
+
+        // setting offset reset to earliest so that we can re-run the demo code with the same pre-loaded data
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        final StreamsBuilder builder = new StreamsBuilder();
+
+        builder.stream("streams-plaintext-input").to("streams-pipe-output");
+
+        final KafkaStreams streams = new KafkaStreams(builder.build(), props);
+        final CountDownLatch latch = new CountDownLatch(1);
+
+        // attach shutdown handler to catch control-c
+        Runtime.getRuntime().addShutdownHook(new Thread("streams-pipe-shutdown-hook") {
+            @Override
+            public void run() {
+                streams.close();
+                latch.countDown();
+            }
+        });
+
+        try {
+            streams.start();
+            latch.await();
+        } catch (final Throwable e) {
+            System.exit(1);
+        }
+        System.exit(0);
+    }
+}
+
+===========
+
+package org.apache.kafka.streams.examples.pageview;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.streams.processor.TimestampExtractor;
+
+/**
+ * A timestamp extractor implementation that tries to extract event time from
+ * the "timestamp" field in the Json formatted message.
+ */
+public class JsonTimestampExtractor implements TimestampExtractor {
+
+    @Override
+    public long extract(final ConsumerRecord<Object, Object> record, final long previousTimestamp) {
+        if (record.value() instanceof PageViewTypedDemo.PageView) {
+            return ((PageViewTypedDemo.PageView) record.value()).timestamp;
+        }
+
+        if (record.value() instanceof PageViewTypedDemo.UserProfile) {
+            return ((PageViewTypedDemo.UserProfile) record.value()).timestamp;
+        }
+
+        if (record.value() instanceof JsonNode) {
+            return ((JsonNode) record.value()).get("timestamp").longValue();
+        }
+
+        throw new IllegalArgumentException("JsonTimestampExtractor cannot recognize the record value " + record.value());
+    }
+}
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.kafka.streams.examples.pageview;
+
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.errors.SerializationException;
+import org.apache.kafka.common.serialization.Deserializer;
+import org.apache.kafka.common.serialization.Serde;
+import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.common.serialization.Serializer;
+import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.StreamsBuilder;
+import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.kstream.Consumed;
+import org.apache.kafka.streams.kstream.Grouped;
+import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.KTable;
+import org.apache.kafka.streams.kstream.TimeWindows;
+
+import java.io.IOException;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
+
+/**
+ * Demonstrates how to perform a join between a KStream and a KTable, i.e. an example of a stateful computation,
+ * using specific data types (here: JSON POJO; but can also be Avro specific bindings, etc.) for serdes
+ * in Kafka Streams.
+ *
+ * In this example, we join a stream of pageviews (aka clickstreams) that reads from a topic named "streams-pageview-input"
+ * with a user profile table that reads from a topic named "streams-userprofile-input", where the data format
+ * is JSON string representing a record in the stream or table, to compute the number of pageviews per user region.
+ *
+ * Before running this example you must create the input topics and the output topic (e.g. via
+ * bin/kafka-topics --create ...), and write some data to the input topics (e.g. via
+ * bin/kafka-console-producer). Otherwise you won't see any data arriving in the output topic.
+ *
+ * The inputs for this example are:
+ * - Topic: streams-pageview-input
+ *   Key Format: (String) USER_ID
+ *   Value Format: (JSON) {"_t": "pv", "user": (String USER_ID), "page": (String PAGE_ID), "timestamp": (long ms TIMESTAMP)}
+ *
+ * - Topic: streams-userprofile-input
+ *   Key Format: (String) USER_ID
+ *   Value Format: (JSON) {"_t": "up", "region": (String REGION), "timestamp": (long ms TIMESTAMP)}
+ *
+ * To observe the results, read the output topic (e.g., via bin/kafka-console-consumer)
+ * - Topic: streams-pageviewstats-typed-output
+ *   Key Format: (JSON) {"_t": "wpvbr", "windowStart": (long ms WINDOW_TIMESTAMP), "region": (String REGION)}
+ *   Value Format: (JSON) {"_t": "rc", "count": (long REGION_COUNT), "region": (String REGION)}
+ *
+ * Note, the "_t" field is necessary to help Jackson identify the correct class for deserialization in the
+ * generic {@link JSONSerde}. If you instead specify a specific serde per class, you won't need the extra "_t" field.
+ */
+@SuppressWarnings({"WeakerAccess", "unused"})
+public class PageViewTypedDemo {
+
+    /**
+     * A serde for any class that implements {@link JSONSerdeCompatible}. Note that the classes also need to
+     * be registered in the {@code @JsonSubTypes} annotation on {@link JSONSerdeCompatible}.
+     *
+     * @param <T> The concrete type of the class that gets de/serialized
+     */
+    public static class JSONSerde<T extends JSONSerdeCompatible> implements Serializer<T>, Deserializer<T>, Serde<T> {
+        private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+        @Override
+        public void configure(final Map<String, ?> configs, final boolean isKey) {}
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public T deserialize(final String topic, final byte[] data) {
+            if (data == null) {
+                return null;
+            }
+
+            try {
+                return (T) OBJECT_MAPPER.readValue(data, JSONSerdeCompatible.class);
+            } catch (final IOException e) {
+                throw new SerializationException(e);
+            }
+        }
+
+        @Override
+        public byte[] serialize(final String topic, final T data) {
+            if (data == null) {
+                return null;
+            }
+
+            try {
+                return OBJECT_MAPPER.writeValueAsBytes(data);
+            } catch (final Exception e) {
+                throw new SerializationException("Error serializing JSON message", e);
+            }
+        }
+
+        @Override
+        public void close() {}
+
+        @Override
+        public Serializer<T> serializer() {
+            return this;
+        }
+
+        @Override
+        public Deserializer<T> deserializer() {
+            return this;
+        }
+    }
+
+    /**
+     * An interface for registering types that can be de/serialized with {@link JSONSerde}.
+     */
+    @SuppressWarnings("DefaultAnnotationParam") // being explicit for the example
+    @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "_t")
+    @JsonSubTypes({
+                      @JsonSubTypes.Type(value = PageView.class, name = "pv"),
+                      @JsonSubTypes.Type(value = UserProfile.class, name = "up"),
+                      @JsonSubTypes.Type(value = PageViewByRegion.class, name = "pvbr"),
+                      @JsonSubTypes.Type(value = WindowedPageViewByRegion.class, name = "wpvbr"),
+                      @JsonSubTypes.Type(value = RegionCount.class, name = "rc")
+                  })
+    public interface JSONSerdeCompatible {
+
+    }
+
+    // POJO classes
+    static public class PageView implements JSONSerdeCompatible {
+        public String user;
+        public String page;
+        public Long timestamp;
+    }
+
+    static public class UserProfile implements JSONSerdeCompatible {
+        public String region;
+        public Long timestamp;
+    }
+
+    static public class PageViewByRegion implements JSONSerdeCompatible {
+        public String user;
+        public String page;
+        public String region;
+    }
+
+    static public class WindowedPageViewByRegion implements JSONSerdeCompatible {
+        public long windowStart;
+        public String region;
+    }
+
+    static public class RegionCount implements JSONSerdeCompatible {
+        public long count;
+        public String region;
+    }
+
+    public static void main(final String[] args) {
+        final Properties props = new Properties();
+        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-pageview-typed");
+        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        props.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG, JsonTimestampExtractor.class);
+        props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, JSONSerde.class);
+        props.put(StreamsConfig.DEFAULT_WINDOWED_KEY_SERDE_INNER_CLASS, JSONSerde.class);
+        props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, JSONSerde.class);
+        props.put(StreamsConfig.DEFAULT_WINDOWED_VALUE_SERDE_INNER_CLASS, JSONSerde.class);
+        props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0);
+        props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 1000);
+
+        // setting offset reset to earliest so that we can re-run the demo code with the same pre-loaded data
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        final StreamsBuilder builder = new StreamsBuilder();
+
+        final KStream<String, PageView> views = builder.stream("streams-pageview-input", Consumed.with(Serdes.String(), new JSONSerde<>()));
+
+        final KTable<String, UserProfile> users = builder.table("streams-userprofile-input", Consumed.with(Serdes.String(), new JSONSerde<>()));
+
+        final KStream<WindowedPageViewByRegion, RegionCount> regionCount = views
+            .leftJoin(users, (view, profile) -> {
+                final PageViewByRegion viewByRegion = new PageViewByRegion();
+                viewByRegion.user = view.user;
+                viewByRegion.page = view.page;
+
+                if (profile != null) {
+                    viewByRegion.region = profile.region;
+                } else {
+                    viewByRegion.region = "UNKNOWN";
+                }
+                return viewByRegion;
+            })
+            .map((user, viewRegion) -> new KeyValue<>(viewRegion.region, viewRegion))
+            .groupByKey(Grouped.with(Serdes.String(), new JSONSerde<>()))
+            .windowedBy(TimeWindows.of(Duration.ofDays(7)).advanceBy(Duration.ofSeconds(1)))
+            .count()
+            .toStream()
+            .map((key, value) -> {
+                final WindowedPageViewByRegion wViewByRegion = new WindowedPageViewByRegion();
+                wViewByRegion.windowStart = key.window().start();
+                wViewByRegion.region = key.key();
+
+                final RegionCount rCount = new RegionCount();
+                rCount.region = key.key();
+                rCount.count = value;
+
+                return new KeyValue<>(wViewByRegion, rCount);
+            });
+
+        // write to the result topic
+        regionCount.to("streams-pageviewstats-typed-output");
+
+        final KafkaStreams streams = new KafkaStreams(builder.build(), props);
+        final CountDownLatch latch = new CountDownLatch(1);
+
+        // attach shutdown handler to catch control-c
+        Runtime.getRuntime().addShutdownHook(new Thread("streams-pipe-shutdown-hook") {
+            @Override
+            public void run() {
+                streams.close();
+                latch.countDown();
+            }
+        });
+
+        try {
+            streams.start();
+            latch.await();
+        } catch (final Throwable e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+        System.exit(0);
+    }
+}
+
+package org.apache.kafka.streams.examples.pageview;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.time.Duration;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.Deserializer;
+import org.apache.kafka.common.serialization.Serde;
+import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.common.serialization.Serializer;
+import org.apache.kafka.connect.json.JsonDeserializer;
+import org.apache.kafka.connect.json.JsonSerializer;
+import org.apache.kafka.streams.kstream.Consumed;
+import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.StreamsBuilder;
+import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.kstream.Grouped;
+import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.KTable;
+import org.apache.kafka.streams.kstream.Produced;
+import org.apache.kafka.streams.kstream.TimeWindows;
+
+import java.util.Properties;
+
+/**
+ * Demonstrates how to perform a join between a KStream and a KTable, i.e. an example of a stateful computation,
+ * using general data types (here: JSON; but can also be Avro generic bindings, etc.) for serdes
+ * in Kafka Streams.
+ *
+ * In this example, we join a stream of pageviews (aka clickstreams) that reads from  a topic named "streams-pageview-input"
+ * with a user profile table that reads from a topic named "streams-userprofile-input", where the data format
+ * is JSON string representing a record in the stream or table, to compute the number of pageviews per user region.
+ *
+ * Before running this example you must create the input topics and the output topic (e.g. via
+ * bin/kafka-topics.sh --create ...), and write some data to the input topics (e.g. via
+ * bin/kafka-console-producer.sh). Otherwise you won't see any data arriving in the output topic.
+ */
+public class PageViewUntypedDemo {
+
+    public static void main(final String[] args) throws Exception {
+        final Properties props = new Properties();
+        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-pageview-untyped");
+        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        props.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG, JsonTimestampExtractor.class);
+        props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0);
+
+        // setting offset reset to earliest so that we can re-run the demo code with the same pre-loaded data
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        final StreamsBuilder builder = new StreamsBuilder();
+
+        final Serializer<JsonNode> jsonSerializer = new JsonSerializer();
+        final Deserializer<JsonNode> jsonDeserializer = new JsonDeserializer();
+        final Serde<JsonNode> jsonSerde = Serdes.serdeFrom(jsonSerializer, jsonDeserializer);
+
+        final Consumed<String, JsonNode> consumed = Consumed.with(Serdes.String(), jsonSerde);
+        final KStream<String, JsonNode> views = builder.stream("streams-pageview-input", consumed);
+
+        final KTable<String, JsonNode> users = builder.table("streams-userprofile-input", consumed);
+
+        final KTable<String, String> userRegions = users.mapValues(record -> record.get("region").textValue());
+
+        final KStream<JsonNode, JsonNode> regionCount = views
+            .leftJoin(userRegions, (view, region) -> {
+                final ObjectNode jNode = JsonNodeFactory.instance.objectNode();
+                return (JsonNode) jNode.put("user", view.get("user").textValue())
+                        .put("page", view.get("page").textValue())
+                        .put("region", region == null ? "UNKNOWN" : region);
+
+            })
+            .map((user, viewRegion) -> new KeyValue<>(viewRegion.get("region").textValue(), viewRegion))
+            .groupByKey(Grouped.with(Serdes.String(), jsonSerde))
+            .windowedBy(TimeWindows.of(Duration.ofDays(7)).advanceBy(Duration.ofSeconds(1)))
+            .count()
+            .toStream()
+            .map((key, value) -> {
+                final ObjectNode keyNode = JsonNodeFactory.instance.objectNode();
+                keyNode.put("window-start", key.window().start())
+                        .put("region", key.key());
+
+                final ObjectNode valueNode = JsonNodeFactory.instance.objectNode();
+                valueNode.put("count", value);
+
+                return new KeyValue<>((JsonNode) keyNode, (JsonNode) valueNode);
+            });
+
+        // write to the result topic
+        regionCount.to("streams-pageviewstats-untyped-output", Produced.with(jsonSerde, jsonSerde));
+
+        final KafkaStreams streams = new KafkaStreams(builder.build(), props);
+        streams.start();
+
+        // usually the stream application would be running forever,
+        // in this example we just let it run for some time and stop since the input data is finite.
+        Thread.sleep(5000L);
+
+        streams.close();
+    }
+}
+===========
+
+1. Streams APIs
+
+Kafka有两类流APIs，low-level Processor API和high-level Streams DSL。本文介绍的是后者DSL，它的核心是KStream对象，表示流式key/value的数据，它的大多数方法都返回KStream对象的引用。
+
+早在2005年，Martin Fowler和Eric Evans开发了fluent interface的概念，也就是接口的返回值和调用时传入的实例是相同的。这种方式对构造多个参数的对象时非常有用，例如：
+
+Person.builder().firstName("Beth").withLastName("Smith").withOccupation("CEO");
+在Kafka Streams中，有个重要的区别：返回的KStream对象是一个新的实例，而不是调用方法时的实例。
+
+2. Hello World例子
+
+以下让我们创建一个简单的Hello World例子，把输入的字母转换为大写字母。一般的开发流程是：
+
+配置Kafka Streams
+创建Serde实例
+创建处理的拓扑
+创建和启动KStream
+2.1 配置Kafka Streams
+
+Properties props = new Properties();
+props.put(StreamsConfig.APPLICATION_ID_CONFIG, "hello-world");
+props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+以上两个属性是必须的，因为它们没有默认值。而且应用的ID在集群内必须是唯一的，服务器地址可以是单个服务器和端口，也可以是由逗号分隔的多个服务器和端口，例如"host1:9092,host2:9092,host3:9092"。
+
+2.2 创建Serde实例
+
+在Kafka Streams中，Serdes类提供了创建Serde实例的简便方法，如下所示：
+
+Serde<String> stringSerde = Serdes.String();
+此行代码是使用Serdes类创建序列化/反序列化所需的Serde实例。Serdes类为以下类型提供默认的实现：String、Byte array、Long、Integer和Double。
+
+2.3 创建处理的拓扑
+
+每个流应用程序都实现并执行至少一个拓扑。拓扑（在其它流处理框架中也称为有向无环图DAG，Directed Acyclic Graph）是一系列的操作和转换，每个事件从输入流动到输出。下图是Hello World例子的拓扑图：
+
+
+
+下面是相应的处理拓扑代码：
+
+StreamsBuilder builder = new StreamsBuilder();
+KStream<String, String> simpleFirstStream = builder.stream("src-topic",
+    Consumed.with(stringSerde, stringSerde));
+// 使用KStream.mapValues方法把每行输入转换为大写
+KStream<String, String> upperCasedStream = simpleFirstStream.mapValues(line -> line.toUpperCase());
+// 把转换结果输出到另一个topic
+upperCasedStream.to("out-topic", Produced.with(stringSerde, stringSerde));
+2.4 创建和启动KStream
+
+KafkaStreams kafkaStreams = new KafkaStreams(builder.build(), props);
+kafkaStreams.start();
+3. ZMart应用程序
+
+3.1 主要的需求
+
+记录所有客户的消费数据，但要保护敏感信息，例如信用卡号码
+抽取消费地点的ZIP code，以便分析消费模式
+抽取客户编号和消费金额，以便计算奖励积分
+保存所有消费数据，以便日后进行数据分析
+3.2 创建Serde实例
+
+因为客户消费的数据是JSON格式，在把数据发送到Kafka时，需要把它序列化为byte数组，这里会使用Google的Gson类：
+
+import java.nio.charset.Charset;
+import java.util.Map;
+import org.apache.kafka.common.serialization.Serializer;
+import com.google.gson.Gson;
+
+public class JsonSerializer<T> implements Serializer<T> {
+
+    private Gson gson = new Gson();
+
+    @Override
+    public void configure(Map<String, ?> configs, boolean isKey) {
+    }
+
+    @Override
+    public byte[] serialize(String topic, T data) {
+        return gson.toJson(data).getBytes(Charset.forName("UTF-8"));
+    }
+
+    @Override
+    public void close() {
+    }
+
+}
+相反地，需要把byte数组反序列化为JSON和业务对象，以便在处理器里使用：
+
+import java.util.Map;
+import org.apache.kafka.common.serialization.Deserializer;
+import com.google.gson.Gson;
+
+public class JsonDeserializer<T> implements Deserializer<T> {
+
+    private Gson gson = new Gson();
+    private Class<T> deserializedClass;
+
+    public JsonDeserializer(Class<T> deserializedClass) {
+        this.deserializedClass = deserializedClass;
+    }
+
+    public JsonDeserializer() {
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public void configure(Map<String, ?> configs, boolean isKey) {
+        if (deserializedClass == null) {
+            deserializedClass = (Class<T>) configs.get("serializedClass");
+        }
+    }
+
+    @Override
+    public T deserialize(String topic, byte[] data) {
+        if (data == null) {
+            return null;
+        }
+        return gson.fromJson(new String(data), deserializedClass);
+    }
+
+    @Override
+    public void close() {
+    }
+
+}
+创建完序列化和反序列化类之后，需要实现Kafka的接口Serde：
+
+import java.util.Map;
+import org.apache.kafka.common.serialization.Deserializer;
+import org.apache.kafka.common.serialization.Serde;
+import org.apache.kafka.common.serialization.Serializer;
+
+public class WrapperSerde<T> implements Serde<T> {
+
+    final private Serializer<T> serializer;
+    final private Deserializer<T> deserializer;
+
+    WrapperSerde(Serializer<T> serializer, Deserializer<T> deserializer) {
+        this.serializer = serializer;
+        this.deserializer = deserializer;
+    }
+
+    @Override
+    public void configure(Map<String, ?> configs, boolean isKey) {
+        serializer.configure(configs, isKey);
+        deserializer.configure(configs, isKey);
+    }
+
+    @Override
+    public Serializer<T> serializer() {
+        return serializer;
+    }
+
+    @Override
+    public Deserializer<T> deserializer() {
+        return deserializer;
+    }
+
+    @Override
+    public void close() {
+        serializer.close();
+        deserializer.close();
+    }
+
+}
+然后为了方便使用，创建工具类：
+
+import org.apache.kafka.common.serialization.Serde;
+import zmart.model.Purchase;
+import zmart.model.PurchasePattern;
+import zmart.model.RewardAccumulator;
+
+public class StreamsSerdes {
+
+    public static Serde<Purchase> PurchaseSerde() {
+        return new PurchaseSerde();
+    }
+
+    public static Serde<PurchasePattern> PurchasePatternSerde() {
+        return new PurchasePatternsSerde();
+    }
+
+    public static Serde<RewardAccumulator> RewardAccumulatorSerde() {
+        return new RewardAccumulatorSerde();
+    }
+
+    public static final class PurchaseSerde extends WrapperSerde<Purchase> {
+        public PurchaseSerde() {
+            super(new JsonSerializer<Purchase>(), new JsonDeserializer<Purchase>(Purchase.class));
+        }
+    }
+
+    public static final class PurchasePatternsSerde extends WrapperSerde<PurchasePattern> {
+        public PurchasePatternsSerde() {
+            super(new JsonSerializer<PurchasePattern>(),
+                    new JsonDeserializer<PurchasePattern>(PurchasePattern.class));
+        }
+    }
+
+    public static final class RewardAccumulatorSerde extends WrapperSerde<RewardAccumulator> {
+        public RewardAccumulatorSerde() {
+            super(new JsonSerializer<RewardAccumulator>(),
+                    new JsonDeserializer<RewardAccumulator>(RewardAccumulator.class));
+        }
+    }
+
+}
+上面的Purchase、PurchasePattern和RewardAccumulator用于表示客户消费数据、消费模式和积分计算，这里省略。然后我们就可以简单地通过StreamsSerdes创建需要的序列化器：
+
+Serde<String> stringSerde = Serdes.String();
+Serde<Purchase> purchaseSerde = StreamsSerdes.PurchaseSerde();
+Serde<PurchasePattern> purchasePatternSerde = StreamsSerdes.PurchasePatternSerde();
+Serde<RewardAccumulator> rewardAccumulatorSerde = StreamsSerdes.RewardAccumulatorSerde();
+3.3 创建处理的拓扑
+
+3.3.1 创建数据源节点和第一个处理器
+
+
+
+数据源节点负责从Kafka的一个保存所有事务的topic读取消息，第一个处理器负责隐藏信用卡信息，保护客户隐私。
+
+StreamsBuilder streamsBuilder = new StreamsBuilder();
+KStream<String, Purchase> purchaseKStream = streamsBuilder
+    // 从事务topic读取消息，使用自定义序列化/反序列化
+    .stream("transactions", Consumed.with(stringSerde, purchaseSerde))
+    // 使用KStream.mapValues方法隐藏每个信用卡信息
+    .mapValues(p -> Purchase.builder(p).maskCreditCard().build());
+3.3.2 创建第二个处理器
+
+
+
+第二个处理器负责抽取消费地点的ZIP code。
+
+KStream<String, PurchasePattern> patternKStream = purchaseKStream
+    // 通过自定义PurchasePattern类抽取zip code
+    .mapValues(purchase -> PurchasePattern.builder(purchase).build());
+// 把结果发送到另外一个负责分析模式的topic
+patternKStream.to("patterns", Produced.with(stringSerde, purchasePatternSerde));
+3.3.3 创建第三个处理器
+
+
+
+第三个处理器负责抽取客户编号和消费金额，计算奖励积分。
+
+KStream<String, RewardAccumulator> rewardsKStream = purchaseKStream
+    // 通过自定义RewardAccumulator类计算奖励积分
+    .mapValues(purchase -> RewardAccumulator.builder(purchase).build());
+// 把结果发送到另外一个负责处理积分的topic
+rewardsKStream.to("rewards", Produced.with(stringSerde, rewardAccumulatorSerde));
+3.3.4 创建最后一个处理器
+
+
+
+最后一个处理器负责保存所有消费数据。
+
+// 直接把隐藏信用卡信息后的数据发送到另外一个负责保存数据的topic
+purchaseKStream.to("purchases", Produced.with(stringSerde, purchaseSerde));
+3.4 创建和启动KStream
+
+KafkaStreams kafkaStreams = new KafkaStreams(streamsBuilder.build(), props);
+kafkaStreams.start();
+这样，一个完整的流处理应用可以说完成了。
+
+4. 交互式开发
+
+在开发期间可以使用控制台作为消费者输出查看结果，KStream接口有一个方法KStream.print(final Printed<K, V> printed)，其参数Printed提供了两种静态方法，允许打印到stdout的Printed.toSysOut，或写入到文件的Printed.toFile(filePath)。
+
+此外，还可以通过连接withLabel()方法来标记打印的结果，这对处理来自不同处理器的结果时非常有用。在把结果输出到控制台或文件时，重写对象的toString()方法对查看结果是非常必要的。最后，如果不想使用toString方法，或者想要自定义Kafka Streams打印结果的方式，可以使用Printed.withKeyValueMapper方法，其参数KeyValueMapper允许你格式化结果的格式。下面是示例代码：
+
+patternKStream.print(Printed.<String, PurchasePattern>toSysOut().withLabel("patterns"));
+rewardsKStream.print(Printed.<String, RewardAccumulator>toSysOut().withLabel("rewards"));
+purchaseKStream.print(Printed.<String, Purchase>toSysOut().withLabel("purchases"));
+输出格式如下：
+
+
+
+最左边是标签，然后是key（这里是null），接着是结果。
+
+使用print方法的一个缺点是它创建了一个终节点，这意味着不能将其嵌入到处理器链中。然而，KStream还有一个peek方法，其参数ForeachAction允许你实现apply()方法对每个结果执行操作，返回类型为void。因此KStream.peek中的任何结果都不会向下游转发，非常适合打印结果等操作，它还可以嵌入到处理器链中。
+
+5. 新增需求
+
+需要过滤掉一定金额以下的消费，因为管理层对小额购买兴趣不大。
+ZMart已经扩大并收购了一个电子产品连锁店和一个受欢迎的咖啡连锁店，所有来自这些新商店的消费数据都需要发送到他们的topic。
+把过滤小额购买后的消费数据保存到一个key-value的NoSQL数据库。
+5.1 过滤小额购买
+
+为了删除小额购买，需要在Masking和Purchases sink之间插入一个过滤处理器，如下图所示：
+
+
+
+
+KStream<String, Purchase> filteredKStream = purchaseKStream
+    // 使用KStream.filter方法过滤小额消费
+    .filter((key, purchase) -> purchase.getPrice() > 5.00);
+// 把数据发送到另外一个负责保存数据的topic
+filteredKStream.to("purchases", Produced.with(stringSerde, purchaseSerde));
+5.2 拆分流
+
+为了把电子产品和咖啡的销售数据分离，需要拆分原来的输入流，如下图所示：
+
+
+
+这个时候可以使用KStream.branch方法创建分支流：
+
+KStream<String, Purchase>[] kstreamByDept = purchaseKStream.branch(
+    (key, purchase) -> purchase.getDepartment().equalsIgnoreCase("coffee"),
+    (key, purchase) -> purchase.getDepartment().equalsIgnoreCase("electronics"));
+
+// 把数据发送到相应的topics
+kstreamByDept[0].to("coffee", Produced.with(stringSerde, purchaseSerde));
+kstreamByDept[1].to("electronics", Produced.with(stringSerde, purchaseSerde));
+5.3 生成新的key值
+
+虽然Kafka保存的数据是key-value形式，但是为了节省数据传输，通常使用null的key值。所以为了把数据保存到一个key-value的NoSQL数据库，需要新增一个处理器用于生成新的key值，如下图所示：
+
+
+
+你可以使用KStream.map方法实现，但有一个更简洁的KStream.selectKey方法可以为数据生成新的key值：
+
+// 在过滤方法后链接selectKey方法生成新的KStream<Long, Purchase>实例
+KStream<Long, Purchase> filteredKStream = purchaseKStream
+    .filter((key, purchase) -> purchase.getPrice() > 5.00)
+    // 使用购买日期为新的key值
+    .selectKey((key, purchase) -> purchase.getPurchaseDate().getTime());
+// 把数据发送到另外一个负责保存数据的topic，注意key值是Long类型
+filteredKStream.to("purchases", Produced.with(Serdes.Long(), purchaseSerde));
+6. 把数据写入到关系型数据库
+
+为了防止员工有欺诈行为，需要把怀疑有欺诈行为的指定商店消费数据写入到一个外部独立关系型数据库，以便安全部门执行分析。不难想到，可以直接在Masking节点后新增一个处理器用于过滤指定商店的消费数据，如下图所示：
+
+
+
+以下是相应的代码：
+
+// 过滤指定商店的消费数据
+purchaseKStream.filter((key, purchase) -> purchase.getEmployeeId().equals("000000"))
+    // 使用KStream.foreach方法对每一个数据执行操作，这里使用SecurityDBService保存数据
+    .foreach((key, purchase) -> SecurityDBService.saveRecord(purchase.getPurchaseDate(),
+        purchase.getEmployeeId(), purchase.getItemPurchased()));
+
+=====================
+
+随笔-33  文章-0  评论-2
+kafkaConsumer(从topic 拿数据存入hdfs)
+复制代码
+import kafka.consumer.ConsumerConfig;
+import kafka.consumer.KafkaStream;
+import kafka.javaapi.consumer.ConsumerConnector;
+import kafka.serializer.StringDecoder;
+import kafka.utils.VerifiableProperties;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import com.xinsight.Pool.ThreadPoolManager;
+import com.xinsight.Thread.ConsumerThread;
+public class KafkaConsumer {
+    private ConsumerConnector consumer = null;
+    private static FSDataOutputStream  hdfsOutStream;
+    private static FSDataInputStream is;
+    public static FileSystem fs ;
+    public static Configuration conf;
+    public static int num = 0;
+    private static String filePath;
+    public static String lock = new String("lock");
+    public static void setFSDataOutputStream(String filename){
+        Path path = new Path(filename);
+        if(hdfsOutStream != null){
+            try {
+                hdfsOutStream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        synchronized (lock) {
+            try {
+                if(fs.exists(path)){
+                    is = fs.open(path);
+                    FileStatus stat = fs.getFileStatus(path);
+                    byte[] buffer = buffer = new byte[Integer.parseInt(String.valueOf(stat.getLen()))];
+                    is.readFully(0, buffer);
+                    is.close();
+                    fs.delete(path);
+                    hdfsOutStream = fs.create(path);
+                    hdfsOutStream.write(buffer);
+                }else{
+                    hdfsOutStream = fs.create(path);
+
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+    public static FSDataOutputStream getFSDataOutputStream(){
+        return hdfsOutStream;
+    }
+    public static void init(){
+        try {
+            conf = new Configuration();
+            String url = "hdfs://Master:9000/test" ;
+            conf .set("dfs.client.block.write.replace-datanode-on-failure.policy" ,"NEVER" );
+            conf .set("dfs.client.block.write.replace-datanode-on-failure.enable" ,"true" );
+            fs = FileSystem.get( new URI( url), conf);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
+    }
+    public static void main(String[] args) throws InterruptedException {
+
+        if (args.length == 3) {
+            init();
+            String fileName = getFileName();
+            filePath = args[1]+"/"+fileName ;
+            KafkaConsumer.setFSDataOutputStream(filePath);
+            /**********zookeeper的列表*********/
+            String zkInfo = args[0];
+            /************存入的hdfs文件夹**************/
+            String uri = args[1];
+            /************kafka的topic**********/
+            String topic = args[2];
+            KafkaConsumer consumer = new KafkaConsumer();
+            consumer.setConsumer(zkInfo);
+            consumer.consume(lock,topic);
+        }
+
+    }
+    /**
+     * 加载配置
+     * @param zkInfo
+     */
+    public void setConsumer(String zkInfo) {
+        Properties props = new Properties();
+        //zookeeper 配置
+        props.put("zookeeper.connect",zkInfo);
+        //group 代表一个消费组
+        props.put("group.id", "jd-group");
+        props.put("zookeeper.session.timeout.ms", "5000"); //client连接到ZK server的超时时间。
+        props.put("zookeeper.sync.time.ms", "200"); //1个ZK follower能落后leader多久
+        props.put("auto.commit.interval.ms", "1000");  //consumer向ZooKeeper发送offset的时间间隔。
+        props.put("auto.offset.reset", "smallest");//读取旧数据
+        props.put("rebalance.max.retries", "5");//当一个新的consumer加入一个consumer group时，会有一个rebalance的操作，导致每一个consumer和partition的关系重新分配。如果这个重分配失败的话，会进行重试，此配置就代表最大的重试次数。
+        props.put("rebalance.backoff.ms", "1200");//在rebalance重试时的backoff时间。
+        //序列化类
+        props.put("serializer.class", "kafka.serializer.StringEncoder");
+        ConsumerConfig config = new ConsumerConfig(props);
+        consumer = kafka.consumer.Consumer.createJavaConsumerConnector(config);
+    }
+    /**
+     * 获得文件名
+     * @return
+     */
+    public static String getFileName(){
+        long time = System.currentTimeMillis();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHH");
+        String date = sdf.format(new Date(time));
+        return date;
+    }
+
+    /**
+     * 得到topic的消息
+     * @param hdfsPath
+     * @param topic
+     * @throws InterruptedException
+     */
+    public void consume(String lock,String topic) throws InterruptedException {
+        Map<String, Integer> topicCountMap = new HashMap<String, Integer>();
+        topicCountMap.put(topic, new Integer(3));
+        StringDecoder keyDecoder = new StringDecoder(new VerifiableProperties());
+        StringDecoder valueDecoder = new StringDecoder(new VerifiableProperties());
+        Map<String, List<KafkaStream<String, String>>> consumerMap = consumer.createMessageStreams(topicCountMap,keyDecoder,valueDecoder);
+        List<KafkaStream<String, String>> streams = consumerMap.get(topic);
+        System.out.println(streams.size());
+        for(final KafkaStream stream : streams){
+            ThreadPoolManager.dbShortSchedule(new ConsumerThread(stream,lock), 0);
+
+        }
+        System.out.println("finish");
+    }
+}
+package com.xinsight.Thread;
+import java.io.IOException;
+import kafka.consumer.ConsumerIterator;
+import kafka.consumer.KafkaStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import com.xinsight.kafkaConsumer.KafkaConsumer;
+public class ConsumerThread implements Runnable{
+    private String lock;
+    private KafkaStream m_stream;
+    private int max_sync = 1000;
+    private int current_sync = 0;
+    public ConsumerThread(KafkaStream a_stream,String lock) {
+        this.m_stream = a_stream;
+        this.lock = lock;
+    }
+    @Override
+    public void run() {
+        ConsumerIterator<String, String> it = m_stream.iterator();
+        while (it.hasNext()) {
+            String message = it.next().message();
+            try {
+                synchronized (lock) {
+                    WriteFile(KafkaConsumer.getFSDataOutputStream(),message);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+    /**
+     * 写入hdfs的操作
+     * @param hdfs
+     * @param message
+     * @throws IOException
+     */
+    public void WriteFile(FSDataOutputStream hdfsOutStream,String message) throws IOException {
+        try{
+            hdfsOutStream.write(message.getBytes());
+            hdfsOutStream.write("\n".getBytes());
+            current_sync++;
+            if(current_sync>=max_sync){
+                hdfsOutStream.sync();
+            }
+        }catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+
