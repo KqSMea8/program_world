@@ -1,0 +1,403 @@
+#!/bin/bash
+FLUME_HOME='/opt/module/cdh-5.3.6-ha/apache-flume-1.5.0-cdh5.3.6-bin'
+
+cd $FLUME_HOME
+
+# bin/flume-ng agent \
+# -c conf \
+# -n a3 \
+# -f conf/flume-app.conf \
+# -Dflume.root.logger=DEBUG,console
+
+bin/flume-ng agent \
+-c conf \
+-n a2 \
+-f conf/flume-tail.conf \
+-Dflume.root.logger=DEBUG,console
+
+
+# 监控某个日志文件的目录
+/app/logs/2014-12-20
+.....
+/app/logs/2014-09-26
+	zz.log  ->   不收集变化的日志文件
+	xx.log.comp   200MB
+	yy.log.comp   200MB
+>>>>>>>>>>>>>
+	log4j
+	20K#!/bin/bash
+FLUME_HOME='/opt/module/cdh-5.3.6-ha/apache-flume-1.5.0-cdh5.3.6-bin'
+
+# wget http://archive.cloudera.com/cdh5/cdh/5/flume-ng-1.5.0-cdh5.3.6.tar.gz
+
+# flume-env.sh
+# export JAVA_HOME=/opt/module/jdk1.7.0_67
+#单独的机器 16G ->13个G 可以设置成8G
+# export JAVA_OPTS="-Xms100m -Xmx8192m -Dcom.sun.management.jmxremote"
+
+# flume-hive.properties
+
+# flume-hivelog.properties
+
+
+
+cd $FLUME_HOME
+bin/flume-ng version
+
+
+
+
+#!/bin/bash
+FLUME_HOME='/opt/module/cdh-5.3.6-ha/apache-flume-1.5.0-cdh5.3.6-bin'
+
+cd $FLUME_HOME
+
+# bin/flume-ng agent \
+# -c conf \
+# -n a3 \
+# -f conf/flume-app.conf \
+# -Dflume.root.logger=DEBUG,console
+
+# bin/flume-ng agent \
+# -c conf \
+# -n a2 \
+# -f conf/flume-tail.conf \
+# -Dflume.root.logger=DEBUG,console
+
+ bin/flume-ng agent \
+ -c $FLUME_HOME/conf/ \
+ -f $FLUME_HOME/conf/test2.conf \
+ -n agent \
+ -Dflume.root.logger=DEBUG,console &
+
+
+
+
+# Flume鐩戝惉Nginx鏃ュ織淇℃伅锛屽啓鍏ュ埌hdfs
+	# 1. 缂栧啓nginx閰嶇疆淇℃伅
+		# 鍦╪ginx鏍圭洰褰曚笅鍒涘缓www/source鏂囦欢澶癸紝骞跺皢BfImg鍥剧墖绉诲姩鍒拌鐩綍涓嬨€?	# 2. 缂栧啓flume鐨刟gent閰嶇疆淇℃伅
+	# 3. 绉诲姩hdfs渚濊禆鍖呭埌flume鐨刲ib鏂囦欢澶逛腑銆?	  # cp ~/bigdater/hadoop-2.5.0-cdh5.3.6/share/hadoop/common/lib/commons-configuration-1.6.jar ./
+	  # cp ~/bigdater/hadoop-2.5.0-cdh5.3.6/share/hadoop/common/lib/hadoop-auth-2.5.0-cdh5.3.6.jar ./
+	  # cp ~/bigdater/hadoop-2.5.0-cdh5.3.6/share/hadoop/common/hadoop-common-2.5.0-cdh5.3.6.jar ./
+	  # cp ~/bigdater/hadoop-2.5.0-cdh5.3.6/share/hadoop/hdfs/hadoop-hdfs-2.5.0-cdh5.3.6.jar ./
+
+	# 4. 杩涘叆flume鏍圭洰褰曪紝鍚姩flume: flume-ng agent --conf ./conf/ --conf-file ./conf/test2.conf --name agent
+	# 5. 鍙戦€乭ttp璇锋眰鏌ョ湅鏄惁鎴愬姛銆?
+
+	# 闂锛歠lume绐佺劧鎸傛帀锛宧dfs涓骇鐢熶复鏃舵枃浠讹紝璺憁apreduce绋嬪簭璇昏鏂囦欢鐨勬椂鍊欙紝鍙兘浼氬嚭鐜板紓甯革紵
+		# 瑙ｅ喅鍔炴硶锛?			# 1. 鐜癱opy鏂囦欢鍒板叾浠栫洰褰?				# hdfs dfs -cp /logs/11/17/BF-09.1447769674855.log.tmp /BF-09.1447769674855.log.tmp
+			# 2. 鍒犻櫎鐜版湁鐨勬枃浠?				# hdfs dfs -rm /logs/11/17/BF-09.1447769674855.log.tmp
+			# 3. 灏哻opy鐨勬枃浠跺鍒跺洖鍘汇€?				# hdfs dfs -cp /BF-09.1447769674855.log.tmp /logs/11/17/BF-09.1447769674855.log
+
+
+
+
+# server logs
+
+# 0926
+	# /user/beifeng/flume/applogs/
+		# /20150926
+			# xxx.log
+			# yyy.log
+			# zzz.log
+
+
+# hdfs://hadoop-senior.ibeifeng.com:8020/user/beifeng/flume/applogs/%Y%m%d
+
+# hdfs.useLocalTimeStamp = true #!/bin/bash
+FLUME_HOME='/opt/module/cdh-5.3.6-ha/apache-flume-1.5.0-cdh5.3.6-bin'
+
+
+# bin/flume-ng agent  --conf conf --conf-file conf/test-conf --name a1
+# bin/flume-ng agent  --c conf -f  conf/test-conf -n a1
+
+
+# bin/flume-ng agent \
+# -c conf \
+# -n a3 \
+# -f conf/flume-app.conf \
+# -Dflume.root.logger=DEBUG,console
+
+# bin/flume-ng agent \
+# -c conf \
+# -n a1 \
+# -f conf/a1.conf \
+# -Dflume.root.logger=DEBUG,console
+
+ # bin/flume-ng agent --conf conf --name agent-test --conf-file test.conf
+ # bin/flume-ng agent -c conf -n agent-test -f test.conf
+
+
+
+# Usage: bin/flume-ng <command> [options]...
+
+# commands:
+  # agent                     run a Flume agent
+
+# global options:
+  # --conf,-c <conf>          use configs in <conf> directory
+  # -Dproperty=value          sets a Java system property value
+
+# agent options:
+  # --name,-n <name>          the name of this agent (required)
+  # --conf-file,-f <file>     specify a config file (required if -z missing)
+
+# --conf,-c <conf>          use configs in <conf> directory
+# --name,-n <name>          the name of this agent (required)
+# --conf-file,-f <file>     specify a config file (required if -z missing)
+#!/bin/bash
+
+FLUME_HOME='/opt/module/cdh-5.3.6-ha/apache-flume-1.5.0-cdh5.3.6-bin'
+
+PIDS=`sudo ps -ef | grep -i flume |awk '{print $2}'`
+
+i=1
+while((1==1))
+do
+        split=`echo $PIDS|cut -d " " -f$i`
+        if [ "$split" != "" ]
+        then
+                ((i++))
+				# sudo kill -quit $split
+				sudo kill -9 $split
+        else
+                break
+        fi
+done
+
+
+#!/bin/bash
+FLUME_HOME='/opt/module/cdh-5.3.6-ha/apache-flume-1.5.0-cdh5.3.6-bin'
+
+
+
+# flume实时收集端口发送的数据
+# sudo yum -y install telnet telnet-server
+
+
+# sudo  vi /etc/xinetd.d/telnet
+# （设置disable = no，也就是开启telnet服务）
+# service telnet
+# {
+# disable = no
+# socket_type = stream
+# server = /usr/sbin/in.telnetd
+# # server_args =
+# protocol = tcp
+# user = root
+# wait = no
+# }
+
+
+# sudo service xinetd restart
+
+# flume配置 test.sh
+# a1.sources=r1
+# a1.channels=c1
+# a1.sinks=k1
+
+# a1.sources.r1.type=netcat
+# a1.sources.r1.bind=0.0.0.0
+# a1.sources.r1.port=4444
+# a1.sources.r1.channels=c1
+
+# a1.channels.c1.type=memory
+# #channel能容纳多少event
+# a1.channels.c1.capacity=1000
+# #一个事务中间能容纳最大的记录的条数
+# a1.channels.c1.transactionCapacity=100
+
+# a1.sinks.k1.type=logger
+# a1.sinks.k1.channel=c1
+
+
+
+#client
+# telnet localhost 4444 && netstat -anput | grep :23
+# 默认端口号 23  root登录需要配置  pts/0 pts/1
+
+# cd $FLUME_HOME
+# bin/flume-ng agent \
+ # -c $FLUME_HOME/conf/ \
+ # -f $FLUME_HOME/conf/test1.conf \
+ # -n a1 \
+ # -Dflume.root.logger=DEBUG,console
+
+
+ cd $FLUME_HOME
+
+
+bin/flume-ng agent \
+ -c $FLUME_HOME/conf/ \
+ -f $FLUME_HOME/conf/test1.conf \
+ -n a1 \
+ -Dflume.root.logger=DEBUG,console
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ # telnet [-8acdEfFKLrx][-b<主机alias.html' target='_blank'>别名>][-e<脱离字符>][-k<域名>][-l<用户名称>][-n<记录文件>][-S<服务类型>][-X<认证形态>][主机名称或IP地址<通信端口>]
+
+# 补充说明：执行telnet指令开启终端机阶段作业，并登入远端主机。
+
+# 参　　数：
+  # -8   允许使用8位字符资料，包括输入与输出。
+  # -a   尝试自动登入远端系统。
+  # -b<主机别名>   使用别名指定远端主机名称。
+  # -c   不读取用户专属目录里的.telnetrc文件。
+  # -d   启动排错模式。
+  # -e<脱离字符>   设置脱离字符。
+  # -E   滤除脱离字符。
+  # -f   此参数的效果和指定"-F"参数相同。
+  # -F   使用Kerberos V5认证时，加上此参数可把本地主机的认证数据上传到远端主机。
+  # -k<域名>   使用Kerberos认证时，加上此参数让远端主机采用指定的领域名，而非该主机的域名。
+  # -K   不自动登入远端主机。
+  # -l<用户名称>   指定要登入远端主机的用户名称。
+  # -L   允许输出8位字符资料。
+  # -n<记录文件>   指定文件记录相关信息。
+  # -r   使用类似rlogin指令的用户界面。
+  # -S<服务类型>   设置telnet连线所需的IP TOS信息。
+  # -x   假设主机有支持数据加密的功能，就使用它。
+  # -X<认证形态>   关闭指定的认证形态。
+
+# telnet是一种远程连接协议
+# 命令 “telnet ip 端口” 连接 指定的ip和端口的远程主机
+# 想当于 不带参数直接运行 telnet 命令，计入命令模式后，再运行 'open   ip 端口" 命令
+# 运行 help 可以看到命令版主， display 可以看到escape 设置， "^]" 中的^ 表示 ctrl键
+# 就是说已经连上主机后， 同时按 Ctrl 和 ］   两个键进入telnet客户端的命令模式。
+
+# [root@ ~]# telnet
+# telnet> display
+# echo            [^E]
+# escape          [^]]
+# rlogin          [off]
+# tracefile       "(standard output)"
+# flushoutput     [^O]
+# interrupt       [^C]
+# quit            [^]
+# eof             [^D]
+# erase           [^?]
+# kill            [^U]
+# lnext           [^V]
+# susp            [^Z]
+# reprint         [^R]
+# worderase       [^W]
+# start           [^Q]
+# stop            [^S]
+# forw1           [off]
+# forw2           [off]
+# ayt             [^T]
+# telnet> quit
+
+# 扩展资料一:Linux操作系统下设置Telnet方法介绍
+
+# Linux 下Telnet的设置
+
+# 　　Telnet服务的配置步骤如下:
+
+    # 一、安装Telnet软件包(通常要两个）
+
+# 　　1、 Telnet-clIEnt (或 Telnet)，这个软件包提供的是 Telnet 客户端程序；
+
+# 　　2、 Telnet-server ，这个软件包提供的是 Telnet 服务器端程序；
+
+# 　　安装之前先检测是否这些软件包已安装，方法如下：
+
+# 　　[root@linuxso.com root]#rpm –q Telnet或[root@wljs root]#rpm –q Telnet-client
+
+# 　　[root@linuxso.com root]#rpm –q Telnet-server
+
+# 　　如果没有检测到软件包，需要进行安装，red hat Linux 9默认已安装了Telnet软件包，一般只要安装Telnet-server软件包。
+
+# 　　1、在red hat Linux 9的安装盘3中获取Telnet-server-0.17-25.i386.rpm软件包。
+
+# 　　2、安装软件包
+
+# 　　[root@linuxso.com root]#rpm –i Telnet-server-0.17-25.i386.rpm
+
+    # 二、启动Telnet服务
+
+# 　　1、开启服务
+
+# 　　方法一：使用ntsysv,在出现的窗口之中，将 Telnet前面*加上，然后按下 OK 。
+
+# 　　方法二：编辑 /etc/xinetd.d/Telnet
+
+# 　　[root@linuxso.com root]# vi /etc/xinetd.d/Telnet
+
+# 　　找到 disable = yes 将 yes 改成 no 。
+
+# 　　2、激活服务
+
+# 　　[root@linuxso.com root]# service xinetd restart
+
+    # 三、测试服务
+
+# 　　[root@linuxso.com root]#Telnet ip(或者hostname）
+
+# 　　如果配置正确，系统提示输入远程机器的用户名和密码
+
+# 　　Login:
+
+# 　　PassWord:
+
+# 　　注：默认只允许普通用户 　
+
+    # 四、设置Telnet端口
+
+# 　　#vi /etc/services
+
+# 　　进入编辑模式后查找Telnet(vi编辑方式下输入/Telnet)
+
+# 　　会找到如下内容：
+
+# 　　Telnet 23/tcp
+
+# 　　Telnet 23/udp
+
+# 　　将23修改成未使用的端口号(如：2000)，退出vi，重启Telnet服务，Telnet默认端口号就被修改了。
+
+    # 五、Telnet服务限制
+
+# 　　Telnet是明文传送口令和数据的，如果你对其默认的设置不满意，有必要对其服务范围进行限制。假设你的主机的ip是210.45.160.17，就可以按如下方式设置了。
+
+# 　　#vi /etc/xinetd.d/Telnet
+# 　　service Telnet
+
+# 　　{
+# 　　disable　　　　 = no #激活 Telnet 服务,no
+# 　　bind 　　　　　 = 210.45.160.17 #your ip
+# 　　only_from 　　　= 210.45.0.0/16 #只允许 210.45.0.0 ~ 210.45.255.255 这个网段进入
+# 　　only_from 　　　= .edu.cn #只有教育网才能进入！
+# 　　no_access 　　　= 210.45.160. #这两个ip不可登陆
+# 　　access_times　　= 8:00-12:00 20:00-23:59 # 每天只有这两个时间段开放服务
+# 　　......
+# 　　}
+# 　　
+    # 六、Telnet root用户的登入
+
+# 　　Telnet 不是很安全，默认的情况之下不允许 root 以 Telnet 进入 Linux 主机 。若要允许root用户登入，可用下列方法：
+
+# 　　[root @echo /root]# vi /etc/pam.d/login
+
+# 　　#auth required pam_securetty.so #将这一行加上注释！
+
+# 　　或
+
+# 　　[root@linuxso.com root]# mv /etc/securetty /etc/securetty.bak
+
+# 这样， root 就可以直接进入 Linux 主机了。不过，建议不要这样做。也可以在普通用户进入后，切换到root用户,拥有root的权限。
+
+# 　　注：在我的FC4里不用安装Telnet服务器,因为已经有了krb5-Telnet.直接进入第二步
+
+# 　　vi /etc/xinetd.d/krb5-Telnet 就可以了。

@@ -1,0 +1,274 @@
+一、Shell函数
+
+本教程目前为止所有脚本都是从头到尾执行。这样做很好，但你也许已经注意到有些脚本段间互相重复。
+
+shell允许将一组命令集或语句形成一个可用块，这些块称为shell函数。
+
+shell中函数的定义格式如下：
+复制代码 代码如下:
+函数名(){
+    command1
+    command2
+    ...
+    commandN
+    [ return value ]
+}
+如果愿意，可在函数名前加上关键字function，这取决于使用者。
+复制代码 代码如下:
+function 函数名(){
+    command1
+    command2
+    ...
+    commandN
+    [ return value ]
+}
+函数返回值，可以显示增加return语句；如果不加，则将最后一条命令运行结果作为返回值（一般为0，如果执行失败则返回错误代码）。 return后跟数值（0-255）。
+
+函数可以放在同一个文件中作为一段代码，也可以放在只包含函数的单独文件中。函数不必包含很多语句或命令，甚至可以只包含一个echo语句，这取决于使用者。
+
+下面的例子定义了一个函数并进行调用：
+复制代码 代码如下:
+
+#!/bin/bash
+demoFun(){
+    echo "This is your first shell function!"
+}
+echo "Function begin..."
+hello
+echo "Function end!"
+输出：
+Function begin...
+This is your first shell function!
+Function end!
+
+下面定义一个带有return语句的函数：
+复制代码 代码如下:
+
+#!/bin/bash
+funWithReturn(){
+    echo "The function is to get the sum of two numbers..."
+    echo -n "Input first number: "
+    read aNum
+    echo -n "Input another number: "
+    read anotherNum
+    echo "The two numbers are $aNum and $anotherNum !"
+    return $(($aNum+$anotherNum))
+}
+funWithReturn
+echo "The sum of two numbers is $? !"
+输出类似下面：
+The function is to get the sum of two numbers...
+Input first number: 25
+Input another number: 50
+The two numbers are 25 and 50 !
+The sum of two numbers is 75 !
+
+函数返回值在调用该函数后通过 $? 来获得。
+
+注意：所有函数在使用前必须定义。这意味着必须将函数放在脚本开始部分，直至shell解释器首次发现它时，才可以使用。调用函数仅使用其函数名即可。
+
+二、Shell函数参数
+
+在Shell中，调用函数时可以向其传递参数。在函数体内部，通过 $n 的形式来获取参数的值，例如，$1表示第一个参数，$2表示第二个参数...
+
+带参数的函数示例：
+
+复制代码 代码如下:
+
+#!/bin/bash
+funWithParam(){
+    echo "The value of the first parameter is $1 !"
+    echo "The value of the second parameter is $2 !"
+    echo "The value of the tenth parameter is $10 !"
+    echo "The value of the tenth parameter is ${10} !"
+    echo "The value of the eleventh parameter is ${11} !"
+    echo "The amount of the parameters is $# !"
+    echo "The string of the parameters is $* !"
+}
+funWithParam 1 2 3 4 5 6 7 8 9 34 73
+输出：
+The value of the first parameter is 1 !
+The value of the second parameter is 2 !
+The value of the tenth parameter is 10 !
+The value of the tenth parameter is 34 !
+The value of the eleventh parameter is 73 !
+The amount of the parameters is 12 !
+The string of the parameters is 1 2 3 4 5 6 7 8 9 34 73 !"
+
+注意，$10 不能获取第十个参数，获取第十个参数需要${10}。当n>=10时，需要使用${n}来获取参数。
+
+另外，还有几个特殊字符用来处理参数：
+
+shell自定义函数
+参考： http://www.cnblogs.com/zhaiqianfeng/p/4621297.html
+
+“sum=$(fsum 2 5)”这种方式，是将标准输出（echo 出来的东子）传递给主程序的变量，而不是返回值！
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+#!/bin/bash
+function sum(){
+
+ val1=$1
+
+ val2=$2
+
+ val3=$(($1+$2))
+
+ echo $val3
+
+}
+
+#Call function with 2 parameters and it return 1 parameter.
+ret_val=$(sum 10 20)
+echo $ret_val
+　　脚本执行结果： ret_val = $(sum 10 20)  将sum 10 20 的输出传递给变量ret_val
+
+
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+#!/bin/bash
+prod=1
+twoPow(){
+        for((i=0;i<$1;i++));
+        do
+                prod=$(($prod*2))
+        done
+}
+echo "Enter a number"
+read num
+twoPow $num
+echo $prod
+　　执行脚本 c.sh
+
+
+
+
+
+
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+#!/bin/bash
+
+twoPow()
+{
+    prod=1
+    for((i=0;i<$1;i++));
+    do
+        prod=$(($prod*2))
+    done
+    return $prod
+}
+
+echo "Enter a number"
+read num
+twoPow num
+　　
+
+
+
+----------------------------------------------------------------------------------------------------------------------------------
+
+Shell的函数在使用之前必须先定义，定义格式：
+
+1
+2
+3
+4
+5
+[ function ] funname [()]
+{
+    action;
+    [return int;]
+}
+可以带function fun()定义，也可以直接fun() 定义,不带任何参数。
+参数返回，可以显示加：return 返回，如果不加，将以最后一条命令运行结果，作为返回值。 return后跟数值n(0-255)
+示例
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+fsum 2 5
+
+fsum(){
+    echo $1,$2
+    return $1+$2
+}
+
+sum=$(fsum 2 5)
+echo $?
+echo "sum=$sum"
+执行输出：
+
+fsum: not found
+7
+sum=2,5
+
+从上面这个例子我们可以得到几点结论：
+
+必须在调用函数地方之前，声明函数，shell脚本是逐行运行，这点和编译型语言不通。
+函数返回值，只能通过$? 系统变量获得，而“sum=$(fsum 2 5)”这种方式，是将标准输出传递给主程序的变量，而不是返回值！
+Shell函数可以在脚本文件中使用之前定义它，也可以把函数定义在一个独立的文件使用点号(.)命令来引用它。如function.sh和testshell.sh在同一目录中，function.sh
+
+1
+2
+3
+4
+fsum(){
+    echo $1,$2
+    return $(($1+$2))
+}
+testshell.sh
+
+1
+2
+3
+#! /bin/sh
+. ./function.sh
+fsum 2 5

@@ -1,0 +1,75 @@
+linux下c创建僵尸进程、查看僵尸进程、杀死僵尸进程
+2018年07月26日 15:41:41 echoSuccess 阅读数 3396
+ 版权声明：本文为博主原创文章，未经博主允许不得转载。 https://blog.csdn.net/u011123091/article/details/81220827
+僵尸进程(Zombie process)通俗来说指那些虽然已经终止的进程，但仍然保留一些信息，等待其父进程为其收尸。也就是说父进程没有结束，但是子进程结束了，父进程没死，没办法给子进程收尸，真的是只有父进程死了才能收尸，哈哈，同时也没有显示的调用wait/waitpid给其子进程收尸。当然，父进程提前死亡，子进程会交给init进程，所以收尸的问题就交给init进程了。百度百科的僵尸进程说的很好，可以看一下！
+
+一，在linux下生成一个僵尸进程的c代码
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
+#include <linux/wait.h>
+int main(int argc,char **argv)
+{
+        int i=0;
+        pid_t pid=fork();
+        if(pid==-1) return 0;
+        else if(pid==0)
+        {
+                printf("son pid is %d\n",getpid());
+                while(1)
+                {
+                        printf("son---i=%d\n",i);
+                        i++;
+                        sleep(1);
+                        if(i==5)
+                        break;
+                }
+                printf("son is over!\n");
+        }else if(pid>0)
+        {
+                printf("parent pid is %d\n",getpid());
+                while(1) sleep(100);
+        }
+        return 0;
+
+}
+
+这样就是在子进程已经结束，但是父进程永远也不会结束，也没有调用wait/waitpid。那么子进程就成为僵尸进程。
+
+编译，gcc makeDefunct.c -o makeDefunct
+
+我的文件名是makeDefunct.c  运行./makeDefunct
+
+二、如何查看僵尸进程
+
+可以利用top命令，效果如下，上文中创建的僵尸进程
+
+
+
+可以发现我的服务器下只有一个僵尸进程。
+
+也可以用 ps -aux |grep Z 来查看僵尸进程，效果如下：
+
+
+
+僵尸进程的状态显示的是Z
+
+三、如何杀死僵尸进程
+
+从僵尸进程的概念可以看出，父进程没有结束导致的，我们把父进程杀死，父进程就会寻找他自己创建的子进程，从而杀死僵尸进程。所以我们要杀死父进程就可以。所以第一步要找到父进程 ps -ef | grep defunct_process_pid（僵尸进程pid）  然后执行，kill -s 9 父进程的pid。演示如下：
+
+
+
+可以看出，先找到僵尸进程的pid，我这里使用ps -aux |grep make 是因为我的c文件是make开头的。然后在找到僵尸进程的父进程的pid  11781
+
+然后杀死 kill -s 9 11781
+
+
+
+检查一下是否杀死了僵尸进程
+
+执行top后得到的结果如下图：
+
+没有僵尸进程了已经被杀死了。

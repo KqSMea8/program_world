@@ -1,0 +1,192 @@
+#!/bin/bash
+
+STORM_HOME='/opt/module/cdh-5.3.6-ha/apache-storm-0.9.6'
+
+#拷贝
+# scp -r $STORM_HOME xiaoyuzhou@xyz02.aiso.com:/opt/module/cdh-5.3.6-ha
+# scp -r $STORM_HOME xiaoyuzhou@xyz03.aiso.com:/opt/module/cdh-5.3.6-ha
+
+
+
+if [ ! -d "$STORM_HOME" ]; then
+  echo "STORM_HOME is not exist"
+   exit 1
+fi
+
+
+ssh xiaoyuzhou@xyz02.aiso.com rm -rf $STORM_HOME/conf  &&  scp -r $STORM_HOME/conf xiaoyuzhou@xyz02.aiso.com:$STORM_HOME/
+
+ if [[ $? -ne 0 ]]
+		then exit
+ fi
+
+
+ssh xiaoyuzhou@xyz03.aiso.com rm -rf $STORM_HOME/conf  &&  scp -r $STORM_HOME/conf xiaoyuzhou@xyz03.aiso.com:$STORM_HOME/
+
+
+ssh xiaoyuzhou@xyz02.aiso.com rm -rf $STORM_HOME/bin  &&  scp -r $STORM_HOME/bin xiaoyuzhou@xyz02.aiso.com:$STORM_HOME/
+
+ if [[ $? -ne 0 ]]
+		then exit
+ fi
+
+
+ssh xiaoyuzhou@xyz03.aiso.com rm -rf $STORM_HOME/bin  &&  scp -r $STORM_HOME/bin xiaoyuzhou@xyz03.aiso.com:$STORM_HOME/
+
+
+echo "successful!"#!/bin/bash
+
+STORM_HOME='/opt/module/cdh-5.3.6-ha/apache-storm-0.9.6'
+
+#启动zookeeper
+
+cd $STORM_HOME
+
+#**** 启动nimbus
+#2 错误级别日志 跟1 一样都重定向 都丢弃到垃圾箱
+nohup bin/storm nimbus >/dev/null 2>&1 &
+jps
+# 3099 config_value 检查配置文件
+# nimbus 2947
+#获取nimbus进程号
+ps -ef | grep daemon.nimbus | awk '{print $2}'| head -n 1
+
+#**** supervisor
+nohup bin/storm supervisor >/dev/null 2>&1 &
+jps
+ps -ef | grep daemon.supervisor | awk '{print $2}'| head -n 1
+
+#****Ui进程 需要nimbus服务器上启动
+nohup bin/storm ui >/dev/null 2>&1 &
+jps
+ps -ef | grep daemon.ui | awk '{print $2}'| head -n 1
+netstat -tnlup | grep 8081
+
+
+#***日志收集的辅助进程logviewer
+nohup bin/storm logviewer >/dev/null 2>&1 &
+jps
+ps -ef | grep daemon.logviewer | awk '{print $2}'| head -n 1
+
+
+
+
+
+
+#!/bin/bash
+
+ZOOKP_HOME='/opt/module/cdh-5.3.6-ha/zookeeper-3.4.5-cdh5.3.6'
+
+STORM_HOME='/opt/module/cdh-5.3.6-ha/apache-storm-0.9.6'
+
+# # 启动zookeeper
+# if [ $# -ne 1]; then
+	# echo "Usage:$ZOOKP_HOME/bin/zkServer.sh{start|start-foreground|stop|restart|status|upgrade|print-cmd}"
+	# exit 4
+# fi
+
+# for node in xyz01.aiso.com
+# do
+	# echo "$1 in $node"
+# done
+
+# sh $ZOOKP_HOME/start.sh
+
+# 启动Storm集群的shell脚本
+# 设定shell脚本是放在nimbus 节点服务器上执行
+# 在nimbus上启动nimbus进程和UI进程 本地执行
+
+
+cd $STORM_HOME
+#1 在本机上启动nimbus和ui进程
+nohup $STORM_HOME/bin/storm nimbus >/dev/null 2>&1 &
+nohup $STORM_HOME/bin/storm ui >/dev/null 2>&1 &
+
+# 在其他指定作为Supervisor的服务器上启动supervisor和logviewer
+#前提工作 创建一个supervisorHost文件 内容：一行一个服务器主机名 代表superviso节点
+#storm安装bin目录下
+# touch $STORM_HOME/bin/supervisorHost
+# vim $STORM_HOME/bin/supervisorHost
+# xyz02.aiso.com
+# xyz03.aiso.com
+
+supervisorHost=$STORM_HOME/bin/supervisorHost
+supervisors=$(cat $supervisorHost)
+
+for supervisor in $supervisors
+do
+	echo "start supervisor and logviewer in $supervisor"
+	ssh $supervisor "source /etc/profile && nohup ${STORM_HOME}/bin/storm supervisor >/dev/null 2>&1" >/dev/null 2>&1 &
+	ssh $supervisor "source /etc/profile && nohup ${STORM_HOME}/bin/storm logviewer >/dev/null 2>&1" >/dev/null 2>&1 &
+done
+
+#启动DRPC Server 在配置文件中指定的服务器上启动
+nohup $STORM_HOME/bin/storm drpc >/dev/null 2>&1 &
+
+
+
+
+
+
+
+
+
+
+#!/bin/bash
+
+ZOOKP_HOME='/opt/module/cdh-5.3.6-ha/zookeeper-3.4.5-cdh5.3.6'
+
+STORM_HOME='/opt/module/cdh-5.3.6-ha/apache-storm-0.9.6'
+
+#注意事项：停止storm 集群时 一定要先停止运行在该集群上的topology
+#7*24小时一直在跑
+# $STORM_HOME/bin/storm kill wordcount
+
+
+
+##设定Shell脚本是放在nimus节点服务器上执行
+#停止DRPC进程
+sudo kill -9 `ps -ef | grep daemon.drpc | awk '{print $2}'|head -n 1` >/dev/null 2>&1
+
+#1.停止本机上的nimus和ui进程
+sudo kill -9 `ps -ef | grep daemon.nimbus | awk '{print $2}'|head -n 1`
+sudo kill -9 `ps -ef | grep ui.core | awk '{print $2}'|head -n 1`
+
+
+#2.停止supervisor节点上的
+supervisorHost=${STORM_HOME}/bin/supervisorHost
+supervisors=$(cat $supervisorHost)
+
+for supervisor in $supervisors
+do
+        echo "stop supervisor and logviewer in $supervisor"
+
+        ssh $supervisor "kill -9 `ssh $supervisor ps -ef | grep daemon.supervisor | awk '{print $2}'|head -n 1`" >/dev/null 2>&1
+
+		ssh $supervisor "kill -9 `ssh $supervisor ps -ef | grep daemon.logviewer | awk '{print $2}'|head -n 1`" >/dev/null 2>&1
+		# ssh $supervisor "kill -9 `ssh $supervisor ps -ef | grep daemon.drpc | awk '{print $2}'|head -n 1`" >/dev/null 2>&1
+done
+
+
+
+# #停止zookeeper
+# sh $ZOOKP_HOME/stop.sh
+
+
+
+
+
+
+#!/bin/bash
+STORM_HOME='/opt/module/cdh-5.3.6-ha/apache-storm-0.9.6'
+
+cd $STORM_HOME
+
+#名称要唯一
+bin/storm jar examples/storm-starter/storm-starter-topologies-0.9.6.jar storm.starter.WordCountTopology wordcount
+
+#7*24小时一直在跑
+# bin/storm kill wordcount
+
+#过段时间会消失掉
+

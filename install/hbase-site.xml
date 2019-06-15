@@ -1,0 +1,21 @@
+<property>
+    <name>hbase.coprocessor.region.classes</name>
+    <value>coprocessor.RegionObserverExample,coprocessor.AnotherCoprocessor</value>
+</property>
+<property>
+<name>hbase.coprocessor.master.classes</name>
+<value>coprocessor.MasterObserverExample</value>
+</property>
+<property>
+<name>hbase.coprocessor.wal.classes</name>
+<value>coprocessor.WALObserverExample,bar.foo.MyWALObserver</value>
+</property>
+
+
+<property>
+    <name>hbase.coprocessor.region.classes</name>
+    <value>
+        coprocessor.RegionObserverExample,
+        coprocessor.RowCountEndPoint
+    </value>
+</property>

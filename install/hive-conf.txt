@@ -1,0 +1,526 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+
+<configuration>
+    <property>
+        <name>javax.jdo.option.ConnectionURL</name>
+        <value>jdbc:mysql://xyz01.aiso.com:3306/hive_metastore?createDatabaseIfNotExist=true</value>
+        <description>JDBC connect string for a JDBC metastore</description>
+    </property>
+
+    <property>
+        <name>javax.jdo.option.ConnectionDriverName</name>
+        <value>com.mysql.jdbc.Driver</value>
+        <description>Driver class name for a JDBC metastore</description>
+    </property>
+
+    <property>
+        <name>javax.jdo.option.ConnectionUserName</name>
+        <value>root</value>
+        <description>username to use against metastore database</description>
+    </property>
+
+    <property>
+        <name>javax.jdo.option.ConnectionPassword</name>
+        <value>zrr123</value>
+        <description>password to use against metastore database</description>
+    </property>
+    <property>
+        <name>hive.cli.print.header</name>
+        <value>true</value>
+        <description>Whether to print the names of the columns in query output.</description>
+    </property>
+
+    <property>
+        <name>hive.cli.print.current.db</name>
+        <value>true</value>
+        <description>Whether to include the current database in the Hive prompt.</description>
+    </property>
+
+    <property>
+        <name>hive.metastore.warehouse.dir</name>
+        <value>/hive/warehouse</value>
+        <description>location of default database for the warehouse</description>
+    </property>
+
+
+    <!-- hive.hwi -->
+    <property>
+        <name>hive.hwi.war.file</name>
+        <value>lib/hive-hwi-0.13.1.war</value>
+        <description>This sets the path to the HWI war file, relative to ${HIVE_HOME}.</description>
+    </property>
+
+    <property>
+        <name>hive.hwi.listen.host</name>
+        <value>xyz01.aiso.com</value>
+        <description>This is the host address the Hive Web Interface will listen on</description>
+    </property>
+
+    <property>
+        <name>hive.hwi.listen.port</name>
+        <value>9999</value>
+        <description>This is the port the Hive Web Interface will listen on</description>
+    </property>
+
+    <!-- ###################################hive server2####################################### -->
+    <!--hive server2-->
+    <property>
+          
+        <name>hive.server2.long.polling.timeout</name>
+          
+        <value>5000</value>
+          
+        <description>
+              在响应异步调用之前，hiveserver2保持长轮询的最大时间，单位毫秒
+             
+        </description>
+    </property>
+
+    <property>
+          
+        <name>hive.server2.thrift.port</name>
+          
+        <value>10000</value>
+           
+        <description>hiveserver2服务监听的端口号</description>
+    </property>
+
+    <property>
+           
+        <name>hive.server2.thrift.bind.host</name>
+           
+        <value>xyz01.aiso.com</value>
+           
+        <description>设置hiveserver2服务启动主机ip或域名</description>
+    </property>
+
+    <!--安全验证-->
+    <property>
+        <name>hive.server2.authentication</name>
+        <value>CUSTOM</value>
+    </property>
+
+    <property>
+        <name>hive.server2.custom.authentication.class</name>
+        <value>com.aiso.hive.hiveserver2.auth.CustomHiveServer2Auth</value>
+    </property>
+
+    <!--
+		<property>
+            <name>hive.jdbc_passwd.auth.username</name>
+            <value>xiaoyuzhou</value>
+            <description>用authenticate自定方法加密后的密码 多组，只要添加多个如上的property即可</description>
+        </property>
+	-->
+    <property>
+        <name>hive.server2.custom.authentication.file</name>
+        <value>conf/hive.server2.users.conf</value>
+    </property>
+
+
+    <!-- 权限配置-->
+    <!-- 开启hive cli的控制权限 -->
+    <property>
+        <name>hive.security.authorization.enabled</name>
+        <value>false</value>
+        <description>enable or disable the hive clientauthorization</description>
+    </property>
+    <!-- 定义表创建者的权限 -->
+    <property>
+        <name>hive.security.authorization.createtable.owner.grants</name>
+        <value>ALL</value>
+        <description>
+            the privileges automatically granted to the owner whenever a table gets created.
+        </description>
+    </property>
+    <!-- 在做类似drop partition操作时，metastore是否要认证权限，默认是false -->
+    <property>
+        <name>hive.metastore.authorization.storage.checks</name>
+        <value>false</value>
+        <description>
+            Should the metastore do authorization checks against
+            the underlying storage for operations like drop-partition (disallow
+            the drop-partition if the user in question doesn't have permissions
+            to delete the corresponding directory on the storage).
+        </description>
+    </property>
+    <!-- 非安全模式，设置为true会令metastore以客户端的用户和组权限执行DFS操作，默认是false，这个属性需要服务端和客户端同时设置 -->
+    <property>
+        <name>hive.metastore.execute.setugi</name>
+        <value>false</value>
+        <description>
+            In unsecure mode, setting this property to true will cause the metastore to execute DFS operations using the
+            client's reported user
+            and group permissions. Note that this property must be set on both the client
+            and server sides. Further note that its best effort. If client sets its to true and server sets it to false,
+            client setting will be ignored.
+        </description>
+    </property>
+    <!-- 配置超级管理员，需要自定义控制类继承这个AbstractSemanticAnalyzerHook-->
+    <!-- <property>
+        <name>hive.semantic.analyzer.hook</name>
+        <value>com.kent.test.AuthorityHook</value>
+    </property> -->
+
+    <property>
+        <name>hive.security.authorization.task.factory</name>
+        <value>org.apache.hadoop.hive.ql.parse.authorization.HiveAuthorizationTaskFactoryImpl
+        </value>
+    </property>
+
+    <property>
+        <name>hive.exec.compress.intermediate</name>
+        <value>true</value>
+        <description>This controls whether intermediate files produced by Hive between multiple map-reduce jobs are
+            compressed. The compression codec and other options are determined from Hadoop config variables
+            mapred.output.compress*
+        </description>
+    </property>
+
+    <!-- ###################################authorization####################################### -->
+
+    <property>
+        <name>hive.security.metastore.authorization.manager</name>
+        <value>org.apache.hadoop.hive.ql.security.authorization.DefaultHiveMetastoreAuthorizationProvider</value>
+        <description>authorization manager class name to be used in the metastore for authorization.
+            The user defined authorization class should implement interface
+            org.apache.hadoop.hive.ql.security.authorization.HiveMetastoreAuthorizationProvider.
+        </description>
+    </property>
+
+    <property>
+        <name>hive.security.authenticator.manager</name>
+        <value>org.apache.hadoop.hive.ql.security.HadoopDefaultAuthenticator</value>
+        <description>hive client authenticator manager class name.
+            The user defined authenticator should implement interface
+            org.apache.hadoop.hive.ql.security.HiveAuthenticationProvider.
+        </description>
+    </property>
+
+    <property>
+        <name>hive.security.metastore.authenticator.manager</name>
+        <value>org.apache.hadoop.hive.ql.security.HadoopDefaultMetastoreAuthenticator</value>
+        <description>authenticator manager class name to be used in the metastore for authentication.
+            The user defined authenticator should implement interface
+            org.apache.hadoop.hive.ql.security.HiveAuthenticationProvider.
+        </description>
+    </property>
+
+
+    <!-- 合理控制map和reduce数
+    合并小文件
+    避免数据倾斜 解决数据倾斜
+    减少job数 合并job 大job分拆。。 -->
+
+    <property>
+        <name>hive.fetch.task.conversion</name>
+        <value>minimal</value>
+        <description>
+            Some select queries can be converted to single FETCH task minimizing latency.
+            Currently the query should be single sourced not having any subquery and should not have
+            any aggregations or distincts (which incurs RS), lateral views and joins.
+            1. minimal : SELECT STAR, FILTER on partition columns, LIMIT only
+            2. more : SELECT, FILTER, LIMIT only (TABLESAMPLE, virtual columns)
+        </description>
+    </property>
+
+
+    <!--join-->
+    <property>
+        <name>hive.mapjoin.smalltable.filesize</name>
+        <value>25000000</value>
+        <description>The threshold for the input file size of the small tables; if the file size is smaller than this
+            threshold, it will try to convert the common join into map join
+        </description>
+    </property>
+
+    <!--SMB join-->
+    <property>
+        <name>hive.auto.convert.sortmerge.join</name>
+        <value>true</value>
+        <description>Will the join be automatically converted to a sort-merge join, if the joined tables pass
+            the criteria for sort-merge join.
+        </description>
+    </property>
+
+    <property>
+        <name>hive.enforce.sortmergebucketmapjoin</name>
+        <value>false</value>
+        <description>If the user asked for sort-merge bucketed map-side join, and it cannot be performed,
+            should the query fail or not ?
+        </description>
+    </property>
+
+
+    <!--为什么有的sql执行mapreduce 而有的不执行-->
+    <property>
+        <name>hive.fetch.task.conversion</name>
+        <value>minimal</value>
+        <description>
+            Some select queries can be converted to single FETCH task minimizing latency.
+            Currently the query should be single sourced not having any subquery and should not have
+            any aggregations or distincts (which incurs RS), lateral views and joins.
+            1. minimal : SELECT STAR, FILTER on partition columns, LIMIT only
+            2. more : SELECT, FILTER, LIMIT only (TABLESAMPLE, virtual columns)
+        </description>
+    </property>
+
+    <!--并行执行-->
+    <property>
+        <name>hive.exec.parallel</name>
+        <value>false</value>
+        <description>Whether to execute jobs in parallel</description>
+    </property>
+
+    <property>
+        <name>hive.exec.parallel.thread.number</name>
+        <value>8</value>
+        <description>How many jobs at most can be executed in parallel</description>
+    </property>
+
+
+    <!--推测执行-->
+    <property>
+        <name>hive.mapred.reduce.tasks.speculative.execution</name>
+        <value>true</value>
+        <description>Whether speculative execution for reducers should be turned on.</description>
+    </property>
+
+    <!--Map数目-->
+    <property>
+        <name>hive.merge.size.per.task</name>
+        <value>256000000</value>
+        <description>Size of merged files at the end of the job</description>
+    </property>
+
+    <property>
+        <name>hive.merge.smallfiles.avgsize</name>
+        <value>16000000</value>
+        <description>When the average output file size of a job is less than this number, Hive will start an additional
+            map-reduce job to merge the output files into bigger files. This is only done for map-only jobs if
+            hive.merge.mapfiles is true, and for map-reduce jobs if hive.merge.mapredfiles is true.
+        </description>
+    </property>
+
+    <!--动态调整分区
+
+    -->
+    <property>
+        <name>hive.exec.dynamic.partition</name>
+        <value>true</value>
+        <description>Whether or not to allow dynamic partitions in DML/DDL.</description>
+    </property>
+
+    <!-- nonstrict 允许所有分区动态
+    strict 至少有一个分区静态 -->
+    <property>
+        <name>hive.exec.dynamic.partition.mode</name>
+        <value>strict</value>
+        <description>In strict mode, the user must specify at least one static partition in case the user accidentally
+            overwrites all partitions.
+        </description>
+    </property>
+
+    <!--
+    一个动态分区创建语句可以创建的最大动态分区个数
+    -->
+    <property>
+        <name>hive.exec.max.dynamic.partitions</name>
+        <value>1000</value>
+        <description>Maximum number of dynamic partitions allowed to be created in total.</description>
+    </property>
+
+    <!--
+        动态分区属性
+        每个mapper或reducer可以创建的最大动态分区个数
+    -->
+    <property>
+        <name>hive.exec.max.dynamic.partitions.pernode</name>
+        <value>100</value>
+        <description>Maximum number of dynamic partitions allowed to be created in each mapper/reducer node.
+        </description>
+    </property>
+
+    <!--全局可以创建的最大文件个数-->
+    <property>
+        <name>hive.exec.max.created.files</name>
+        <value>100000</value>
+        <description>Maximum number of HDFS files created by all mappers/reducers in a MapReduce job.</description>
+    </property>
+
+    <!--
+    对分区表进行查询，在where子句中没有加分过滤的话，
+    将禁止提交任务(默认：nonstrict)
+
+    使用严格模式可以禁止3中类型的查询：
+    1.对于分区表 不加分区字段过滤条件 不能执行
+    2.对于order by 语句 必须使用limit语句
+    3.限制笛卡尔积的查询 join的时候不使用on,而使用where的
+    -->
+
+    <property>
+        <name>hive.mapred.mode</name>
+        <value>strict</value>
+        <description>The mode in which the Hive operations are being performed.
+            In strict mode, some risky queries are not allowed to run. They include:
+            Cartesian Product.
+            No partition being picked up for a query.
+            Comparing bigints and strings.
+            Comparing bigints and doubles.
+            Orderby without limit.
+        </description>
+    </property>
+
+
+	<!--hbase-->
+	<property>
+	<name>hbase.zookeeper.quorum</name>
+		<value>
+			xyz01.aiso.com,xyz02.aiso.com,xyz03.aiso.com
+		</value>
+	</property>
+
+
+    <!--hue-->
+    <!-- <property>
+      <name>hive.metastore.uris</name>
+      <value>thrift://xyz01.aiso.com:9083</value>
+    </property>
+    <property>
+      <name>hive.server2.long.polling.timeout</name>
+      <value>5000</value>
+    </property> -->
+
+
+</configuration>
+
+# Define some default values that can be overridden by system properties
+hive.log.threshold=ALL
+hive.root.logger=INFO,DRFA
+hive.log.dir=/opt/module/cdh-5.3.6-ha/hive-0.13.1-cdh5.3.6/logs
+hive.log.file=hive.log
+
+# Define the root logger to the system property "hadoop.root.logger".
+log4j.rootLogger=${hive.root.logger}, EventCounter
+
+# Logging Threshold
+log4j.threshold=${hive.log.threshold}
+
+#
+# Daily Rolling File Appender
+#
+# Use the PidDailyerRollingFileAppend class instead if you want to use separate log files
+# for different CLI session.
+#
+# log4j.appender.DRFA=org.apache.hadoop.hive.ql.log.PidDailyRollingFileAppender
+
+log4j.appender.DRFA=org.apache.log4j.DailyRollingFileAppender
+
+log4j.appender.DRFA.File=${hive.log.dir}/${hive.log.file}
+
+# Rollver at midnight
+log4j.appender.DRFA.DatePattern=.yyyy-MM-dd
+
+# 30-day backup
+#log4j.appender.DRFA.MaxBackupIndex=30
+log4j.appender.DRFA.layout=org.apache.log4j.PatternLayout
+
+# Pattern format: Date LogLevel LoggerName LogMessage
+#log4j.appender.DRFA.layout.ConversionPattern=%d{ISO8601} %p %c: %m%n
+# Debugging Pattern format
+log4j.appender.DRFA.layout.ConversionPattern=%d{ISO8601} %-5p [%t]: %c{2} (%F:%M(%L)) - %m%n
+
+
+#
+# console
+# Add "console" to rootlogger above if you want to use this
+#
+
+log4j.appender.console=org.apache.log4j.ConsoleAppender
+log4j.appender.console.target=System.err
+log4j.appender.console.layout=org.apache.log4j.PatternLayout
+log4j.appender.console.layout.ConversionPattern=%d{yy/MM/dd HH:mm:ss} [%t]: %p %c{2}: %m%n
+log4j.appender.console.encoding=UTF-8
+
+#custom logging levels
+#log4j.logger.xxx=DEBUG
+
+#
+# Event Counter Appender
+# Sends counts of logging messages at different severity levels to Hadoop Metrics.
+#
+log4j.appender.EventCounter=org.apache.hadoop.hive.shims.HiveEventCounter
+
+
+log4j.category.DataNucleus=ERROR,DRFA
+log4j.category.Datastore=ERROR,DRFA
+log4j.category.Datastore.Schema=ERROR,DRFA
+log4j.category.JPOX.Datastore=ERROR,DRFA
+log4j.category.JPOX.Plugin=ERROR,DRFA
+log4j.category.JPOX.MetaData=ERROR,DRFA
+log4j.category.JPOX.Query=ERROR,DRFA
+log4j.category.JPOX.General=ERROR,DRFA
+log4j.category.JPOX.Enhancer=ERROR,DRFA
+
+
+# Silence useless ZK logs
+log4j.logger.org.apache.zookeeper.server.NIOServerCnxn=WARN,DRFA
+log4j.logger.org.apache.zookeeper.ClientCnxnSocketNIO=WARN,DRFA
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Set Hive and Hadoop environment variables here. These variables can be used
+# to control the execution of Hive. It should be used by admins to configure
+# the Hive installation (so that users do not have to set environment variables
+# or set command line parameters to get correct behavior).
+#
+# The hive service being invoked (CLI/HWI etc.) is available via the environment
+# variable SERVICE
+
+
+# Hive Client memory usage can be an issue if a large number of clients
+# are running at the same time. The flags below have been useful in
+# reducing memory usage:
+#
+# if [ "$SERVICE" = "cli" ]; then
+#   if [ -z "$DEBUG" ]; then
+#     export HADOOP_OPTS="$HADOOP_OPTS -XX:NewRatio=12 -Xms10m -XX:MaxHeapFreeRatio=40 -XX:MinHeapFreeRatio=15 -XX:+UseParNewGC -XX:-UseGCOverheadLimit"
+#   else
+#     export HADOOP_OPTS="$HADOOP_OPTS -XX:NewRatio=12 -Xms10m -XX:MaxHeapFreeRatio=40 -XX:MinHeapFreeRatio=15 -XX:-UseGCOverheadLimit"
+#   fi
+# fi
+
+# The heap size of the jvm stared by hive shell script can be controlled via:
+#
+# export HADOOP_HEAPSIZE=1024
+#
+# Larger heap size may be required when running queries over large number of files or partitions.
+# By default hive shell scripts use a heap size of 256 (MB).  Larger heap size would also be
+# appropriate for hive server (hwi etc).
+
+
+export JAVA_HOME=/opt/module/jdk1.7.0_67
+# Set HADOOP_HOME to point to a specific hadoop install directory
+HADOOP_HOME=/opt/module/cdh-5.3.6-ha/hadoop-2.5.0-cdh5.3.6
+
+# Hive Configuration Directory can be controlled by:
+export HIVE_CONF_DIR=/opt/module/cdh-5.3.6-ha/hive-0.13.1-cdh5.3.6/conf
+
+# Folder containing extra ibraries required for hive compilation/execution can be controlled by:
+# export HIVE_AUX_JARS_PATH=
+xiaoyuzhou,29fe3d760e64b4e055ec3cda455833ab
+user,5f4dcc3b5aa765d61d8327deb882cf99

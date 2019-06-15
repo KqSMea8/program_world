@@ -1,4 +1,368 @@
 
+#!/usr/bin/bash
+HADOOP_HOME="/opt/module/cdh-5.3.6-ha/hadoop-2.5.0-cdh5.3.6"
+HIVE_HOME='/opt/module/cdh-5.3.6-ha/hive-0.13.1-cdh5.3.6'
+SQOOP_HOME='/opt/module/cdh-5.3.6-ha/sqoop-1.4.5-cdh5.3.6'
+MYSQL_HOME='/opt/module/mysql-5.6'
+####### execute hive ######
+sql=$(cat <<!EOF
+use wordcount;
+
+-- Hive实现wordCount程序
+drop table if exists wc_src_data;
+create  table wc_src_data(line string) row format delimited fields terminated by '\n' stored as textfile;
+
+load data inpath '/data/wc.input'  overwrite into table wc_src_data;
+
+drop table if exists wc_tmp;
+-- 这里需要用到一个hive的内置表生成函数（UDTF）：explode(array)，参数是array，其实就是行变多列：
+create table wc_tmp(word string);
+insert overwrite table wc_tmp select explode(split(line, " ")) as word from wc_src_data;
+
+drop table if exists wc_res;
+create table wc_res (word string,num bigint);
+insert overwrite table wc_res select word,count(*) from wc_tmp group by word;
+
+select * from wc_res limit 10;
+
+!EOF)
+############  execute begin   ###########
+
+######上传jar包到hdfs##
+# cd $HADOOP_HOME
+# bin/hdfs dfs -test -e /hive/warehouse/funcs/hive-01-0.0.1-SNAPSHOT.jar
+# if [ $? -ne 0 ] ;then
+	# bin/hdfs dfs -put $HIVE_HOME/auxlib/hive-01-0.0.1-SNAPSHOT.jar /hive/warehouse/funcs
+# fi
+
+#echo $sql
+cd $HIVE_HOME
+bin/hive -e "$sql"
+
+cd $HADOOP_HOME
+# bin/hdfs dfs -mkdir -p /hive/warehouse/aiso_log.db/dept_part/day=20150914
+# bin/hdfs dfs -put /opt/data/dept.txt /hive/warehouse/aiso_log.db/dept_part/day=20150914
+
+cd $HIVE_HOME
+# bin/hive -e "use aiso_log;"
+# bin/hive -f /opt/data/hivef.sql > /opt/data/hivef-res.txt
+
+
+exitCode=$?
+if [ $exitCode -ne 0 ];then
+         echo "[ERROR] hive execute failed!"
+         exit $exitCode
+fi
+
+cd $HIVE_HOME
+#bin/hive -e "drop table aiso_log.bf_log_visit_temp;"
+
+sudo cp execute-hql.sh wordcount/wordcount-hive.sh
+
+
+
+
+
+
+
+
+
+
+#!/usr/bin/bash
+
+# 通过编写shell脚本，将addhiveserver添加到系统服务里，这样以后就可以类似启动mysql那样通过
+# service hiveserver start
+# service hiveserver stop
+# service hiveserver restart
+# 去启动hiveserver服务了，
+
+# 把hiveserver添加到系统服务里，还可以通过chkconfig hiveserver on设置hiveserver服务随系统开机自动启动了。
+
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# .  /etc/profile
+
+
+# Paths to configuration, binaries, etc
+
+HADOOP_HOME="/opt/module/cdh-5.3.6-ha/hadoop-2.5.0-cdh5.3.6"
+HIVE_HOME='/opt/module/cdh-5.3.6-ha/hive-0.13.1-cdh5.3.6'
+
+echo "HADOOP_HOME: $HADOOP_HOME"
+echo "HIVE_HOME: $HIVE_HOME"
+
+prog="$0"
+port="$3"
+echo "port: $port"
+HIVE_BASE=$HIVE_HOME
+HIVE_BIN="$HIVE_BASE/bin/hive"
+HIVE_ARGS="--service hiveserver"
+HIVE_LOG="$HIVE_BASE/logs/hive-server.log"
+HIVE_USER="root"
+
+if [ "$2" != "" ] && [ "$2" != "-p" ]; then
+  echo "Please use the -p parameter to specify the port number."
+  exit 1
+fi
+
+if [ ! -f $HIVE_BIN ]; then
+  echo "Can't found: $HIVE_BIN"
+  exit 1
+fi
+
+
+
+# pid file for /sbin/runuser
+pidfile=${PIDFILE-/tmp/hive-server.pid}
+RETVAL=0
+
+checkpid() {
+    [ -z "$PORT" ] && port=10000
+	echo "tem_port: $tem_port"
+    if [ -z "`netstat -tanp | grep java | grep $port | awk '{print $7}' | awk -F / '{print $1}'`" ]; then
+        return 0;
+	else
+	    return 1;
+    fi
+}
+
+echo_success() {
+	echo "The Hive Server has been started successfully."
+	return 0;
+}
+
+echo_failure() {
+	echo "Start the Service Hive Server failure."
+	return 1;
+}
+
+start() {
+  # check to see if hive is already running by looking at the pid file and grepping
+  # the process table.
+  if [ -f $pidfile ] && checkpid `cat $pidfile`; then
+    echo "hive-server is already running or hive server not normally closed at the last time,please delete the hive-server.pid file in the /tmp directory and then try again."
+    exit 0
+  fi
+  echo "Starting $prog......"
+
+  if [ -n "$port" ] && [ "$port" -gt 0 ]; then
+	/sbin/runuser -s /bin/sh -c "$HIVE_BIN $HIVE_ARGS -p $port" $HIVE_USER >> $HIVE_LOG 2>&1 &
+  else
+    /sbin/runuser -s /bin/sh -c "$HIVE_BIN $HIVE_ARGS" $HIVE_USER >> $HIVE_LOG 2>&1 &
+  fi
+
+  runuser_pid=$!
+  echo "parent pid: $runuser_pid"
+  usleep 500000
+  hiveserver_pid=`ps -eo pid,ppid,fname | grep $runuser_pid | grep -v runuser | awk '{print $1}'`
+  echo $hiveserver_pid > $pidfile
+  echo "hiveserver pid: $hiveserver_pid"
+  disown -ar
+  return_val=`ps aux | grep $hiveserver_pid | grep -v grep`
+  if [ -n "$return_val" ]
+  then
+	  echo_success
+  else
+      echo_failure
+  fi
+  RETVAL=$?
+  return $RETVAL
+}
+
+stop() {
+  # check if the process is already stopped by seeing if the pid file exists.
+  if [ ! -f $pidfile ]; then
+    echo "hive-server had been already stopped"
+    exit 0
+  fi
+  echo "Stopping $prog......"
+  if kill -9 `cat $pidfile`; then
+    RETVAL=0
+    echo "The Hive Server has been stopped successfully."
+  else
+    RETVAL=1
+    echo "Stop the Service Hive Server failure."
+  fi
+  echo
+  [ $RETVAL = 0 ] && rm -f ${pidfile}
+}
+
+status_fn() {
+  if [ -f $pidfile ] && checkpid `cat $pidfile`; then
+    echo "hive-server is running now."
+    exit 0
+  else
+    echo "hive-server had been stopped."
+    exit 1
+  fi
+}
+
+case "$1" in
+  start)
+    start
+    ;;
+  stop)
+    stop
+    ;;
+  status)
+    status_fn
+    ;;
+  restart)
+    stop
+    start
+    ;;
+  *)
+    echo $1 "Usage: $prog {start|stop|restart|status}"
+    RETVAL=3
+esac
+
+exit $RETVAL
+
+
+# 2.赋予当前用户拥有执行hiveserver脚本文件权限
+ chmod u+x $HIVE_HOME/shell/hive2server.sh
+
+# 3.创建日志文件
+# HIVE_LOG=$HIVE_HOME/logs/hive-server.log
+# 同时要赋予当前登录用户拥有对hive-server.log日志文件的写权限
+ chmod u+w $HIVE_HOME/logs/hive-server.log
+
+# 4.创建hiveserver系统服务
+CHKCONFIG --ADD HIVESERVER
+CHKCONFIG--LIST|GREPHIVESERVER
+# 查看服务是否添加成功
+
+# 5.将hiveserver系统服务设置为随系统开机自动启动
+chkconfig hiveserver on
+# 设置随系统开机自动启动是可选的
+
+# service hiveserver stop
+# service hiveserver start
+# service hiveserver start -p 10002
+# service hiveserver restart
+
+# 可以指定启动端口号,不指定默认端口号是10000
+
+# hiveserver服务的进程id文件保存在/tmp/hive-server.pid文件里
+
+
+#!/bin/bash
+
+HIVE_HOME='/opt/module/cdh-5.3.6-ha/hive-0.13.1-cdh5.3.6'
+MYSQL_HOME='/opt/module/mysql-5.6'
+HADOOP_HOME='/opt/module/cdh-5.3.6-ha/hadoop-2.5.0-cdh5.3.6'
+
+
+#Hive
+# cp $HIVE_HOME/conf/hive-env.sh.template $HIVE_HOME/conf/hive-env.sh
+# cp $HIVE_HOME/conf/hive-default.xml.template $HIVE_HOME/conf/hive-site.xml
+
+
+#log
+if [ ! -d "$HIVE_HOME/logs" ]; then
+  mkdir -p $HIVE_HOME/logs
+fi
+
+
+#mysql
+ if [ ! -f "$HIVE_HOME/lib/mysql-connector-java-5.1.27-bin.jar" ]; then
+	cp  $MYSQL_HOME/mysql-connector-java-5.1.27/mysql-connector-java-5.1.27-bin.jar $HIVE_HOME/lib
+ fi
+
+$HADOOP_HOME/bin/hdfs dfs -mkdir -p /hive/warehouse
+$HADOOP_HOME/bin/hdfs dfs -chmod g+w /tmp
+$HADOOP_HOME/bin/hdfs dfs -chmod g+w /hive/warehouse
+
+
+# hive-env.sh
+		# export JAVA_HOME=/opt/modules/jdk1.7.0_67
+		# HADOOP_HOME=/opt/modules/hadoop-2.5.0
+		# export HIVE_CONF_DIR=/opt/modules/hive/apache-hive-0.13.1-bin/conf
+
+
+
+# hive-site.xml
+	# <property>
+		# <name>hive.metastore.warehouse.dir</name>
+		# <value>/user/hive/warehouse</value>
+	# </property>
+# <property>
+	  # <name>javax.jdo.option.ConnectionURL</name>
+	  # <value>jdbc:mysql://hadoop01.ibeifeng.com:3306/metastore?createDatabaseIfNotExist=true</value>
+	  # <description>JDBC connect string for a JDBC metastore</description>
+	# </property>
+
+	# <property>
+	  # <name>javax.jdo.option.ConnectionDriverName</name>
+	  # <value>com.mysql.jdbc.Driver</value>
+	  # <description>Driver class name for a JDBC metastore</description>
+	# </property>
+
+	# <property>
+	  # <name>javax.jdo.option.ConnectionUserName</name>
+	  # <value>root</value>
+	  # <description>username to use against metastore database</description>
+	# </property>
+
+	# <property>
+	  # <name>javax.jdo.option.ConnectionPassword</name>
+	  # <value>zrr123</value>
+	  # <description>password to use against metastore database</description>
+	# </property>
+
+	# <property>
+	# <name>hive.cli.print.header</name>
+	# <value>true</value>
+	# <description>Whether to print the names of the columns in query output.</description>
+	# </property>
+
+	# <property>
+	  # <name>hive.cli.print.current.db</name>
+	  # <value>true</value>
+	  # <description>Whether to include the current database in the Hive prompt.</description>
+	# </property>
+
+# <property>
+  # <name>hive.metastore.warehouse.dir</name>
+  # <value>/user/hive/warehouse</value>
+  # <description>location of default database for the warehouse</description>
+# </property>
+
+# hive-log4j.properties
+# hive.root.logger=INFO,DRFA
+	# hive.log.dir=/opt/modules/hive/apache-hive-0.13.1-bin/logs
+	# hive.log.file=hive.log
+
+
+####################hwi####################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ==========================
 Hive 1.2.1安装
 
